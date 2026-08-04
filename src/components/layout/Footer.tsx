@@ -91,7 +91,7 @@ export default function Footer() {
         <span className="text-[var(--border)]" aria-hidden="true">
           /
         </span>
-        <span>© 2026 STEM Lab</span>
+        <span>© 2026 STEM DIGITAL LAB</span>
       </div>
     </footer>
   );

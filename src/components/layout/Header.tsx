@@ -8,7 +8,6 @@
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
-import type { Language } from '../../lib/i18n';
 import type { ThemeMode } from '../../lib/app-context';
 
 export default function Header() {
@@ -51,30 +50,15 @@ export default function Header() {
       </Link>
 
       <div className="flex items-center space-x-4 text-[11px] mono-font uppercase tracking-wider">
-        {/* Language Switcher */}
-        <div className="flex items-center space-x-2" role="group" aria-label="Language selection">
-          <button
-            onClick={() => setLang('zh' as Language)}
-            aria-pressed={lang === 'zh'}
-            className={`transition-colors ${
-              lang === 'zh' ? 'font-bold text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'
-            }`}
-          >
-            中文
-          </button>
-          <span className="text-[var(--border)]" aria-hidden="true">
-            ｜
-          </span>
-          <button
-            onClick={() => setLang('en' as Language)}
-            aria-pressed={lang === 'en'}
-            className={`transition-colors ${
-              lang === 'en' ? 'font-bold text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'
-            }`}
-          >
-            EN
-          </button>
-        </div>
+        {/* Language Switcher (single toggle button) */}
+        <button
+          onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
+          aria-label="Switch language"
+          title={lang === 'zh' ? 'EN' : '中文'}
+          className="transition-colors text-[var(--fg)] hover:opacity-70"
+        >
+          {lang === 'zh' ? '中文' : 'EN'}
+        </button>
 
         <div className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
 
