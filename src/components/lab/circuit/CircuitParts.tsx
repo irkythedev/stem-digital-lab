@@ -170,6 +170,36 @@ export function Battery({ cx = 40, cy = 110 }: { cx?: number; cy?: number }) {
   );
 }
 
+/* ---------- 交流电源（家庭电路：火线 L / 零线 N + 交流符号 ~ + 接地） ---------- */
+export function ACSource({ cx = 40, cy = 110 }: { cx?: number; cy?: number }) {
+  // 家庭电路为交流电源：火线在上（接干路）、零线在下（接回流），用 ~ 表示交流；
+  // 右侧标注火线 L 与零线 N，下方附接地符号示意。
+  return (
+    <g>
+      <g stroke="var(--fg)" strokeWidth="1.5">
+        {/* 交流符号 ~ */}
+        <path d={`M ${cx - 16} ${cy - 40} q 4 6 8 0 q 4 -6 8 0`} fill="none" strokeLinecap="round" />
+        {/* 火线端（长线） */}
+        <line x1={cx - 18} y1={cy - 26} x2={cx + 18} y2={cy - 26} />
+        {/* 零线端（短线） */}
+        <line x1={cx - 8} y1={cy - 14} x2={cx + 8} y2={cy - 14} strokeWidth="3" />
+      </g>
+      <text x={cx + 24} y={cy - 20} textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">
+        L
+      </text>
+      <text x={cx + 24} y={cy - 8} textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">
+        N
+      </text>
+      {/* 接地符号：三条递减横线 */}
+      <g stroke="var(--fg)" strokeWidth="1">
+        <line x1={cx - 14} y1={cy + 6} x2={cx + 14} y2={cy + 6} />
+        <line x1={cx - 9} y1={cy + 12} x2={cx + 9} y2={cy + 12} strokeWidth="0.8" />
+        <line x1={cx - 4} y1={cy + 18} x2={cx + 4} y2={cy + 18} strokeWidth="0.6" />
+      </g>
+    </g>
+  );
+}
+
 /* ---------- 保险丝（小矩形 + 内部细线） ---------- */
 export function Fuse({ x, y }: { x: number; y: number }) {
   return (

@@ -22,7 +22,7 @@ import MeterProbe, { type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
-import { Bulb, BladeSwitch, Battery, Fuse, Rheostat, FixedMeter } from '../../components/lab/circuit/CircuitParts';
+import { Bulb, BladeSwitch, Battery, ACSource, Fuse, Rheostat, FixedMeter } from '../../components/lab/circuit/CircuitParts';
 import {
   CIRCUIT_STYLES,
   genTopology,
@@ -53,6 +53,7 @@ const baseCopy = {
     switchOff: '断开',
     switchOpenHint: '开关断开，电路中没有电流。合上开关再看读数。',
     currentDirLabel: '电流方向（传统）：正极 → 负极',
+    currentDirLabelHouse: '家庭电路为交流电：电流在火线（L）与零线（N）之间往返',
     stagePredict: '预测',
     stageExplore: '探索',
     stageConclude: '结论',
@@ -98,6 +99,7 @@ const baseCopy = {
     switchOff: 'Open',
     switchOpenHint: 'The switch is open — no current flows. Close it to read the meters.',
     currentDirLabel: 'Current direction (conventional): + → −',
+    currentDirLabelHouse: 'Household circuits use AC: current alternates between live (L) and neutral (N)',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
     stageConclude: 'Conclude',
@@ -392,8 +394,8 @@ export default function Circuits() {
                 label="S"
               />
 
-              {/* 电池 */}
-              <Battery cx={BATT_X} cy={110} />
+              {/* 电源：家庭电路为交流电源（火线/零线），其余为直流电池 */}
+              {style.id === 'parallelHouse' ? <ACSource cx={BATT_X} cy={110} /> : <Battery cx={BATT_X} cy={110} />}
 
               {/* 并联支路开关 S₁/S₂… */}
               {!isSeries &&
@@ -511,7 +513,7 @@ export default function Circuits() {
               })}
             </svg>
             {!switchOn && <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>}
-            <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{t.currentDirLabel}</p>
+            <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
             {/* 拖拽测量提示 + 错误反馈 */}
             <p className="mt-1 flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)]">
               <GrabIcon className="h-3.5 w-3.5 shrink-0" />

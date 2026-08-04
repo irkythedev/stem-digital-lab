@@ -43,7 +43,7 @@ export const translations = {
     light: '浅色',
     dark: '深色',
     guide: '使用说明',
-    backHome: '返回首页',
+    backHome: '返回',
     backToSubject: '返回科目',
     disclaimer: '本平台为教学演示与个人探究参考，结果仅供参考，请以权威教材为准。',
     disclaimerLabel: '免责声明',
@@ -60,7 +60,7 @@ export const translations = {
     underConstruction: '实验建设中',
     labUnderConstruction: '本实验正在建设中，敬请期待。',
     pageNotFound: '页面不存在',
-    backToHome: '返回首页',
+    backToHome: '返回',
   },
   en: {
     brandName: 'Math · Physics · Chemistry Lab',
@@ -97,7 +97,7 @@ export const translations = {
     light: 'Light',
     dark: 'Dark',
     guide: 'Guide',
-    backHome: 'Back to Home',
+    backHome: 'Back',
     backToSubject: 'Back to Subject',
     disclaimer: 'This platform is a teaching/demo and personal-inquiry reference. Results are for reference only; defer to authoritative textbooks.',
     disclaimerLabel: 'Disclaimer',
@@ -114,7 +114,7 @@ export const translations = {
     underConstruction: 'Under Construction',
     labUnderConstruction: 'This lab is under construction. Stay tuned.',
     pageNotFound: 'Page Not Found',
-    backToHome: 'Back to Home',
+    backToHome: 'Back',
   },
 };
 
