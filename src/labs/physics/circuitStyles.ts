@@ -270,8 +270,8 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
     id: 'parallelHouse',
     kind: 'parallel',
     elements: [
-      { kind: 'bulb', r: 10, label: 'R₁', x: 200 },
-      { kind: 'bulb', r: 20, label: 'R₂', x: 200 },
+      { kind: 'bulb', r: 484, label: 'R₁', x: 200 },
+      { kind: 'bulb', r: 968, label: 'R₂', x: 200 },
     ],
     branchSwitches: true,
     fuse: true,
