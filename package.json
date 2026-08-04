@@ -1,0 +1,36 @@
+{
+  "name": "stem-digital-lab",
+  "private": true,
+  "version": "0.0.0",
+  "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "test": "npx tsx src/smoke.test.ts"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "katex": "^0.18.1",
+    "lucide-react": "^0.546.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-router-dom": "^7.18.2",
+    "vite": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

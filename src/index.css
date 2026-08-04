@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fafafa;
+  --fg: #111111;
+  --muted: #737373;
+  --border: #d4d4d4;
+  --card-bg: #ffffff;
+  --accent: #000000;
+  --accent-light: #eeeeee;
+  /* 错误反馈色（拒绝/非法接法） */
+  --error: #dc2626;
+  /* 化学液面透明度（浅色底 0.35 足够鲜艳；暗色底需提高） */
+  --liquid-opacity: 0.35;
+  /* 电表指针：电流表红（红表笔/正极惯例）、电压表蓝（万用表电压档惯例） */
+  --meter-a: #c62828;
+  --meter-v: #1565c0;
+  --f-serif: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
+  --f-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
+  --f-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+html.dark {
+  --bg: #0a0a0a;
+  --fg: #f5f5f5;
+  --muted: #888888;
+  --border: #262626;
+  --card-bg: #111111;
+  --accent: #ffffff;
+  --accent-light: #1a1a1a;
+  --error: #ef4444;
+  --liquid-opacity: 0.5;
+  /* 暗主题下提高明度，保证指针在暗底上清晰 */
+  --meter-a: #ef5350;
+  --meter-v: #42a5f5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #0a0a0a;
+    --fg: #f5f5f5;
+    --muted: #888888;
+    --border: #262626;
+    --card-bg: #111111;
+    --accent: #ffffff;
+    --accent-light: #1a1a1a;
+    --error: #ef4444;
+    --liquid-opacity: 0.5;
+    --meter-a: #ef5350;
+    --meter-v: #42a5f5;
+  }
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-sans);
+  min-height: 100vh;
+  margin: 0;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.serif-font {
+  font-family: var(--f-serif);
+}
+
+.sans-font {
+  font-family: var(--f-sans);
+}
+
+.mono-font {
+  font-family: var(--f-mono);
+}
+
+/* KaTeX 公式跟随主题文字颜色（浅/深色自适应），并重置其独占行距 */
+.katex {
+  color: inherit;
+}
+.katex-display {
+  margin: 0;
+  padding: 0;
+}
+
+/* 滴定液滴：从滴管口下落进入液面（SVG circle 位移动画） */
+@keyframes drop-fall {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(34px);
+    opacity: 0.9;
+  }
+}
+.titration-drop {
+  animation: drop-fall 1.1s ease-in infinite;
+}
+
+/* 液面高度平滑过渡（随滴入体积变化） */
+.titration-liquid {
+  transition: fill 0.35s ease-out;
+}
+
+/* 开关刀片：闭合/断开平滑切换 */
+.switch-blade {
+  transition: d 0.18s ease-out;
+}
+
+/* 品牌 icon 正三角排布：△（数学）在上，□（化学）左下，○（物理）右下 */
+/* 默认无动画（静止在默认位置），悬停时沿三角形路径循环移位，2.4s 一圈 */
+.animate-tri-spin { animation: none; }
+.animate-sq-spin { animation: none; }
+.animate-ci-spin { animation: none; }
+.group:hover .animate-tri-spin { animation: tri-spin 2.4s ease-in-out infinite; }
+.group:hover .animate-sq-spin { animation: sq-spin 2.4s ease-in-out infinite; }
+.group:hover .animate-ci-spin { animation: ci-spin 2.4s ease-in-out infinite; }
+
+@keyframes tri-spin {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-6px, 12px); }
+  66% { transform: translate(6px, 12px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes sq-spin {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(12px, 0); }
+  66% { transform: translate(6px, -12px); }
+  100% { transform: translate(0, 0); }
+}
+@keyframes ci-spin {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-6px, -12px); }
+  66% { transform: translate(-12px, 0); }
+  100% { transform: translate(0, 0); }
+}

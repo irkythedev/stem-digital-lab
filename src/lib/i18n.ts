@@ -1,0 +1,97 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * 双语字典（zh / en）
+ * 从原 App.tsx 内联字典中抽出，供全站页面与组件复用。
+ */
+export type Language = 'zh' | 'en';
+
+export const translations = {
+  zh: {
+    brandName: '数理化数字实验室',
+    brandBadge: '数理化数字实验室',
+    subtitle: '从基础公式与定理出发，在交互代码里重构数理化的本质。',
+    description: '初中 7-9 年级数学 · 物理 · 化学数字探究空间',
+    statusTag: '正在建设中 _',
+    curriculumNotice: '涵盖 7-9 年级核心知识点，打造可视化、可交互的计算模型与实验仿真。',
+    labs: '实验',
+    subjects: {
+      math: {
+        title: '数学',
+        sub: '7-9 年级',
+        status: '算法构建中',
+        note: '一次函数 · 二次函数 · 反比例函数',
+      },
+      physics: {
+        title: '物理',
+        sub: '8-9 年级',
+        status: '物理建模中',
+        note: '欧姆定律 · 串并联电路 · 凸透镜成像',
+      },
+      chemistry: {
+        title: '化学',
+        sub: '九年级',
+        status: '仿真实验中',
+        note: '酸碱中和 · 质量守恒定律',
+      },
+    },
+    author: '作者：张子熠',
+    authorRole: '初中 STEM 数字探究项目',
+    gitee: 'Gitee 项目',
+    system: '系统',
+    light: '浅色',
+    dark: '深色',
+    guide: '使用说明',
+    backHome: '返回首页',
+    backToSubject: '返回科目',
+    underConstruction: '实验建设中',
+    labUnderConstruction: '本实验正在建设中，敬请期待。',
+    pageNotFound: '页面不存在',
+    backToHome: '返回首页',
+  },
+  en: {
+    brandName: 'Math · Physics · Chemistry Lab',
+    brandBadge: 'STEM DIGITAL LAB',
+    subtitle: 'Rebuilding math, physics, and chemistry from first principles into interactive code.',
+    description: 'Grades 7-9 Math · Physics · Chemistry Exploration Space',
+    statusTag: 'UNDER CONSTRUCTION _',
+    curriculumNotice: 'Interactive visualization algorithms and simulations aligned with Grades 7-9 STEM core concepts.',
+    labs: 'LABS',
+    subjects: {
+      math: {
+        title: 'Math',
+        sub: 'Grades 7-9',
+        status: 'Building Algorithms',
+        note: 'Linear · Quadratics · Inverse Variation',
+      },
+      physics: {
+        title: 'Physics',
+        sub: 'Grades 8-9',
+        status: 'Modeling Fields',
+        note: "Ohm's Law · Series & Parallel · Optics",
+      },
+      chemistry: {
+        title: 'Chemistry',
+        sub: 'Grade 9',
+        status: 'Designing Simulations',
+        note: 'Acid-Base · Conservation of Mass',
+      },
+    },
+    author: 'By Ricky',
+    authorRole: 'Middle School STEM Project',
+    gitee: 'View on Gitee',
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
+    guide: 'Guide',
+    backHome: 'Back to Home',
+    backToSubject: 'Back to Subject',
+    underConstruction: 'Under Construction',
+    labUnderConstruction: 'This lab is under construction. Stay tuned.',
+    pageNotFound: 'Page Not Found',
+    backToHome: 'Back to Home',
+  },
+};
+
+export type Translation = typeof translations.zh;
