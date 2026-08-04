@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
+  "license": "Apache-2.0",
+  "homepage": "https://stem.irky.dev",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
