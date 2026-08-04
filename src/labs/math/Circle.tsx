@@ -73,7 +73,7 @@ const copy = {
     concludeHint: '选完三题，看看结论和你的观察是否一致',
     feedbackText:
       '垂径定理：垂直于弦的直径平分弦（AE = EB）。' +
-      '圆周角定理：同弧所对的圆周角相等（∠BPC = ∠BQC）。' +
+      '圆周角定理：同弧或等弧所对的圆周角相等（∠BPC = ∠BQC）。' +
       '直径对直角：直径所对的圆周角等于 90°（∠ACB = 90°）。',
     tipsTitle: '考点速记',
     tips: [
@@ -146,7 +146,7 @@ const copy = {
     concludeHint: 'Answer all three questions, then check if your conclusion matches your observations.',
     feedbackText:
       'Chord theorem: a diameter perpendicular to a chord bisects the chord (AE = EB). ' +
-      'Inscribed angle theorem: inscribed angles subtending the same arc are equal (∠BPC = ∠BQC). ' +
+      'Inscribed angle theorem: inscribed angles subtending the same or equal arcs are equal (∠BPC = ∠BQC). ' +
       "Thales' theorem: an angle inscribed in a semicircle is a right angle (∠ACB = 90°).",
     tipsTitle: 'Key Points',
     tips: [
