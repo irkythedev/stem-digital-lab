@@ -200,6 +200,171 @@ export function ACSource({ cx = 40, cy = 110 }: { cx?: number; cy?: number }) {
   );
 }
 
+/* ---------- 家庭电路（真实结构：火线 L / 零线 N 双母线 + 用电器跨接 + 三孔插座接地） ---------- */
+export function HouseholdCircuit({
+  on,
+  branchOn,
+  u,
+  effR,
+  glow,
+  onToggleMaster,
+  onToggleBranch,
+}: {
+  /** 总开关闭合？ */
+  on: boolean;
+  /** 各支路开关闭合？ */
+  branchOn: boolean[];
+  /** 电源电压（等效 220V，按比例显示） */
+  u: number;
+  /** 各用电器阻值（Ω） */
+  effR: number[];
+  /** 各灯泡亮度 0..1 */
+  glow: number[];
+  onToggleMaster: () => void;
+  onToggleBranch: (i: number) => void;
+}) {
+  // 布局（SVG 320×220）：
+  // 火线 L 母线 y=60（红），零线 N 母线 y=150（蓝），左侧电源进线 x=40（交流 ~ 符号）
+  // 支路：x=170 / x=230 处从 L 引竖线 → 开关（火线侧）→ 灯泡（y≈105）→ 回 N
+  // 三孔插座 x=270：L/N 两下孔 + E 上孔接接地线（黄绿），接地符号在 y=185
+  const LIVE = '#e5484d';
+  const NEUTRAL = '#3b82f6';
+  const EARTH = '#8a8a8a';
+  const L = 40; // 电源进线 x
+  const L_Y = 60; // 火线母线
+  const N_Y = 150; // 零线母线
+  const R = 12; // 灯泡半径
+
+  const branches = [
+    { x: 170, label: 'S₁' },
+    { x: 230, label: 'S₂' },
+  ];
+
+  return (
+    <g>
+      {/* ── 双母线：火线 L（上）、零线 N（下） ── */}
+      <line x1={L} y1={L_Y} x2={290} y2={L_Y} stroke={LIVE} strokeWidth="1.4" />
+      <line x1={L} y1={N_Y} x2={290} y2={N_Y} stroke={NEUTRAL} strokeWidth="1.4" />
+      {/* 电源进线竖线（左侧） */}
+      <line x1={L} y1={L_Y} x2={L} y2={N_Y} stroke="var(--fg)" strokeWidth="1.2" />
+
+      {/* 电源交流符号 ~（左侧进线中部） */}
+      <path
+        d={`M ${L - 16} 105 q 4 6 8 0 q 4 -6 8 0`}
+        fill="none"
+        stroke="var(--fg)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      {/* 母线端标签 */}
+      <text x={L - 26} y={L_Y + 4} textAnchor="end" fontSize="10" fill={LIVE} fontFamily="var(--f-mono)" fontWeight="bold">
+        L
+      </text>
+      <text x={L - 26} y={N_Y + 4} textAnchor="end" fontSize="10" fill={NEUTRAL} fontFamily="var(--f-mono)" fontWeight="bold">
+        N
+      </text>
+
+      {/* 保险丝：串在火线 L 上（进线右侧） */}
+      <g>
+        <rect x={70} y={L_Y - 3} width="20" height="6" rx="1" fill="var(--card-bg)" stroke={LIVE} strokeWidth="1.2" />
+        <line x1={74} y1={L_Y} x2={86} y2={L_Y} stroke={LIVE} strokeWidth="0.8" />
+        <text x={80} y={L_Y + 16} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
+          保险丝
+        </text>
+      </g>
+
+      {/* 总开关 S：接在火线 L 上（保险丝右侧） */}
+      <BladeSwitch
+        x1={120}
+        y1={L_Y}
+        x2={145}
+        y2={L_Y}
+        on={on}
+        onToggle={onToggleMaster}
+        label="S"
+        labelY={L_Y + 16}
+      />
+
+      {/* ── 各支路：火线 → 开关 → 灯泡 → 零线 ── */}
+      {branches.map((br, i) => {
+        const bx = br.x;
+        const swY = L_Y + 22; // 开关在支路竖线上（火线侧）
+        const bulbY = 105;
+        const bulbOn = on && branchOn[i] && u > 0;
+        const current = bulbOn && effR[i] > 0 ? u / effR[i] : 0;
+        return (
+          <g key={`hb${i}`}>
+            {/* 支路竖线：L → 开关 → 灯泡 → N */}
+            <line x1={bx} y1={L_Y} x2={bx} y2={swY - 8} stroke="var(--fg)" strokeWidth="1.2" />
+            <line x1={bx} y1={swY + 8} x2={bx} y2={bulbY - R} stroke="var(--fg)" strokeWidth="1.2" />
+            <line x1={bx} y1={bulbY + R} x2={bx} y2={N_Y} stroke="var(--fg)" strokeWidth="1.2" />
+            {/* 支路开关（火线侧） */}
+            <BladeSwitch
+              x1={bx - 12}
+              y1={swY}
+              x2={bx + 12}
+              y2={swY}
+              on={branchOn[i]}
+              onToggle={() => onToggleBranch(i)}
+              label={br.label}
+              labelY={swY + 16}
+            />
+            {/* 灯泡（用电器）跨接在 L-N 之间 */}
+            <Bulb cx={bx} cy={bulbY} glow={glow[i] ?? 0} label={`R${i + 1}=${effR[i]}Ω`} labelY={bulbY + 24} />
+            {/* 电流小点：闭合且有电流时沿支路流动 */}
+            {current > 0.01 && (
+              <g fill="var(--fg)" opacity="0.85">
+                <circle r="2.4">
+                  <animateMotion
+                    dur={`${Math.max(0.45, 2.2 / current).toFixed(2)}s`}
+                    begin={`${i * 0.5}s`}
+                    repeatCount="indefinite"
+                    path={`M${bx},${L_Y} L${bx},${N_Y}`}
+                  />
+                </circle>
+              </g>
+            )}
+          </g>
+        );
+      })}
+
+      {/* ── 三孔插座：L/N 两下孔 + E 上孔接地 ── */}
+      <g>
+        {/* 插座引线：从 L、N 母线接到插座 */}
+        <line x1={270} y1={L_Y} x2={270} y2={78} stroke="var(--fg)" strokeWidth="1.2" />
+        <line x1={270} y1={N_Y} x2={270} y2={128} stroke="var(--fg)" strokeWidth="1.2" />
+        {/* 插座本体：圆角矩形 + 三孔 */}
+        <rect x={256} y={80} width="28" height="46" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
+        {/* E 上孔（接地） */}
+        <circle cx={270} cy={90} r="3" fill="var(--card-bg)" stroke={EARTH} strokeWidth="1.2" />
+        <text x={286} y={93} fontSize="9" fill={EARTH} fontFamily="var(--f-mono)">
+          E
+        </text>
+        {/* L/N 两下孔 */}
+        <circle cx={263} cy={112} r="3" fill="var(--card-bg)" stroke={LIVE} strokeWidth="1.2" />
+        <circle cx={277} cy={112} r="3" fill="var(--card-bg)" stroke={NEUTRAL} strokeWidth="1.2" />
+        <text x={250} y={115} textAnchor="end" fontSize="9" fill={LIVE} fontFamily="var(--f-mono)">
+          L
+        </text>
+        <text x={290} y={115} fontSize="9" fill={NEUTRAL} fontFamily="var(--f-mono)">
+          N
+        </text>
+        {/* E 接地线：从 E 孔引到下方接地符号 */}
+        <line x1={270} y1={93} x2={270} y2={150} stroke={EARTH} strokeWidth="1.2" strokeDasharray="3 2" />
+        {/* 接地符号（三条递减横线） */}
+        <g stroke={EARTH} strokeWidth="1">
+          <line x1={256} y1={165} x2={284} y2={165} />
+          <line x1={262} y1={172} x2={278} y2={172} strokeWidth="0.8" />
+          <line x1={268} y1={179} x2={272} y2={179} strokeWidth="0.6" />
+        </g>
+        <text x={270} y={194} textAnchor="middle" fontSize="9" fill={EARTH} fontFamily="var(--f-mono)">
+          接地 E
+        </text>
+      </g>
+    </g>
+  );
+}
+
 /* ---------- 保险丝（小矩形 + 内部细线） ---------- */
 export function Fuse({ x, y }: { x: number; y: number }) {
   return (

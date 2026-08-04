@@ -22,7 +22,7 @@ import MeterProbe, { type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
-import { Bulb, BladeSwitch, Battery, ACSource, Fuse, Rheostat, FixedMeter } from '../../components/lab/circuit/CircuitParts';
+import { Bulb, BladeSwitch, Battery, HouseholdCircuit, Fuse, Rheostat, FixedMeter } from '../../components/lab/circuit/CircuitParts';
 import {
   CIRCUIT_STYLES,
   genTopology,
@@ -365,6 +365,19 @@ export default function Circuits() {
               />
             </div>
             <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel}>
+              {style.id === 'parallelHouse' ? (
+                /* ── 家庭电路：真实 L/N 双母线结构 ── */
+                <HouseholdCircuit
+                  on={switchOn}
+                  branchOn={branchSw}
+                  u={u}
+                  effR={effR}
+                  glow={style.elements.map((_, i) => glowOf(i))}
+                  onToggleMaster={() => setSwitchOn((s) => !s)}
+                  onToggleBranch={(i) => setBranchSw((prev) => prev.map((v, j) => (j === i ? !v : v)))}
+                />
+              ) : (
+                <>
               {/* 导线（含电压引线） */}
               <g stroke="var(--fg)" strokeWidth="1.2" fill="none">
                 {/* 电池支路竖线：正极段(60→70) 与负极段(82→140)，电池符号填补 70-82 间隙 */}
@@ -394,8 +407,8 @@ export default function Circuits() {
                 label="S"
               />
 
-              {/* 电源：家庭电路为交流电源（火线/零线），其余为直流电池 */}
-              {style.id === 'parallelHouse' ? <ACSource cx={BATT_X} cy={110} /> : <Battery cx={BATT_X} cy={110} />}
+              {/* 电源：直流电池（家庭电路已在独立分支渲染交流电源） */}
+              <Battery cx={BATT_X} cy={110} />
 
               {/* 并联支路开关 S₁/S₂… */}
               {!isSeries &&
@@ -511,6 +524,8 @@ export default function Circuits() {
                   )
                 );
               })}
+              </>
+              )}
             </svg>
             {!switchOn && <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>}
             <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
