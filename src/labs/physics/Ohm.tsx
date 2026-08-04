@@ -151,7 +151,7 @@ const copy = {
     // 考点速记
     tipsTitle: '考点速记',
     tips: [
-      '欧姆定律 I=U/R：电流与电压成正比、与电阻成反比（同一导体）。',
+      '欧姆定律 I=U/R：电流与电压成正比、与电阻成反比（同一导体）；变形公式 U=IR、R=U/I。',
       'I-U 图像是过原点的直线，斜率 = 1/R；R 越大直线越平缓。',
       '伏安法测电阻：多测几组 U、I，分别算 R 再取平均，减小误差。',
       '小灯泡的电阻随温度升高而增大，所以它的 I-U 图像不是直线。',
@@ -259,7 +259,7 @@ const copy = {
     // 考点速记
     tipsTitle: 'Key Points',
     tips: [
-      "Ohm's law: I=U/R — current is proportional to voltage and inversely proportional to resistance (same conductor).",
+      "Ohm's law: I=U/R — current is proportional to voltage and inversely proportional to resistance (same conductor); equivalent forms U=IR and R=U/I.",
       'The I-U graph is a straight line through the origin; slope = 1/R — larger R, flatter line.',
       'To measure resistance: take several (U, I) pairs, compute R each time, then average to reduce error.',
       'A bulb\u2019s resistance rises with temperature, so its I-U graph is not a straight line.',
