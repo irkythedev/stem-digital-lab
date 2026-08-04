@@ -5,7 +5,7 @@ import { useApp } from '../lib/app-context';
 const copy = {
   zh: {
     title: '使用说明',
-    backHome: '返回首页',
+    backHome: '返回',
     intro: '这是一个本地运行的初中 STEM 数字探究空间，不需要登录，反馈也只保存在当前设备。',
     flow: '基本流程',
     steps: ['选择学科', '选择实验', '预测 → 探索 → 结论'],
@@ -24,7 +24,7 @@ const copy = {
   },
   en: {
     title: 'How to use',
-    backHome: 'Back to Home',
+    backHome: 'Back',
     intro: 'A local middle-school STEM exploration space. No login is needed; feedback stays on this device.',
     flow: 'Basic flow',
     steps: ['Choose a subject', 'Choose an experiment', 'Predict → Explore → Conclude'],

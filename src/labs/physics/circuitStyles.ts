@@ -288,7 +288,8 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
       },
       cards: [
         { title: { zh: '一坏照常', en: 'One fails, others work' }, prompt: { zh: '断开 S₁（模拟一盏灯坏了），另一盏灯和干路电流如何？', en: 'Open S₁ — what happens to the other lamp and main current?' } },
-        { title: { zh: '保险丝', en: 'The fuse' }, prompt: { zh: '保险丝串在干路，电流过大时熔断——它保护什么？', en: 'The fuse is in the main line — what does it protect?' } },
+        { title: { zh: '火线与零线', en: 'Live & neutral' }, prompt: { zh: '家庭电路是交流电：电源标有火线 L、零线 N。保险丝接在火线上。', en: 'Household AC: the source shows live (L) and neutral (N); the fuse sits on the live wire.' } },
+        { title: { zh: '保险丝', en: 'The fuse' }, prompt: { zh: '保险丝串在火线上，电流过大时熔断——它保护什么？', en: 'The fuse is in the live wire — what does it protect?' } },
       ],
       conclude: [
         { question: { zh: '家庭电路用电器是？', en: 'Household appliances are?' }, options: [{ zh: '并联', en: 'Parallel' }, { zh: '串联', en: 'Series' }], correctIndex: 0 },
@@ -296,8 +297,10 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
       ],
       tips: [
         { zh: '家庭电路全部并联：各用电器独立工作', en: 'Household circuits are parallel: independent appliances' },
-        { zh: '保险丝（电阻大熔点低）串在干路，电流过大熔断保护电路', en: 'Fuse (high R, low melting point) in main line breaks on overload' },
+        { zh: '家庭电路为交流电（~），有火线 L、零线 N 与接地（地线 E）三线', en: 'Household AC (~) has live (L), neutral (N) and earth/ground (E) wires' },
+        { zh: '保险丝（电阻大熔点低）串在火线上，电流过大熔断保护电路', en: 'Fuse (high R, low melting point) in the live wire breaks on overload' },
         { zh: '开关接在火线上，断开后电器不带电', en: 'Switches on the live wire' },
+        { zh: '三孔插座多出的上孔接接地线，防止金属外壳带电触电', en: 'The third (upper) socket pin connects to earth — protects against electric shock' },
       ],
     },
   },
