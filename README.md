@@ -1,128 +1,63 @@
-# 数理化数字实验室 / STEM Digital Lab
+<div align="center">
 
-> 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
-> An interactive digital experiment & inquiry platform for Grades 7–9 math, physics, and chemistry.
+# 数理化数字实验室
 
-> **当前开发版本 / Current dev version: `v0.0.0`** · 三幕式探究（预测 → 探索 → 结论）· 中英双语 · 深浅主题
+![version](https://img.shields.io/badge/版本-v0.0.0-blue)
+
+基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
+本地运行 · 无需登录 · 数据不上传 · 中英双语 · 深浅主题
+
+</div>
 
 ---
 
-## 简介 / Overview
+## 中文说明
 
-数理化数字实验室是一个**本地运行、无需登录、数据不上传**的初中 STEM 探究空间。每个实验都遵循**三幕式探究**（预测 → 探索 → 结论），鼓励学生先猜想、再操作、后归纳，而非被动跟随步骤。
+### 简介
 
-A local-first, no-login STEM inquiry space. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
+数理化数字实验室是一个**本地运行、无需登录、数据不上传**的初中 STEM 探究空间。每个实验都遵循**三幕式探究**（预测 → 探索 → 结论），鼓励学生先猜想、再操作、后归纳，而非被动跟随固定步骤。
 
-- 🌐 **中英双语** / Bilingual (zh/en)
-- 🌗 **深浅主题**（默认浅色，适合希沃/投影大屏） / Light & dark themes (light by default for classroom projection)
-- 📱 **响应式**：手机 / 平板 / PC / 希沃大屏 / Responsive across devices
-- 🧪 **零后端、零上传**：反馈与数据仅存本机 localStorage / Zero-backend, zero-upload: feedback stays local
+- 🌐 中英双语，右上角一键切换
+- 🌗 深浅主题（默认浅色，适合希沃/投影大屏）
+- 📱 响应式：手机 / 平板 / PC / 希沃大屏
+- 🧪 零后端、零上传：反馈与数据仅存本机浏览器 localStorage
 
-## 三大科目与实验 / Subjects & Labs
+### 实验清单
 
-| 科目 / Subject | 年级 / Grades | 实验 / Labs |
+| 科目 | 年级 | 实验 |
 |---|---|---|
-| 数学 Math | 7–9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
-| 物理 Physics | 8–9 | 欧姆定律 · 串并联电路 · 凸透镜成像 |
-| 化学 Chemistry | 9 | 质量守恒定律 · 酸碱中和 |
+| 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
+| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 |
+| 化学 | 9 | 质量守恒定律 · 酸碱中和 |
 
-**实验清单 / Lab list**
-
-| ID | 名称 (zh/en) | 说明 |
+| ID | 名称 | 说明 |
 |---|---|---|
-| `linear` | 一次函数 / Linear Functions | 理解 k 与 b 如何决定直线的走向与截距 |
-| `quadratic` | 二次函数 / Quadratic Functions | 探究 a、b、c 对抛物线开口与位置的影响 |
-| `inverse` | 反比例函数 / Inverse Variation | 观察 k 值变化对双曲线形状与位置的影响 |
-| `circle` | 圆的性质 / Circle Properties | 拖拽验证垂径定理、圆周角定理与直径对直角 |
-| `ohm` | 欧姆定律 / Ohm's Law | 探究电流与电压、电阻的定量关系 |
-| `circuits` | 串并联电路 / Series & Parallel Circuits | 对比串联与并联的电流、电压分配规律 |
-| `lens` | 凸透镜成像 / Convex Lens Imaging | 调节物距，观察倒立/正立、放大/缩小的像 |
-| `mass-conservation` | 质量守恒定律 / Conservation of Mass | 三个方案对比验证化学反应前后质量不变 |
-| `neutralization` | 酸碱中和 / Acid-Base Titration | 滴定实验观察 pH 突跃与指示剂颜色变化 |
+| `linear` | 一次函数 | 理解 k 与 b 如何决定直线的走向与截距 |
+| `quadratic` | 二次函数 | 探究 a、b、c 对抛物线开口与位置的影响 |
+| `inverse` | 反比例函数 | 观察 k 值变化对双曲线形状与位置的影响 |
+| `circle` | 圆的性质 | 拖拽验证垂径定理、圆周角定理与直径对直角 |
+| `ohm` | 欧姆定律 | 探究电流与电压、电阻的定量关系 |
+| `circuits` | 串并联电路 | 对比串联与并联的电流、电压分配规律 |
+| `lens` | 凸透镜成像 | 调节物距，观察倒立/正立、放大/缩小的像 |
+| `mass-conservation` | 质量守恒定律 | 三个方案对比验证化学反应前后质量不变 |
+| `neutralization` | 酸碱中和 | 滴定实验观察 pH 突跃与指示剂颜色变化 |
 
-## 快速开始 / Getting Started
+### 快速开始
 
 ```bash
-# 安装依赖 / Install dependencies
-npm install
-
-# 开发服务器（默认 http://localhost:3000）/ Dev server
-npm run dev
-
-# 生产构建 / Production build
-npm run build
-
-# 本地预览构建产物 / Preview the build
-npm run preview
-
-# 测试 / Run tests
-npm run test
-
-# 类型检查 / Type-check
-npm run lint
+npm install        # 安装依赖
+npm run dev        # 开发服务器（默认 http://localhost:3000）
+npm run build      # 生产构建
+npm run preview    # 本地预览构建产物
+npm run test       # 运行测试
+npm run lint       # 类型检查
 ```
 
-> 局域网内其他设备访问：启动后打开 `http://<本机局域网IP>:3000`（默认监听 `0.0.0.0`）。
-> For LAN access: open `http://<your-LAN-IP>:3000` (dev server listens on `0.0.0.0`).
+> 局域网访问：开发服务器监听 `0.0.0.0`，启动后其他设备打开 `http://<本机局域网IP>:3000`。
 
-## 技术栈 / Tech Stack
+### 三幕式探究
 
-**核心 / Core**
-- [React 19](https://react.dev/) + [Vite 6](https://vitejs.dev/)（开发/构建工具）
-- [React Router 7](https://reactrouter.com/)（路由）
-- [Tailwind CSS 4](https://tailwindcss.com/)（样式）
-- [KaTeX 0.18](https://katex.org/)（数学公式渲染）
-- [lucide-react](https://lucide.dev/)（图标）
-
-**依赖清单 / Dependencies**（见 `package.json`）
-
-| 包 / Package | 版本 | 用途 |
-|---|---|---|
-| `react` / `react-dom` | ^19.0.1 | UI 框架 |
-| `react-router-dom` | ^7.18.2 | 路由 |
-| `vite` | ^6.2.3 | 构建工具 |
-| `@vitejs/plugin-react` | ^5.0.4 | React 插件 |
-| `@tailwindcss/vite` | ^4.1.14 | Tailwind 插件 |
-| `tailwindcss` | ^4.1.14 | 样式框架 |
-| `katex` | ^0.18.1 | 公式渲染 |
-| `lucide-react` | ^0.546.0 | 图标库 |
-
-**开发依赖 / Dev Dependencies**
-
-| 包 / Package | 版本 | 用途 |
-|---|---|---|
-| `typescript` | ^5.9.3 | 类型系统 |
-| `vitest` | ^3.2.7 | 测试框架 |
-| `tsx` | ^4.21.0 | smoke 测试运行器 |
-| `@types/react` / `@types/react-dom` | ^19.x | React 类型 |
-| `@types/katex` / `@types/node` | — | 类型声明 |
-| `autoprefixer` | ^10.4.21 | 样式兼容 |
-
-## 项目结构 / Project Structure
-
-```
-src/
-├── labs/                    # 实验组件（按科目分组）
-│   ├── math/                # 数学实验
-│   ├── physics/             # 物理实验
-│   └── chemistry/           # 化学实验
-├── components/
-│   ├── lab/                 # 共享实验原语（坐标平面/表盘/反馈面板等）
-│   ├── layout/              # 外壳（Header / Footer）
-│   ├── feedback/            # 反馈气泡与面板
-│   └── ui/                  # 通用 UI（图标/公式/占位页）
-├── lib/
-│   ├── labs.ts              # 实验注册表
-│   ├── subjects.ts          # 科目元数据
-│   ├── i18n.ts              # 中英文翻译
-│   ├── feedback.ts          # 本地反馈存储
-│   └── app-context.tsx      # 语言 + 主题全局状态
-└── pages/                   # 页面（首页/科目/实验/使用说明）
-```
-
-## 三幕式探究设计 / Three-Act Inquiry
-
-每个实验由 **预测 (Predict) → 探索 (Explore) → 结论 (Conclude)** 三幕构成，**不设硬性步骤锁**，学生可随时返回任意幕：
+每个实验由 **预测 → 探索 → 结论** 三幕构成，**不设硬性步骤锁**，学生可随时返回任意幕：
 
 1. **预测**：先根据已有知识形成猜想，不急着看答案
 2. **探索**：拖动滑块、开关、图形，观察参数变化并记录证据
@@ -130,19 +65,138 @@ src/
 
 > 教学建议：先让学生独立预测 → 再邀请学生描述证据 → 最后共同完成结论。
 
-## 反馈 / Feedback
+### 技术栈
+
+| 包 | 版本 | 用途 |
+|---|---|---|
+| React | ^19.0.1 | UI 框架 |
+| react-dom | ^19.0.1 | DOM 渲染 |
+| react-router-dom | ^7.18.2 | 路由 |
+| Vite | ^6.2.3 | 构建工具 |
+| @vitejs/plugin-react | ^5.0.4 | React 插件 |
+| Tailwind CSS | ^4.1.14 | 样式框架 |
+| @tailwindcss/vite | ^4.1.14 | Tailwind 插件 |
+| KaTeX | ^0.18.1 | 公式渲染 |
+| lucide-react | ^0.546.0 | 图标库 |
+
+开发依赖：`typescript ^5.9.3` · `vitest ^3.2.7` · `tsx ^4.21.0` · `@types/react` · `@types/react-dom` · `@types/katex` · `@types/node` · `autoprefixer ^10.4.21`
+
+### 项目结构
+
+```
+src/
+├── labs/              # 实验组件（math / physics / chemistry）
+├── components/
+│   ├── lab/           # 共享实验原语（坐标平面/表盘/反馈面板等）
+│   ├── layout/        # 外壳（Header / Footer）
+│   ├── feedback/      # 反馈气泡与面板
+│   └── ui/            # 通用 UI（图标/公式/占位页）
+├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 全局状态
+└── pages/             # 首页 / 科目 / 实验 / 使用说明
+```
+
+### 反馈
 
 右下角浮动气泡提供**实验反馈**与**项目反馈**，仅保存在本机浏览器 `localStorage`，不上传、不需要账号。
 
-## 开发版本与标签 / Versioning & Tags
+### 版本与标签
 
-| 标识 / Tag | 说明 |
-|---|---|
-| `v0.0.0` | 当前开发版 / Current development build |
-
-- 开发迭代遵循**语义化版本**（SemVer）：`MAJOR.MINOR.PATCH`
-- 每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`
+当前开发版本：`v0.0.0`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。
 
 ---
 
-**License**: Apache-2.0 · 作者 / Author: Ricky (张子熠)
+## English
+
+### Overview
+
+**STEM Digital Lab** is a **local-first, no-login, zero-upload** middle-school STEM exploration space (Grades 7–9). Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
+
+- 🌐 Bilingual (zh/en), switchable from the header
+- 🌗 Light & dark themes (light by default for classroom projection)
+- 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
+- 🧪 Zero-backend, zero-upload: feedback & data stay in the browser's localStorage
+
+### Labs
+
+| Subject | Grades | Labs |
+|---|---|---|
+| Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
+| Physics | 8–9 | Ohm's Law · Series & Parallel Circuits · Convex Lens Imaging |
+| Chemistry | 9 | Conservation of Mass · Acid-Base Titration |
+
+| ID | Name | Description |
+|---|---|---|
+| `linear` | Linear Functions | Understand how k and b define a line |
+| `quadratic` | Quadratic Functions | Explore how a, b, c shape the parabola |
+| `inverse` | Inverse Variation | See how k changes the hyperbola |
+| `circle` | Circle Properties | Drag to verify chord and inscribed angle theorems |
+| `ohm` | Ohm's Law | Explore I = U/R through interactive circuits |
+| `circuits` | Series & Parallel Circuits | Compare current and voltage in series vs parallel |
+| `lens` | Convex Lens Imaging | Adjust object distance to see real and virtual images |
+| `mass-conservation` | Conservation of Mass | Three experiments proving mass is conserved |
+| `neutralization` | Acid-Base Titration | Titrate to see the pH jump and indicator color shift |
+
+### Getting Started
+
+```bash
+npm install        # Install dependencies
+npm run dev        # Dev server (default http://localhost:3000)
+npm run build      # Production build
+npm run preview    # Preview the build locally
+npm run test       # Run tests
+npm run lint       # Type-check
+```
+
+> LAN access: the dev server listens on `0.0.0.0`; open `http://<your-LAN-IP>:3000` from other devices.
+
+### Three-Act Inquiry
+
+Each lab is built from **Predict → Explore → Conclude** with **no hard step-locks**; students can revisit any act at any time:
+
+1. **Predict**: make a guess from prior knowledge before seeing the answer
+2. **Explore**: drag sliders, switches, or shapes, observe changes, and record evidence
+3. **Conclude**: answer conclusion questions, then check feedback and key points
+
+> Teaching suggestion: let students predict independently, invite them to describe evidence, then complete the conclusion together.
+
+### Tech Stack
+
+| Package | Version | Purpose |
+|---|---|---|
+| React | ^19.0.1 | UI framework |
+| react-dom | ^19.0.1 | DOM rendering |
+| react-router-dom | ^7.18.2 | Routing |
+| Vite | ^6.2.3 | Build tool |
+| @vitejs/plugin-react | ^5.0.4 | React plugin |
+| Tailwind CSS | ^4.1.14 | Styling |
+| @tailwindcss/vite | ^4.1.14 | Tailwind plugin |
+| KaTeX | ^0.18.1 | Math rendering |
+| lucide-react | ^0.546.0 | Icons |
+
+Dev dependencies: `typescript ^5.9.3` · `vitest ^3.2.7` · `tsx ^4.21.0` · `@types/react` · `@types/react-dom` · `@types/katex` · `@types/node` · `autoprefixer ^10.4.21`
+
+### Project Structure
+
+```
+src/
+├── labs/              # Lab components (math / physics / chemistry)
+├── components/
+│   ├── lab/           # Shared primitives (coord plane / gauges / feedback)
+│   ├── layout/        # Shell (Header / Footer)
+│   ├── feedback/      # Feedback FAB & panel
+│   └── ui/            # Generic UI (icons / formula / placeholders)
+├── lib/               # Registry / subjects / i18n / feedback storage / global state
+└── pages/             # Home / subject / lab / guide
+```
+
+### Feedback
+
+A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, stored only in the browser's `localStorage` — nothing is uploaded and no account is required.
+
+### Versioning & Tags
+
+Current dev version: `v0.0.0`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`.
+
+---
+
+**License**: Apache-2.0 · Author: Ricky (张子熠)
