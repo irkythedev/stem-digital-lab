@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 化学实验 · 酸碱中和反应 pH 滴定三幕式探究（苏科版/人教版 九年级）
+ * 化学实验 · 酸碱中和反应 pH 滴定三幕式探究（人教版 九下第十单元）
  *
  * 幕 1 预测：向 20mL 盐酸（0.1M）中逐滴加入 NaOH，猜 pH 变化趋势与恰好中和点
  * 幕 2 探索：控制变量卡（滴入量 / 酸浓度 / 指示剂 / 自由）+ 钉住 pH 曲线 + 观察笔记
@@ -112,7 +112,7 @@ const copy = {
     redoLabel: '再次实验',
     // 幕1 预测
     predictTitle: '预测',
-    predictQuestion: '向 20mL 强酸 HCl（0.1M）中逐滴加入强碱 NaOH 溶液（0.1M）。',
+    predictQuestion: '向 20mL 稀盐酸中逐滴加入氢氧化钠溶液，猜 pH 变化趋势与恰好中和点。',
     predictQuestion2: '先别急着看曲线，猜一猜：',
     predictQ1: 'pH 随滴入体积怎么变化？',
     predictSlowFast: '先缓慢后剧烈变化',
@@ -136,15 +136,15 @@ const copy = {
     cards: [
       {
         title: '滴入过程',
-        prompt: '保持酸浓度 0.1M，把滴入体积从 0 调到 40mL。pH 曲线长什么样？陡降段在哪？',
+        prompt: '保持酸为稀盐酸，把滴入体积从 0 调到 40mL。pH 曲线长什么样？陡降段在哪？',
       },
       {
         title: '酸的浓度',
-        prompt: '把酸浓度从 0.1M 调到 1M：曲线突跃段更陡还是更缓？中和点位置变了吗？',
+        prompt: '把酸从稀盐酸调成浓盐酸：曲线突跃段更陡还是更缓？中和点位置变了吗？',
       },
       {
         title: '恰好中和',
-        prompt: '把滴入体积调到恰好中和点（酸 0.1M 时是 20mL），看 pH 是不是 7？',
+        prompt: '把滴入体积调到恰好中和点（稀盐酸时是 20mL），看 pH 是不是 7？',
       },
       {
         title: '自由探索',
@@ -197,7 +197,7 @@ const copy = {
     nextStage: 'Next →',
     redoLabel: 'Redo',
     predictTitle: 'Predict',
-    predictQuestion: 'Drip strong base NaOH (0.1M) into 20mL of strong acid HCl (0.1M).',
+    predictQuestion: 'Drip sodium hydroxide into 20mL of dilute hydrochloric acid. Predict the pH trend and the equivalence point.',
     predictQuestion2: 'Before seeing the curve, guess:',
     predictQ1: 'How does pH change with the volume added?',
     predictSlowFast: 'Slowly, then sharply',
@@ -220,15 +220,15 @@ const copy = {
     cards: [
       {
         title: 'The titration',
-        prompt: 'Keep the acid at 0.1M and raise the volume from 0 to 40mL. What does the pH curve look like? Where is the sharp drop?',
+        prompt: 'Keep the acid dilute and raise the volume from 0 to 40mL. What does the pH curve look like? Where is the sharp drop?',
       },
       {
         title: 'Acid concentration',
-        prompt: 'Raise the acid from 0.1M to 1M: does the jump get steeper or milder? Does the equivalence point move?',
+        prompt: 'Raise the acid from dilute to concentrated: does the jump get steeper or milder? Does the equivalence point move?',
       },
       {
         title: 'At equivalence',
-        prompt: 'Set the volume to the equivalence point (20mL for 0.1M acid). Is pH exactly 7?',
+        prompt: 'Set the volume to the equivalence point (20mL for dilute acid). Is pH exactly 7?',
       },
       {
         title: 'Free exploration',
@@ -304,7 +304,7 @@ export default function Neutralization() {
     () => ({
       id: 'main',
       points: sampleTitration(acidM),
-      label: `酸 ${acidM}M`,
+      label: `酸 ${(acidM / 0.1).toFixed(1)}×`,
     }),
     [acidM],
   );
@@ -313,7 +313,7 @@ export default function Neutralization() {
     id: `pin${p.id}`,
     points: sampleTitration(p.acidM),
     dashed: true,
-    label: `酸 ${p.acidM}M`,
+    label: `酸 ${(p.acidM / 0.1).toFixed(1)}×`,
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
@@ -346,7 +346,7 @@ export default function Neutralization() {
         id: prev.length + 1,
         snapshot: [
           { label: 'V', value: `${volume.toFixed(1)}mL` },
-          { label: '酸', value: `${acidM.toFixed(1)}M` },
+          { label: '酸', value: `${(acidM / 0.1).toFixed(1)}×` },
           { label: 'pH', value: ph.toFixed(2) },
         ],
         note,
@@ -574,7 +574,7 @@ export default function Neutralization() {
               max={2}
               step={0.1}
               onChange={setAcidM}
-              format={(v) => `${v.toFixed(1)}M`}
+              format={(v) => `${(v / 0.1).toFixed(1)}×`}
             />
             <button
               type="button"
@@ -675,7 +675,7 @@ export default function Neutralization() {
                   <div className="flex flex-wrap gap-1.5">
                     {pinned.map((p) => (
                       <span key={p.id} className="text-[11px] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
-                        酸 {p.acidM}M
+                        酸 {(p.acidM / 0.1).toFixed(1)}×
                       </span>
                     ))}
                   </div>
