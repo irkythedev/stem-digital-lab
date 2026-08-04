@@ -13,16 +13,35 @@ export default function Footer() {
   return (
     <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200">
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
-        <span className="font-bold text-[var(--fg)]">{t.author}</span>
+        <a
+          href="https://irky.dev/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center space-x-1.5 hover:opacity-80 transition-opacity"
+          title="irky.dev"
+        >
+          <img
+            src="https://irky.dev/img/icons/pubg-helmet.png"
+            alt="irky.dev favicon"
+            width="14"
+            height="14"
+            className="flex-shrink-0"
+          />
+          <span className="font-bold text-[var(--fg)]">{t.author}</span>
+        </a>
         <span className="hidden sm:inline text-[var(--border)]" aria-hidden="true">
           /
         </span>
         <span>{t.authorRole}</span>
       </div>
 
+      <div className="max-w-xs text-center text-[var(--muted)] normal-case leading-snug">
+        {t.disclaimer}
+      </div>
+
       <div className="flex items-center space-x-6">
         <a
-          href="https://gitee.com/K4Ricky2Win"
+          href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center space-x-1.5 text-[var(--fg)] opacity-70 hover:opacity-100 transition-opacity"

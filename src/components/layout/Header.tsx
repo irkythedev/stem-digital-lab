@@ -24,7 +24,7 @@ export default function Header() {
 
   return (
     <header className="flex justify-between items-center w-full py-4 border-b border-[var(--border)] transition-colors duration-200">
-      <Link to="/" className="flex items-center group" aria-label={t.brandName}>
+      <Link to="/" className="flex items-center gap-2 group" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
@@ -44,6 +44,9 @@ export default function Header() {
           >
             <circle cx="12" cy="12" r="8" />
           </svg>
+        </span>
+        <span className="hidden sm:inline text-[10px] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
+          STEM DIGITAL LAB
         </span>
       </Link>
 
