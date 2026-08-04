@@ -3,6 +3,8 @@
 # 数理化数字实验室
 
 ![version](https://img.shields.io/badge/版本-v0.0.0-blue)
+![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
+![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
 本地运行 · 无需登录 · 数据不上传 · 中英双语 · 深浅主题
@@ -64,22 +66,6 @@ npm run lint       # 类型检查
 3. **结论**：根据观察完成结论题，再查看反馈与考点速记
 
 > 教学建议：先让学生独立预测 → 再邀请学生描述证据 → 最后共同完成结论。
-
-### 技术栈
-
-| 包 | 版本 | 用途 |
-|---|---|---|
-| React | ^19.0.1 | UI 框架 |
-| react-dom | ^19.0.1 | DOM 渲染 |
-| react-router-dom | ^7.18.2 | 路由 |
-| Vite | ^6.2.3 | 构建工具 |
-| @vitejs/plugin-react | ^5.0.4 | React 插件 |
-| Tailwind CSS | ^4.1.14 | 样式框架 |
-| @tailwindcss/vite | ^4.1.14 | Tailwind 插件 |
-| KaTeX | ^0.18.1 | 公式渲染 |
-| lucide-react | ^0.546.0 | 图标库 |
-
-开发依赖：`typescript ^5.9.3` · `vitest ^3.2.7` · `tsx ^4.21.0` · `@types/react` · `@types/react-dom` · `@types/katex` · `@types/node` · `autoprefixer ^10.4.21`
 
 ### 项目结构
 
@@ -158,22 +144,6 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 3. **Conclude**: answer conclusion questions, then check feedback and key points
 
 > Teaching suggestion: let students predict independently, invite them to describe evidence, then complete the conclusion together.
-
-### Tech Stack
-
-| Package | Version | Purpose |
-|---|---|---|
-| React | ^19.0.1 | UI framework |
-| react-dom | ^19.0.1 | DOM rendering |
-| react-router-dom | ^7.18.2 | Routing |
-| Vite | ^6.2.3 | Build tool |
-| @vitejs/plugin-react | ^5.0.4 | React plugin |
-| Tailwind CSS | ^4.1.14 | Styling |
-| @tailwindcss/vite | ^4.1.14 | Tailwind plugin |
-| KaTeX | ^0.18.1 | Math rendering |
-| lucide-react | ^0.546.0 | Icons |
-
-Dev dependencies: `typescript ^5.9.3` · `vitest ^3.2.7` · `tsx ^4.21.0` · `@types/react` · `@types/react-dom` · `@types/katex` · `@types/node` · `autoprefixer ^10.4.21`
 
 ### Project Structure
 
