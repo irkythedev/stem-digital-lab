@@ -248,14 +248,18 @@ export function HouseholdCircuit({
       {/* 电源进线竖线（左侧） */}
       <line x1={L} y1={L_Y} x2={L} y2={N_Y} stroke="var(--fg)" strokeWidth="1.2" />
 
-      {/* 电源交流符号 ~（左侧进线中部） */}
+      {/* 电源交流符号 ~：画在进线竖线 x=40 上（垂直波浪），表示交流电源 */}
       <path
-        d={`M ${L - 16} 105 q 4 6 8 0 q 4 -6 8 0`}
+        d={`M ${L} 88 q 5 4 0 8 q -5 4 0 8 q 5 4 0 8`}
         fill="none"
         stroke="var(--fg)"
         strokeWidth="1.5"
         strokeLinecap="round"
       />
+      {/* 交流电标注 */}
+      <text x={L - 12} y={130} textAnchor="end" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
+        ~ 220V
+      </text>
       {/* 母线端标签 */}
       <text x={L - 26} y={L_Y + 4} textAnchor="end" fontSize="10" fill={LIVE} fontFamily="var(--f-mono)" fontWeight="bold">
         L
