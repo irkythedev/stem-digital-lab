@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 三幕式探究 · 幕 2「探索」：任务卡引导（提示而非锁定）+ 观察笔记。
  * 学生操作完全自由；关键状态可「✎ 记一条观察」保存为轨迹。

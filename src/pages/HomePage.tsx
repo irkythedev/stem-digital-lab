@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 首页看板：Hero 标题区 + 三大科目切换 + 实验列表淡入淡出。
  *

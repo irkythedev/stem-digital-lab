@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 公式渲染组件：用 KaTeX 精确排版 LaTeX 公式（上标/下标/分式/根式/希腊字母等）。
  * - 按需使用：仅在需要公式的场合调用，不强制整站采用。

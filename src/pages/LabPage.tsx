@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 通用实验详情页骨架。
  * 依据路由参数 /lab/:labId 从实验注册表读取实验并渲染其组件；

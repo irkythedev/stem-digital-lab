@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 物理实验 · 凸透镜成像规律三幕式探究（苏科版 八上第3章）
  *

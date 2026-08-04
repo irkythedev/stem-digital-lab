@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 通用参数滑块：label + 数值范围 + 步长 + 实时读数。
  * 与语言无关，文案由父级按当前语言解析后传入。

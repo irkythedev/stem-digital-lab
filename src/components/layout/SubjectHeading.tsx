@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 科目/实验页标题：学科 icon 与学科名在同一行，年级（或路径标识）显示其下。
  * 这属于"页面导航性顶部"，不构成"实验内容模板"；每个实验的主体仍各自独立布局。

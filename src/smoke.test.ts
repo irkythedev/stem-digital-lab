@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * Smoke tests: verify core infrastructure loads without crashing.
  * Uses Node built-in assert — no test framework dependency.

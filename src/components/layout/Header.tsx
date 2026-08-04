@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 顶部导航栏：品牌标识 + 语言切换 + 主题切换。
  * 从原 App.tsx 抽出，状态改由全局 useApp() 提供。

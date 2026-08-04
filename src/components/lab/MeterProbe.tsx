@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 可拖动电表探针（电流表/电压表）——自由放置版。
  * 拖动到导线任意位置测电流（虚线预览连接）；拖动到元件两端之间测电压（跨接）。

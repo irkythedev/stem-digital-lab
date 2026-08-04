@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 化学实验 · 酸碱中和反应 pH 滴定三幕式探究（苏科版/人教版 九年级）
  *

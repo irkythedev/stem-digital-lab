@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 双语字典（zh / en）
  * 从原 App.tsx 内联字典中抽出，供全站页面与组件复用。

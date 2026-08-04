@@ -91,7 +91,7 @@ src/
 
 ### 许可
 
-本项目基于 **Apache License 2.0** 开源（见 `LICENSE` 文件）。你可以自由使用、修改与分发，但需保留版权与许可声明；衍生作品同样受 Apache-2.0 约束。
+本项目基于 **GNU Affero General Public License v3 (AGPL-3.0)** 开源（见 `LICENSE` 文件）。你可以自由使用、修改与分发，**但任何衍生作品都必须以 AGPL-3.0 开源**（含通过网络提供的服务），并**保留原作者版权声明**，不允许闭源拿走。
 
 ### 免责条款
 
@@ -179,7 +179,7 @@ Current dev version: `v0.0.0`. Follows Semantic Versioning (SemVer): `MAJOR.MINO
 
 ### License
 
-This project is open-sourced under the **Apache License 2.0** (see `LICENSE`). You are free to use, modify, and distribute it, provided you retain the copyright and license notices; derivative works are likewise subject to Apache-2.0.
+This project is open-sourced under the **GNU Affero General Public License v3 (AGPL-3.0)** (see `LICENSE`). You are free to use, modify, and distribute it, **but any derivative work must be open-sourced under AGPL-3.0** (including services offered over a network) and **must retain the original author's copyright notice** — no closed-source forks are allowed.
 
 ### Disclaimer
 
@@ -189,4 +189,4 @@ This project is open-sourced under the **Apache License 2.0** (see `LICENSE`). Y
 
 ---
 
-**License**: Apache-2.0 · Author: Ricky (张子熠) · 在线访问 / Live: https://stem.irky.dev
+**License**: AGPL-3.0 · Author: Ricky (张子熠) · 在线访问 / Live: https://stem.irky.dev

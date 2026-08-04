@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 数学实验 · 反比例函数 y = k/x 三幕式探究（苏科版 八下）
  *

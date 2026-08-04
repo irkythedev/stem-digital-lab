@@ -2,5 +2,5 @@
   "name": "数理化数字实验室",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
   "url": "https://stem.irky.dev",
-  "license": "Apache-2.0"
+  "license": "AGPL-3.0"
 }

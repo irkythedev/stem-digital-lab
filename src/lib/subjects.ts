@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 三大科目元数据：id / 路由路径 / 年级范围。
  * 科目图标统一由 components/ui/SubjectIcon 渲染，不在此维护（避免强制统一模板）。

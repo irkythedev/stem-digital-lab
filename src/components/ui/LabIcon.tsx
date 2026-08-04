@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 实验级图标：区分于科目图标（SubjectIcon），表示具体实验的主题。
  * 数学函数类：抛物线（二次函数）、双曲线（反比例函数）。

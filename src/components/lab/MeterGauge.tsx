@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 模拟表盘（老式学生电流表/电压表）：半圆刻度 + 指针。
  * 指针偏转 ∝ value/max，CSS transform 过渡平滑摆动，零依赖。
