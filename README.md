@@ -7,7 +7,7 @@
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
-本地运行 · 无需登录 · 数据不上传 · 中英双语 · 深浅主题
+本地运行 · 无需登录 · 数据不上传 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
 
 </div>
 
@@ -89,13 +89,23 @@ src/
 
 当前开发版本：`v0.0.0`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。
 
+### 许可
+
+本项目基于 **Apache License 2.0** 开源（见 `LICENSE` 文件）。你可以自由使用、修改与分发，但需保留版权与许可声明；衍生作品同样受 Apache-2.0 约束。
+
+### 免责条款
+
+- 本项目为**教学演示与个人探究**参考工具，不构成任何专业意见或承诺。
+- 实验数据、公式与交互结果已尽力校对，但**不保证绝对正确**，教学中请以权威教材为准。
+- 本项目本地运行、默认不上传数据，但请对保存于本机的内容自行负责；在线版本也可能使用浏览器本地存储。
+
 ---
 
 ## English
 
 ### Overview
 
-**STEM Digital Lab** is a **local-first, no-login, zero-upload** middle-school STEM exploration space (Grades 7–9). Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
+**STEM Digital Lab** is a **local-first, no-login, zero-upload** middle-school STEM exploration space (Grades 7–9). Live at https://stem.irky.dev. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
 
 - 🌐 Bilingual (zh/en), switchable from the header
 - 🌗 Light & dark themes (light by default for classroom projection)
@@ -167,6 +177,16 @@ A floating bubble at the bottom-right provides **experiment feedback** and **pro
 
 Current dev version: `v0.0.0`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`.
 
+### License
+
+This project is open-sourced under the **Apache License 2.0** (see `LICENSE`). You are free to use, modify, and distribute it, provided you retain the copyright and license notices; derivative works are likewise subject to Apache-2.0.
+
+### Disclaimer
+
+- This project is a **teaching/demo and personal inquiry** reference tool and does not constitute professional advice or any guarantee.
+- Experimental data, formulas, and interactions have been carefully proofread but are **not guaranteed to be error-free**; teaching should defer to authoritative textbooks.
+- The project runs locally and uploads nothing by default, but you are responsible for content saved on your own device; the online version may also use browser local storage.
+
 ---
 
-**License**: Apache-2.0 · Author: Ricky (张子熠)
+**License**: Apache-2.0 · Author: Ricky (张子熠) · 在线访问 / Live: https://stem.irky.dev
