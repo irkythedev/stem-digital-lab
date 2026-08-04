@@ -153,6 +153,7 @@ export default function Circuits() {
 
   const style = CIRCUIT_STYLES.find((s) => s.id === styleId)!;
   const isSeries = style.kind === 'series';
+  const isHouse = style.id === 'parallelHouse';
   const topo = useMemo(() => genTopology(style), [styleId]); // eslint-disable-line react-hooks/exhaustive-deps
   // 展开当前语言的样式文案（copy 每字段是 {zh,en} 字典）
   const sc = useMemo(
@@ -175,6 +176,9 @@ export default function Circuits() {
     setRValues(cfg.elements.map((e) => e.r));
     setRp(cfg.rheostatIndex !== undefined ? cfg.elements[cfg.rheostatIndex].r : 15);
     setBranchSw(cfg.elements.map(() => true));
+    setSwitchOn(true);
+    // 家庭电路为交流 220V，其余样式用 6V 直流
+    setU(cfg.id === 'parallelHouse' ? 220 : 6);
     // 固定电表/保险丝样式：A 探针初始放干路左段，避免与符号重叠
     setMeterA({ id: cfg.fuse || cfg.fixedMeters ? 'dry-left' : 'dry-mid', x: cfg.fuse || cfg.fixedMeters ? 50 : 125, y: 60 });
     setMeterV({ id: 'battery', x: 72, y: 100 });
@@ -210,8 +214,6 @@ export default function Circuits() {
 
   const reset = () => {
     applyDefaults(style);
-    setU(6);
-    setSwitchOn(true);
   };
 
   const redoAll = () => {
@@ -271,7 +273,7 @@ export default function Circuits() {
   };
 
   const gaugeMax = (kind: 'current' | 'voltage', target: MeterTarget | null): number =>
-    kind === 'current' ? ((gaugeValue(kind, target) ?? 0) <= 0.6 ? 0.6 : 3) : 15;
+    kind === 'current' ? ((gaugeValue(kind, target) ?? 0) <= 0.6 ? 0.6 : 3) : isHouse ? 250 : 15;
 
   const gaugeLabel = (kind: 'current' | 'voltage'): string => {
     const target = kind === 'current' ? meterA : meterV;
@@ -635,26 +637,35 @@ export default function Circuits() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
-            <ParamSlider label="U" value={u} min={0} max={12} step={0.5} onChange={setU} format={(v) => `${v.toFixed(1)}V`} />
-            {style.elements.map((e, i) =>
-              e.kind === 'rheostat' ? (
-                <div key={`sl${i}`}>
-                  <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
-                </div>
-              ) : (
-                <div key={`sl${i}`}>
-                  <ParamSlider
-                    label={e.label}
-                    value={rValues[i]}
-                    min={5}
-                    max={50}
-                    step={5}
-                    onChange={(v) => setRValues((prev) => prev.map((old, j) => (j === i ? v : old)))}
-                    format={(v) => `${v.toFixed(0)}Ω`}
-                  />
-                </div>
-              )
-            )}
+            <ParamSlider
+              label={isHouse ? 'U (L-N)' : 'U'}
+              value={u}
+              min={isHouse ? 0 : 0}
+              max={isHouse ? 250 : 12}
+              step={isHouse ? 10 : 0.5}
+              onChange={setU}
+              format={(v) => `${v.toFixed(0)}V`}
+            />
+            {!isHouse &&
+              style.elements.map((e, i) =>
+                e.kind === 'rheostat' ? (
+                  <div key={`sl${i}`}>
+                    <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
+                  </div>
+                ) : (
+                  <div key={`sl${i}`}>
+                    <ParamSlider
+                      label={e.label}
+                      value={rValues[i]}
+                      min={5}
+                      max={50}
+                      step={5}
+                      onChange={(v) => setRValues((prev) => prev.map((old, j) => (j === i ? v : old)))}
+                      format={(v) => `${v.toFixed(0)}Ω`}
+                    />
+                  </div>
+                )
+              )}
             <button
               type="button"
               onClick={reset}

@@ -288,26 +288,28 @@ export function HouseholdCircuit({
       {/* ── 各支路：火线 → 开关 → 灯泡 → 零线 ── */}
       {branches.map((br, i) => {
         const bx = br.x;
-        const swY = L_Y + 22; // 开关在支路竖线上（火线侧）
+        const swY1 = L_Y + 14; // 开关上触点
+        const swY2 = L_Y + 38; // 开关下触点
         const bulbY = 105;
         const bulbOn = on && branchOn[i] && u > 0;
         const current = bulbOn && effR[i] > 0 ? u / effR[i] : 0;
         return (
           <g key={`hb${i}`}>
             {/* 支路竖线：L → 开关 → 灯泡 → N */}
-            <line x1={bx} y1={L_Y} x2={bx} y2={swY - 8} stroke="var(--fg)" strokeWidth="1.2" />
-            <line x1={bx} y1={swY + 8} x2={bx} y2={bulbY - R} stroke="var(--fg)" strokeWidth="1.2" />
+            <line x1={bx} y1={L_Y} x2={bx} y2={swY1} stroke="var(--fg)" strokeWidth="1.2" />
+            <line x1={bx} y1={swY2} x2={bx} y2={bulbY - R} stroke="var(--fg)" strokeWidth="1.2" />
             <line x1={bx} y1={bulbY + R} x2={bx} y2={N_Y} stroke="var(--fg)" strokeWidth="1.2" />
-            {/* 支路开关（火线侧） */}
+            {/* 支路开关（竖直，沿支路导线方向，接在火线侧） */}
             <BladeSwitch
-              x1={bx - 12}
-              y1={swY}
-              x2={bx + 12}
-              y2={swY}
+              x1={bx}
+              y1={swY1}
+              x2={bx}
+              y2={swY2}
               on={branchOn[i]}
               onToggle={() => onToggleBranch(i)}
               label={br.label}
-              labelY={swY + 16}
+              labelX={bx + 14}
+              labelY={(swY1 + swY2) / 2}
             />
             {/* 灯泡（用电器）跨接在 L-N 之间 */}
             <Bulb cx={bx} cy={bulbY} glow={glow[i] ?? 0} label={`R${i + 1}=${effR[i]}Ω`} labelY={bulbY + 24} />
