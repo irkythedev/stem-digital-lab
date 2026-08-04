@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学实验 · 一次函数 y = kx + b 三幕式探究（苏科版 八上）
+ * 数学实验 · 一次函数 y = kx + b 三幕式探究（人教版 八下第 23 章）
  *
  * 幕 1 预测：给定 y = 2x - 3，先猜图像形状 / 与 y 轴交点，再揭示
  * 幕 2 探索：控制变量卡（k 斜率 / b 截距 / 特殊点 / 实际建模）+ 钉住曲线 + 观察笔记
@@ -123,6 +123,7 @@ const copy = {
     tipsTitle: '考点速记',
     tips: [
       '一次函数 y=kx+b：k 是斜率决定倾斜方向与陡缓，b 是截距决定与 y 轴交点 (0,b)。',
+      '一次函数 y=kx+b（k≠0）；当 b=0 时是正比例函数 y=kx，正比例函数是一次函数的特殊情形。',
       'k>0 图像从左到右上升（增函数），k<0 下降（减函数）。',
       '实际问题中 k 常表示单位变化量（如每 km 单价），b 表示初始值（如起步价）。',
       '两条直线平行 ⇔ k 相等；重合 ⇔ k、b 都相等。',
@@ -208,6 +209,7 @@ const copy = {
     tipsTitle: 'Key Points',
     tips: [
       'Linear functions y=kx+b: k is the slope (direction & steepness), b is the y-intercept (0,b).',
+      'Linear functions y=kx+b (k≠0); when b=0 it is a direct-proportion function y=kx, a special case of a linear function.',
       'k>0: rises left-to-right (increasing); k<0: falls (decreasing).',
       'In real problems k is often the unit rate (e.g. price per km), b the initial value (e.g. base fare).',
       'Two lines are parallel iff k is equal; identical iff k and b are both equal.',

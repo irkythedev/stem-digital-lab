@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学实验 · 二次函数 y = ax² + bx + c 三幕式探究（苏科版 九上）
+ * 数学实验 · 二次函数 y = ax² + bx + c 三幕式探究（人教版 九上第 22 章）
  *
  * 幕 1 预测：给定 y = -2x² + 3，先猜开口方向 / 顶点 / 与 y 轴交点，再揭示图像
  * 幕 2 探索：控制变量卡（a / b / c 各自隔离）+ 钉住曲线对比 + 观察笔记
@@ -120,7 +120,7 @@ const copy = {
     ],
     concludeQ1: 'a 的正负决定：',
     concludeQ1Up: '开口方向（正→向上）',
-    concludeQ1Down: '开口方向（正→向下）',
+    concludeQ1Down: '开口方向（负→向下）',
     concludeQ1None: '没有作用',
     concludeQ2: '|a| 越大：',
     concludeQ2Narrow: '开口越窄',
@@ -209,7 +209,7 @@ const copy = {
     ],
     concludeQ1: 'The sign of a decides:',
     concludeQ1Up: 'opening direction (positive → up)',
-    concludeQ1Down: 'opening direction (positive → down)',
+    concludeQ1Down: 'opening direction (negative → down)',
     concludeQ1None: 'nothing',
     concludeQ2: 'Larger |a| makes the parabola:',
     concludeQ2Narrow: 'narrower',
