@@ -351,19 +351,19 @@ export default function Circuits() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.circuitLabel} · {sc.title}
             </h3>
-            {/* 表盘：电路图上方（A/V 表显），指针跟随探针吸附测点 */}
+            {/* 表盘：电路图上方（A/V 表显）；家庭电路显示干路电流与 L-N 电压，其余跟随探针吸附测点 */}
             <div className="mb-2 flex items-start justify-center gap-6">
               <MeterGauge
-                value={gaugeValue('current', meterA)}
+                value={isHouse ? i0 : gaugeValue('current', meterA)}
                 max={gaugeMax('current', meterA)}
                 unit="A"
-                label={gaugeLabel('current')}
+                label={isHouse ? t.readoutI0 : gaugeLabel('current')}
               />
               <MeterGauge
-                value={gaugeValue('voltage', meterV)}
+                value={isHouse ? u : gaugeValue('voltage', meterV)}
                 max={gaugeMax('voltage', meterV)}
                 unit="V"
-                label={gaugeLabel('voltage')}
+                label={isHouse ? 'L–N' : gaugeLabel('voltage')}
               />
             </div>
             <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel}>
@@ -531,11 +531,13 @@ export default function Circuits() {
             </svg>
             {!switchOn && <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>}
             <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
-            {/* 拖拽测量提示 + 错误反馈 */}
-            <p className="mt-1 flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)]">
-              <GrabIcon className="h-3.5 w-3.5 shrink-0" />
-              {t.meterHint}
-            </p>
+            {/* 拖拽测量提示（家庭电路无探针交互，不显示） */}
+            {!isHouse && (
+              <p className="mt-1 flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)]">
+                <GrabIcon className="h-3.5 w-3.5 shrink-0" />
+                {t.meterHint}
+              </p>
+            )}
             {meterErr && (
               <p className="text-xs text-[var(--error)] serif-font mt-1" role="alert">
                 ⚠ {meterErr}
