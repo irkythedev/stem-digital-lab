@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 化学实验 · 质量守恒定律验证三幕式探究（人教版 九上第5单元）
  *

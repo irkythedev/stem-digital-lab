@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 天平 SVG 组件：称量前后质量对比显示。
  * 并排显示两个天平（反应前 / 反应后），指针摆动 + 质量数值。

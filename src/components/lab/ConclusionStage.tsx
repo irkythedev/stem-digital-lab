@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 三幕式探究 · 幕 3「结论」：学生自拟结论，系统对照「他的猜想 + 他的观察记录」，
  * 给出基于证据的反馈，而不是灌输标准答案。

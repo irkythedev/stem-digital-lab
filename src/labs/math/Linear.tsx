@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 数学实验 · 一次函数 y = kx + b 三幕式探究（苏科版 八上）
  *

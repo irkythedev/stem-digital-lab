@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 光具座 SVG 组件：凸透镜成像的交互可视化。
  * 渲染蜡烛、凸透镜、光屏、实像/虚像、两条特殊光线。

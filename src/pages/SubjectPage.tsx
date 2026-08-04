@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 科目详情页：展示该科目的标题、说明与（建设中）实验列表。
  * 依据路由参数 /subject/:subjectId 渲染对应科目；

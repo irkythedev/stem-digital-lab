@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 数学实验 · 二次函数 y = ax² + bx + c 三幕式探究（苏科版 九上）
  *

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 三幕式探究 · 幕 1「预测」：学生先对 a²+b² 与 c² 的关系作出猜想。
  * 不判对错，只记录猜想；探索阶段会实时对照「猜想 vs 现实」。

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 页脚：作者信息 + Gitee 外链 + 版权。
  * 从原 App.tsx 抽出。

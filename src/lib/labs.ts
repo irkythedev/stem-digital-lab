@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 实验注册表：集中登记所有实验（元信息 + 图标 + 组件），供路由与科目页消费。
  *

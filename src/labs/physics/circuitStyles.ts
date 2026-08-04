@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 8 例经典电路图样式配置：串联 4 例（基础两灯 / 分压验证 / 滑动变阻器调光 / 三灯串联）
  * + 并联 4 例（基础两灯 / 家庭电路 / 三电流表 / 三灯并联）。

@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 通用 SVG 坐标系：网格 + 坐标轴 + 刻度 + 多曲线叠加。
  * 数学坐标 y 向上，内部映射到 SVG（y 翻转）；y 范围未提供时自动适配曲线。

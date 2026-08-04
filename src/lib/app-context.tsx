@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 全局应用上下文：语言(zh/en) + 主题(system/light/dark)。
  * 主题逻辑（含 prefers-color-scheme 监听）从原 App.tsx 抽出，集中于此。

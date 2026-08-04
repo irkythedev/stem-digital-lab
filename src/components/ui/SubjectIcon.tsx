@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 科目图标：数学用 π 字形，物理用 Atom（原子），化学用 FlaskConical（锥形瓶）。
  * 统一由此渲染器输出，保证三科图标在首页/科目页/实验页全站一致。

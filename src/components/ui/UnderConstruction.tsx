@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 通用占位区块：等宽字体 + 闪烁光标，用于“建设中”提示。
  */

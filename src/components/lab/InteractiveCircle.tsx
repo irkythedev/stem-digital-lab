@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 交互几何 SVG 组件：圆的性质探究（垂径定理 / 圆周角定理 / 直径对直角）。
  *

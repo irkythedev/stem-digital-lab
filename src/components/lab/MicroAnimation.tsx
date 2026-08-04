@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 微观粒子动画：化学反应中原子重新组合的可视化。
  * 显示反应物分子 → 原子分离 → 重新组合 → 生成物分子。

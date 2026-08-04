@@ -1,6 +1,6 @@
 /**
  * @license
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-License-Identifier: AGPL-3.0
  *
  * 通用读数区：一组 (label, value) 指标，可选高亮。
  * 与语言无关，文案由父级解析后传入。
