@@ -833,7 +833,7 @@ export default function Ohm() {
             <ParamSlider label="U" value={u} min={0} max={12} step={0.5} onChange={setU} format={(v) => `${v.toFixed(1)}V`} />
             <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
             <ParamSlider
-              label="R"
+              label={element === 'bulb' ? 'R₀' : 'R'}
               value={r}
               min={5}
               max={50}

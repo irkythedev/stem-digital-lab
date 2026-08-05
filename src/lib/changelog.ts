@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.0.2';
+export const APP_VERSION = '1.0.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.0.3',
+    date: '2026-08',
+    zh: [
+      '欧姆定律参数区更贴合教材伏安法：滑动变阻器作为调压元件，定值电阻或小灯泡作为被测对象',
+      '参数滑块随所选元件自动匹配（定值电阻显示 R，小灯泡显示 R₀）',
+    ],
+    en: [
+      'Ohm\'s law parameters now match the textbook voltmeter-ammeter method: the rheostat adjusts voltage while a fixed resistor or bulb is the measured element',
+      'Parameter sliders auto-match the selected element (R for resistor, R₀ for bulb)',
+    ],
+  },
   {
     version: '1.0.2',
     date: '2026-08',
