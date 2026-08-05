@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.3.0';
+export const APP_VERSION = '1.3.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,18 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.3.1',
+    date: '2026-08',
+    zh: [
+      '参数滑块标签改为保留大小写：一次函数 k、b，二次函数 a、b、c，反比例 k 等按数学教材原样小写显示',
+    ],
+    en: [
+      'Param slider labels now preserve case: linear k, b; quadratic a, b, c; inverse k display in lowercase as in the textbook',
+    ],
+  },
+  {
     version: '1.3.0',
+
     date: '2026-08',
     zh: [
       '函数实验更贴合教材：一次函数/二次函数参数范围与坐标轴范围加大，反比例步进调细',
