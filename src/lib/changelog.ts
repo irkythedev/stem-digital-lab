@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.0.4';
+export const APP_VERSION = '1.1.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,39 +18,17 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.0.4',
+    version: '1.1.0',
     date: '2026-08',
     zh: [
       '新增 4 个物理实验：浮力（阿基米德原理）、杠杆的平衡条件、压强、滑轮',
-      '每个实验都采用「预测 → 探索 → 结论」三幕式，贴合教材',
+      '数学实验升级：圆的性质新增证明步骤引导，函数类补充代数推导，建立「观察 → 猜想 → 证明」的数学思维闭环',
+      '欧姆定律更贴合教材伏安法：滑动变阻器调压 + 参数滑块随所选元件自动匹配',
     ],
     en: [
       'Added 4 physics labs: Buoyancy (Archimedes\' principle), Lever balance, Pressure, and Pulleys',
-      'Each follows the Predict → Explore → Conclude flow, aligned with the textbook',
-    ],
-  },
-  {
-    version: '1.0.3',
-    date: '2026-08',
-    zh: [
-      '欧姆定律参数区更贴合教材伏安法：滑动变阻器作为调压元件，定值电阻或小灯泡作为被测对象',
-      '参数滑块随所选元件自动匹配（定值电阻显示 R，小灯泡显示 R₀）',
-    ],
-    en: [
-      'Ohm\'s law parameters now match the textbook voltmeter-ammeter method: the rheostat adjusts voltage while a fixed resistor or bulb is the measured element',
-      'Parameter sliders auto-match the selected element (R for resistor, R₀ for bulb)',
-    ],
-  },
-  {
-    version: '1.0.2',
-    date: '2026-08',
-    zh: [
-      '欧姆定律加入滑动变阻器：拖动滑片即可改变电流与元件两端电压，更贴近教材的伏安法测电阻实验',
-      '修复欧姆定律中小灯泡与导线的连接，电路图显示更准确',
-    ],
-    en: [
-      'Ohm\'s law now includes a rheostat: drag the wiper to change current and the voltage across the element, matching the textbook voltmeter-ammeter method',
-      'Fixed the bulb-to-wire connection in Ohm\'s law so the circuit diagram renders accurately',
+      'Math labs upgraded: circle properties now guide proof steps; function labs add algebraic derivation — building an observe → conjecture → prove loop',
+      'Ohm\'s law now matches the textbook voltmeter-ammeter method: rheostat adjusts voltage, parameter sliders auto-match the selected element',
     ],
   },
   {
