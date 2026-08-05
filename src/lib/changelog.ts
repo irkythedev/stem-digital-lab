@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.4.0';
+export const APP_VERSION = '1.4.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,22 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.1',
+    date: '2026-08',
+    zh: [
+      '电解水改为标准 U 形玻璃管电解器：左右管底部连通、电极接直流电源、气体体积 H₂:O₂=2:1 清晰呈现',
+      '金属活动性修正：Al+CuSO₄ 反应后溶液变无色、试管改圆底、金属丝与析出物更真实',
+      '质量守恒三方案新增反应容器动画（锥形瓶加热铜粉、铁钉浸硫酸铜、碳酸钠与盐酸冒泡）',
+    ],
+    en: [
+      'Electrolysis now uses a standard U-shaped glass-tube cell: tubes connected at the base, electrodes to a DC supply, gas volume H₂:O₂ = 2:1 clearly shown',
+      'Metal activity fixed: Al+CuSO₄ solution turns colorless, round-bottom tube, more realistic wire and deposit',
+      'Conservation of mass adds reaction-vessel visuals for all three schemes (flask + copper, iron in CuSO₄, carbonate + HCl bubbling)',
+    ],
+  },
+  {
     version: '1.4.0',
+
     date: '2026-08',
     zh: [
       '新增 2 个化学实验：电解水（正氧负氢、体积比 2:1）、金属活动性（Al > Cu > Ag 置换反应）',

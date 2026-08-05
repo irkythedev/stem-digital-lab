@@ -615,6 +615,74 @@ export default function MassConservation() {
               )}
             </div>
 
+            {/* 反应容器可视化 */}
+            <div className="pt-1">
+              {activeScheme === 0 && (
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="锥形瓶加热铜粉">
+                  {/* 锥形瓶 */}
+                  <path d="M70 40 H170 L150 130 H90 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+                  <line x1="70" y1="40" x2="170" y2="40" stroke="var(--fg)" strokeWidth="1.2" />
+                  {/* 铜粉（底部） */}
+                  <rect x="96" y="120" width="48" height="10" fill={curScheme.reacted ? '#3a3a3a' : '#b8860b'} opacity="0.8" />
+                  {/* 气球（锥形瓶口） */}
+                  <path d={curScheme.reacted
+                    ? "M120 40 q-6 -14 6 -18 q12 2 6 18 Z" // 反应后气球鼓起
+                    : "M120 40 q0 -6 6 -8 q6 2 6 8 Z"}
+                    fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+                  {/* 火焰（加热） */}
+                  {curScheme.reacted && (
+                    <path d="M120 130 v10 M117 138 q-3 -6 0 -10 M123 138 q3 -6 0 -10" stroke="var(--accent)" strokeWidth="1.2" fill="none" />
+                  )}
+                  <text x="120" y="148" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">Cu → CuO</text>
+                </svg>
+              )}
+
+              {activeScheme === 1 && (
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="铁钉浸硫酸铜">
+                  {/* 试管（圆底） */}
+                  <path d="M105 40 v60 a30 30 0 0 0 60 0 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+                  <line x1="105" y1="42" x2="165" y2="42" stroke="var(--fg)" strokeWidth="1.2" />
+                  {/* 溶液（蓝色→浅绿） */}
+                  <path d="M107 70 V100 A28 28 0 0 0 163 100 V70 Z"
+                    fill={curScheme.reacted ? 'rgba(120,170,110,0.4)' : 'rgba(60,120,220,0.4)'} stroke="none" />
+                  <line x1="107" y1="70" x2="163" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
+                  {/* 铁钉 */}
+                  <line x1="135" y1="42" x2="135" y2="95" stroke="#a0a6ad" strokeWidth="3" strokeLinecap="round" />
+                  {/* 析出红铜（反应后） */}
+                  {curScheme.reacted && (
+                    <>
+                      <circle cx="132" cy="82" r="2.4" fill="#e08a3c" />
+                      <circle cx="139" cy="90" r="2.2" fill="#e08a3c" />
+                      <circle cx="135" cy="96" r="2.6" fill="#e08a3c" />
+                    </>
+                  )}
+                  <text x="135" y="148" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">Fe + CuSO₄</text>
+                </svg>
+              )}
+
+              {activeScheme === 2 && (
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="碳酸钠与盐酸">
+                  {/* 烧杯 */}
+                  <path d="M85 40 H155 V125 H85 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+                  {/* 溶液 */}
+                  <rect x="86" y="70" width="68" height="54" fill="rgba(180,200,220,0.35)" stroke="none" />
+                  <line x1="86" y1="70" x2="154" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
+                  {/* 气泡（反应后逸出） */}
+                  {curScheme.reacted && (
+                    <>
+                      <circle cx="105" cy="80" r="2" fill="var(--fg)" opacity="0.6" />
+                      <circle cx="125" cy="60" r="2.5" fill="var(--fg)" opacity="0.5" />
+                      <circle cx="140" cy="50" r="2" fill="var(--fg)" opacity="0.4" />
+                      <circle cx="115" cy="70" r="1.6" fill="var(--fg)" opacity="0.5" />
+                      <circle cx="130" cy="82" r="1.4" fill="var(--fg)" opacity="0.4" />
+                      <text x="135" y="35" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">CO₂↑</text>
+                    </>
+                  )}
+                  {!curScheme.reacted && <text x="120" y="110" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">Na₂CO₃ + HCl</text>}
+                </svg>
+              )}
+            </div>
+
             {/* 反应现象 */}
             {curScheme.reacted && (
               <div className="space-y-1 pt-2 border-t border-[var(--border)]">
