@@ -209,6 +209,8 @@ export default function MeterProbe({
 
   const isActive = !!active && !dragging;
   const hoverComp = hover?.type === 'comp' ? comps.find((c) => c.id === hover.id) : null;
+  // 电压表吸附到元件两端：画两条实线连接（替代预画常显引线，体现"接上才显示"）
+  const activeComp = kind === 'voltage' && active ? comps.find((c) => c.id === active.id) : null;
 
   return (
     <>
@@ -256,6 +258,13 @@ export default function MeterProbe({
         <g stroke="var(--error)" strokeWidth="1.6" pointerEvents="none">
           <line x1={pos.x - 5} y1={pos.y - 5} x2={pos.x + 5} y2={pos.y + 5} />
           <line x1={pos.x - 5} y1={pos.y + 5} x2={pos.x + 5} y2={pos.y - 5} />
+        </g>
+      )}
+      {/* 已吸附：电压表并联连接线（实线，替代预画常显引线） */}
+      {activeComp && (
+        <g stroke="var(--fg)" strokeWidth="1.2" pointerEvents="none">
+          <line x1={pos.x} y1={pos.y} x2={activeComp.sense1.x} y2={activeComp.sense1.y} />
+          <line x1={pos.x} y1={pos.y} x2={activeComp.sense2.x} y2={activeComp.sense2.y} />
         </g>
       )}
 

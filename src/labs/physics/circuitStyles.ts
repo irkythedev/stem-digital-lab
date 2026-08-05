@@ -427,11 +427,6 @@ function genSeries(config: StyleConfig): GeneratedTopology {
     wires.push({ id: `seg${i}`, x1: prevX, y1: 60, x2: left, y2: 60, current: 'i0' });
     // 灯泡两端 → 上方引线（横线 y=30，测点 (e.x, 30)）；变阻器只画一端（另一端在干路）
     if (e.kind === 'bulb') {
-      vLeads.push(
-        { x1: left, y1: 60, x2: left, y2: 30 },
-        { x1: right, y1: 60, x2: right, y2: 30 },
-        { x1: left, y1: 30, x2: right, y2: 30 },
-      );
       comps.push({
         id: `e${i}`,
         kind: 'bulb',
@@ -490,11 +485,6 @@ function genParallel(config: StyleConfig): GeneratedTopology {
     const e = config.elements[i];
     if (e.kind === 'bulb') {
       const leadY = y - 16; // 引线横线在灯上方
-      vLeads.push(
-        { x1: 188, y1: y, x2: 188, y2: leadY },
-        { x1: 212, y1: y, x2: 212, y2: leadY },
-        { x1: 188, y1: leadY, x2: 212, y2: leadY },
-      );
       comps.push({
         id: `e${i}`,
         kind: 'bulb',

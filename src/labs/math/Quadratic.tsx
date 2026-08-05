@@ -380,7 +380,6 @@ export default function Quadratic() {
 
   return (
     <div className="flex flex-col space-y-6">
-      <p className="text-sm text-[var(--muted)] serif-font italic leading-relaxed">{t.prompt}</p>
 
       <div className="flex justify-center py-2">
         <Formula tex="y = ax^2 + bx + c" block className="text-lg" />

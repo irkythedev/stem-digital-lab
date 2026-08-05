@@ -482,7 +482,6 @@ export default function Ohm() {
 
   return (
     <div className="flex flex-col space-y-6">
-      <p className="text-sm text-[var(--muted)] serif-font italic leading-relaxed">{t.prompt}</p>
 
       <div className="flex justify-center py-2">
         <Formula tex="I = \frac{U}{R}" block className="text-lg" />
@@ -561,11 +560,7 @@ export default function Ohm() {
                 {/* 元件右端到下横线 + 回负极：导线始终可见，开关只断电流 */}
                 <line x1="270" y1="60" x2="270" y2="140" />
                 <line x1="270" y1="140" x2="40" y2="140" />
-                {/* 电压表并联引线：元件两端 → V-elem (250,28) */}
-                <line x1="230" y1="60" x2="230" y2="28" />
-                <line x1="270" y1="60" x2="270" y2="28" />
-                <line x1="230" y1="28" x2="270" y2="28" />
-                {/* 电压表并联引线：电池两端 → V-batt (72,100)（测点落在引线上） */}
+                {/* 电池支路竖线由电池符号补齐 70-82 间隙；电压表并联引线由探针吸附时动态绘制 */}
                 <line x1="58" y1="70" x2="72" y2="70" />
                 <line x1="72" y1="70" x2="72" y2="92" />
                 <line x1="48" y1="82" x2="72" y2="82" />

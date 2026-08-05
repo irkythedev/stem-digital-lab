@@ -352,7 +352,6 @@ export default function Linear() {
 
   return (
     <div className="flex flex-col space-y-6">
-      <p className="text-sm text-[var(--muted)] serif-font italic leading-relaxed">{t.prompt}</p>
 
       <div className="flex justify-center py-2">
         <Formula tex="y = kx + b" block className="text-lg" />
