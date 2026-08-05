@@ -41,7 +41,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '0.0.0',
-    date: '2026-06',
+    date: '2026-07',
     zh: ['项目起步，搭建数字实验平台基础框架'],
     en: ['Project inception: basic framework of the digital lab platform'],
   },

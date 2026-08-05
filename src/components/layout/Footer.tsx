@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
-import { Share2 } from 'lucide-react';
+import { Share2, Layers } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -42,16 +42,21 @@ export default function Footer() {
           /
         </span>
         <span>{t.authorRole}</span>
-        {/* 其他作品：收起显示数量，点击展开 */}
+        {/* 其他作品：作品集图标 + 圆角数字徽标，点击展开 */}
         {t.works.length > 0 && (
           <span className="relative">
             <button
               type="button"
               onClick={() => setShowWorks((v) => !v)}
               aria-expanded={showWorks}
-              className="underline hover:text-[var(--fg)] transition-colors"
+              title={t.moreWorks}
+              aria-label={t.moreWorks}
+              className="relative flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
             >
-              {t.moreWorks} ({t.works.length})
+              <Layers className="w-3.5 h-3.5" />
+              <span className="absolute -top-1.5 -right-2.5 min-w-[1rem] h-4 px-0.5 flex items-center justify-center rounded-full bg-[var(--fg)] text-[var(--bg)] text-[9px] mono-font leading-none">
+                {t.works.length}
+              </span>
             </button>
             {showWorks && (
               <span className="absolute left-0 bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
