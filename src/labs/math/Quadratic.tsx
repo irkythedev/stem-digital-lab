@@ -29,7 +29,7 @@ type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
 /** 采样一条二次函数曲线：x ∈ [-4, 4]，步长 0.05 */
 function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -4; x <= 4.0001; x += 0.05) {
+  for (let x = -6; x <= 6.0001; x += 0.05) {
     pts.push([x, a * x * x + b * x + c]);
   }
   return pts;
@@ -436,7 +436,7 @@ export default function Quadratic() {
               <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
             </div>
           ) : (
-            <CoordPlane curves={curves} xMin={-4} xMax={4} ariaLabel={`y = ax² + bx + c graph`} xLabel="x" yLabel="y" />
+            <CoordPlane curves={curves} xMin={-6} xMax={6} ariaLabel={`y = ax² + bx + c graph`} xLabel="x" yLabel="y" />
           )}
 
           <div className="border border-[var(--border)] p-4">
@@ -453,9 +453,9 @@ export default function Quadratic() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
-            <ParamSlider label="a" value={a} min={-3} max={3} step={0.1} onChange={setA} format={(v) => v.toFixed(1)} />
-            <ParamSlider label="b" value={b} min={-4} max={4} step={0.1} onChange={setB} format={(v) => v.toFixed(1)} />
-            <ParamSlider label="c" value={c} min={-5} max={5} step={0.1} onChange={setC} format={(v) => v.toFixed(1)} />
+            <ParamSlider label="a" value={a} min={-5} max={5} step={0.1} onChange={setA} format={(v) => v.toFixed(1)} />
+            <ParamSlider label="b" value={b} min={-6} max={6} step={0.1} onChange={setB} format={(v) => v.toFixed(1)} />
+            <ParamSlider label="c" value={c} min={-6} max={6} step={0.1} onChange={setC} format={(v) => v.toFixed(1)} />
             <button
               type="button"
               onClick={reset}

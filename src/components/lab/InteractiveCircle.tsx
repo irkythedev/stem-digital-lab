@@ -138,6 +138,13 @@ export default function InteractiveCircle({
   const angleBPC = angleBetween(bInsc.x, bInsc.y, p.x, p.y, cInsc.x, cInsc.y);
   const angleBQC = angleBetween(bInsc.x, bInsc.y, q.x, q.y, cInsc.x, cInsc.y);
 
+  // 圆心角 ∠BOC：弧 BC 所对的圆心角（取较小角，即劣弧所对）
+  const angleBOC = (() => {
+    let diff = Math.abs(inscribedAngleC - inscribedAngleB);
+    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+    return diff;
+  })();
+
   /* ── 直径直角模式计算 ── */
 
   const angleACB = angleBetween(aThales.x, aThales.y, cT.x, cT.y, bThales.x, bThales.y);
@@ -353,11 +360,45 @@ export default function InteractiveCircle({
             ∠BQC = {toDeg(angleBQC)}
           </text>
 
+          {/* 圆心角 ∠BOC：从圆心 O 到 B、C 的射线 + 角度弧 */}
+          <line x1={CX} y1={CY} x2={bInsc.x} y2={bInsc.y}
+            stroke="var(--error)" strokeWidth={1.2} strokeDasharray="3 2" opacity={0.7} />
+          <line x1={CX} y1={CY} x2={cInsc.x} y2={cInsc.y}
+            stroke="var(--error)" strokeWidth={1.2} strokeDasharray="3 2" opacity={0.7} />
+          <path d={(() => {
+            const r = 55;
+            let start = Math.atan2(bInsc.y - CY, bInsc.x - CX);
+            let end = Math.atan2(cInsc.y - CY, cInsc.x - CX);
+            let diff = end - start;
+            // 走短弧
+            if (diff > Math.PI) diff -= 2 * Math.PI;
+            if (diff < -Math.PI) diff += 2 * Math.PI;
+            const steps = 24;
+            const pts: string[] = [];
+            for (let i = 0; i <= steps; i++) {
+              const t = i / steps;
+              const a = start + diff * t;
+              pts.push(`${i === 0 ? 'M' : 'L'} ${CX + r * Math.cos(a)} ${CY + r * Math.sin(a)}`);
+            }
+            return pts.join(' ');
+          })()}
+            fill="none" stroke="var(--error)" strokeWidth={1.4} />
+          <text x={CX - 70} y={CY - 40} fill="var(--error)" fontSize={12} className="mono-font font-bold">
+            ∠BOC = {toDeg(angleBOC)}
+          </text>
+
           {/* 相等提示 */}
           {Math.abs(angleBPC - angleBQC) < 0.01 && (
             <text x={CX} y={CY + R + 30} textAnchor="middle"
               fill="var(--fg)" fontSize={13} className="mono-font">
               ∠BPC = ∠BQC = {toDeg(angleBPC)} ✓ 同弧所对圆周角相等
+            </text>
+          )}
+          {/* 圆心角与圆周角关系：∠BPC = ½∠BOC */}
+          {Math.abs(angleBPC - angleBOC / 2) < 0.01 && (
+            <text x={CX} y={CY + R + 48} textAnchor="middle"
+              fill="var(--accent)" fontSize={13} className="mono-font">
+              ∠BPC = ½∠BOC ✓ 圆周角 = 圆心角一半
             </text>
           )}
 
