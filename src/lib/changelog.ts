@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.2.0';
+export const APP_VERSION = '1.3.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.3.0',
+    date: '2026-08',
+    zh: [
+      '函数实验更贴合教材：一次函数/二次函数参数范围与坐标轴范围加大，反比例步进调细',
+      '一次函数新增「函数类型标注」：k=0 提示常函数非一次函数，b=0 标注正比例函数特例',
+      '圆的性质新增圆心角 ∠BOC 与圆周角 ∠BPC 实时度数对比，直观呈现「圆周角 = 圆心角一半」',
+    ],
+    en: [
+      'Function labs now match the textbook more closely: wider parameter and axis ranges for linear/quadratic, finer steps for inverse',
+      'Linear functions now label the function type: k=0 shows a constant function (not linear), b=0 marks a direct-proportion special case',
+      'Circle lab adds a live central-angle ∠BOC vs inscribed-angle ∠BPC comparison, showing "inscribed angle = half central angle"',
+    ],
+  },
   {
     version: '1.2.0',
     date: '2026-08',

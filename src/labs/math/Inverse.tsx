@@ -414,8 +414,8 @@ export default function Inverse() {
               value={k}
               min={-6}
               max={6}
-              step={0.5}
-              onChange={(v) => setK(v === 0 ? (k > 0 ? 0.5 : -0.5) : v)}
+              step={0.1}
+              onChange={(v) => setK(v === 0 ? (k > 0 ? 0.1 : -0.1) : v)}
               format={(v) => v.toFixed(1)}
             />
             <button

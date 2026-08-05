@@ -23,10 +23,10 @@ type Stage = 'predict' | 'explore' | 'conclude';
 type PredictSlope = 'up' | 'down' | 'flat' | null;
 type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
 
-/** 采样一次函数：x ∈ [-4, 4]，y = kx + b */
+/** 采样一次函数：x ∈ [-6, 6]，y = kx + b */
 function sampleLinear(k: number, b: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -4; x <= 4.0001; x += 0.05) {
+  for (let x = -6; x <= 6.0001; x += 0.05) {
     pts.push([x, k * x + b]);
   }
   return pts;
@@ -38,6 +38,13 @@ function exprOf(k: number, b: number): string {
   const kPart = k === 1 ? 'x' : k === -1 ? '-x' : `${k}x`;
   if (b === 0) return `y = ${kPart}`;
   return `y = ${kPart} ${b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`}`;
+}
+
+/** 函数类型标注：一次函数 / 正比例函数（特例）/ 常函数（非一次函数） */
+function fnTypeLabel(k: number, b: number): { zh: string; en: string } | null {
+  if (k === 0) return { zh: '常函数（k = 0，不是一次函数）', en: 'Constant function (k = 0, not a linear function)' };
+  if (b === 0) return { zh: '正比例函数（一次函数的特例）', en: 'Direct-proportion function (special case of linear)' };
+  return { zh: '一次函数', en: 'Linear function' };
 }
 
 const copy = {
@@ -408,7 +415,7 @@ export default function Linear() {
               <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
             </div>
           ) : (
-            <CoordPlane curves={curves} xMin={-4} xMax={4} ariaLabel={`y = kx + b graph`} xLabel="x" yLabel="y" />
+            <CoordPlane curves={curves} xMin={-6} xMax={6} ariaLabel={`y = kx + b graph`} xLabel="x" yLabel="y" />
           )}
 
           <div className="border border-[var(--border)] p-4">
@@ -416,6 +423,9 @@ export default function Linear() {
               // {t.readout}
             </h3>
             <p className="text-sm mono-font text-[var(--fg)]">{exprOf(k, b)}</p>
+            <p className={`mt-1 text-[11px] mono-font ${k === 0 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}>
+              {lang === 'zh' ? fnTypeLabel(k, b)?.zh : fnTypeLabel(k, b)?.en}
+            </p>
           </div>
         </div>
 
@@ -425,7 +435,7 @@ export default function Linear() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
-            <ParamSlider label="k" value={k} min={-3} max={3} step={0.1} onChange={setK} format={(v) => v.toFixed(1)} />
+            <ParamSlider label="k" value={k} min={-5} max={5} step={0.1} onChange={setK} format={(v) => v.toFixed(1)} />
             <ParamSlider label="b" value={b} min={-5} max={5} step={0.1} onChange={setB} format={(v) => v.toFixed(1)} />
             <button
               type="button"
