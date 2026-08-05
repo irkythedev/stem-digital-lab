@@ -164,10 +164,12 @@ export default function MetalActivity() {
   // 析出物
   const depositLabel = isAlCu ? (lang === 'zh' ? '红色 Cu' : 'red Cu') : (lang === 'zh' ? '银白色 Ag' : 'silvery Ag');
   const depositColor = isAlCu ? '#e08a3c' : '#cfd6dc';
-  // 溶液颜色（反应后变化）
-  const solColor = !done ? (isAlCu ? 'rgba(60,120,220,0.35)' : 'rgba(200,200,210,0.35)') : (isAlCu ? 'rgba(180,220,255,0.2)' : 'rgba(80,150,220,0.3)');
+  // 溶液颜色：Al+CuSO₄ 初始蓝色(CuSO₄) → 反应后无色(Cu²⁺消耗)；Cu+AgNO₃ 初始无色 → 反应后蓝色(Cu(NO₃)₂)
+  const solColor = !done
+    ? (isAlCu ? 'rgba(60,120,220,0.35)' : 'rgba(225,228,234,0.25)')
+    : (isAlCu ? 'rgba(245,247,250,0.15)' : 'rgba(70,140,215,0.32)');
   const solChange = isAlCu
-    ? (lang === 'zh' ? '溶液蓝色变浅' : 'solution fades from blue')
+    ? (lang === 'zh' ? '溶液由蓝色变无色' : 'solution turns colorless')
     : (lang === 'zh' ? '溶液变为蓝色' : 'solution turns blue');
 
   function redoAll() {
@@ -288,27 +290,28 @@ export default function MetalActivity() {
           </button>
         </div>
         <svg viewBox="0 0 300 220" className="w-full" aria-label="金属活动性实验">
-          {/* 试管 */}
-          <path d="M110 40 v90 a40 40 0 0 0 80 0 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+          {/* 试管（圆底） */}
+          <path d="M110 40 v95 a40 40 0 0 0 80 0 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
           <line x1="110" y1="42" x2="190" y2="42" stroke="var(--fg)" strokeWidth="1.2" />
-          {/* 溶液 */}
-          <rect x="112" y="70" width="76" height={130 - 70} fill={solColor} stroke="none" />
+          {/* 溶液（圆底） */}
+          <path d="M112 70 V130 A38 38 0 0 0 188 130 V70 Z" fill={solColor} stroke="none" />
           {/* 液面 */}
           <line x1="112" y1="70" x2="188" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
-          {/* 金属丝（伸入溶液） */}
-          <line x1="150" y1="42" x2="150" y2={done ? 150 : 100} stroke={isAlCu ? METALS.al.color : METALS.cu.color} strokeWidth="3" strokeLinecap="round" />
-          {/* 析出金属（反应后，在金属丝表面/底部） */}
+          {/* 金属丝（伸入溶液，下端圆头） */}
+          <line x1="150" y1="42" x2="150" y2={done ? 148 : 100} stroke={isAlCu ? METALS.al.color : METALS.cu.color} strokeWidth="3" strokeLinecap="round" />
+          {/* 析出金属（反应后，在金属丝表面） */}
           {done && (
             <>
-              <circle cx="145" cy="120" r="3" fill={depositColor} />
-              <circle cx="154" cy="128" r="2.5" fill={depositColor} />
-              <circle cx="150" cy="135" r="3" fill={depositColor} />
-              <circle cx="140" cy="132" r="2" fill={depositColor} />
+              <circle cx="145" cy="112" r="2.6" fill={depositColor} />
+              <circle cx="155" cy="120" r="2.4" fill={depositColor} />
+              <circle cx="150" cy="130" r="2.8" fill={depositColor} />
+              <circle cx="141" cy="126" r="2.2" fill={depositColor} />
+              <circle cx="158" cy="133" r="2" fill={depositColor} />
             </>
           )}
           {/* 标签 */}
           <text x="150" y="30" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">{metalLabel}</text>
-          <text x="150" y="200" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">{solutionLabel}</text>
+          <text x="150" y="205" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">{solutionLabel}</text>
         </svg>
         <p className="text-xs text-[var(--muted)] serif-font italic">
           {done
