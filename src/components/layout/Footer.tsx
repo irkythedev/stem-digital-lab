@@ -6,6 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
+import { Share2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -44,12 +45,15 @@ export default function Footer() {
 
       <div className="flex flex-col items-center gap-1.5 text-center">
         <div className="flex items-center gap-4">
+          {/* 分享：icon + hover 显示「分享」 */}
           <button
             type="button"
             onClick={() => setShowShare(true)}
-            className="underline hover:text-[var(--fg)] transition-colors"
+            title={t.share}
+            aria-label={t.share}
+            className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
           >
-            {t.share}
+            <Share2 className="w-3.5 h-3.5" />
           </button>
           <InstallAppButton />
           <button

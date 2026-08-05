@@ -17,6 +17,7 @@ interface ShareDialogProps {
 export default function ShareDialog({ url, onClose }: ShareDialogProps) {
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const handleNativeShare = async () => {
     if (navigator.share) {
@@ -31,14 +32,28 @@ export default function ShareDialog({ url, onClose }: ShareDialogProps) {
   };
 
   const handleCopy = async () => {
+    setCopyFailed(false);
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // 降级：选中文本提示
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      // 剪贴板 API 失败：降级用 execCommand
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        setCopyFailed(true);
+        setTimeout(() => setCopyFailed(false), 3000);
+      }
     }
   };
 
@@ -56,8 +71,31 @@ export default function ShareDialog({ url, onClose }: ShareDialogProps) {
 
         {/* 二维码 */}
         <div className="flex flex-col items-center gap-2">
-          <div className="bg-white p-2 rounded">
+          <div className="relative bg-white p-2 rounded">
             <QRCodeSVG value={url} size={160} level="M" marginSize={2} />
+            {/* 中央品牌图标：白底方块 + 三角方框圆 */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="relative w-8 h-8 text-[#111210] bg-white rounded-sm border border-[#ddd]">
+                {/* 三角（数学）— 上中 */}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  className="absolute w-3 h-3" style={{ top: 2, left: 10 }}
+                >
+                  <path d="M3 20 L12 4 L21 20 Z" />
+                </svg>
+                {/* 方框（化学）— 左下 */}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  className="absolute w-3 h-3" style={{ top: 18, left: 2 }}
+                >
+                  <rect x="4" y="4" width="16" height="16" />
+                </svg>
+                {/* 圆（物理）— 右下 */}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                  className="absolute w-3 h-3" style={{ top: 18, left: 18 }}
+                >
+                  <circle cx="12" cy="12" r="8" />
+                </svg>
+              </span>
+            </div>
           </div>
           <p className="text-xs text-[var(--muted)]">{t.qrScanHint}</p>
         </div>
@@ -78,6 +116,9 @@ export default function ShareDialog({ url, onClose }: ShareDialogProps) {
           >
             {copied ? `✓ ${t.copied}` : t.copyLink}
           </button>
+          {copyFailed && (
+            <p className="text-xs text-[var(--error)] serif-font" role="alert">⚠ {t.copyFailed}</p>
+          )}
         </div>
       </div>
     </div>
