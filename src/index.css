@@ -62,6 +62,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */
+main button {
+  min-height: 40px;
+}
+/* 开关 SVG 点击态反馈（按下时微高亮） */
+svg g[role="button"]:active circle[fill="transparent"] {
+  opacity: 0.4;
+}
+/* 通用按钮点击态 */
+main button:active {
+  filter: brightness(0.95);
+}
+/* 参数滑块滑块头放大（触屏更易拖） */
+input[type="range"] {
+  height: 28px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+}
+
 .serif-font {
   font-family: var(--f-serif);
 }

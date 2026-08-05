@@ -570,6 +570,8 @@ export default function Ohm() {
                 onClick={() => setSwitchOn((s) => !s)}
                 className="cursor-pointer"
               >
+                {/* 透明命中区：扩大触屏点击区域 */}
+                <rect x="85" y="40" width="70" height="40" fill="transparent" />
                 {/* 开关两端触点 */}
                 <circle cx="95" cy="60" r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
                 <circle cx="145" cy="60" r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />

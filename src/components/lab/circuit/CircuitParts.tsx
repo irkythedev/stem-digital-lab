@@ -122,6 +122,15 @@ export function BladeSwitch({
       onClick={onToggle}
       className="cursor-pointer"
     >
+      {/* 透明命中区：扩大点击/触屏区域（沿开关方向延伸，保证 ≥44px 可点） */}
+      <rect
+        x={x1 - 8}
+        y={y1 - 20}
+        width={Math.hypot(x2 - x1, y2 - y1) + 16}
+        height={40}
+        fill="transparent"
+        transform={`rotate(${ang * (180 / Math.PI)} ${x1} ${y1})`}
+      />
       <circle cx={x1} cy={y1} r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
       <circle cx={x2} cy={y2} r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
       {/* 刀片：起点在左触点，沿闭合角度延伸 len；用 transform rotate 翻转 */}

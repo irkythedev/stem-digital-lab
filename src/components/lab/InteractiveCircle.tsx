@@ -18,7 +18,7 @@ const CX = 250;
 const CY = 200;
 const R = 160;
 const VIEWBOX = '0 0 500 440';
-const HIT_R = 10; // 拖拽点点击半径
+const HIT_R = 18; // 拖拽点点击半径（触屏友好，≥36px 命中区）
 
 /* ── 几何工具函数 ── */
 
