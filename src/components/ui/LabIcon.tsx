@@ -316,3 +316,60 @@ export function PulleyIcon({ className = '' }: LabIconProps) {
     </svg>
   );
 }
+
+/** 电解水：电解器 + 两试管 + 电极 + 气泡（正氧负氢 1:2） */
+export function ElectrolysisIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 电解器容器 */}
+      <path d="M4 20 h16 v-3 h-16 Z" />
+      {/* 左试管（负极，氢气多） */}
+      <path d="M7 17 v-6 a2 2 0 0 1 4 0 v6" />
+      {/* 右试管（正极，氧气少） */}
+      <path d="M13 17 v-3 a1.4 1.4 0 0 1 2.8 0 v3" />
+      {/* 两电极 */}
+      <line x1="9" y1="11" x2="9" y2="17" />
+      <line x1="14.4" y1="14" x2="14.4" y2="17" />
+      {/* 气泡（负极多、正极少） */}
+      <circle cx="8" cy="9" r="0.8" />
+      <circle cx="10" cy="8" r="0.8" />
+      <circle cx="14.2" cy="12.5" r="0.7" />
+    </svg>
+  );
+}
+
+/** 金属活动性：试管 + 金属丝 + 溶液（置换析出） */
+export function MetalIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 试管 */}
+      <path d="M8 3 v9 a4 4 0 0 0 8 0 V3" />
+      <line x1="8" y1="4" x2="16" y2="4" />
+      {/* 金属丝（伸入溶液） */}
+      <line x1="12" y1="3" x2="12" y2="11" />
+      {/* 溶液液面 */}
+      <line x1="8.6" y1="12" x2="15.4" y2="12" strokeDasharray="2 1.5" />
+      {/* 析出的金属（试管底部） */}
+      <circle cx="10" cy="16" r="1" fill="currentColor" opacity="0.3" />
+      <circle cx="13" cy="16.5" r="1" fill="currentColor" opacity="0.3" />
+    </svg>
+  );
+}
