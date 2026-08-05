@@ -272,71 +272,76 @@ export default function Electrolysis() {
           </button>
         </div>
         <svg viewBox="0 0 400 230" className="w-full" aria-label="电解水实验">
-          {/* ── U 形玻璃管电解器 ── */}
+          {/* ── 双管电解器：两支竖直玻璃管，底部水平连通（教材图4-17 结构） ── */}
           {/* 左管（负极，H₂ 多） */}
-          <path d="M110 50 V130 A90 90 0 0 0 290 130 V50" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          <path d="M111 50 V105 H145 V50" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          {/* 右管（正极，O₂ 少） */}
+          <path d="M255 50 V105 H289 V50" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          {/* 底部连通横管（左管 → 右管） */}
+          <path d="M111 105 H289" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
           {/* 管口沿 */}
-          <line x1="104" y1="50" x2="116" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
-          <line x1="284" y1="50" x2="296" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
-          {/* 水（左右管 + 底部连通，液面在 y=130 附近） */}
+          <line x1="105" y1="50" x2="117" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
+          <line x1="283" y1="50" x2="295" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
+
+          {/* 水（两支管 + 底部连通管，液面在 y=72） */}
           <path
-            d="M112 130 V95 H288 V130 A86 86 0 0 1 112 130 Z"
+            d="M113 72 H145 V104 H255 V72 H287 V104 H113 Z"
             fill="rgba(70,150,220,0.2)"
             stroke="none"
           />
           {/* 液面线 */}
-          <line x1="110" y1="95" x2="290" y2="95" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="4 3" />
+          <line x1="111" y1="72" x2="289" y2="72" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="4 3" />
 
-          {/* 收集的气体（管上部，无色留空，用虚线标记体积；H₂ 侧高，O₂ 侧矮 = 2:1） */}
+          {/* 收集的气体（管上部，无色留空，虚线标记体积；H₂ 侧高，O₂ 侧矮 = 2:1） */}
           {power && (
             <>
               {/* 负极 H₂：气体体积高 */}
-              <path d="M112 95 V70 H145 V95" fill="none" stroke="rgba(120,220,160,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
-              <text x="128" y="84" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">H₂ {hVol.toFixed(0)}</text>
+              <path d="M113 72 V55 H143 V72" fill="none" stroke="rgba(120,220,160,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
+              <text x="128" y="66" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">H₂ {hVol.toFixed(0)}</text>
               {/* 正极 O₂：气体体积矮（约一半） */}
-              <path d="M288 95 V82 H255 V95" fill="none" stroke="rgba(120,180,240,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
-              <text x="272" y="90" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">O₂ {oVol.toFixed(0)}</text>
+              <path d="M257 72 V60 H287 V72" fill="none" stroke="rgba(120,180,240,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
+              <text x="272" y="68" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">O₂ {oVol.toFixed(0)}</text>
             </>
           )}
           {!power && (
             <>
-              <text x="128" y="88" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">H₂</text>
-              <text x="272" y="88" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">O₂</text>
+              <text x="128" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">H₂</text>
+              <text x="272" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">O₂</text>
             </>
           )}
 
-          {/* 电极（左正极、右负极？——教材：正极产 O₂ 少，负极产 H₂ 多，此处按左管 H₂ 多=负极） */}
-          {/* 左电极（负极，接电源负极，产 H₂ 多） */}
-          <line x1="128" y1="100" x2="128" y2="150" stroke="var(--fg)" strokeWidth="2" />
-          <text x="128" y="166" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">(−)</text>
-          {/* 右电极（正极，接电源正极，产 O₂ 少） */}
-          <line x1="272" y1="100" x2="272" y2="150" stroke="var(--fg)" strokeWidth="2" />
-          <text x="272" y="166" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">(+)</text>
-
-          {/* 电源导线（电极 → 直流电源） */}
-          <line x1="128" y1="150" x2="128" y2="190" stroke="var(--fg)" strokeWidth="1.2" />
-          <line x1="128" y1="190" x2="200" y2="190" stroke="var(--fg)" strokeWidth="1.2" />
-          <line x1="272" y1="150" x2="272" y2="200" stroke="var(--fg)" strokeWidth="1.2" />
-          <line x1="272" y1="200" x2="200" y2="200" stroke="var(--fg)" strokeWidth="1.2" />
-
-          {/* 直流电源符号（细长矩形 + 正负极） */}
-          <rect x="188" y="185" width="24" height="20" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
-          <line x1="196" y1="185" x2="196" y2="195" stroke="var(--fg)" strokeWidth="2" />
-          <line x1="204" y1="185" x2="204" y2="195" stroke="var(--fg)" strokeWidth="1.2" />
-          <text x="204" y="182" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">+</text>
-          <text x="196" y="182" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">−</text>
+          {/* 电极（碳棒/金属，插入水中） */}
+          <line x1="128" y1="55" x2="128" y2="95" stroke="var(--fg)" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="272" y1="55" x2="272" y2="95" stroke="var(--fg)" strokeWidth="2.5" strokeLinecap="round" />
 
           {/* 气泡（通电时，负极多、正极少） */}
           {power && (
             <>
-              <circle cx="124" cy="125" r="2" fill="var(--fg)" opacity="0.6" />
-              <circle cx="132" cy="135" r="2.4" fill="var(--fg)" opacity="0.6" />
-              <circle cx="126" cy="142" r="1.6" fill="var(--fg)" opacity="0.5" />
-              <circle cx="133" cy="150" r="2" fill="var(--fg)" opacity="0.5" />
-              <circle cx="268" cy="128" r="1.5" fill="var(--fg)" opacity="0.5" />
-              <circle cx="276" cy="138" r="1.2" fill="var(--fg)" opacity="0.4" />
+              <circle cx="122" cy="80" r="2" fill="var(--fg)" opacity="0.6" />
+              <circle cx="134" cy="86" r="2.4" fill="var(--fg)" opacity="0.6" />
+              <circle cx="125" cy="92" r="1.6" fill="var(--fg)" opacity="0.5" />
+              <circle cx="266" cy="82" r="1.5" fill="var(--fg)" opacity="0.5" />
+              <circle cx="278" cy="88" r="1.2" fill="var(--fg)" opacity="0.4" />
             </>
           )}
+
+          {/* 电源导线：从电极顶端 → 沿管外向下 → 到下方直流电源（电源在电解器外，不浸水） */}
+          <line x1="128" y1="45" x2="128" y2="22" stroke="var(--fg)" strokeWidth="1.2" />
+          <line x1="128" y1="22" x2="200" y2="22" stroke="var(--fg)" strokeWidth="1.2" />
+          <line x1="272" y1="45" x2="272" y2="14" stroke="var(--fg)" strokeWidth="1.2" />
+          <line x1="272" y1="14" x2="200" y2="14" stroke="var(--fg)" strokeWidth="1.2" />
+
+          {/* 直流电源符号（在电解器上方外侧，细长矩形 + 正负极） */}
+          <rect x="188" y="10" width="24" height="18" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+          <line x1="196" y1="10" x2="196" y2="20" stroke="var(--fg)" strokeWidth="2" />
+          <line x1="204" y1="10" x2="204" y2="20" stroke="var(--fg)" strokeWidth="1.2" />
+          <text x="204" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">+</text>
+          <text x="196" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">−</text>
+          <text x="200" y="38" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">直流电源</text>
+
+          {/* 负极标注 */}
+          <text x="128" y="108" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">(−) 负极</text>
+          <text x="272" y="108" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">(+) 正极</text>
         </svg>
         <p className="text-xs text-[var(--muted)] serif-font italic">
           {power
