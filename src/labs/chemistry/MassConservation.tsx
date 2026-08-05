@@ -776,7 +776,6 @@ export default function MassConservation() {
                         ],
                       },
                     ]}
-                    playing={showMicro}
                   />
                 )}
               </div>

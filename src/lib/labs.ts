@@ -15,7 +15,7 @@
 import type { ComponentType } from 'react';
 import type { SubjectId } from './subjects';
 import type { LabIconProps } from '../components/ui/LabIcon';
-import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon } from '../components/ui/LabIcon';
+import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
 import Quadratic from '../labs/math/Quadratic';
 import Inverse from '../labs/math/Inverse';
 import Linear from '../labs/math/Linear';
@@ -29,6 +29,8 @@ import Buoyancy from '../labs/physics/Buoyancy';
 import Lever from '../labs/physics/Lever';
 import Pressure from '../labs/physics/Pressure';
 import Pulley from '../labs/physics/Pulley';
+import Electrolysis from '../labs/chemistry/Electrolysis';
+import MetalActivity from '../labs/chemistry/MetalActivity';
 
 export interface LabMeta {
   /** 路由 id，如 'quadratic' → /lab/quadratic */
@@ -146,6 +148,22 @@ export const labs: LabMeta[] = [
     description: { zh: '探究定滑轮与动滑轮的特点', en: 'Explore fixed and movable pulleys' },
     icon: PulleyIcon,
     component: Pulley,
+  },
+  {
+    id: 'electrolysis',
+    subjectId: 'chemistry',
+    name: { zh: '电解水', en: 'Electrolysis of Water' },
+    description: { zh: '电解水观察正氧负氢，体积比 2:1，探究水的组成', en: 'Electrolyze water to see O₂ and H₂ in a 2:1 ratio and explore water\'s composition' },
+    icon: ElectrolysisIcon,
+    component: Electrolysis,
+  },
+  {
+    id: 'metal-activity',
+    subjectId: 'chemistry',
+    name: { zh: '金属活动性', en: 'Metal Activity' },
+    description: { zh: '置换反应验证 Al > Cu > Ag 的金属活动性顺序', en: 'Use displacement reactions to verify the activity order Al > Cu > Ag' },
+    icon: MetalIcon,
+    component: MetalActivity,
   },
 ];
 
