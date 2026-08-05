@@ -128,6 +128,7 @@ const copy = {
       '实际问题中 k 常表示单位变化量（如每 km 单价），b 表示初始值（如起步价）。',
       '两条直线平行 ⇔ k 相等；重合 ⇔ k、b 都相等。',
       '求交点：令两函数值相等解方程；求与坐标轴交点：令 x=0 或 y=0。',
+      '代数推导（证明增减性）：设 x₁<x₂，则 f(x₂)−f(x₁)=k(x₂−x₁)。若 k>0，差为正，图像上升（增函数）；若 k<0，差为负，图像下降（减函数）。',
     ],
   },
   en: {
@@ -214,6 +215,7 @@ const copy = {
       'In real problems k is often the unit rate (e.g. price per km), b the initial value (e.g. base fare).',
       'Two lines are parallel iff k is equal; identical iff k and b are both equal.',
       'To find intersections: set the two functions equal; for axis intercepts set x=0 or y=0.',
+      'Algebraic derivation (prove monotonicity): let x₁<x₂, then f(x₂)−f(x₁)=k(x₂−x₁). If k>0 the difference is positive (increasing); if k<0 it is negative (decreasing).',
     ],
   },
 };
