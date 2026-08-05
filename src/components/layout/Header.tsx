@@ -5,13 +5,17 @@
  * 顶部导航栏：品牌标识 + 语言切换 + 主题切换。
  * 从原 App.tsx 抽出，状态改由全局 useApp() 提供。
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { APP_VERSION } from '../../lib/changelog';
+import VersionDialog from '../feedback/VersionDialog';
 import type { ThemeMode } from '../../lib/app-context';
 
 export default function Header() {
   const { t, lang, setLang, themeMode, setThemeMode } = useApp();
+  const [showVersion, setShowVersion] = useState(false);
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];
@@ -47,6 +51,16 @@ export default function Header() {
         <span className="hidden sm:inline text-[10px] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
           STEM DIGITAL LAB
         </span>
+        {/* 版本号：点击弹出版本历史 */}
+        <button
+          type="button"
+          onClick={() => setShowVersion((v) => !v)}
+          title="v{APP_VERSION}"
+          aria-label="version"
+          className="flex items-center text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+        >
+          v{APP_VERSION}
+        </button>
       </Link>
 
       <div className="flex items-center space-x-4 text-[11px] mono-font uppercase tracking-wider">
@@ -82,6 +96,7 @@ export default function Header() {
           {t.guide}
         </Link>
       </div>
+      {showVersion && <VersionDialog onClose={() => setShowVersion(false)} />}
     </header>
   );
 }
