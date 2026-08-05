@@ -119,9 +119,9 @@ const copy = {
       steps: [
         '设 ∠BPC 与 ∠BQC 都对着弧 BC',
         '同弧 BC 所对的圆心角 ∠BOC 相等',
-        '圆周角等于同弧所对圆心角的一半',
-        '∠BPC = ½∠BOC，∠BQC = ½∠BOC',
-        '所以 ∠BPC = ∠BQC',
+        '连接 OC：OP = OC（都是半径），所以 ∠OPC = ∠OCP',
+        '∠BOC 是 △OPC 的外角，所以 ∠BOC = ∠OPC + ∠OCP = 2∠OPC，即 ∠BPC = ½∠BOC',
+        '同理 ∠BQC = ½∠BOC，所以 ∠BPC = ∠BQC',
       ],
     },
     proofThales: {
@@ -228,9 +228,9 @@ const copy = {
       steps: [
         '∠BPC and ∠BQC both subtend arc BC',
         'The central angle ∠BOC subtending arc BC is the same',
-        'An inscribed angle equals half the central angle of the same arc',
-        '∠BPC = ½∠BOC, ∠BQC = ½∠BOC',
-        'Therefore ∠BPC = ∠BQC',
+        'Connect OC: OP = OC (both radii), so ∠OPC = ∠OCP',
+        '∠BOC is an exterior angle of △OPC, so ∠BOC = ∠OPC + ∠OCP = 2∠OPC, i.e. ∠BPC = ½∠BOC',
+        'Similarly ∠BQC = ½∠BOC, therefore ∠BPC = ∠BQC',
       ],
     },
     proofThales: {

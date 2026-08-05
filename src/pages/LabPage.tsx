@@ -11,6 +11,7 @@ import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
+import ShareInline from '../components/share/ShareInline';
 
 export default function LabPage() {
   const { labId } = useParams<{ labId: string }>();
@@ -61,10 +62,11 @@ export default function LabPage() {
           <div className="flex flex-col items-start leading-tight">
             <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
               {lab.name[lang]}
+              <span className="ml-3 text-[11px] uppercase tracking-widest text-[var(--muted)] mono-font align-middle">
+                {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
+              </span>
+              <ShareInline />
             </h1>
-            <span className="text-[11px] mt-1 uppercase tracking-widest text-[var(--muted)] mono-font">
-              {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
-            </span>
           </div>
         </div>
       </div>

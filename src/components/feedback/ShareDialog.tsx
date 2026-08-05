@@ -18,6 +18,8 @@ export default function ShareDialog({ url, onClose }: ShareDialogProps) {
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
+  // 微信内置浏览器检测：点右上角「···」即可转发，无需/不能程序化调起
+  const isWechat = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
 
   const handleNativeShare = async () => {
     if (navigator.share) {
@@ -74,7 +76,9 @@ export default function ShareDialog({ url, onClose }: ShareDialogProps) {
           <div className="bg-white p-2 rounded">
             <QRCodeSVG value={url} size={160} level="M" marginSize={2} />
           </div>
-          <p className="text-xs text-[var(--muted)]">{t.qrScanHint}</p>
+          <p className="text-xs text-[var(--muted)]">
+            {isWechat ? t.wechatInnerHint : t.wechatOuterHint}
+          </p>
         </div>
 
         {/* 按钮 */}

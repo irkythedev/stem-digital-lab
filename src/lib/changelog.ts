@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.2.0',
+    date: '2026-08',
+    zh: [
+      '每个实验页标题旁新增分享按钮：一键分享该实验（二维码 / 系统分享 / 复制链接），并针对微信给出转发引导',
+      '电路图更贴近真实实验：电压表的并联引线改为「接上才显示」，默认不再有悬空的引线',
+      '修正圆周角定理证明步骤（补充外角定理推导）、标题年级位置与重复提示文字',
+    ],
+    en: [
+      'Each lab page now has a share button next to the title: share that lab via QR / native share / copy link, with WeChat forwarding guidance',
+      'Circuit diagrams match real experiments: voltmeter leads now appear only when attached — no more dangling wires by default',
+      'Fixed the inscribed-angle theorem proof (added exterior-angle derivation), title grade placement, and duplicate hint text',
+    ],
+  },
   {
     version: '1.1.0',
     date: '2026-08',

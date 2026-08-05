@@ -301,7 +301,6 @@ export default function Circuits() {
 
   return (
     <div className="flex flex-col space-y-6">
-      <p className="text-sm text-[var(--muted)] serif-font italic leading-relaxed">{t.prompt}</p>
 
       <div className="flex justify-center py-2">
         <Formula tex="I = \frac{U}{R}" block className="text-lg" />

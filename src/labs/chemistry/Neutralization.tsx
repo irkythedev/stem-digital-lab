@@ -404,7 +404,6 @@ export default function Neutralization() {
 
   return (
     <div className="flex flex-col space-y-6">
-      <p className="text-sm text-[var(--muted)] serif-font italic leading-relaxed">{t.prompt}</p>
 
       <div className="flex justify-center py-2">
         <Formula tex="\mathrm{H^+} + \mathrm{OH^-} \rightarrow \mathrm{H_2O}" block className="text-lg" />
