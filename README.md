@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.0.1-blue)
+![version](https://img.shields.io/badge/版本-v1.0.2-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
@@ -87,7 +87,7 @@ src/
 
 ### 版本与标签
 
-当前版本：`v1.0.1`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。
+当前版本：`v1.0.2`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。
 
 ### 许可
 
@@ -175,7 +175,7 @@ A floating bubble at the bottom-right provides **experiment feedback** and **pro
 
 ### Versioning & Tags
 
-Current version: `v1.0.1`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`.
+Current version: `v1.0.2`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`.
 
 ### License
 

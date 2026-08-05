@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.0.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.0.2',
+    date: '2026-08',
+    zh: [
+      '欧姆定律加入滑动变阻器：拖动滑片即可改变电流与元件两端电压，更贴近教材的伏安法测电阻实验',
+      '修复欧姆定律中小灯泡与导线的连接，电路图显示更准确',
+    ],
+    en: [
+      'Ohm\'s law now includes a rheostat: drag the wiper to change current and the voltage across the element, matching the textbook voltmeter-ammeter method',
+      'Fixed the bulb-to-wire connection in Ohm\'s law so the circuit diagram renders accurately',
+    ],
+  },
   {
     version: '1.0.1',
     date: '2026-08',
