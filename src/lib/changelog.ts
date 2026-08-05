@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.0.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.0.1',
+    date: '2026-08',
+    zh: [
+      '优化触屏与点击操作：开关、按钮、滑块都更容易点中和拖动',
+      '家庭电路的开关、灯泡等元件在平板上操作更跟手',
+      '修正若干交互细节，让课堂演示与个人操作更顺滑',
+    ],
+    en: [
+      'Improved touch & tap experience: switches, buttons and sliders are easier to tap and drag',
+      'Household-circuit components (switches, bulbs) respond better on tablets',
+      'Refined interaction details for smoother classroom demo and personal use',
+    ],
+  },
   {
     version: '1.0.0',
     date: '2026-08',
