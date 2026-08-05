@@ -97,6 +97,42 @@ const copy = {
     concludeQ3_90: '90°',
     concludeQ3_180: '180°',
     concludeQ3_45: '45°',
+    // 证明推理引导（乱序步骤，学生按正确逻辑顺序点击）
+    proofTitle: '证明推理：试试按正确逻辑顺序排列步骤',
+    proofHint: '按逻辑顺序依次点击步骤（每步只能点一次）。排列完成后点「验证」。',
+    proofVerify: '验证',
+    proofReset: '重排',
+    proofCorrect: '✓ 正确！推理步骤逻辑严密，你已经掌握了证明思路。',
+    proofWrong: '推理顺序还有误，再想想：哪一步应该在前面？',
+    proofChord: {
+      title: '证明垂径定理：垂直于弦的直径平分弦',
+      steps: [
+        '连接 OA、OB（都是半径，OA = OB）',
+        'OE ⊥ AB，所以 ∠OEA = ∠OEB = 90°',
+        '在 Rt△OEA 和 Rt△OEB 中，OA = OB，OE 公共',
+        '由 HL 得 △OEA ≌ △OEB',
+        '对应边相等：AE = EB，即直径平分弦',
+      ],
+    },
+    proofInscribed: {
+      title: '证明圆周角定理：同弧所对的圆周角相等',
+      steps: [
+        '设 ∠BPC 与 ∠BQC 都对着弧 BC',
+        '同弧 BC 所对的圆心角 ∠BOC 相等',
+        '圆周角等于同弧所对圆心角的一半',
+        '∠BPC = ½∠BOC，∠BQC = ½∠BOC',
+        '所以 ∠BPC = ∠BQC',
+      ],
+    },
+    proofThales: {
+      title: '证明直径对直角：直径所对的圆周角是 90°',
+      steps: [
+        'AB 是直径，∠AOB = 180°（平角）',
+        'C 是半圆上一点，∠ACB 对着弧 AB（即半圆）',
+        '圆周角等于同弧所对圆心角的一半',
+        '∠ACB = ½∠AOB = ½ × 180° = 90°',
+      ],
+    },
   },
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
@@ -170,6 +206,42 @@ const copy = {
     concludeQ3_90: '90°',
     concludeQ3_180: '180°',
     concludeQ3_45: '45°',
+    // Proof reasoning guide (scrambled steps; tap in logical order)
+    proofTitle: 'Proof reasoning: order the steps logically',
+    proofHint: 'Tap the steps in logical order (each once). Then tap Verify.',
+    proofVerify: 'Verify',
+    proofReset: 'Reset',
+    proofCorrect: '✓ Correct! The steps follow rigorous logic — you understand the proof idea.',
+    proofWrong: 'The order is still off. Think again: which step comes first?',
+    proofChord: {
+      title: 'Prove: a diameter perpendicular to a chord bisects the chord',
+      steps: [
+        'Connect OA, OB (both radii, so OA = OB)',
+        'OE ⊥ AB, so ∠OEA = ∠OEB = 90°',
+        'In Rt△OEA and Rt△OEB, OA = OB, OE is common',
+        'By HL, △OEA ≅ △OEB',
+        'Corresponding sides equal: AE = EB, so the diameter bisects the chord',
+      ],
+    },
+    proofInscribed: {
+      title: 'Prove: inscribed angles subtending the same arc are equal',
+      steps: [
+        '∠BPC and ∠BQC both subtend arc BC',
+        'The central angle ∠BOC subtending arc BC is the same',
+        'An inscribed angle equals half the central angle of the same arc',
+        '∠BPC = ½∠BOC, ∠BQC = ½∠BOC',
+        'Therefore ∠BPC = ∠BQC',
+      ],
+    },
+    proofThales: {
+      title: 'Prove: an angle inscribed in a semicircle is 90°',
+      steps: [
+        'AB is a diameter, so ∠AOB = 180° (straight angle)',
+        'C is on the semicircle, so ∠ACB subtends arc AB (the semicircle)',
+        'An inscribed angle equals half the central angle of the same arc',
+        '∠ACB = ½∠AOB = ½ × 180° = 90°',
+      ],
+    },
   },
 };
 
@@ -194,6 +266,9 @@ export default function Circle() {
   const [conclude2, setConclude2] = useState<string | null>(null);
   const [conclude3, setConclude3] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  // 证明推理：乱序步骤 + 用户点击顺序 + 验证状态
+  const [proofOrder, setProofOrder] = useState<number[]>([]);
+  const [proofChecked, setProofChecked] = useState<'correct' | 'wrong' | null>(null);
 
   // 探索模式
   const [circleMode, setCircleMode] = useState<CircleMode>('chord');
@@ -211,6 +286,8 @@ export default function Circle() {
     setConclude2(null);
     setConclude3(null);
     setShowFeedback(false);
+    setProofOrder([]);
+    setProofChecked(null);
     setCircleMode('chord');
     setActiveCard(0);
   }
@@ -532,6 +609,73 @@ export default function Circle() {
                   ))}
                 </ul>
               </div>
+
+              {/* 证明推理引导：按正确逻辑顺序排列步骤 */}
+              {circleMode && (
+                <div className="border border-[var(--border)] p-3 space-y-2">
+                  <h4 className="text-[11px] font-bold tracking-widest text-[var(--fg)] mono-font uppercase">
+                    // {c.proofTitle}
+                  </h4>
+                  <p className="text-xs text-[var(--muted)] serif-font italic">{c.proofHint}</p>
+                  <p className="text-sm font-semibold serif-font text-[var(--fg)]">
+                    {circleMode === 'chord' ? c.proofChord.title : circleMode === 'inscribed' ? c.proofInscribed.title : c.proofThales.title}
+                  </p>
+                  <div className="space-y-1.5">
+                    {(() => {
+                      const steps = circleMode === 'chord' ? c.proofChord.steps : circleMode === 'inscribed' ? c.proofInscribed.steps : c.proofThales.steps;
+                      // 未点击步骤（乱序展示）
+                      const remaining = steps.map((_, i) => i).filter((i) => !proofOrder.includes(i));
+                      // 打乱剩余步骤顺序
+                      const shuffled = [...remaining].sort(() => Math.random() - 0.5);
+                      return (
+                        <div className="space-y-1.5">
+                          {/* 已选步骤（按顺序显示） */}
+                          {proofOrder.map((idx, pos) => (
+                            <p key={pos} className="text-xs serif-font text-[var(--fg)] pl-2 border-l-2 border-[var(--fg)]">
+                              {pos + 1}. {steps[idx]}
+                            </p>
+                          ))}
+                          {/* 剩余乱序步骤 */}
+                          {shuffled.map((idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setProofOrder((prev) => [...prev, idx])}
+                              className="block w-full text-left text-xs serif-font px-2 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                            >
+                              {steps[idx]}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {proofOrder.length === (circleMode === 'chord' ? c.proofChord.steps : circleMode === 'inscribed' ? c.proofInscribed.steps : c.proofThales.steps).length && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const steps = circleMode === 'chord' ? c.proofChord.steps : circleMode === 'inscribed' ? c.proofInscribed.steps : c.proofThales.steps;
+                          const correct = steps.length && proofOrder.every((idx, pos) => idx === pos);
+                          setProofChecked(correct ? 'correct' : 'wrong');
+                        }}
+                        className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                      >
+                        {c.proofVerify}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setProofOrder([]); setProofChecked(null); }}
+                        className="text-xs mono-font px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                      >
+                        {c.proofReset}
+                      </button>
+                    </div>
+                  )}
+                  {proofChecked === 'correct' && <p className="text-xs text-[var(--fg)] serif-font">{c.proofCorrect}</p>}
+                  {proofChecked === 'wrong' && <p className="text-xs text-[var(--error)] serif-font">{c.proofWrong}</p>}
+                </div>
+              )}
             </div>
           )}
         </div>
