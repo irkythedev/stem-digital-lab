@@ -17,7 +17,7 @@ import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
-import { Bulb } from '../../components/lab/circuit/CircuitParts';
+import { Bulb, Rheostat } from '../../components/lab/circuit/CircuitParts';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
 
@@ -32,18 +32,19 @@ type ElementType = 'resistor' | 'bulb';
 /** 灯泡模型：钨丝电阻随电压（温度）升高，R_eff = R₀ + γ·U */
 const BULB_GAMMA = 0.4; // Ω/V
 
-/** 采样 I-U 曲线：U ∈ [0, 12]；定值电阻 I=U/R，灯泡 I=U/(R+γU) */
-function sampleOhm(r: number, element: ElementType): [number, number][] {
+/** 采样 I-U 曲线：U ∈ [0, 12]；定值电阻 I=U/(R+Rp)，灯泡 I=U/(R+γU+Rp) */
+function sampleOhm(r: number, element: ElementType, rp = 0): [number, number][] {
   const pts: [number, number][] = [];
   for (let u = 0; u <= 12.0001; u += 0.1) {
-    pts.push([u, element === 'bulb' ? u / (r + BULB_GAMMA * u) : u / r]);
+    pts.push([u, element === 'bulb' ? u / (r + BULB_GAMMA * u + rp) : u / (r + rp)]);
   }
   return pts;
 }
 
-/** 电路读数：给定 U、R、元件类型，I（A） */
-function currentOf(u: number, r: number, element: ElementType): number {
-  return element === 'bulb' ? u / (r + BULB_GAMMA * u) : u / r;
+/** 电路读数：给定电源电压 U、元件 R、元件类型、串联变阻器 Rp，I（A） */
+function currentOf(u: number, r: number, element: ElementType, rp = 0): number {
+  if (element === 'bulb') return u / (r + BULB_GAMMA * u + rp);
+  return u / (r + rp);
 }
 
 const copy = {
@@ -281,6 +282,7 @@ export default function Ohm() {
   const [u, setU] = useState(6);
   const [r, setR] = useState(TARGET_R);
   const [element, setElement] = useState<ElementType>('resistor');
+  const [rp, setRp] = useState(15); // 滑动变阻器阻值（串联保护+调压，伏安法标准电路）
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
@@ -302,22 +304,24 @@ export default function Ohm() {
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predShape !== null;
 
-  const i = currentOf(u, r, element);
+  const i = currentOf(u, r, element, rp);
   /** 有效电流：开关断开时为 0 */
   const effectiveI = switchOn ? i : 0;
+  /** 元件两端电压（串联变阻器分压后，元件两端电压 = I·R） */
+  const elemVoltage = switchOn ? i * r : 0;
 
   const currentCurve: CoordCurve = useMemo(
     () => ({
       id: 'main',
-      points: sampleOhm(r, element),
+      points: sampleOhm(r, element, rp),
       label: element === 'bulb' ? `灯泡 R₀=${r}Ω` : `R = ${r}Ω`,
     }),
-    [r, element],
+    [r, element, rp],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
     id: `pin${p.id}`,
-    points: sampleOhm(p.r, p.element),
+    points: sampleOhm(p.r, p.element, 0),
     dashed: true,
     label: p.element === 'bulb' ? `灯泡 R₀=${p.r}Ω` : `R = ${p.r}Ω`,
   }));
@@ -327,7 +331,8 @@ export default function Ohm() {
   /** 可测量目标图：导线（电流归属）+ 元件（电压归属）——自由放置判定用 */
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: 40, y1: 60, x2: 95, y2: 60, current: 'i0' },
-    { id: 'dry-mid', x1: 145, y1: 60, x2: 230, y2: 60, current: 'i0' },
+    { id: 'dry-mid', x1: 145, y1: 60, x2: 173, y2: 60, current: 'i0' },
+    { id: 'dry-rheo', x1: 207, y1: 60, x2: 230, y2: 60, current: 'i0' },
     { id: 'dry-right', x1: 270, y1: 60, x2: 270, y2: 140, current: 'i0' },
     { id: 'dry-bottom', x1: 270, y1: 140, x2: 40, y2: 140, current: 'i0' },
     { id: 'dry-batt-top', x1: 40, y1: 60, x2: 40, y2: 70, current: 'i0' },
@@ -335,7 +340,7 @@ export default function Ohm() {
   ];
   const comps: MeasurableComp[] = [
     { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'v-batt' },
-    { id: 'element', kind: 'bulb', sense1: { x: 230, y: 60 }, sense2: { x: 270, y: 60 }, land: { x: 250, y: 28 }, voltage: 'v-elem', body: { cx: 250, cy: 60, r: 16 } },
+    { id: 'element', kind: 'bulb', sense1: { x: 230, y: 60 }, sense2: { x: 270, y: 60 }, land: { x: 250, y: 28 }, voltage: 'v-elem', body: { cx: 250, cy: 60, r: 20 } },
   ];
 
   /** 表盘数值：探针当前吸附目标的物理量；悬空为 null（指针回零） */
@@ -345,7 +350,7 @@ export default function Ohm() {
     // 元件两端电压断路时为 0（无电流无压降）；电池两端始终为 U
     const c = comps.find((x) => x.id === target.id);
     if (!c) return null;
-    return c.voltage === 'v-elem' ? (switchOn ? u : 0) : u;
+    return c.voltage === 'v-elem' ? elemVoltage : u;
   };
 
   /** 表盘量程：电流表 0.6A / 3A 自动选档（真实学生表双量程），电压表 0-15V */
@@ -365,6 +370,7 @@ export default function Ohm() {
   const reset = () => {
     setU(6);
     setR(TARGET_R);
+    setRp(15);
     setMeasureMode(false);
     setRRevealed(false);
     setMeterA({ id: 'dry-mid', x: 180, y: 60 });
@@ -378,6 +384,7 @@ export default function Ohm() {
     setRevealed(false);
     setU(6);
     setR(TARGET_R);
+    setRp(15);
     setElement('resistor');
     setMeasureMode(false);
     setRRevealed(false);
@@ -547,9 +554,10 @@ export default function Ohm() {
                 {/* 左侧竖线（电池支路）：正极段(60→70) 与负极段(82→140)，电池符号填补 70-82 间隙 */}
                 <line x1="40" y1="60" x2="40" y2="70" />
                 <line x1="40" y1="82" x2="40" y2="140" />
-                {/* 上导线（电池正极 → 开关S 左触点 95 → 右触点 145 → 元件）导线始终可见 */}
+                {/* 上导线（电池正极 → 开关S 左触点 95 → 右触点 145 → 滑动变阻器 → 元件）导线始终可见 */}
                 <line x1="40" y1="60" x2="95" y2="60" />
-                <line x1="145" y1="60" x2="230" y2="60" />
+                <line x1="145" y1="60" x2="173" y2="60" />
+                <line x1="207" y1="60" x2="230" y2="60" />
                 {/* 元件右端到下横线 + 回负极：导线始终可见，开关只断电流 */}
                 <line x1="270" y1="60" x2="270" y2="140" />
                 <line x1="270" y1="140" x2="40" y2="140" />
@@ -615,15 +623,17 @@ export default function Ohm() {
                   ))}
                 </g>
               )}
+              {/* 滑动变阻器：串联在开关与元件之间（伏安法标准电路，调压+保护） */}
+              <Rheostat x={190} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
               {/* 元件：定值电阻（矩形，发热随电流）或小灯泡（发光随电流） */}
               {element === 'bulb' ? (
                 <Bulb
                   cx={250}
                   cy={60}
-                  r={14}
+                  r={20}
                   glow={Math.min(1, effectiveI / 1.2)}
                   label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
-                  labelY={84}
+                  labelY={88}
                 />
               ) : (
                 <rect
@@ -821,6 +831,7 @@ export default function Ohm() {
             )}
 
             <ParamSlider label="U" value={u} min={0} max={12} step={0.5} onChange={setU} format={(v) => `${v.toFixed(1)}V`} />
+            <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
             <ParamSlider
               label="R"
               value={r}
