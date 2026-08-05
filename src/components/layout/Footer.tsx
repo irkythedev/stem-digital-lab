@@ -15,6 +15,7 @@ export default function Footer() {
   const { t } = useApp();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showWorks, setShowWorks] = useState(false);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
 
@@ -41,6 +42,35 @@ export default function Footer() {
           /
         </span>
         <span>{t.authorRole}</span>
+        {/* 其他作品：收起显示数量，点击展开 */}
+        {t.works.length > 0 && (
+          <span className="relative">
+            <button
+              type="button"
+              onClick={() => setShowWorks((v) => !v)}
+              aria-expanded={showWorks}
+              className="underline hover:text-[var(--fg)] transition-colors"
+            >
+              {t.moreWorks} ({t.works.length})
+            </button>
+            {showWorks && (
+              <span className="absolute left-0 bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+                {t.works.map((w) => (
+                  <a
+                    key={w.url}
+                    href={w.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors whitespace-nowrap"
+                  >
+                    <img src={w.icon} alt="" width="14" height="14" className="flex-shrink-0" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                    <span className="normal-case tracking-normal">{w.name}</span>
+                  </a>
+                ))}
+              </span>
+            )}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col items-center gap-1.5 text-center">
