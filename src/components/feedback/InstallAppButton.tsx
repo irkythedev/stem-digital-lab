@@ -18,6 +18,7 @@ export default function InstallAppButton() {
   const { t } = useApp();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);
 
   useEffect(() => {
@@ -25,14 +26,21 @@ export default function InstallAppButton() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
+    const onInstalled = () => setDeferredPrompt(null);
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onInstalled);
 
-    // 检测 iOS
+    // 检测 iOS + 是否已作为独立应用运行（已安装 PWA 则不再引导）
     const ua = window.navigator.userAgent;
     const iOS = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: boolean }).MSStream;
     setIsIOS(iOS);
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+    setIsStandalone(standalone);
 
-    return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -44,6 +52,9 @@ export default function InstallAppButton() {
       setShowIosHint(true);
     }
   };
+
+  // 已作为独立 PWA 运行：不显示任何安装入口
+  if (isStandalone) return null;
 
   // 安卓可安装：显示安装按钮
   if (deferredPrompt) {
