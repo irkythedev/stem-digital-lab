@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.4.1';
+export const APP_VERSION = '1.4.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,18 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.4.2',
+    date: '2026-08',
+    zh: [
+      '电解水装置改为标准双管电解器：两支竖直玻璃管底部连通、电极插入水中、直流电源与导线在电解器外部上方，不再浸入水中',
+    ],
+    en: [
+      'Electrolysis now uses a standard two-tube cell: vertical tubes connected at the base, electrodes in the water, DC supply and wires placed above/outside the cell (no longer submerged)',
+    ],
+  },
+  {
     version: '1.4.1',
+
     date: '2026-08',
     zh: [
       '电解水改为标准 U 形玻璃管电解器：左右管底部连通、电极接直流电源、气体体积 H₂:O₂=2:1 清晰呈现',
