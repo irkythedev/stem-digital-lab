@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#111210"/>
+  <!-- 深色圆角方形底（现代 app 图标风格） -->
+  <rect width="512" height="512" rx="112" fill="#111210"/>
   <!-- 三角（数学）上中 -->
-  <path d="M256 128 L330 300 L182 300 Z" fill="none" stroke="#f7f7f5" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M256 150 L330 306 L182 306 Z" fill="none" stroke="#f7f7f5" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- 方框（化学）左下 -->
-  <rect x="128" y="316" width="110" height="110" fill="none" stroke="#f7f7f5" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="140" y="316" width="116" height="116" rx="8" fill="none" stroke="#f7f7f5" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
   <!-- 圆（物理）右下 -->
-  <circle cx="330" cy="371" r="55" fill="none" stroke="#f7f7f5" stroke-width="22"/>
+  <circle cx="332" cy="374" r="58" fill="none" stroke="#f7f7f5" stroke-width="30"/>
 </svg>
