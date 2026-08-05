@@ -209,7 +209,7 @@ export function GrabIcon({ className = '' }: LabIconProps) {
   );
 }
 
-/** 浮力：弹簧测力计 + 石块浸入液体 */
+/** 浮力：弹簧测力计 + 吊线 + 石块浸入水中（活动9.8 装置） */
 export function BuoyancyIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -225,15 +225,16 @@ export function BuoyancyIcon({ className = '' }: LabIconProps) {
       <rect x="9" y="2" width="6" height="10" rx="1" />
       {/* 弹簧 */}
       <path d="M12 12 v4 M10 16 q2 2 4 0" />
-      {/* 石块 */}
-      <rect x="10" y="19" width="4" height="3" />
-      {/* 液体 */}
-      <path d="M3 21 h18" />
+      {/* 吊线 + 石块 */}
+      <line x1="12" y1="19" x2="12" y2="20.5" />
+      <rect x="10" y="20.5" width="4" height="2" />
+      {/* 水面（石块浸入） */}
+      <path d="M3 21.5 h18" />
     </svg>
   );
 }
 
-/** 杠杆：支点 + 平衡杆 + 两端砝码 */
+/** 杠杆：水平平衡杆 + 中点三角支点 + 两端砝码用线悬挂在下方（探究杠杆平衡条件装置） */
 export function LeverIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -246,19 +247,23 @@ export function LeverIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 杠杆臂 */}
-      <line x1="3" y1="8" x2="21" y2="8" />
-      {/* 支点 */}
-      <polygon points="12,8 9,13 15,13" />
-      {/* 左砝码 */}
-      <rect x="5" y="8" width="4" height="4" />
-      {/* 右砝码 */}
-      <rect x="15" y="8" width="4" height="6" />
+      {/* 杠杆臂（带刻度的窄板） */}
+      <rect x="3" y="7" width="18" height="2" rx="1" />
+      <line x1="6" y1="7" x2="6" y2="8" />
+      <line x1="18" y1="7" x2="18" y2="8" />
+      {/* 支点：三角顶住杆中点 */}
+      <polygon points="12,9 10,13.5 14,13.5" />
+      {/* 左吊线 + 砝码（悬挂在杆下方） */}
+      <line x1="6" y1="9" x2="6" y2="12" />
+      <rect x="4.5" y="12" width="3" height="3.5" />
+      {/* 右吊线 + 砝码（悬挂在杆下方，对称平衡） */}
+      <line x1="18" y1="9" x2="18" y2="12" />
+      <rect x="16.5" y="12" width="3" height="3.5" />
     </svg>
   );
 }
 
-/** 压强：小桌压海绵 */
+/** 压强：钉子做腿的小桌压海绵（活动9.1 装置） */
 export function PressureIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -268,22 +273,23 @@ export function PressureIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 重物 */}
-      <rect x="8" y="3" width="8" height="6" />
-      {/* 桌板 */}
-      <line x1="5" y1="9" x2="19" y2="9" />
-      {/* 桌腿 */}
-      <line x1="7" y1="9" x2="7" y2="15" />
-      <line x1="17" y1="9" x2="17" y2="15" />
-      {/* 海绵（凹陷） */}
-      <path d="M3 18 q5 -4 9 -2 q5 -2 9 2 v2 h-18 Z" fill="currentColor" opacity="0.2" />
+      {/* 重物（放在桌面上） */}
+      <rect x="8" y="2" width="8" height="4" />
+      {/* 桌面（小桌板） */}
+      <line x1="5" y1="6" x2="19" y2="6" />
+      {/* 钉子腿（细长，尖端触海绵） */}
+      <line x1="7" y1="6" x2="7" y2="13" />
+      <line x1="17" y1="6" x2="17" y2="13" />
+      {/* 海绵（受压凹陷） */}
+      <path d="M3 17 q5 -4 9 -2 q5 -2 9 2 v3 h-18 Z" fill="currentColor" opacity="0.2" />
     </svg>
   );
 }
 
-/** 滑轮：定滑轮 + 绳 + 重物 */
+/** 滑轮：支架 + 定滑轮 + 绳绕过轮、一端挂重物 */
 export function PulleyIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -293,17 +299,20 @@ export function PulleyIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 支架 */}
-      <line x1="5" y1="4" x2="19" y2="4" />
-      <line x1="12" y1="4" x2="12" y2="7" />
-      {/* 定滑轮 */}
-      <circle cx="12" cy="10" r="3" />
-      <circle cx="12" cy="10" r="1" />
-      {/* 绳 + 重物 */}
-      <line x1="12" y1="13" x2="12" y2="18" />
-      <rect x="10" y="18" width="4" height="3" />
+      {/* 支架横梁 + 竖杆 */}
+      <line x1="5" y1="3" x2="19" y2="3" />
+      <line x1="12" y1="3" x2="12" y2="6" />
+      {/* 定滑轮（轮 + 轴） */}
+      <circle cx="12" cy="9.5" r="3" />
+      <circle cx="12" cy="9.5" r="0.8" />
+      {/* 绳：从轮上绕过，两端下垂（示意绕绳） */}
+      <path d="M9.3 8 q0 3 2.7 3 q2.7 0 2.7 -3" />
+      {/* 重物挂在绳的一端 */}
+      <line x1="12" y1="12.5" x2="12" y2="17" />
+      <rect x="10" y="17" width="4" height="3" />
     </svg>
   );
 }
