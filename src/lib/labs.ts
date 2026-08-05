@@ -15,7 +15,7 @@
 import type { ComponentType } from 'react';
 import type { SubjectId } from './subjects';
 import type { LabIconProps } from '../components/ui/LabIcon';
-import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, LensIcon, CircleIcon, MassIcon } from '../components/ui/LabIcon';
+import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon } from '../components/ui/LabIcon';
 import Quadratic from '../labs/math/Quadratic';
 import Inverse from '../labs/math/Inverse';
 import Linear from '../labs/math/Linear';
@@ -25,6 +25,10 @@ import Neutralization from '../labs/chemistry/Neutralization';
 import Lens from '../labs/physics/Lens';
 import Circle from '../labs/math/Circle';
 import MassConservation from '../labs/chemistry/MassConservation';
+import Buoyancy from '../labs/physics/Buoyancy';
+import Lever from '../labs/physics/Lever';
+import Pressure from '../labs/physics/Pressure';
+import Pulley from '../labs/physics/Pulley';
 
 export interface LabMeta {
   /** 路由 id，如 'quadratic' → /lab/quadratic */
@@ -110,6 +114,38 @@ export const labs: LabMeta[] = [
     description: { zh: '滴定实验观察 pH 突跃与指示剂颜色变化', en: 'Titrate to see the pH jump and indicator color shift' },
     icon: NeutralizationIcon,
     component: Neutralization,
+  },
+  {
+    id: 'buoyancy',
+    subjectId: 'physics',
+    name: { zh: '浮力', en: 'Buoyancy' },
+    description: { zh: '探究阿基米德原理：浮力与排开液体体积、液体密度的关系', en: 'Explore Archimedes\' principle: buoyancy vs displaced volume and liquid density' },
+    icon: BuoyancyIcon,
+    component: Buoyancy,
+  },
+  {
+    id: 'lever',
+    subjectId: 'physics',
+    name: { zh: '杠杆', en: 'Levers' },
+    description: { zh: '探究杠杆的平衡条件 F₁l₁=F₂l₂，认识省力/费力/等臂杠杆', en: 'Explore the lever balance condition F₁l₁=F₂l₂ and effort-saving/requiring levers' },
+    icon: LeverIcon,
+    component: Lever,
+  },
+  {
+    id: 'pressure',
+    subjectId: 'physics',
+    name: { zh: '压强', en: 'Pressure' },
+    description: { zh: '探究压强 p=F/S 与压力、受力面积的关系', en: 'Explore pressure p=F/S vs force and contact area' },
+    icon: PressureIcon,
+    component: Pressure,
+  },
+  {
+    id: 'pulley',
+    subjectId: 'physics',
+    name: { zh: '滑轮', en: 'Pulleys' },
+    description: { zh: '探究定滑轮与动滑轮的特点', en: 'Explore fixed and movable pulleys' },
+    icon: PulleyIcon,
+    component: Pulley,
   },
 ];
 

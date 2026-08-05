@@ -33,8 +33,8 @@ function describe(_name: string, fn: () => void) {
 /* ── Lab registration ── */
 
 describe('Lab registration', () => {
-  test('has 9 registered labs', () => {
-    assert.equal(labs.length, 9);
+  test('has 13 registered labs', () => {
+    assert.equal(labs.length, 13);
   });
 
   test('every lab has required fields', () => {
@@ -59,7 +59,7 @@ describe('Lab registration', () => {
 
   test('labsForSubject returns correct counts', () => {
     assert.equal(labsForSubject('math').length, 4);
-    assert.equal(labsForSubject('physics').length, 3);
+    assert.equal(labsForSubject('physics').length, 7);
     assert.equal(labsForSubject('chemistry').length, 2);
   });
 

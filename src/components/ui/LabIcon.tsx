@@ -208,3 +208,102 @@ export function GrabIcon({ className = '' }: LabIconProps) {
     </svg>
   );
 }
+
+/** 浮力：弹簧测力计 + 石块浸入液体 */
+export function BuoyancyIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      {/* 弹簧测力计壳 */}
+      <rect x="9" y="2" width="6" height="10" rx="1" />
+      {/* 弹簧 */}
+      <path d="M12 12 v4 M10 16 q2 2 4 0" />
+      {/* 石块 */}
+      <rect x="10" y="19" width="4" height="3" />
+      {/* 液体 */}
+      <path d="M3 21 h18" />
+    </svg>
+  );
+}
+
+/** 杠杆：支点 + 平衡杆 + 两端砝码 */
+export function LeverIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 杠杆臂 */}
+      <line x1="3" y1="8" x2="21" y2="8" />
+      {/* 支点 */}
+      <polygon points="12,8 9,13 15,13" />
+      {/* 左砝码 */}
+      <rect x="5" y="8" width="4" height="4" />
+      {/* 右砝码 */}
+      <rect x="15" y="8" width="4" height="6" />
+    </svg>
+  );
+}
+
+/** 压强：小桌压海绵 */
+export function PressureIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      {/* 重物 */}
+      <rect x="8" y="3" width="8" height="6" />
+      {/* 桌板 */}
+      <line x1="5" y1="9" x2="19" y2="9" />
+      {/* 桌腿 */}
+      <line x1="7" y1="9" x2="7" y2="15" />
+      <line x1="17" y1="9" x2="17" y2="15" />
+      {/* 海绵（凹陷） */}
+      <path d="M3 18 q5 -4 9 -2 q5 -2 9 2 v2 h-18 Z" fill="currentColor" opacity="0.2" />
+    </svg>
+  );
+}
+
+/** 滑轮：定滑轮 + 绳 + 重物 */
+export function PulleyIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      {/* 支架 */}
+      <line x1="5" y1="4" x2="19" y2="4" />
+      <line x1="12" y1="4" x2="12" y2="7" />
+      {/* 定滑轮 */}
+      <circle cx="12" cy="10" r="3" />
+      <circle cx="12" cy="10" r="1" />
+      {/* 绳 + 重物 */}
+      <line x1="12" y1="13" x2="12" y2="18" />
+      <rect x="10" y="18" width="4" height="3" />
+    </svg>
+  );
+}
