@@ -69,7 +69,7 @@ export default function Header() {
           onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           aria-label="Switch language"
           title={lang === 'zh' ? 'EN' : '中文'}
-          className="transition-colors text-[var(--fg)] hover:opacity-70"
+          className="px-2 py-2 transition-colors text-[var(--fg)] hover:opacity-70"
         >
           {lang === 'zh' ? '中文' : 'EN'}
         </button>
@@ -81,7 +81,7 @@ export default function Header() {
           onClick={cycleTheme}
           title={t[themeMode]}
           aria-label={t[themeMode]}
-          className="flex items-center justify-center text-[var(--fg)] transition-colors hover:opacity-70"
+          className="flex items-center justify-center px-2 py-2 text-[var(--fg)] transition-colors hover:opacity-70"
         >
           <ThemeIcon className="w-3.5 h-3.5" />
         </button>
@@ -91,7 +91,7 @@ export default function Header() {
         {/* Guide link */}
         <Link
           to="/guide"
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="px-1 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           {t.guide}
         </Link>
