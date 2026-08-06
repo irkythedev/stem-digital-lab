@@ -50,7 +50,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}'],
-        globIgnores: ['**/version.json'],
+        globIgnores: ['**/version.json', '**/audio/*.mp3'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
       },

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.8.0',
+    date: '2026-08',
+    zh: [
+      '元素周期表新增「中考跟读」：前 20 号元素、金属活动性顺序、常见元素三大必背清单，可调朗读次数与跟读间隔，逐元素连读并高亮对应格子',
+      '元素详情相对原子质量升级为 IUPAC 标准原子量（含不确定度）；无稳定同位素的元素明确标注质量数',
+      '原子结构示意图可点击/悬停电子层，查看每层电子数',
+      '元素读音改为内置语音（118 个元素离线发音，不再依赖设备语音包）；修正个别元素数据与类别',
+      '周期表页与实验入口支持一键分享，界面细节优化',
+    ],
+    en: [
+      'Periodic Table adds a "Recite" mode: three must-memorize lists (first 20 elements, activity series, common elements) with adjustable repeats and gaps, sequential audio with live cell highlighting',
+      'Atomic masses upgraded to IUPAC standard atomic weights (with uncertainty); elements without stable isotopes are clearly marked with mass numbers',
+      'Tap or hover a shell in the Bohr diagram to see its electron count',
+      'Element pronunciation now uses built-in offline audio for all 118 elements; some data and category fixes',
+      'Share buttons added to the periodic table and lab entries; UI polish',
+    ],
+  },
   {
     version: '1.7.0',
     date: '2026-08',

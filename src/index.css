@@ -66,6 +66,14 @@ body {
 main button {
   min-height: 40px;
 }
+/* 中考跟读面板内按钮为紧凑小按钮，不受全局 40px 最小高度影响 */
+.recite-panel button {
+  min-height: 0;
+}
+/* 元素详情卡 tab 切换栏按钮为紧凑小按钮，不受全局 40px 最小高度影响 */
+.dialog-tabs button {
+  min-height: 0;
+}
 /* 开关 SVG 点击态反馈（按下时微高亮） */
 svg g[role="button"]:active circle[fill="transparent"] {
   opacity: 0.4;
@@ -189,4 +197,18 @@ input[type="range"]::-moz-range-thumb {
 }
 @media (prefers-reduced-motion: reduce) {
   .electron-layer { animation: none; }
+}
+
+/* 元素周期表 · 中考跟读：当前元素格子呼吸高亮（3.5s 慢呼吸，与项目动画节奏一致） */
+@keyframes recite-breathe {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(199, 29, 35, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(199, 29, 35, 0.15); }
+}
+.recite-active {
+  z-index: 2;
+  border-color: var(--fg) !important;
+  animation: recite-breathe 3.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .recite-active { animation: none; box-shadow: 0 0 0 2px rgba(199, 29, 35, 0.45); }
 }
