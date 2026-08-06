@@ -20,6 +20,7 @@ export function ParabolaIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M2 21 C 7 4, 17 4, 22 21" />
@@ -37,6 +38,7 @@ export function HyperbolaIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M20 4 C 13 10, 13 14, 20 20" />
@@ -55,6 +57,7 @@ export function OhmIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M3 12 H7" />
@@ -74,6 +77,7 @@ export function NeutralizationIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       {/* 锥形瓶轮廓 */}
@@ -81,6 +85,8 @@ export function NeutralizationIcon({ className = '' }: LabIconProps) {
       <path d="M9 3 V10 L5 19 Q5 21 7 21 H17 Q19 21 19 19 L15 10 V3" />
       {/* 液面 */}
       <path d="M9.6 11 H14.4 L17 19 Q17 20 16 20 H8 Q7 20 7 19 Z" fill="currentColor" opacity="0.25" />
+      {/* 下落中的小水滴（呼应滴定） */}
+      <circle cx="12" cy="2.2" r="0.9" fill="currentColor" opacity="0.85" />
     </svg>
   );
 }
@@ -95,6 +101,7 @@ export function LinearIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M3 20 L21 4" />
@@ -113,6 +120,7 @@ export function CircuitsIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M3 6 H7" />
@@ -138,6 +146,7 @@ export function LensIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <path d="M12 4 Q 18 12 12 20" />
@@ -156,6 +165,7 @@ export function CircleIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       <circle cx="12" cy="12" r="8" />
@@ -165,7 +175,7 @@ export function CircleIcon({ className = '' }: LabIconProps) {
   );
 }
 
-/** 质量守恒：天平符号 */
+/** 质量守恒：天平（支点三角 + 横梁 + 弧形托盘） */
 export function MassIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -175,14 +185,20 @@ export function MassIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      <line x1="12" y1="4" x2="12" y2="20" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="12" x2="4" y2="18" />
-      <line x1="20" y1="12" x2="20" y2="18" />
-      <line x1="2" y1="18" x2="6" y2="18" />
-      <line x1="18" y1="18" x2="22" y2="18" />
+      {/* 横梁 */}
+      <line x1="4" y1="9" x2="20" y2="9" />
+      {/* 悬挂线 + 弧形托盘（微微上开口的浅槽） */}
+      <line x1="6" y1="9" x2="6" y2="13" />
+      <path d="M3.5 13 Q6 15.5 8.5 13" />
+      <line x1="18" y1="9" x2="18" y2="13" />
+      <path d="M15.5 13 Q18 15.5 20.5 13" />
+      {/* 支点：三角底座 */}
+      <path d="M12 9 L10.5 13 L13.5 13 Z" />
+      {/* 底座横线 */}
+      <line x1="10" y1="13" x2="14" y2="13" />
     </svg>
   );
 }
@@ -219,6 +235,7 @@ export function BuoyancyIcon({ className = '' }: LabIconProps) {
       stroke="currentColor"
       strokeWidth="1.2"
       strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
       {/* 弹簧测力计壳 */}
@@ -330,19 +347,21 @@ export function ElectrolysisIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 电解器容器 */}
-      <path d="M4 20 h16 v-3 h-16 Z" />
-      {/* 左试管（负极，氢气多） */}
-      <path d="M7 17 v-6 a2 2 0 0 1 4 0 v6" />
-      {/* 右试管（正极，氧气少） */}
-      <path d="M13 17 v-3 a1.4 1.4 0 0 1 2.8 0 v3" />
-      {/* 两电极 */}
-      <line x1="9" y1="11" x2="9" y2="17" />
-      <line x1="14.4" y1="14" x2="14.4" y2="17" />
+      {/* 外部水槽（U 型杯，盛水容器） */}
+      <path d="M3 7 V18 Q3 20 5 20 H19 Q21 20 21 18 V7" />
+      {/* 两根等高试管（倒扣浸入水槽） */}
+      <path d="M7 6 V14 Q7 16 9 16 H11 Q13 16 13 14 V6" />
+      <path d="M15 6 V14 Q15 16 17 16 H19 Q21 16 21 14 V6" />
+      {/* 液面线：左低（氢气多，留白大）右高（氧气少） */}
+      <line x1="7" y1="12.5" x2="13" y2="12.5" />
+      <line x1="15" y1="15" x2="21" y2="15" />
+      {/* 两电极（伸入水中） */}
+      <line x1="10" y1="6" x2="10" y2="13" />
+      <line x1="18" y1="6" x2="18" y2="15.5" />
       {/* 气泡（负极多、正极少） */}
-      <circle cx="8" cy="9" r="0.8" />
-      <circle cx="10" cy="8" r="0.8" />
-      <circle cx="14.2" cy="12.5" r="0.7" />
+      <circle cx="9" cy="13" r="0.7" />
+      <circle cx="11" cy="13.5" r="0.7" />
+      <circle cx="18.5" cy="15" r="0.6" />
     </svg>
   );
 }
@@ -360,16 +379,41 @@ export function MetalIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 试管 */}
-      <path d="M8 3 v9 a4 4 0 0 0 8 0 V3" />
+      {/* 试管（细长圆底） */}
+      <path d="M8 3 v10 a4 4 0 0 0 8 0 V3" />
       <line x1="8" y1="4" x2="16" y2="4" />
-      {/* 金属丝（伸入溶液） */}
-      <line x1="12" y1="3" x2="12" y2="11" />
+      {/* 金属丝（微折线，伸入溶液） */}
+      <path d="M12 3 l-0.6 5 l1.2 1.5 l-0.4 2" />
       {/* 溶液液面 */}
       <line x1="8.6" y1="12" x2="15.4" y2="12" strokeDasharray="2 1.5" />
-      {/* 析出的金属（试管底部） */}
-      <circle cx="10" cy="16" r="1" fill="currentColor" opacity="0.3" />
-      <circle cx="13" cy="16.5" r="1" fill="currentColor" opacity="0.3" />
+      {/* 析出物（紧贴金属丝下半段，气泡/析出附着） */}
+      <circle cx="11.8" cy="14.5" r="1" fill="currentColor" opacity="0.3" />
+      <circle cx="12.6" cy="16" r="0.9" fill="currentColor" opacity="0.3" />
+    </svg>
+  );
+}
+
+/** 元素周期表：经典"城堡"轮廓（左上高起、中间凹陷、右下延伸）+ 简易分隔线 */
+export function PeriodicTableIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 城堡轮廓：上边从左上(3,4)起，中段凹陷(9,4→15,4)，下段延伸 */}
+      <path d="M3 4 H9 V8 H15 V4 H21 V21 H3 Z" />
+      {/* 周期内部分隔线 */}
+      <line x1="3" y1="9" x2="21" y2="9" />
+      <line x1="3" y1="14" x2="21" y2="14" />
+      <line x1="8" y1="4" x2="8" y2="21" />
+      <line x1="13" y1="4" x2="13" y2="21" />
+      <line x1="18" y1="4" x2="18" y2="21" />
     </svg>
   );
 }

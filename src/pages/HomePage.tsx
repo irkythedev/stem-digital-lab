@@ -14,6 +14,7 @@ import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import { labsForSubject } from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
+import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
 export default function HomePage() {
   const { t, lang } = useApp();
@@ -76,60 +77,62 @@ export default function HomePage() {
           return (
             <div
               key={subject.id}
-              className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full transition-all duration-400 ${
+              className={`w-full transition-all duration-400 ${
                 isActive
                   ? 'opacity-100 translate-y-0 pointer-events-auto'
                   : 'opacity-0 translate-y-2 pointer-events-none absolute inset-0'
               }`}
               aria-hidden={!isActive}
             >
-              {labs.map((lab) => {
-                const Icon = lab.icon;
-                return (
+              {/* 实验网格 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {labs.map((lab) => {
+                  const Icon = lab.icon;
+                  return (
+                    <Link
+                      key={lab.id}
+                      to={`/lab/${lab.id}`}
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                    >
+                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                        <Icon className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                          {lab.name[lang as 'zh' | 'en']}
+                        </span>
+                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          {lab.description[lang as 'zh' | 'en']}
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* 化学工具区：元素周期表（独立于实验，单独成组） */}
+              {subject.id === 'chemistry' && (
+                <div className="mt-6">
+                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
+                    // {lang === 'zh' ? '工具' : 'Tools'}
+                  </h3>
                   <Link
-                    key={lab.id}
-                    to={`/lab/${lab.id}`}
-                    className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                    to="/periodic-table"
+                    className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
                   >
                     <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                      <Icon className="w-7 h-7" />
+                      <PeriodicTableIcon className="w-7 h-7" />
                     </div>
                     <div className="min-w-0">
                       <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                        {lab.name[lang as 'zh' | 'en']}
+                        {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
                       </span>
                       <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
-                        {lab.description[lang as 'zh' | 'en']}
+                        {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
                       </span>
                     </div>
                   </Link>
-                );
-              })}
-              {/* 化学工具：元素周期表（非实验，置于实验列表末尾） */}
-              {subject.id === 'chemistry' && (
-                <Link
-                  to="/periodic-table"
-                  className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
-                >
-                  <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-7 h-7" aria-hidden="true">
-                      <rect x="3" y="3" width="18" height="18" />
-                      <line x1="3" y1="9" x2="21" y2="9" />
-                      <line x1="3" y1="15" x2="21" y2="15" />
-                      <line x1="8" y1="3" x2="8" y2="21" />
-                      <line x1="13" y1="3" x2="13" y2="21" />
-                      <line x1="18" y1="3" x2="18" y2="21" />
-                    </svg>
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                      {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
-                    </span>
-                    <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
-                      {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
-                    </span>
-                  </div>
-                </Link>
+                </div>
               )}
             </div>
           );

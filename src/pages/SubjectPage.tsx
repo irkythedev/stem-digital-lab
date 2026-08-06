@@ -13,6 +13,7 @@ import { labsForSubject } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import SubjectHeading from '../components/layout/SubjectHeading';
+import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
 export default function SubjectPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
@@ -59,15 +60,7 @@ export default function SubjectPage() {
             className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
           >
             <span className="flex items-center gap-3">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" aria-hidden="true">
-                {/* 简易周期表网格图标 */}
-                <rect x="3" y="3" width="18" height="18" />
-                <line x1="3" y1="9" x2="21" y2="9" />
-                <line x1="3" y1="15" x2="21" y2="15" />
-                <line x1="8" y1="3" x2="8" y2="21" />
-                <line x1="13" y1="3" x2="13" y2="21" />
-                <line x1="18" y1="3" x2="18" y2="21" />
-              </svg>
+              <PeriodicTableIcon className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
                 {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
               </span>
