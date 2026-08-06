@@ -10,7 +10,7 @@
  *
  * 教材依据：ch08「金属活动性顺序——铝、铜、银」
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
@@ -63,7 +63,7 @@ const copy = {
     tipsTitle: '考点速记',
     tips: [
       '金属活动性顺序（常见）：K Ca Na Mg Al Zn Fe Sn Pb (H) Cu Hg Ag Pt Au',
-      'Al > Cu：铝置换铜，Al + 2CuSO₄ → Al₂(SO₄)₃ + ...（铜从溶液中析出）',
+      'Al > Cu：铝置换铜，2Al + 3CuSO₄ → Al₂(SO₄)₃ + 3Cu（铜从溶液中析出）',
       'Cu > Ag：铜置换银，Cu + 2AgNO₃ → Cu(NO₃)₂ + 2Ag',
       '活泼金属 + 盐溶液 → 不活泼金属 + 新盐（置换反应）',
       '越靠前越活泼，越容易与酸/盐溶液反应',
@@ -148,6 +148,7 @@ export default function MetalActivity() {
   const [stage, setStage] = useState<Stage>('predict');
   const [react, setReact] = useState<ReactCard>('al-cuso4');
   const [done, setDone] = useState(false); // 是否已完成反应
+  const [progress, setProgress] = useState(0); // 反应进度 0→1（渐进动画）
   const [predict1, setPredict1] = useState<PredictQ>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsId, setObsId] = useState(0);
@@ -165,16 +166,35 @@ export default function MetalActivity() {
   const depositLabel = isAlCu ? (lang === 'zh' ? '红色 Cu' : 'red Cu') : (lang === 'zh' ? '银白色 Ag' : 'silvery Ag');
   const depositColor = isAlCu ? '#e08a3c' : '#cfd6dc';
   // 溶液颜色：Al+CuSO₄ 初始蓝色(CuSO₄) → 反应后无色(Cu²⁺消耗)；Cu+AgNO₃ 初始无色 → 反应后蓝色(Cu(NO₃)₂)
-  const solColor = !done
-    ? (isAlCu ? 'rgba(60,120,220,0.35)' : 'rgba(225,228,234,0.25)')
-    : (isAlCu ? 'rgba(245,247,250,0.15)' : 'rgba(70,140,215,0.32)');
+  // 用 progress 渐变过渡（反应逐渐进行）
+  const fromColor = isAlCu ? [60, 120, 220] : [225, 228, 234];
+  const toColor = isAlCu ? [245, 247, 250] : [70, 140, 215];
+  const alpha = isAlCu ? Math.max(0.1, 0.35 - 0.25 * progress) : Math.min(0.4, 0.25 + 0.15 * progress);
+  const mix = fromColor.map((c, i) => Math.round(c + (toColor[i] - c) * progress));
+  const solColor = `rgba(${mix[0]}, ${mix[1]}, ${mix[2]}, ${alpha.toFixed(2)})`;
+  const depositVisible = progress > 0.1; // 析出物随反应渐显
+  const depositOpacity = Math.min(1, (progress - 0.1) / 0.5);
   const solChange = isAlCu
     ? (lang === 'zh' ? '溶液由蓝色变无色' : 'solution turns colorless')
     : (lang === 'zh' ? '溶液变为蓝色' : 'solution turns blue');
 
+  // 反应进度动画：done 后 progress 0→1 渐显（模拟置换反应逐渐进行）
+  useEffect(() => {
+    if (!done) { setProgress(0); return; }
+    setProgress(0);
+    let p = 0;
+    const timer = setInterval(() => {
+      p += 0.12;
+      if (p >= 1) { p = 1; clearInterval(timer); }
+      setProgress(p);
+    }, 100);
+    return () => clearInterval(timer);
+  }, [done, react]);
+
   function redoAll() {
     setStage('predict');
     setReact('al-cuso4'); setDone(false);
+    setProgress(0);
     setPredict1(null);
     setObservations([]); setObsId(0);
     setConcl({ q1: null, q2: null, q3: null });
@@ -299,15 +319,15 @@ export default function MetalActivity() {
           <line x1="112" y1="70" x2="188" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
           {/* 金属丝（伸入溶液，下端圆头） */}
           <line x1="150" y1="42" x2="150" y2={done ? 148 : 100} stroke={isAlCu ? METALS.al.color : METALS.cu.color} strokeWidth="3" strokeLinecap="round" />
-          {/* 析出金属（反应后，在金属丝表面） */}
-          {done && (
-            <>
+          {/* 析出金属（反应后，随进度渐显在金属丝表面） */}
+          {done && depositVisible && (
+            <g style={{ opacity: depositOpacity, transition: 'opacity 0.15s' }}>
               <circle cx="145" cy="112" r="2.6" fill={depositColor} />
               <circle cx="155" cy="120" r="2.4" fill={depositColor} />
               <circle cx="150" cy="130" r="2.8" fill={depositColor} />
               <circle cx="141" cy="126" r="2.2" fill={depositColor} />
               <circle cx="158" cy="133" r="2" fill={depositColor} />
-            </>
+            </g>
           )}
           {/* 标签 */}
           <text x="150" y="30" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">{metalLabel}</text>

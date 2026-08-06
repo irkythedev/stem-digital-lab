@@ -29,7 +29,7 @@ const copy = {
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
     predictTitle: '预测',
-    predictQuestion: '电解器里装水，接通直流电，观察两极产生的气体。',
+    predictQuestion: '电解器里装的是加少量硫酸钠的水（纯水几乎不导电，加硫酸钠可增强导电性），接通直流电，观察两极产生的气体。',
     predictQ1: '通电后，正极（接电源正极）产生的是什么气体？',
     predictQ1O2: '氧气（能使带火星木条复燃）',
     predictQ1H2: '氢气（能燃烧）',
@@ -59,7 +59,7 @@ const copy = {
     tipsTitle: '考点速记',
     tips: [
       '电解水：正极（O）产氧气，负极（H）产氢气，体积比 H₂:O₂ = 2:1',
-      '氢气能使带火星木条……负极产氢气可点燃，正极产氧气使带火星木条复燃',
+      '负极产氢气（可燃，点燃前须检验纯度）；正极产氧气（能使带火星木条复燃）',
       '水由氢、氧两种元素组成（不能说成氢分子和氧分子）',
       '水通电分解：2H₂O → 2H₂↑ + O₂↑，分解反应',
       '分子在化学变化中可以再分，原子不能再分',
@@ -81,7 +81,7 @@ const copy = {
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
     predictTitle: 'Predict',
-    predictQuestion: 'Water is in the electrolysis cell. Turn on DC power and watch the gases at both electrodes.',
+    predictQuestion: 'The cell holds water with a little sodium sulfate added (pure water barely conducts; the salt boosts conductivity). Turn on DC power and watch the gases at both electrodes.',
     predictQ1: 'What gas forms at the positive electrode?',
     predictQ1O2: 'Oxygen (relights a glowing splint)',
     predictQ1H2: 'Hydrogen (burns)',
@@ -310,9 +310,15 @@ export default function Electrolysis() {
             </>
           )}
 
-          {/* 电极（碳棒/金属，插入水中） */}
-          <line x1="128" y1="55" x2="128" y2="95" stroke="var(--fg)" strokeWidth="2.5" strokeLinecap="round" />
-          <line x1="272" y1="55" x2="272" y2="95" stroke="var(--fg)" strokeWidth="2.5" strokeLinecap="round" />
+          {/* 电极（碳棒从管顶插入水中）：极性符号与正负极文字都标在管顶部电极上端（导线连接处），贴合"电极从顶部插入、导线在顶部接电源"的原理 */}
+          {/* 左电极：负极(−)，产 H₂ 多 */}
+          <line x1="128" y1="60" x2="128" y2="96" stroke="var(--fg)" strokeWidth="3" strokeLinecap="round" />
+          <text x="128" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">负极</text>
+          <text x="128" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">−</text>
+          {/* 右电极：正极(+)，产 O₂ 少 */}
+          <line x1="272" y1="60" x2="272" y2="96" stroke="var(--fg)" strokeWidth="3" strokeLinecap="round" />
+          <text x="272" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">正极</text>
+          <text x="272" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">+</text>
 
           {/* 气泡（通电时，负极多、正极少） */}
           {power && (
@@ -338,10 +344,6 @@ export default function Electrolysis() {
           <text x="204" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">+</text>
           <text x="196" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">−</text>
           <text x="200" y="38" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">直流电源</text>
-
-          {/* 负极标注 */}
-          <text x="128" y="108" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">(−) 负极</text>
-          <text x="272" y="108" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">(+) 正极</text>
         </svg>
         <p className="text-xs text-[var(--muted)] serif-font italic">
           {power

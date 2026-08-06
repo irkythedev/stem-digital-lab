@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.4.2';
+export const APP_VERSION = '1.4.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.4.3',
+    date: '2026-08',
+    zh: [
+      '电解水更贴近教材：装置结构、电极与正负极标注更清晰',
+      '金属活动性的实验现象与反应过程更自然、更容易观察',
+      '修正一些实验细节，让操作与观察更顺畅',
+    ],
+    en: [
+      'Electrolysis now matches the textbook more closely: clearer apparatus, electrodes and polarity labels',
+      'Metal-activity reactions look more natural and are easier to observe',
+      'Polished several experiment details for smoother operation',
+    ],
+  },
   {
     version: '1.4.2',
     date: '2026-08',
