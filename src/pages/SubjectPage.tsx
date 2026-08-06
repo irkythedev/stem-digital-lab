@@ -48,6 +48,35 @@ export default function SubjectPage() {
         />
       </div>
 
+      {/* 化学工具：元素周期表 */}
+      {subject.id === 'chemistry' && (
+        <section className="mb-8">
+          <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
+            // {lang === 'zh' ? '工具' : 'Tools'}
+          </h2>
+          <Link
+            to="/periodic-table"
+            className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
+          >
+            <span className="flex items-center gap-3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" aria-hidden="true">
+                {/* 简易周期表网格图标 */}
+                <rect x="3" y="3" width="18" height="18" />
+                <line x1="3" y1="9" x2="21" y2="9" />
+                <line x1="3" y1="15" x2="21" y2="15" />
+                <line x1="8" y1="3" x2="8" y2="21" />
+                <line x1="13" y1="3" x2="13" y2="21" />
+                <line x1="18" y1="3" x2="18" y2="21" />
+              </svg>
+              <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
+                {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+              </span>
+            </span>
+            <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
+          </Link>
+        </section>
+      )}
+
       {/* 实验列表（来自注册表，未注册科目显示建设中占位） */}
       <section className="mb-8">
         <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
