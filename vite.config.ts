@@ -2,12 +2,33 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { readFileSync, writeFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * 构建结束钩子：在 dist/ 生成 version.json（版本号 + 构建时间戳）。
+ * 前端用它对比本地版本号，检测到新版本时在 Header 显示绿色圆点提示。
+ * 该文件刻意排除出 SW precache，确保每次都是最新值。
+ */
+function versionJson(): Plugin {
+  return {
+    name: 'write-version-json',
+    closeBundle() {
+      const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+      const out = path.resolve(__dirname, 'dist/version.json');
+      writeFileSync(out, JSON.stringify({ version: pkg.version, builtAt: Date.now() }, null, 2));
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    versionJson(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
@@ -29,6 +50,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}'],
+        globIgnores: ['**/version.json'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
       },

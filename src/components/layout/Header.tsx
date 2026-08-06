@@ -5,7 +5,7 @@
  * 顶部导航栏：品牌标识 + 语言切换 + 主题切换。
  * 从原 App.tsx 抽出，状态改由全局 useApp() 提供。
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
@@ -16,6 +16,28 @@ import type { ThemeMode } from '../../lib/app-context';
 export default function Header() {
   const { t, lang, setLang, themeMode, setThemeMode } = useApp();
   const [showVersion, setShowVersion] = useState(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
+  const [toast, setToast] = useState(false);
+
+  // 显示"正在刷新"toast 2 秒
+  const showToast = () => {
+    setToast(true);
+    setTimeout(() => setToast(false), 2000);
+  };
+
+  // 检测是否有新版本：对比远端 version.json 与本版本号（fetch 失败则静默忽略）
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/version.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && typeof d.version === 'string' && d.version !== APP_VERSION) {
+          setHasUpdate(true);
+        }
+      })
+      .catch(() => { /* 网络/离线：忽略，不打扰 */ });
+    return () => { cancelled = true; };
+  }, []);
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];
@@ -51,17 +73,43 @@ export default function Header() {
         <span className="hidden sm:inline text-[10px] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
           STEM DIGITAL LAB
         </span>
-        {/* 版本号：点击弹出版本历史 */}
+        {/* 版本号：点击弹出版本历史；有更新时显示绿色呼吸灯圆点，点击圆点刷新到新版本 */}
         <button
           type="button"
           onClick={() => setShowVersion((v) => !v)}
           title="v{APP_VERSION}"
           aria-label="version"
-          className="flex items-center text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="flex items-center gap-1.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
-          v{APP_VERSION}
+          <span className="relative">
+            v{APP_VERSION}
+            {hasUpdate && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showToast();
+                  window.location.reload();
+                }}
+                title="有新版本，点击刷新"
+                aria-label="有新版本，点击刷新"
+                className="absolute -right-2.5 top-1/2 -translate-y-1/2 group/dot"
+              >
+                <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />
+                <span className="absolute inset-0 rounded-full bg-green-500/50 update-dot-halo" />
+              </button>
+            )}
+          </span>
         </button>
       </Link>
+
+      {/* 刷新状态 toast：右上角 */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[11px] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
+          {lang === 'zh' ? '正在刷新到最新版本…' : 'Refreshing to latest version…'}
+        </div>
+      )}
 
       <div className="flex items-center space-x-4 text-[11px] mono-font uppercase tracking-wider">
         {/* Language Switcher (single toggle button) */}
