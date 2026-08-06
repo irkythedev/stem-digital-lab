@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
-import { Share2, Layers } from 'lucide-react';
+import { Share2, FolderKanban } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -53,8 +53,8 @@ export default function Footer() {
               aria-label={t.moreWorks}
               className="relative flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span className="absolute -top-1.5 -right-2.5 min-w-[1rem] h-4 px-0.5 flex items-center justify-center rounded-full bg-[var(--fg)] text-[var(--bg)] text-[9px] mono-font leading-none">
+              <FolderKanban className="w-3.5 h-3.5" />
+              <span className="absolute -top-1.5 -right-2.5 min-w-[1.1rem] h-[1.05rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[9px] mono-font leading-none">
                 {t.works.length}
               </span>
             </button>
