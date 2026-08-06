@@ -12,7 +12,7 @@
  * 教材依据：ch03「元素周期表简介」——7 个横行 18 个纵列，金属/非金属/稀有气体
  * 用不同颜色区分，标出相对原子质量；元素周期表是学习和研究化学的重要工具。
  */
-import { useRef, useState } from 'react';
+import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { Pause, Play, Square, Volume2 } from 'lucide-react';
 import { useApp } from '../lib/app-context';
@@ -80,7 +80,8 @@ export default function PeriodicTable() {
   const reciteStop = useRef(false); // 停止标记
   const recitePaused = useRef(false); // 暂停标记
   const wakeRecite = useRef<(() => void) | null>(null); // 暂停唤醒函数
-  const reciteAudio = useRef<HTMLAudioElement | null>(null); // 当前音频（暂停/继续用）
+  const reciteAudio = useRef<HTMLAudioElement | null>(null); // 跟读音频（复用元素，微信 X5 需手势解锁后复用）
+  const speakAudio = useRef<HTMLAudioElement | null>(null); // 单点朗读音频（独立元素，避免互相打断）
 
   const isZh = lang === 'zh';
 
@@ -99,9 +100,19 @@ export default function PeriodicTable() {
     );
   };
 
+  /** 获取（惰性创建并复用）音频元素：微信内置浏览器只解锁用户手势触发过的元素，复用才能连续播放 */
+  const getAudio = (ref: MutableRefObject<HTMLAudioElement | null>) => {
+    if (!ref.current) {
+      ref.current = new Audio();
+      ref.current.preload = 'auto';
+    }
+    return ref.current;
+  };
+
   /** 播放元素读音：优先本地预生成 MP3（一致、离线、免语音包），失败降级浏览器语音合成 */
   const speak = (e: ElementInfo) => {
-    const audio = new Audio(`/audio/${e.n}.mp3`);
+    const audio = getAudio(speakAudio);
+    audio.src = `/audio/${e.n}.mp3`;
     audio.onended = () => setSpeaking(false);
     audio.onerror = () => {
       // 本地音频缺失或播放失败 → 降级 speechSynthesis（设备有语音包时仍可用）
@@ -120,14 +131,25 @@ export default function PeriodicTable() {
     setSpeaking(true);
   };
 
-  /** 播放单个 MP3，返回 Promise（播放结束 / 出错即 resolve）；保存引用供暂停/继续 */
+  /** 播放单个 MP3，返回 Promise（播放结束 / 出错即 resolve）；复用同一音频元素（微信 X5 兼容） */
   const playMp3 = (n: number) =>
     new Promise<void>((resolve) => {
-      const audio = new Audio(`/audio/${n}.mp3`);
-      reciteAudio.current = audio;
-      audio.onended = () => resolve();
-      audio.onerror = () => resolve(); // 本地缺失 → 静默跳过（不打断连读）
-      audio.play().catch(() => resolve());
+      const audio = getAudio(reciteAudio);
+      // 防止上一个元素被 speak 抢占或加载异常导致 onended 永不触发：超时兜底
+      const timer = window.setTimeout(() => resolve(), 8000);
+      audio.onended = () => {
+        window.clearTimeout(timer);
+        resolve();
+      };
+      audio.onerror = () => {
+        window.clearTimeout(timer);
+        resolve(); // 本地缺失 → 静默跳过（不打断连读）
+      };
+      audio.src = `/audio/${n}.mp3`;
+      audio.play().catch(() => {
+        window.clearTimeout(timer);
+        resolve();
+      });
     });
 
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -181,7 +203,7 @@ export default function PeriodicTable() {
     reciteStop.current = false;
   };
 
-  /** 停止跟读（清状态） */
+  /** 停止跟读（清状态；保留音频元素实例，避免微信重新解锁问题） */
   const stopRecite = () => {
     reciteStop.current = true;
     if (wakeRecite.current) {
@@ -189,7 +211,6 @@ export default function PeriodicTable() {
     }
     if (reciteAudio.current) {
       reciteAudio.current.pause();
-      reciteAudio.current = null;
     }
     setRecite(null);
     setReciteSetup(null);
