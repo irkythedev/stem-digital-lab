@@ -14,6 +14,7 @@ import SubjectPage from './pages/SubjectPage';
 import LabPage from './pages/LabPage';
 import NotFoundPage from './pages/NotFoundPage';
 import GuidePage from './pages/GuidePage';
+import PeriodicTable from './pages/PeriodicTable';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/subject/:subjectId" element={<SubjectPage />} />
+          <Route path="/periodic-table" element={<PeriodicTable />} />
           <Route path="/lab/:labId" element={<LabPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
