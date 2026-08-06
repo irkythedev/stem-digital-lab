@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.8.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.8.1',
+    date: '2026-08',
+    zh: [
+      '修复在微信等内置浏览器中跟读只播放前几个元素读音的问题，连读更顺畅',
+    ],
+    en: [
+      'Fixed sequential recitation audio stopping after the first few elements in in-app browsers such as WeChat',
+    ],
+  },
   {
     version: '1.8.0',
     date: '2026-08',
