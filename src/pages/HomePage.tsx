@@ -105,6 +105,32 @@ export default function HomePage() {
                   </Link>
                 );
               })}
+              {/* 化学工具：元素周期表（非实验，置于实验列表末尾） */}
+              {subject.id === 'chemistry' && (
+                <Link
+                  to="/periodic-table"
+                  className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                >
+                  <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" className="w-7 h-7" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" />
+                      <line x1="3" y1="9" x2="21" y2="9" />
+                      <line x1="3" y1="15" x2="21" y2="15" />
+                      <line x1="8" y1="3" x2="8" y2="21" />
+                      <line x1="13" y1="3" x2="13" y2="21" />
+                      <line x1="18" y1="3" x2="18" y2="21" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                      {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                      {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
+                    </span>
+                  </div>
+                </Link>
+              )}
             </div>
           );
         })}

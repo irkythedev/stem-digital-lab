@@ -175,3 +175,18 @@ input[type="range"]::-moz-range-thumb {
 }
 .update-dot { animation: dot-breath 3.5s ease-in-out infinite; }
 .update-dot-halo { animation: dot-ping 3.5s ease-in-out infinite; }
+
+/* 元素周期表 · 原子结构：电子绕核旋转（内层快、外层慢，交替反向更生动） */
+@keyframes electron-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.electron-layer {
+  transform-box: view-box;
+  transform-origin: 90px 75px;
+  animation: electron-orbit linear infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .electron-layer { animation: none; }
+}
