@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.7.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,20 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '1.7.0',
+    date: '2026-08',
+    zh: [
+      '化学新增「元素周期表」工具：118 个元素一表全览，支持检索、查看元素信息、听中文读音',
+      '元素详情含原子结构示意图、发现史与生活常见用途小百科',
+    ],
+    en: [
+      'Chemistry adds a Periodic Table tool: all 118 elements with search, element details, and audio pronunciation',
+      'Element details include a Bohr-model diagram plus a brief discovery-and-uses mini-wiki',
+    ],
+  },
+  {
     version: '1.6.0',
+
     date: '2026-08',
     zh: [
       '化学新增「元素周期表」工具：118 个元素一表全览，支持检索、查看元素信息、听中文读音',
