@@ -56,6 +56,16 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    // CloudBase SDK 体积大且仅反馈时用：独立分包，按需加载，不拖慢首屏
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'cloudbase-sdk': ['@cloudbase/js-sdk'],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

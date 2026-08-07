@@ -1,10 +1,11 @@
 /**
- * 本地反馈面板：实验反馈与项目反馈共用，不上传网络。
- * 以右下角浮动卡片形式呈现（行业常见做法）。
+ * 反馈面板：实验反馈与项目反馈共用。
+ * 提交时优先发送到 LeanCloud 云端（无后端，前端直连）；未配置或离线时
+ * 保存在本机队列，联网后自动补传。以右下角浮动卡片形式呈现。
  */
 import { useState } from 'react';
 import { useApp } from '../../lib/app-context';
-import { makeFeedbackId, saveFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
+import { makeFeedbackId, saveFeedback, submitOneFeedback, loadFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
 
 interface FeedbackPanelProps {
   type: FeedbackType;
@@ -20,7 +21,9 @@ const labels = {
     question: '你的反馈主要关于什么？', rating: '这部分内容对你有帮助吗？',
     helpful: '有帮助', neutral: '一般', notHelpful: '没帮助',
     message: '补充说明（可选）', placeholder: '写下问题、建议或发现……',
-    submit: '保存反馈', close: '关闭', saved: '反馈已保存在本机',
+    submit: '发送反馈', close: '关闭',
+    sent: '反馈已发送给开发者，谢谢！',
+    queued: '反馈已保存，联网后将自动发送',
     categories: { content: '内容', interaction: '交互', visual: '视觉', language: '语言', bug: '问题', suggestion: '建议' },
   },
   en: {
@@ -28,7 +31,9 @@ const labels = {
     question: 'What is your feedback about?', rating: 'Was this helpful?',
     helpful: 'Helpful', neutral: 'Neutral', notHelpful: 'Not helpful',
     message: 'Additional note (optional)', placeholder: 'Write a problem, idea, or observation…',
-    submit: 'Save feedback', close: 'Close', saved: 'Feedback saved on this device',
+    submit: 'Send feedback', close: 'Close',
+    sent: 'Feedback sent to the developer, thanks!',
+    queued: 'Feedback saved; it will be sent automatically when online',
     categories: { content: 'Content', interaction: 'Interaction', visual: 'Visual', language: 'Language', bug: 'Problem', suggestion: 'Suggestion' },
   },
 } as const;
@@ -39,15 +44,27 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
   const [rating, setRating] = useState<FeedbackRating | undefined>();
   const [selected, setSelected] = useState<FeedbackCategory[]>([]);
   const [message, setMessage] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [done, setDone] = useState<null | 'sent' | 'queued'>(null);
 
   const toggleCategory = (category: FeedbackCategory) => {
     setSelected((prev) => prev.includes(category) ? prev.filter((x) => x !== category) : [...prev, category]);
   };
 
-  const submit = () => {
-    saveFeedback({ id: makeFeedbackId(), type, labId, rating, categories: selected, message: message.trim(), language: lang, createdAt: new Date().toISOString() });
-    setSaved(true);
+  const submit = async () => {
+    if (sending) return;
+    setSending(true);
+    const record = { id: makeFeedbackId(), type, labId, rating, categories: selected, message: message.trim(), language: lang, createdAt: new Date().toISOString() };
+    saveFeedback(record);
+    // 已配置云端时尝试立即直发；未配置则留在本地队列（页面加载时会自动补传）
+    const sent = await submitOneFeedback(record);
+    if (sent) {
+      // 云端直达成功 → 从本地队列移除该条
+      const rest = loadFeedback().filter((r) => r.id !== record.id);
+      window.localStorage.setItem('stem-lab-feedback', JSON.stringify(rest));
+    }
+    setSending(false);
+    setDone(sent ? 'sent' : 'queued');
   };
 
   return (
@@ -61,14 +78,17 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
           <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {type === 'experiment' ? l.experimentTitle : l.projectTitle}</h2>
           <button type="button" onClick={onClose} className="text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)]">{l.close} ×</button>
         </div>
-        {saved ? (
-          <div className="flex items-center justify-between text-sm text-[var(--fg)]"><span>✓ {l.saved}</span><button type="button" onClick={onClose} className="text-xs underline">{l.close}</button></div>
+        {done ? (
+          <div className="flex items-center justify-between gap-3 text-sm text-[var(--fg)]">
+            <span>{done === 'sent' ? `✓ ${l.sent}` : `✓ ${l.queued}`}</span>
+            <button type="button" onClick={onClose} className="text-xs underline shrink-0">{l.close}</button>
+          </div>
         ) : (
           <>
             {type === 'experiment' && <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.rating}</p><div className="flex gap-2">{(['helpful', 'neutral', 'not-helpful'] as FeedbackRating[]).map((r) => <button key={r} type="button" onClick={() => setRating(r)} className={`border px-3 py-1.5 text-xs ${rating === r ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{r === 'helpful' ? l.helpful : r === 'neutral' ? l.neutral : l.notHelpful}</button>)}</div></div>}
             <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.question}</p><div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => toggleCategory(category)} className={`border px-3 py-1.5 text-xs ${selected.includes(category) ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{l.categories[category]}</button>)}</div></div>
             <label className="block text-xs text-[var(--muted)]">{l.message}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={l.placeholder} rows={2} className="mt-1.5 w-full resize-y border border-[var(--border)] bg-transparent p-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
-            <button type="button" onClick={submit} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)]">{l.submit}</button>
+            <button type="button" onClick={submit} disabled={sending} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
           </>
         )}
       </div>

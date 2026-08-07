@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.8.1';
+export const APP_VERSION = '1.9.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.0',
+    date: '2026-08',
+    zh: [
+      '元素详情新增实物照片：104 个元素可查看真实外观，点击可放大（照片来自 images-of-elements，遵循 CC BY 3.0 署名）',
+      '原子结构示意图优化：第一层电子环更容易点击，修复悬停时卡片晃动问题',
+      '反馈通道升级：提交的反馈将通过腾讯云开发（CloudBase）送达开发者，离线时自动保存并在联网后补发',
+    ],
+    en: [
+      'Element details now show real photos for 104 elements, tappable to enlarge (photos from images-of-elements, CC BY 3.0)',
+      'Bohr diagram improvements: inner shell is easier to tap; fixed card jitter on hover',
+      'Feedback now reaches the developer via Tencent CloudBase, with offline queue and auto-retry',
+    ],
+  },
   {
     version: '1.8.1',
     date: '2026-08',
