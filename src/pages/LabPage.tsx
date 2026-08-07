@@ -7,6 +7,7 @@
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
 import { Link, useParams } from 'react-router-dom';
+import { House } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
 import { subjects } from '../lib/subjects';
@@ -47,12 +48,23 @@ export default function LabPage() {
 
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
-      <Link
-        to="/"
-        className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
-      >
-        ← {t.backHome}
-      </Link>
+      {/* 面包屑导航：返回学科（主）+ 首页（图标） */}
+      <nav className="flex items-center gap-3 text-xs mono-font">
+        <Link
+          to={subjects[lab.subjectId].path}
+          className="text-[var(--muted)] underline hover:text-[var(--fg)]"
+        >
+          ← {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
+        </Link>
+        <Link
+          to="/"
+          aria-label={t.homeIcon}
+          title={t.homeIcon}
+          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+        >
+          <House className="w-3.5 h-3.5" />
+        </Link>
+      </nav>
 
       <div className="mt-5 mb-8">
         <div className="flex items-center space-x-4">

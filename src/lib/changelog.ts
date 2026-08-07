@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.9.1';
+export const APP_VERSION = '1.9.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.2',
+    date: '2026-08',
+    zh: [
+      '实验页新增「返回学科」与「首页」双导航，浏览更方便',
+      '首页新增「随机探索」按钮，随机进入一个实验或工具，发现更多内容',
+      '修复点击版本号时误跳回首页的问题',
+    ],
+    en: [
+      'Lab pages now offer both "Back to subject" and "Home" navigation',
+      'New "Random explore" button on the homepage jumps to a random lab or tool',
+      'Fixed version badge click accidentally navigating home',
+    ],
+  },
   {
     version: '1.9.1',
     date: '2026-08',

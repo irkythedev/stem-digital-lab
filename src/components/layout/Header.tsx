@@ -74,9 +74,14 @@ export default function Header() {
           STEM DIGITAL LAB
         </span>
         {/* 版本号：点击弹出版本历史；有更新时显示绿色呼吸灯圆点，点击圆点刷新到新版本 */}
+        {/* 注意：按钮嵌在品牌区 <Link to="/"> 内，必须阻止冒泡，否则会同时跳回首页 */}
         <button
           type="button"
-          onClick={() => setShowVersion((v) => !v)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowVersion((v) => !v);
+          }}
           title="v{APP_VERSION}"
           aria-label="version"
           className="flex items-center gap-1.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"

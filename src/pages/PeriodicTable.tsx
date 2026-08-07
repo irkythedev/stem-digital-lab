@@ -14,7 +14,7 @@
  */
 import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { Pause, Play, Square, Volume2 } from 'lucide-react';
+import { House, Pause, Play, Square, Volume2 } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import ShareInline from '../components/share/ShareInline';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
@@ -282,9 +282,20 @@ export default function PeriodicTable() {
 
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
-      <Link to="/subject/chemistry" className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]">
-        ← {lang === 'zh' ? '返回化学' : 'Back to Chemistry'}
-      </Link>
+      {/* 面包屑导航：返回化学（主）+ 首页（图标） */}
+      <nav className="flex items-center gap-3 text-xs mono-font">
+        <Link to="/subject/chemistry" className="text-[var(--muted)] underline hover:text-[var(--fg)]">
+          ← {lang === 'zh' ? '返回化学' : 'Back to Chemistry'}
+        </Link>
+        <Link
+          to="/"
+          aria-label={t.homeIcon}
+          title={t.homeIcon}
+          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+        >
+          <House className="w-3.5 h-3.5" />
+        </Link>
+      </nav>
 
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">

@@ -9,16 +9,28 @@
  * 大屏 3 列，中屏 2 列，小屏 1 列。
  */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Shuffle } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
-import { labsForSubject } from '../lib/labs';
+import { labsForSubject, labs } from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
 export default function HomePage() {
   const { t, lang } = useApp();
+  const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
+
+  // 随机探索：从全部实验 + 元素周期表工具中随机选一个进入
+  const randomExplore = () => {
+    const destinations: string[] = [
+      ...labs.map((lab) => `/lab/${lab.id}`),
+      '/periodic-table',
+    ];
+    const pick = destinations[Math.floor(Math.random() * destinations.length)];
+    navigate(pick);
+  };
 
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
@@ -67,6 +79,18 @@ export default function HomePage() {
             </button>
           );
         })}
+      </div>
+
+      {/* ── 随机探索：随机进入某个实验/工具 ── */}
+      <div className="flex justify-center w-full mb-8">
+        <button
+          type="button"
+          onClick={randomExplore}
+          className="inline-flex items-center gap-2 px-5 py-2 border border-[var(--border)] text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
+        >
+          <Shuffle className="w-3.5 h-3.5" />
+          {t.randomExplore}
+        </button>
       </div>
 
       {/* ── 实验列表（淡入淡出） ── */}
