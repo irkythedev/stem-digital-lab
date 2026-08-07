@@ -194,6 +194,8 @@ input[type="range"]::-moz-range-thumb {
   transform-origin: 90px 75px;
   animation: electron-orbit linear infinite;
   will-change: transform;
+  /* 旋转电子点不拦截鼠标：hover/点击由轨道层的隐形感应区接管，避免晃动 */
+  pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .electron-layer { animation: none; }

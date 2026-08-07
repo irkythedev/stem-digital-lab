@@ -71,6 +71,8 @@ export default function PeriodicTable() {
   const [tab, setTab] = useState<'props' | 'story'>('props');
   // 原子结构示意图：当前悬停/点击的电子层（显示该层电子数）
   const [hoveredLayer, setHoveredLayer] = useState<number | null>(null);
+  // 元素实物照片：放大预览（null=未打开）
+  const [photoZoom, setPhotoZoom] = useState(false);
 
   // 中考跟读（播放器）：设置（朗读次数/跟读间隔）+ 播放状态（预设、当前序号、暂停）
   const [reciteSetup, setReciteSetup] = useState<string | null>(null); // 正在选择设置的预设
@@ -565,6 +567,44 @@ export default function PeriodicTable() {
               </div>
             </div>
 
+            {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
+            <div className="mt-2">
+              <div
+                className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
+                onClick={() => selected.n <= 103 && setPhotoZoom(true)}
+                role={selected.n <= 103 ? 'button' : undefined}
+                aria-label={selected.n <= 103 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
+              >
+                <img
+                  src={`/element-images/${selected.n}.jpg`}
+                  alt={`${selected.zh} ${selected.symbol}`}
+                  loading="lazy"
+                  className="w-full h-full object-contain"
+                  draggable={false}
+                  onError={(e) => {
+                    // 加载失败（超铀无图/离线）：隐藏图片，显示占位
+                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    const fallback = e.currentTarget.parentElement?.querySelector('[data-photo-fallback]') as HTMLElement | null;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                {/* 加载失败占位（超铀元素无实物照片） */}
+                <div
+                  className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+                  style={{ display: 'none' }}
+                  data-photo-fallback
+                >
+                  <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
+                  <span className="text-[10px] serif-font italic text-[var(--muted)]">
+                    {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-0.5 text-[9px] serif-font italic text-[var(--muted)]">
+                {lang === 'zh' ? '实物照片 © images-of-elements（CC BY 3.0）' : 'Photo © images-of-elements (CC BY 3.0)'}
+              </p>
+            </div>
+
             <div className="mt-3 text-sm serif-font text-[var(--fg)]">
               {/* Tab 切换：基础属性 / 百科故事 */}
               <div className="dialog-tabs flex border border-[var(--border)] mb-3 text-[11px] mono-font">
@@ -588,7 +628,7 @@ export default function PeriodicTable() {
               {tab === 'props' && (
                 <>
               {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数） */}
-              <div className="border border-[var(--border)] px-2 py-1 mb-1.5">
+              <div className="relative border border-[var(--border)] px-2 py-1 mb-1.5">
                 <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-0">
                   // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
                 </div>
@@ -603,8 +643,10 @@ export default function PeriodicTable() {
                     const coreFont = digits >= 3 ? 10 : 13;
                     // 最大可用半径：略放大（允许最外层轻微裁切，核居中即可），多层元素仍清晰
                     const maxR = Math.min(64, coreR + 51);
-                    const step = layers > 1 ? (maxR - coreR) / (layers - 1) : 0;
-                    const rOf = (i: number) => coreR + (layers > 1 ? i * step : 14);
+                    // 核与第一层轨道之间留空隙（否则第一层与核重合，感应区被核盖住难触发）
+                    const innerGap = 8;
+                    const step = layers > 1 ? (maxR - coreR - innerGap) / (layers - 1) : 0;
+                    const rOf = (i: number) => coreR + innerGap + (layers > 1 ? i * step : 0);
                     return (
                       <>
                         {/* 电子层轨道 + 隐形感应区：悬停/点击整层都可触发，避免细线难点 */}
@@ -632,9 +674,9 @@ export default function PeriodicTable() {
                             </g>
                           );
                         })}
-                        {/* 原子核（核电荷数） */}
-                        <circle cx={cx} cy={cy} r={coreR} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-                        <text x={cx} y={cy + (coreFont >= 13 ? 4 : 3.5)} textAnchor="middle" fontSize={coreFont} fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">
+                        {/* 原子核（核电荷数）：不拦截鼠标，穿透到第一层感应区便于触发 */}
+                        <circle cx={cx} cy={cy} r={coreR} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" style={{ pointerEvents: 'none' }} />
+                        <text x={cx} y={cy + (coreFont >= 13 ? 4 : 3.5)} textAnchor="middle" fontSize={coreFont} fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold" style={{ pointerEvents: 'none' }}>
                           +{selected.n}
                         </text>
                         {/* 各层电子：绕核旋转（内快外慢、交替反向）；每层最多 8 个示意点 */}
@@ -665,9 +707,9 @@ export default function PeriodicTable() {
                     );
                   })()}
                 </svg>
-                {/* 当前层电子数提示条（悬停/点击时显示） */}
+                {/* 当前层电子数提示条（悬停/点击时显示；绝对定位不占布局，避免卡片高度变化引起晃动） */}
                 {hoveredLayer !== null && selected.shells[hoveredLayer] != null && (
-                  <div className="mt-1 text-[11px] mono-font text-[var(--fg)]">
+                  <div className="absolute bottom-1 left-2 text-[11px] mono-font text-[var(--fg)] pointer-events-none">
                     {lang === 'zh'
                       ? `第 ${hoveredLayer + 1} 层：${selected.shells[hoveredLayer]} 个电子`
                       : `Shell ${hoveredLayer + 1}: ${selected.shells[hoveredLayer]} electron${selected.shells[hoveredLayer] > 1 ? 's' : ''}`}
@@ -764,6 +806,37 @@ export default function PeriodicTable() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 实物照片放大预览（全屏） */}
+      {photoZoom && selected && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setPhotoZoom(false)}
+          role="dialog"
+          aria-label={`${selected.zh} ${selected.symbol}`}
+        >
+          <div className="relative max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={`/element-images/${selected.n}.jpg`}
+              alt={`${selected.zh} ${selected.symbol}`}
+              className="w-full border border-[var(--border)] bg-white"
+              draggable={false}
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs mono-font text-white/80">
+                {selected.zh} {selected.symbol} · {selected.en}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPhotoZoom(false)}
+                className="text-xs mono-font text-white/80 hover:text-white underline"
+              >
+                {lang === 'zh' ? '关闭' : 'Close'} ×
+              </button>
             </div>
           </div>
         </div>
