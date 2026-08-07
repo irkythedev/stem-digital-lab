@@ -567,44 +567,6 @@ export default function PeriodicTable() {
               </div>
             </div>
 
-            {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
-            <div className="mt-2">
-              <div
-                className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
-                onClick={() => selected.n <= 103 && setPhotoZoom(true)}
-                role={selected.n <= 103 ? 'button' : undefined}
-                aria-label={selected.n <= 103 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
-              >
-                <img
-                  src={`/element-images/${selected.n}.jpg`}
-                  alt={`${selected.zh} ${selected.symbol}`}
-                  loading="lazy"
-                  className="w-full h-full object-contain"
-                  draggable={false}
-                  onError={(e) => {
-                    // 加载失败（超铀无图/离线）：隐藏图片，显示占位
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    const fallback = e.currentTarget.parentElement?.querySelector('[data-photo-fallback]') as HTMLElement | null;
-                    if (fallback) fallback.style.display = 'flex';
-                  }}
-                />
-                {/* 加载失败占位（超铀元素无实物照片） */}
-                <div
-                  className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
-                  style={{ display: 'none' }}
-                  data-photo-fallback
-                >
-                  <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
-                  <span className="text-[10px] serif-font italic text-[var(--muted)]">
-                    {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-0.5 text-[9px] serif-font italic text-[var(--muted)]">
-                {lang === 'zh' ? '实物照片 © images-of-elements（CC BY 3.0）' : 'Photo © images-of-elements (CC BY 3.0)'}
-              </p>
-            </div>
-
             <div className="mt-3 text-sm serif-font text-[var(--fg)]">
               {/* Tab 切换：基础属性 / 百科故事 */}
               <div className="dialog-tabs flex border border-[var(--border)] mb-3 text-[11px] mono-font">
@@ -783,6 +745,53 @@ export default function PeriodicTable() {
               {/* 百科故事面板 */}
               {tab === 'story' && (
                 <div className="border border-[var(--border)] px-2.5 py-1.5 space-y-1.5">
+                  {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
+                  <div>
+                    <div
+                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
+                      onClick={() => selected.n <= 103 && setPhotoZoom(true)}
+                      role={selected.n <= 103 ? 'button' : undefined}
+                      aria-label={selected.n <= 103 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
+                    >
+                      <img
+                        src={`/element-images/${selected.n}.jpg`}
+                        alt={`${selected.zh} ${selected.symbol}`}
+                        loading="lazy"
+                        className="w-full h-full object-contain"
+                        draggable={false}
+                        onError={(e) => {
+                          // 加载失败（超铀无图/离线）：隐藏图片，显示占位
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          const fallback = e.currentTarget.parentElement?.querySelector('[data-photo-fallback]') as HTMLElement | null;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                      {/* 加载失败占位（超铀元素无实物照片） */}
+                      <div
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+                        style={{ display: 'none' }}
+                        data-photo-fallback
+                      >
+                        <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
+                        <span className="text-[10px] serif-font italic text-[var(--muted)]">
+                          {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="mt-0.5 text-[9px] serif-font italic text-[var(--muted)]">
+                      {selected.n >= 105
+                        ? lang === 'zh'
+                          ? '人工合成元素，暂无实物照片'
+                          : 'Synthetic element, no photo available'
+                        : selected.n >= 97
+                          ? lang === 'zh'
+                            ? '示意图（超铀元素无实物照片）· © images-of-elements（CC BY 3.0）'
+                            : 'Illustration (superheavy element, no photo) · © images-of-elements (CC BY 3.0)'
+                          : lang === 'zh'
+                            ? '实物照片 © images-of-elements（CC BY 3.0）'
+                            : 'Photo © images-of-elements (CC BY 3.0)'}
+                    </p>
+                  </div>
                   <div>
                     <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-0">
                       // {lang === 'zh' ? '发现史' : 'Discovery'}
