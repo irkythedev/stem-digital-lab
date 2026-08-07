@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.9.0';
+export const APP_VERSION = '1.9.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.1',
+    date: '2026-08',
+    zh: [
+      '元素实物照片移入「百科故事」页签，基础属性页更紧凑',
+      '超铀元素图片标注更严谨：97-104 号标注为示意图，105-118 号提示为人工合成元素（无实物照片）',
+    ],
+    en: [
+      'Element photos moved into the "Story" tab, keeping Properties compact',
+      'Superheavy element imagery is now labelled accurately: 97-104 shown as illustrations, 105-118 noted as synthetic elements without photos',
+    ],
+  },
   {
     version: '1.9.0',
     date: '2026-08',
