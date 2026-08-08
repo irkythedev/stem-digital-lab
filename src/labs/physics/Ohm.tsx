@@ -351,7 +351,7 @@ export default function Ohm() {
     { id: 'dry-batt-bot', x1: 40, y1: 82, x2: 40, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
-    { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'v-batt' },
+    { id: 'battery', kind: 'battery', sense1: { x: 22, y: 70 }, sense2: { x: 32, y: 82 }, land: { x: 40, y: 76 }, voltage: 'v-batt' },
     { id: 'element', kind: 'bulb', sense1: { x: 230, y: 60 }, sense2: { x: 270, y: 60 }, land: { x: 250, y: 28 }, voltage: 'v-elem', body: { cx: 250, cy: 60, r: 20 } },
   ];
 
@@ -580,10 +580,6 @@ export default function Ohm() {
                 <line x1="270" y1="60" x2="270" y2="140" />
                 <line x1="270" y1="140" x2="40" y2="140" />
                 {/* 电池支路竖线由电池符号补齐 70-82 间隙；电压表并联引线由探针吸附时动态绘制 */}
-                <line x1="58" y1="70" x2="72" y2="70" />
-                <line x1="72" y1="70" x2="72" y2="92" />
-                <line x1="48" y1="82" x2="72" y2="82" />
-                <line x1="72" y1="82" x2="72" y2="108" />
               </g>
               {/* 开关：可点击，闭合/断开切换 */}
               <g
@@ -611,10 +607,10 @@ export default function Ohm() {
                   }}
                 />
               </g>
-              {/* 电池：长线 + 短线，标注正负极 */}
-              <g stroke="var(--fg)" strokeWidth="1.5">
+              {/* 电池：长线 + 短线（一长一短平行粗线），标注正负极 */}
+              <g stroke="var(--fg)" strokeWidth="2">
                 <line x1="22" y1="70" x2="58" y2="70" />
-                <line x1="32" y1="82" x2="48" y2="82" strokeWidth="1.5" />
+                <line x1="32" y1="82" x2="48" y2="82" />
               </g>
               <text x="62" y="74" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
                 +
