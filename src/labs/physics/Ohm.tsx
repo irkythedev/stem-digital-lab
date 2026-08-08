@@ -69,7 +69,7 @@ const copy = {
     elementBulb: '小灯泡',
     bulbModelHint: '小灯泡采用简化非线性模型：钨丝升温后电阻增大，因此 I-U 图像不再是直线；这用于展示趋势，不代表完整实验数据。',
     measureTitle: '测未知电阻',
-    measureIntro: '这是一个未知电阻（阻值隐藏）。看电压表读数 V（元件两端电压）和电流表读数 I，算出 R = V/I，多测几组取平均。',
+    measureIntro: '这是一个未知电阻（阻值隐藏）。按伏安法操作：变阻器先调到最大（保护电路），闭合开关后逐渐调小，改变电阻两端电压；用电压表读数 V 和电流表读数 I 算出 R = V/I，多测几组取平均。',
     measureReveal: '揭示真实值',
     measureHidden: '? Ω',
     measureResult: '你的测量平均值',
@@ -92,7 +92,7 @@ const copy = {
     redoLabel: '再次实验',
     // 幕1 预测
     predictTitle: '预测',
-    predictQuestion: '给定 R = 10Ω 的定值电阻，电源电压 U 从 0 调到 12V。',
+    predictQuestion: '给定 R = 10Ω 的定值电阻，探究通过它的电流与它两端电压的关系。',
     predictQuestion2: '先别急着看图像，猜一猜：',
     predictQ1: '电流 I 与电压 U 的图像是什么形状？',
     predictLine: '一条过原点的直线',
@@ -115,12 +115,12 @@ const copy = {
     pinnedEmpty: '（未钉住。钉住不同 R 的 I-U 曲线对比，斜率变化就浮现了）',
     cards: [
       {
-        title: 'R 固定，只变 U',
-        prompt: '固定 R=10Ω，把 U 从 0 调到 12V。I 怎么变？I-U 图像是什么形状？',
+        title: 'R 不变，变电压',
+        prompt: '保持 R=10Ω 不变，改变电阻两端的电压（电压表读数 V），观察通过电阻的电流 I 怎么变？I-U 图像是什么形状？',
       },
       {
-        title: 'U 固定，只变 R',
-        prompt: '固定 U=6V，把 R 从 5Ω 调到 50Ω。I 怎么变？',
+        title: '电压不变，只变 R',
+        prompt: '保持电阻两端的电压不变（V=6V），换用不同阻值的 R，观察电流 I 怎么变？',
       },
       {
         title: '特殊点验证',
@@ -180,7 +180,7 @@ const copy = {
     elementBulb: 'Light bulb',
     bulbModelHint: 'The bulb uses a simplified nonlinear model: a hotter tungsten filament has higher resistance, so the I-U graph is not straight. This shows the trend, not complete experimental data.',
     measureTitle: 'Measure unknown resistance',
-    measureIntro: 'This is an unknown resistor (value hidden). Read the voltmeter V (voltage across the element) and the ammeter I, compute R = V/I, repeat and average.',
+    measureIntro: 'This is an unknown resistor (value hidden). Voltmeter-ammeter method: start with the rheostat at maximum (protects the circuit), close the switch, then reduce it to vary the voltage. Compute R = V/I from V and I, repeat and average.',
     measureReveal: 'Reveal true value',
     measureHidden: '? Ω',
     measureResult: 'Your measured average',
@@ -202,7 +202,7 @@ const copy = {
     nextStage: 'Next →',
     redoLabel: 'Redo',
     predictTitle: 'Predict',
-    predictQuestion: 'Given a fixed resistor R = 10Ω and a power supply U adjustable from 0 to 12V.',
+    predictQuestion: 'Given a fixed resistor R = 10Ω, explore how the current through it depends on the voltage across it.',
     predictQuestion2: 'Before seeing the graph, guess:',
     predictQ1: 'What does the I vs U graph look like?',
     predictLine: 'A straight line through the origin',
@@ -224,12 +224,12 @@ const copy = {
     pinnedEmpty: '(nothing pinned — pin I-U curves for different R and watch the slope change)',
     cards: [
       {
-        title: 'Fix R, vary U',
-        prompt: 'Fix R=10Ω and raise U from 0 to 12V. How does I change? What shape is the I-U graph?',
+        title: 'Fix R, vary voltage',
+        prompt: 'Keep R=10Ω fixed and change the voltage across the resistor. How does I change? What shape is the I-U graph?',
       },
       {
-        title: 'Fix U, vary R',
-        prompt: 'Fix U=6V and raise R from 5Ω to 50Ω. How does I change?',
+        title: 'Fix voltage, vary R',
+        prompt: 'Keep the voltage across the resistor fixed (V=6V) and swap in different R. How does I change?',
       },
       {
         title: 'Check a special point',
@@ -487,9 +487,9 @@ export default function Ohm() {
         setMeasureMode(true);
         setRRevealed(false);
         setSwitchOn(true);
-        setU(6);
+        setU(12);
         setR(15);
-        setRp(0); // 归零：U/I = R 直接成立（伏安法也支持用元件电压 V/I）
+        setRp(40); // 教科书：闭合前变阻器调至最大阻值（保护电路），闭合后逐渐调小改变电压
       },
     },
   ];
