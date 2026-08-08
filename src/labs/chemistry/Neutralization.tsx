@@ -454,7 +454,7 @@ export default function Neutralization() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.flaskLabel}
             </h3>
-            <svg viewBox="0 0 220 200" className="w-full h-auto max-h-[320px]" role="img" aria-label={t.flaskLabel}>
+            <svg viewBox="0 0 220 200" className="w-full h-auto max-h-[320px]" role="img" aria-label={t.flaskLabel} strokeLinecap="round" strokeLinejoin="round">
               {/* 液面高度随滴入体积上升：0mL→y=104，40mL→y=68（线性） */}
               {/* 烧杯壁（平底） */}
               <path d="M40 30 H180 V170 H40 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
@@ -480,7 +480,7 @@ export default function Neutralization() {
               />
               {/* 滴管：胶头（橡胶乳头）+ 管身 + 尖嘴 */}
               <path d="M104 14 Q110 8 116 14 L116 20 L104 20 Z" fill="var(--fg)" opacity="0.3" />
-              <line x1="110" y1="20" x2="110" y2="44" stroke="var(--fg)" strokeWidth="1.8" />
+              <line x1="110" y1="20" x2="110" y2="44" stroke="var(--fg)" strokeWidth="1.5" />
               <path d="M108 44 L112 44 L110 50 Z" fill="var(--fg)" />
               {/* 液滴：从滴管口下落（CSS 动画，无限循环，随滴入体积变化节奏） */}
               {volume > 0 && (

@@ -15,6 +15,9 @@
   /* 电表指针：电流表红（红表笔/正极惯例）、电压表蓝（万用表电压档惯例） */
   --meter-a: #c62828;
   --meter-v: #1565c0;
+  /* 铜粉及其氧化产物（质量守恒实验）：浅色底用暗金/近黑，暗色底提亮保证可见 */
+  --cu-powder: #b8860b;
+  --cu-oxide: #3a3a3a;
   --f-serif: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
   --f-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
   --f-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -33,6 +36,9 @@ html.dark {
   /* 暗主题下提高明度，保证指针在暗底上清晰 */
   --meter-a: #ef5350;
   --meter-v: #42a5f5;
+  /* 铜粉/氧化铜在暗底提亮（#3a3a3a 在 #0a0a0a 上几乎不可见） */
+  --cu-powder: #d4a017;
+  --cu-oxide: #6b6b6b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +54,8 @@ html.dark {
     --liquid-opacity: 0.5;
     --meter-a: #ef5350;
     --meter-v: #42a5f5;
+    --cu-powder: #d4a017;
+    --cu-oxide: #6b6b6b;
   }
 }
 

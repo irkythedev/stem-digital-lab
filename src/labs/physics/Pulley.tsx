@@ -227,7 +227,7 @@ export default function Pulley() {
 
       {/* ── 滑轮示意 ── */}
       <div className="border border-[var(--border)] p-3">
-        <svg viewBox="0 0 520 320" className="w-full" aria-label="滑轮">
+        <svg viewBox="0 0 520 320" className="w-full" aria-label="滑轮" strokeLinecap="round" strokeLinejoin="round">
           {/* 定滑轮：轮固定在上，绳绕轮，向下拉 */}
           {type === 'fixed' ? (
             <>

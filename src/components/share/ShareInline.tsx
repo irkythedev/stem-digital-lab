@@ -14,9 +14,13 @@ import ShareDialog from '../feedback/ShareDialog';
 interface ShareInlineProps {
   /** 分享目标 URL；缺省取当前页面地址 */
   url?: string;
+  /** 分享标题（如实验名）；缺省用站点通用标题 */
+  title?: string;
+  /** 分享正文（可带实验特色描述）；缺省用站点通用文案 */
+  text?: string;
 }
 
-export default function ShareInline({ url }: ShareInlineProps) {
+export default function ShareInline({ url, title, text }: ShareInlineProps) {
   const { t } = useApp();
   const [open, setOpen] = useState(false);
 
@@ -33,7 +37,7 @@ export default function ShareInline({ url }: ShareInlineProps) {
       >
         <Share2 className="w-4 h-4" />
       </button>
-      {open && <ShareDialog url={shareUrl} onClose={() => setOpen(false)} />}
+      {open && <ShareDialog url={shareUrl} title={title} text={text} onClose={() => setOpen(false)} />}
     </>
   );
 }

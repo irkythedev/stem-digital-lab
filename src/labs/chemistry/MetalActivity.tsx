@@ -309,7 +309,7 @@ export default function MetalActivity() {
             {done ? (lang === 'zh' ? '重置反应' : 'Reset') : (lang === 'zh' ? '开始反应' : 'React')}
           </button>
         </div>
-        <svg viewBox="0 0 300 220" className="w-full" aria-label="金属活动性实验">
+        <svg viewBox="0 0 300 220" className="w-full" aria-label="金属活动性实验" strokeLinecap="round" strokeLinejoin="round">
           {/* 试管（圆底） */}
           <path d="M110 40 v95 a40 40 0 0 0 80 0 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
           <line x1="110" y1="42" x2="190" y2="42" stroke="var(--fg)" strokeWidth="1.2" />
@@ -318,7 +318,7 @@ export default function MetalActivity() {
           {/* 液面 */}
           <line x1="112" y1="70" x2="188" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
           {/* 金属丝（伸入溶液，下端圆头） */}
-          <line x1="150" y1="42" x2="150" y2={done ? 148 : 100} stroke={isAlCu ? METALS.al.color : METALS.cu.color} strokeWidth="3" strokeLinecap="round" />
+          <line x1="150" y1="42" x2="150" y2={done ? 148 : 100} stroke={isAlCu ? METALS.al.color : METALS.cu.color} strokeWidth="1.5" strokeLinecap="round" />
           {/* 析出金属（反应后，随进度渐显在金属丝表面） */}
           {done && depositVisible && (
             <g style={{ opacity: depositOpacity, transition: 'opacity 0.15s' }}>

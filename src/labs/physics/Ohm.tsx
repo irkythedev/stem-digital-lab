@@ -547,7 +547,7 @@ export default function Ohm() {
                 label={gaugeLabel('voltage')}
               />
             </div>
-            <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label={t.circuitLabel}>
+            <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
               {/* 导线 */}
               <g stroke="var(--fg)" strokeWidth="1.2" fill="none">
                 {/* 左侧竖线（电池支路）：正极段(60→70) 与负极段(82→140)，电池符号填补 70-82 间隙 */}
@@ -595,7 +595,7 @@ export default function Ohm() {
               {/* 电池：长线 + 短线，标注正负极 */}
               <g stroke="var(--fg)" strokeWidth="1.5">
                 <line x1="22" y1="70" x2="58" y2="70" />
-                <line x1="32" y1="82" x2="48" y2="82" strokeWidth="3" />
+                <line x1="32" y1="82" x2="48" y2="82" strokeWidth="1.5" />
               </g>
               <text x="62" y="74" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
                 +
