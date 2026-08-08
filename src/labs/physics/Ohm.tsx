@@ -115,12 +115,12 @@ const copy = {
     pinnedEmpty: '（未钉住。钉住不同 R 的 I-U 曲线对比，斜率变化就浮现了）',
     cards: [
       {
-        title: 'R 不变，变电压',
-        prompt: '保持 R=10Ω 不变，改变电阻两端的电压（电压表读数 V），观察通过电阻的电流 I 怎么变？I-U 图像是什么形状？',
+        title: '探究一：电流与电压的关系',
+        prompt: '保持 R=10Ω 不变，调节滑动变阻器使定值电阻两端电压逐次升高（如 1V、2V、3V），记录电流 I——I 与 U 是什么关系？',
       },
       {
-        title: '电压不变，只变 R',
-        prompt: '保持电阻两端的电压不变（V=6V），换用不同阻值的 R，观察电流 I 怎么变？',
+        title: '探究二：电流与电阻的关系',
+        prompt: '保持定值电阻两端电压（电压表读数）为 2.5V 不变：换用不同阻值的 R 后，调节滑动变阻器使电压表回到 2.5V，再记录电流 I。',
       },
       {
         title: '特殊点验证',
@@ -224,12 +224,12 @@ const copy = {
     pinnedEmpty: '(nothing pinned — pin I-U curves for different R and watch the slope change)',
     cards: [
       {
-        title: 'Fix R, vary voltage',
-        prompt: 'Keep R=10Ω fixed and change the voltage across the resistor. How does I change? What shape is the I-U graph?',
+        title: 'Part 1: current vs voltage',
+        prompt: 'Keep R=10Ω fixed. Adjust the rheostat so the voltage across the resistor rises step by step (e.g. 1V, 2V, 3V) and record I. How does I depend on U?',
       },
       {
-        title: 'Fix voltage, vary R',
-        prompt: 'Keep the voltage across the resistor fixed (V=6V) and swap in different R. How does I change?',
+        title: 'Part 2: current vs resistance',
+        prompt: 'Keep the voltage across the resistor at 2.5V: after swapping in a different R, adjust the rheostat until the voltmeter reads 2.5V again, then record I.',
       },
       {
         title: 'Check a special point',
@@ -292,7 +292,9 @@ export default function Ohm() {
   const [u, setU] = useState(6);
   const [r, setR] = useState(TARGET_R);
   const [element, setElement] = useState<ElementType>('resistor');
-  const [rp, setRp] = useState(15); // 滑动变阻器阻值（串联保护+调压，伏安法标准电路）
+  const [rp, setRp] = useState(40); // 滑动变阻器阻值；初始置最大（教科书：连接电路时滑片在最大阻值处，保护电路）
+  /** 控制电压（探究二：换电阻后须调变阻器使电压回到此值）；null = 未启用 */
+  const [targetV, setTargetV] = useState<number | null>(null);
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
@@ -382,9 +384,10 @@ export default function Ohm() {
   const reset = () => {
     setU(6);
     setR(TARGET_R);
-    setRp(15);
+    setRp(40);
     setMeasureMode(false);
     setRRevealed(false);
+    setTargetV(null);
     setMeterA({ id: 'dry-mid', x: 180, y: 60 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
@@ -396,7 +399,7 @@ export default function Ohm() {
     setRevealed(false);
     setU(6);
     setR(TARGET_R);
-    setRp(15);
+    setRp(40);
     setElement('resistor');
     setMeasureMode(false);
     setRRevealed(false);
@@ -404,6 +407,7 @@ export default function Ohm() {
     setMeterA({ id: 'dry-mid', x: 180, y: 60 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
+    setTargetV(null);
     setPinned([]);
     setObservations([]);
     setConclusion({ q1: null, q2: null, q3: null, q4: null });
@@ -440,8 +444,9 @@ export default function Ohm() {
       tryLabel: t.tryLabel,
       tryIt: () => {
         setR(10);
-        setU(12);
-        setRp(0); // 归零变阻器：U 直接加在元件两端，读数 = U/R，图像斜率 = 1/R
+        setU(4.5); // 学生电源 4.5V（三节干电池，初中常用）
+        setRp(40); // 变阻器从最大开始，逐步调小使电压升至 1V→2V→3V
+        setTargetV(null);
       },
     },
     {
@@ -450,9 +455,10 @@ export default function Ohm() {
       prompt: t.cards[1].prompt,
       tryLabel: t.tryLabel,
       tryIt: () => {
-        setU(6);
+        setU(6); // 电源 6V
         setR(5);
-        setRp(0); // 归零变阻器：I = U/R 严格成立
+        setRp(7); // V = 6·5/(5+7) = 2.5V（控制电压）
+        setTargetV(2.5); // 教科书：换电阻后须调变阻器使电压回到 2.5V
       },
     },
     {
@@ -464,6 +470,7 @@ export default function Ohm() {
         setU(6);
         setR(10);
         setRp(0); // 归零：U=6V、R=10Ω → I=0.60A 与提示一致
+        setTargetV(null);
       },
     },
     {
@@ -474,7 +481,7 @@ export default function Ohm() {
       tryIt: () => {
         setU(9);
         setR(30);
-        setRp(15); // 自由探索保留变阻器，观察分压对斜率的影响
+        setRp(40); // 自由探索保留变阻器，观察分压对斜率的影响
       },
     },
     {
@@ -490,6 +497,7 @@ export default function Ohm() {
         setU(12);
         setR(15);
         setRp(40); // 教科书：闭合前变阻器调至最大阻值（保护电路），闭合后逐渐调小改变电压
+        setTargetV(null);
       },
     },
   ];
@@ -745,6 +753,21 @@ export default function Ohm() {
             <p className="text-[10px] mono-font text-[var(--muted)] mb-2">
               {lang === 'zh' ? 'U 为电源电压，V 为元件两端电压（电压表读数）' : 'U is the supply voltage; V is across the element (voltmeter)'}
             </p>
+            {/* 控制电压提示（探究二：换电阻后调变阻器使电压回到设定值） */}
+            {targetV !== null && (
+              <p
+                className={`text-[11px] mono-font mb-2 ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}
+                role={Math.abs(elemVoltage - targetV) > 0.05 ? 'alert' : undefined}
+              >
+                {Math.abs(elemVoltage - targetV) > 0.05
+                  ? (lang === 'zh'
+                      ? `⚠ 电压已改变（当前 ${elemVoltage.toFixed(2)}V），请调节滑动变阻器使电压表回到 ${targetV.toFixed(1)}V！`
+                      : `⚠ Voltage changed (now ${elemVoltage.toFixed(2)}V) — adjust the rheostat back to ${targetV.toFixed(1)}V!`)
+                  : (lang === 'zh'
+                      ? `控制电压：${targetV.toFixed(1)}V（保持电压不变）`
+                      : `Control voltage: ${targetV.toFixed(1)}V (keep it fixed)`)}
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div>
                 <p className="text-[11px] text-[var(--muted)] mono-font">U</p>
