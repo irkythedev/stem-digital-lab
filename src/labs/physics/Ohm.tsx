@@ -612,10 +612,11 @@ export default function Ohm() {
                 <line x1="22" y1="70" x2="58" y2="70" />
                 <line x1="32" y1="82" x2="48" y2="82" />
               </g>
-              <text x="62" y="74" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
+              {/* 正负极标注：标在各自电极线端外侧（长线正极外侧上方、短线负极外侧下方） */}
+              <text x="64" y="66" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
                 +
               </text>
-              <text x="54" y="88" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
+              <text x="56" y="90" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
                 −
               </text>
               {/* 电流小点：沿回路流动（穿过元件），速度随有效电流；开关断开时消失 */}
