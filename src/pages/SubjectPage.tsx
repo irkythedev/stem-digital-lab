@@ -7,6 +7,7 @@
  * P0 阶段实验列表为占位，后续由 labs 注册表填充。
  */
 import { Link, useParams } from 'react-router-dom';
+import { Gauge } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
 import { labsForSubject } from '../lib/labs';
@@ -49,24 +50,40 @@ export default function SubjectPage() {
         />
       </div>
 
-      {/* 化学工具：元素周期表 */}
-      {subject.id === 'chemistry' && (
+      {/* 工具区：化学 → 元素周期表；物理 → 物理常量速查 */}
+      {(subject.id === 'chemistry' || subject.id === 'physics') && (
         <section className="mb-8">
           <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
             // {lang === 'zh' ? '工具' : 'Tools'}
           </h2>
-          <Link
-            to="/periodic-table"
-            className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
-          >
-            <span className="flex items-center gap-3">
-              <PeriodicTableIcon className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
-              <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
-                {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+          {subject.id === 'chemistry' && (
+            <Link
+              to="/periodic-table"
+              className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
+            >
+              <span className="flex items-center gap-3">
+                <PeriodicTableIcon className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
+                <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
+                  {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+                </span>
               </span>
-            </span>
-            <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
-          </Link>
+              <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          )}
+          {subject.id === 'physics' && (
+            <Link
+              to="/physics-constants"
+              className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
+            >
+              <span className="flex items-center gap-3">
+                <Gauge className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
+                <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
+                  {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+                </span>
+              </span>
+              <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          )}
         </section>
       )}
 
