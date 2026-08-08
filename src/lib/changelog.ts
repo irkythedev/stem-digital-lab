@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.11.1';
+export const APP_VERSION = '1.12.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.12.0',
+    date: '2026-08',
+    zh: [
+      '反馈通道升级：实验/项目反馈提交后实时推送到开发者微信（PushPlus 推送），反馈直达、更及时；离线时仍自动暂存本机，联网后补发',
+    ],
+    en: [
+      'Feedback channel upgrade: experiment/project feedback now arrives on the developer\'s WeChat in real time via PushPlus; offline feedback is still queued locally and auto-sent when back online',
+    ],
+  },
   {
     version: '1.11.1',
     date: '2026-08',

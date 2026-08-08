@@ -1,9 +1,9 @@
 /**
- * 反馈存储：CloudBase 云端提交（无后端，前端 SDK 匿名登录直连）+ 本地队列兜底。
- * 云端成功 → 删除本地记录；云端失败（离线/未配置/微信内网络）→ 留在本地，
- * 下次打开页面自动重试补传。
+ * 反馈存储：PushPlus 微信推送（无后端，前端直连）+ 本地队列兜底。
+ * 推送成功 → 删除本地记录；失败（离线/未配置/网络异常）→ 留在本地，
+ * 下次打开页面自动重试补传。教师微信实时收到反馈。
  */
-import { isCloudBaseConfigured, CLOUDBASE_CONFIG } from './cloudbase-config';
+import { isPushPlusConfigured, PUSHPLUS_CONFIG } from './pushplus-config';
 
 export type FeedbackType = 'experiment' | 'project';
 export type FeedbackRating = 'helpful' | 'neutral' | 'not-helpful';
@@ -39,7 +39,7 @@ function persist(records: FeedbackRecord[]): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   } catch {
-    // 存储满等异常：静默丢弃（云端仍可能成功）
+    // 存储满等异常：静默丢弃（推送仍可能成功）
   }
 }
 
@@ -47,7 +47,7 @@ export function saveFeedback(record: FeedbackRecord): void {
   if (typeof window === 'undefined') return;
   const records = [...loadFeedback(), record];
   persist(records);
-  // 异步尝试云端提交（不阻塞 UI）
+  // 异步尝试推送（不阻塞 UI）
   void flushFeedbackQueue();
 }
 
@@ -65,48 +65,47 @@ export function makeFeedbackId(): string {
 
 export const FEEDBACK_STORAGE_KEY = STORAGE_KEY;
 
-/** 单条记录 → CloudBase 文档字段（下划线风格与云数据库惯例一致） */
-function toCloudDoc(record: FeedbackRecord): Record<string, unknown> {
-  return {
-    id: record.id,
-    type: record.type,
-    labId: record.labId ?? '',
-    rating: record.rating ?? '',
-    categories: record.categories,
-    message: record.message,
-    language: record.language,
-    createdAt: record.createdAt,
-  };
-}
+/** 评分/分类 → 可读中文（用于推送内容） */
+const RATING_ZH: Record<FeedbackRating, string> = { helpful: '有帮助', neutral: '一般', 'not-helpful': '没帮助' };
+const CATEGORY_ZH: Record<FeedbackCategory, string> = {
+  content: '内容', interaction: '交互', visual: '视觉', language: '语言', bug: '问题', suggestion: '建议',
+};
 
-let sdkPromise: Promise<unknown> | null = null;
-
-/** 动态加载 @cloudbase/js-sdk（反馈是低频功能，避免拖慢首屏） */
-function loadSdk(): Promise<unknown> {
-  if (!sdkPromise) {
-    sdkPromise = import('@cloudbase/js-sdk').then((m) => m.default ?? m);
+/** 单条记录 → PushPlus 推送内容（txt 纯文本，逐行展示） */
+function formatPushContent(record: FeedbackRecord): string {
+  const lines: string[] = [
+    `类型：${record.type === 'experiment' ? '实验反馈' : '项目反馈'}`,
+    `位置：${record.labId ?? '通用'}`,
+    `评分：${record.rating ? RATING_ZH[record.rating] : '未评'}`,
+    `分类：${record.categories.length ? record.categories.map((c) => CATEGORY_ZH[c]).join('、') : '未选'}`,
+    `语言：${record.language === 'zh' ? '中文' : 'English'}`,
+    `时间：${new Date(record.createdAt).toLocaleString('zh-CN', { hour12: false })}`,
+  ];
+  if (record.message.trim()) {
+    lines.push(`内容：${record.message.trim()}`);
   }
-  return sdkPromise;
+  return lines.join('\n');
 }
 
-/** 提交单条反馈到 CloudBase（匿名登录 + 集合写入）。返回 true=成功 */
+/** 提交单条反馈到 PushPlus 微信推送。返回 true=推送成功 */
 export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean> {
-  if (!isCloudBaseConfigured()) return false;
+  if (!isPushPlusConfigured()) return false;
   try {
-    const cloudbase = await loadSdk();
-    const app = (cloudbase as { init: (opts: object) => { auth: () => { anonymousAuthProvider: () => { signIn: () => Promise<void> } }; database: () => { collection: (name: string) => { add: (doc: object) => Promise<unknown> } } } }).init({
-      env: CLOUDBASE_CONFIG.envId,
-      region: CLOUDBASE_CONFIG.region,
+    const res = await fetch(PUSHPLUS_CONFIG.apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: PUSHPLUS_CONFIG.token,
+        title: PUSHPLUS_CONFIG.title,
+        content: formatPushContent(record),
+        template: PUSHPLUS_CONFIG.template,
+      }),
     });
-    const auth = app.auth();
-    // 匿名登录（每设备一个匿名用户，永不过期）；已登录时静默成功
-    try {
-      await auth.anonymousAuthProvider().signIn();
-    } catch {
-      // 已登录或其他登录态：继续尝试写入
-    }
-    await app.database().collection('Feedback').add(toCloudDoc(record));
-    return true;
+    if (!res.ok) return false;
+    // PushPlus 接口即使业务失败也返回 HTTP 200，需检查 body.code
+    const json: unknown = await res.json();
+    const code = (json as { code?: number } | null)?.code;
+    return code === 200;
   } catch {
     return false;
   }
@@ -114,10 +113,10 @@ export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean
 
 let flushing = false;
 
-/** 将本地待发队列逐条提交到云端；成功的移除，失败的保留待下次重试 */
+/** 将本地待发队列逐条推送；成功的移除，失败的保留待下次重试 */
 export async function flushFeedbackQueue(): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!isCloudBaseConfigured()) return;
+  if (!isPushPlusConfigured()) return;
   if (flushing) return;
   flushing = true;
   try {
@@ -128,7 +127,7 @@ export async function flushFeedbackQueue(): Promise<void> {
     for (const record of records) {
       const ok = await submitOneFeedback(record);
       if (ok) {
-        changed = true; // 已送达云端，从本地移除
+        changed = true; // 已送达微信，从本地移除
       } else {
         remaining.push(record); // 失败保留，下次重试
       }
