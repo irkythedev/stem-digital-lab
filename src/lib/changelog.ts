@@ -21,7 +21,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.12.2',
     date: '2026-08',
     zh: [
-      '修复欧姆定律实验并贴近教材：电压口径统一为电阻两端电压（电压表读数），伏安法测电阻结果与真实值精确一致；探究流程按教材表述（保持 R 不变变电压 / 保持电压不变换 R），伏安法按教材操作（变阻器先调至最大保护电路再逐渐调小）；小灯泡电压表读数含灯丝升温的动态电阻；特殊点验证读数与提示一致',
+      '修复欧姆定律实验并贴近教材：电压口径统一为电阻两端电压（电压表读数），伏安法测电阻结果与真实值精确一致；探究流程按教材表述（保持 R 不变变电压 / 保持电压不变换 R），伏安法按教材操作（变阻器先调至最大保护电路再逐渐调小）；小灯泡电压表读数含灯丝升温的动态电阻；特殊点验证读数与提示一致；电路图符号对齐教科书（滑动变阻器斜向下箭头+接线端子）',
     ],
     en: [
       'Fixed voltage semantics in the Ohm\'s law lab and aligned it with the textbook: voltage means the drop across the resistor (voltmeter reading), so voltmeter-ammeter resistance matches the true value exactly; exploration follows the textbook wording (fix R and vary V / fix V and swap R); voltmeter-ammeter method follows textbook procedure (rheostat at maximum to protect, then reduce); bulb voltmeter uses hot-filament dynamic resistance; special-point readings match prompts',
