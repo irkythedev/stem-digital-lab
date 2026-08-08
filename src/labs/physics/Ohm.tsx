@@ -298,7 +298,8 @@ export default function Ohm() {
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
-  const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-mid', x: 180, y: 60 });
+  // 电流表串联在干路（电池与开关之间，远离变阻器）
+  const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-left', x: 67, y: 60 });
   const [meterV, setMeterV] = useState<MeterTarget | null>({ id: 'element', x: 250, y: 28 });
   const [meterErr, setMeterErr] = useState<string | null>(null);
   const [pinned, setPinned] = useState<{ id: number; r: number; element: ElementType; rp: number }[]>([]);
@@ -388,7 +389,7 @@ export default function Ohm() {
     setMeasureMode(false);
     setRRevealed(false);
     setTargetV(null);
-    setMeterA({ id: 'dry-mid', x: 180, y: 60 });
+    setMeterA({ id: 'dry-left', x: 67, y: 60 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
   };
@@ -404,7 +405,7 @@ export default function Ohm() {
     setMeasureMode(false);
     setRRevealed(false);
     setSwitchOn(true);
-    setMeterA({ id: 'dry-mid', x: 180, y: 60 });
+    setMeterA({ id: 'dry-left', x: 67, y: 60 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
     setTargetV(null);
