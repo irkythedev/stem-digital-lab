@@ -43,6 +43,8 @@ function elementResistance(r: number, element: ElementType, u: number): number {
  * 定值电阻斜率 = 1/R，与结论口径一致；变阻器 Rp 参与分压不影响横轴语义。
  */
 function sampleOhm(r: number, element: ElementType, rp = 0): [number, number][] {
+  // 元件短路（R=0 相当于导线）：I-U 图像无有效关系，返回空曲线
+  if (element === 'resistor' && r === 0) return [];
   const pts: [number, number][] = [];
   for (let u = 0; u <= 12.0001; u += 0.1) {
     const i = element === 'bulb' ? u / (r + BULB_GAMMA * u + rp) : u / (r + rp);
@@ -167,6 +169,8 @@ const copy = {
       '伏安法测电阻：多测几组 U、I，分别算 R 再取平均，减小误差。',
       '小灯泡的电阻随温度升高而增大，所以它的 I-U 图像不是直线。',
       '滑动变阻器的作用：保护电路 + 改变电压，实现多次测量。',
+      '电流通过电阻会发热（电流的热效应，焦耳定律 Q=I²Rt）：电流越大、电阻越大，发热越明显。',
+      '不能将电源两极直接用导线相连（短路）：电流趋近无穷大，会烧坏电源甚至引发火灾。',
     ],
   },
   en: {
@@ -318,10 +322,14 @@ export default function Ohm() {
   const predComplete = predShape !== null;
 
   const i = currentOf(u, r, element, rp);
-  /** 有效电流：开关断开时为 0 */
-  const effectiveI = switchOn ? i : 0;
-  /** 元件两端电压：定值电阻 = I·R，灯泡 = I·(R₀+γU)（动态电阻，与 I-U 曲线一致） */
-  const elemVoltage = switchOn ? i * elementResistance(r, element, u) : 0;
+  /** 短路：定值电阻 R=0（相当于导线）且变阻器 R_p=0 → 电源两极直接相连，电流趋近无穷大（防 NaN/防表盘溢出） */
+  const shortCircuit = switchOn && element === 'resistor' && r === 0 && rp === 0 && u > 0;
+  /** 有效电流：开关断开时为 0；短路时 i=∞ 不参与常规计算 */
+  const effectiveI = switchOn && !shortCircuit ? i : 0;
+  /** 元件两端电压：定值电阻 = I·R，灯泡 = I·(R₀+γU)；短路时元件两端电压为 0（被导线短接） */
+  const elemVoltage = switchOn && !shortCircuit ? i * elementResistance(r, element, u) : 0;
+  /** 元件发热（焦耳定律 Q∝I²）：电流越大发热越明显，短路时达最大 */
+  const heat = shortCircuit ? 1 : Math.min(1, (effectiveI / 1.2) ** 2);
 
   const currentCurve: CoordCurve = useMemo(
     () => ({
@@ -361,7 +369,7 @@ export default function Ohm() {
   /** 表盘数值：探针当前吸附目标的物理量；悬空为 null（指针回零） */
   const gaugeValue = (kind: 'current' | 'voltage', target: MeterTarget | null): number | null => {
     if (!target) return null;
-    if (kind === 'current') return effectiveI;
+    if (kind === 'current') return shortCircuit ? null : effectiveI;
     // 元件两端电压断路时为 0（无电流无压降）；电池两端始终为 U
     const c = comps.find((x) => x.id === target.id);
     if (!c) return null;
@@ -669,10 +677,10 @@ export default function Ohm() {
                   y="53"
                   width="40"
                   height="14"
-                  fill="var(--muted)"
-                  fillOpacity={effectiveI > 0.01 ? 0.05 + 0.15 * Math.min(1, effectiveI / 1.2) : 0.05}
-                  style={{ transition: 'fill-opacity 0.3s ease-out' }}
-                  stroke="var(--fg)"
+                  fill={heat > 0.12 ? `rgba(255, 140, 60, ${0.3 + 0.6 * heat})` : 'var(--muted)'}
+                  fillOpacity={0.9}
+                  style={{ transition: 'fill 0.3s ease-out' }}
+                  stroke={heat > 0.5 ? '#e25822' : 'var(--fg)'}
                   strokeWidth="1.2"
                 />
               )}
@@ -762,6 +770,21 @@ export default function Ohm() {
             <p className="text-[10px] mono-font text-[var(--muted)] mb-2">
               {lang === 'zh' ? 'U 为电源电压，V 为元件两端电压（电压表读数）' : 'U is the supply voltage; V is across the element (voltmeter)'}
             </p>
+            {/* 零电阻 / 短路警告（电流热效应与安全教学） */}
+            {element === 'resistor' && r === 0 && (
+              <p
+                className={`text-[11px] mono-font mb-2 ${shortCircuit ? 'text-[var(--error)] font-bold' : 'text-[var(--error)]'}`}
+                role="alert"
+              >
+                {shortCircuit
+                  ? (lang === 'zh'
+                      ? '⚠ 危险短路！R=0 且变阻器为 0，电源两极直接相连，电流趋近无穷大——会烧坏电源！请增大电阻或断开开关。'
+                      : '⚠ Short circuit! R=0 and rheostat at 0 — the supply terminals are joined directly and the current becomes enormous. Increase R or open the switch!')
+                  : (lang === 'zh'
+                      ? '⚠ R=0 相当于导线：元件被短路，电流绕过它。若变阻器也为 0，将发生危险短路！'
+                      : '⚠ R=0 acts as a wire: the element is short-circuited and current bypasses it. If the rheostat is also 0, this becomes a dangerous short!')}
+              </p>
+            )}
             {/* 控制电压提示（探究二：换电阻后调变阻器使电压回到设定值） */}
             {targetV !== null && (
               <p
@@ -807,8 +830,8 @@ export default function Ohm() {
               </div>
               <div>
                 <p className="text-[11px] text-[var(--muted)] mono-font">I</p>
-                <p className="text-sm mono-font text-[var(--fg)]">
-                  {effectiveI.toFixed(2)}
+                <p className={`text-sm mono-font ${shortCircuit ? 'text-[var(--error)]' : 'text-[var(--fg)]'}`}>
+                  {shortCircuit ? '∞' : effectiveI.toFixed(2)}
                   <span className="ml-1 text-[10px] text-[var(--muted)]">A</span>
                 </p>
               </div>
@@ -888,7 +911,7 @@ export default function Ohm() {
             <ParamSlider
               label={element === 'bulb' ? 'R₀' : 'R'}
               value={r}
-              min={5}
+              min={0}
               max={50}
               step={5}
               disabled={measureMode && !rRevealed}
