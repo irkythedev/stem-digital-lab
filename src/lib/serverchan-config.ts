@@ -17,7 +17,7 @@ export const SERVERCHAN_CONFIG = {
   /** 发送接口：POST https://sctapi.ftqq.com/{sendKey}.send */
   apiBase: 'https://sctapi.ftqq.com',
   /** SendKey（sct.ftqq.com 登录后获取）。留空 = 反馈仅本地暂存 */
-  sendKey: '',
+  sendKey: 'SCT393012THwfuZWcSnf5LHNfh0zbZCPWZ',
   /** 推送标题（Server酱限制最长 32 字符） */
   title: '数理化数字实验室 · 反馈',
 } as const;
