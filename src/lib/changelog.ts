@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.11.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.11.0',
+    date: '2026-08',
+    zh: [
+      '数学新增「数学公式速查」工具：19 个初中数学公式分类速览、随查随搜；点开看公式详解、直观配图与易错点提醒，还能一键跳去对应的函数探究',
+      '数学公式配图更严谨：函数图像与几何示意图均按教材规范绘制，圆、扇形等图示准确清晰',
+      '数学实验与公式说明统一为「探究」表述，和教材栏目保持一致',
+    ],
+    en: [
+      'Math adds a "Math Formulas" tool: 19 middle-school formulas at a glance with search; tap a card for the formula, a clear diagram, and common pitfalls, then jump straight to the related function exploration',
+      'Math diagrams are drawn to textbook standards: accurate function graphs and geometry figures, especially circles and sectors',
+      'Math labs and formula notes now use "exploration" wording, matching the textbook',
+    ],
+  },
   {
     version: '1.10.0',
     date: '2026-08',

@@ -18,6 +18,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import GuidePage from './pages/GuidePage';
 import PeriodicTable from './pages/PeriodicTable';
 import PhysicalConstants from './pages/PhysicalConstants';
+import MathFormulas from './pages/MathFormulas';
 
 export default function App() {
   // 页面加载时自动补传本地待发反馈队列（未配置/离线时静默跳过）
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/subject/:subjectId" element={<SubjectPage />} />
           <Route path="/periodic-table" element={<PeriodicTable />} />
           <Route path="/physics-constants" element={<PhysicalConstants />} />
+          <Route path="/math-formulas" element={<MathFormulas />} />
           <Route path="/lab/:labId" element={<LabPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

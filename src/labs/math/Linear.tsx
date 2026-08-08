@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学实验 · 一次函数 y = kx + b 三幕式探究（人教版 八下第 23 章）
+ * 数学探究 · 一次函数 y = kx + b 三幕式探究（人教版 八下第 23 章）
  *
  * 幕 1 预测：给定 y = 2x - 3，先猜图像形状 / 与 y 轴交点，再揭示
  * 幕 2 探索：控制变量卡（k 斜率 / b 截距 / 特殊点 / 实际建模）+ 钉住曲线 + 观察笔记
@@ -58,7 +58,7 @@ const copy = {
     stageConclude: '结论',
     stageDone: '完成',
     nextStage: '下一步 →',
-    redoLabel: '再次实验',
+    redoLabel: '重新探究',
     // 幕1 预测
     predictTitle: '预测',
     predictQuestion: '看这个函数：',
