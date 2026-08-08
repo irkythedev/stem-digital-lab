@@ -91,30 +91,28 @@ export default function Header() {
             {hasUpdate && (
               <button
                 type="button"
-                onClick={async (e) => {
+                onClick={(e) => {
                   e.stopPropagation();
                   showToast();
-                  // PWA 双刷新问题：旧 SW 拦截 reload 返回缓存旧页。
-                  // 先触发 SW 更新并等待新 SW 激活，再刷新——一次到位。
-                  try {
-                    if ('serviceWorker' in navigator) {
-                      const reg = await navigator.serviceWorker.getRegistration();
-                      if (reg) {
-                        await reg.update();
-                        // 等待新 SW 激活（autoUpdate 注入 skipWaiting，install 后自动 activate）
-                        const deadline = Date.now() + 5000;
-                        await new Promise<void>((resolve) => {
-                          const tick = () => {
-                            if (reg.active?.state === 'activated' && navigator.serviceWorker.controller) resolve();
-                            else if (Date.now() > deadline) resolve();
-                            else setTimeout(tick, 100);
-                          };
-                          tick();
-                        });
-                      }
-                    }
-                  } catch { /* 无 SW 环境：直接刷新 */ }
-                  window.location.reload();
+                  // PWA 双刷新问题根因：旧 SW 是页面 controller，reload 由它服务会返回缓存旧页。
+                  // 正确流程：reg.update() 触发新 SW 下载 → install(skipWaiting) → activate(clientsClaim)
+                  // → controllerchange（新 SW 接管）→ 此刻 reload 才由新 SW 服务，一次到位。
+                  let reloaded = false;
+                  const doReload = () => {
+                    if (reloaded) return;
+                    reloaded = true;
+                    window.location.reload();
+                  };
+                  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.addEventListener('controllerchange', doReload, { once: true });
+                    navigator.serviceWorker
+                      .getRegistration()
+                      .then((reg) => (reg ? reg.update() : null))
+                      .catch(() => { /* 更新失败：直接刷新兜底 */ })
+                      .finally(() => setTimeout(doReload, 3000)); // 3s 兜底，避免永不触发卡死
+                  } else {
+                    doReload();
+                  }
                 }}
                 title="有新版本，点击刷新"
                 aria-label="有新版本，点击刷新"
