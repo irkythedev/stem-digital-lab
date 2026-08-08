@@ -271,17 +271,17 @@ export default function Electrolysis() {
             {power ? (lang === 'zh' ? '断开电源' : 'Turn off') : (lang === 'zh' ? '接通电源' : 'Turn on')}
           </button>
         </div>
-        <svg viewBox="0 0 400 230" className="w-full" aria-label="电解水实验">
+        <svg viewBox="0 0 400 230" className="w-full" aria-label="电解水实验" strokeLinecap="round" strokeLinejoin="round">
           {/* ── 双管电解器：两支竖直玻璃管，底部水平连通（教材图4-17 结构） ── */}
           {/* 左管（负极，H₂ 多） */}
-          <path d="M111 50 V105 H145 V50" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          <path d="M111 50 V105 H145 V50" fill="none" stroke="var(--fg)" strokeWidth="1.5" />
           {/* 右管（正极，O₂ 少） */}
-          <path d="M255 50 V105 H289 V50" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          <path d="M255 50 V105 H289 V50" fill="none" stroke="var(--fg)" strokeWidth="1.5" />
           {/* 底部连通横管（左管 → 右管） */}
-          <path d="M111 105 H289" fill="none" stroke="var(--fg)" strokeWidth="1.6" />
+          <path d="M111 105 H289" fill="none" stroke="var(--fg)" strokeWidth="1.5" />
           {/* 管口沿 */}
-          <line x1="105" y1="50" x2="117" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
-          <line x1="283" y1="50" x2="295" y2="50" stroke="var(--fg)" strokeWidth="1.6" />
+          <line x1="105" y1="50" x2="117" y2="50" stroke="var(--fg)" strokeWidth="1.5" />
+          <line x1="283" y1="50" x2="295" y2="50" stroke="var(--fg)" strokeWidth="1.5" />
 
           {/* 水（两支管 + 底部连通管，液面在 y=72） */}
           <path
@@ -312,11 +312,11 @@ export default function Electrolysis() {
 
           {/* 电极（碳棒从管顶插入水中）：极性符号与正负极文字都标在管顶部电极上端（导线连接处），贴合"电极从顶部插入、导线在顶部接电源"的原理 */}
           {/* 左电极：负极(−)，产 H₂ 多 */}
-          <line x1="128" y1="60" x2="128" y2="96" stroke="var(--fg)" strokeWidth="3" strokeLinecap="round" />
+          <line x1="128" y1="60" x2="128" y2="96" stroke="var(--fg)" strokeWidth="1.5" strokeLinecap="round" />
           <text x="128" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">负极</text>
           <text x="128" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">−</text>
           {/* 右电极：正极(+)，产 O₂ 少 */}
-          <line x1="272" y1="60" x2="272" y2="96" stroke="var(--fg)" strokeWidth="3" strokeLinecap="round" />
+          <line x1="272" y1="60" x2="272" y2="96" stroke="var(--fg)" strokeWidth="1.5" strokeLinecap="round" />
           <text x="272" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">正极</text>
           <text x="272" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">+</text>
 
@@ -339,7 +339,7 @@ export default function Electrolysis() {
 
           {/* 直流电源符号（在电解器上方外侧，细长矩形 + 正负极） */}
           <rect x="188" y="10" width="24" height="18" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
-          <line x1="196" y1="10" x2="196" y2="20" stroke="var(--fg)" strokeWidth="2" />
+          <line x1="196" y1="10" x2="196" y2="20" stroke="var(--fg)" strokeWidth="1.5" />
           <line x1="204" y1="10" x2="204" y2="20" stroke="var(--fg)" strokeWidth="1.2" />
           <text x="204" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">+</text>
           <text x="196" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">−</text>

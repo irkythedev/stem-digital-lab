@@ -237,9 +237,9 @@ export default function Lever() {
 
       {/* ── 杠杆示意 ── */}
       <div className="border border-[var(--border)] p-3">
-        <svg viewBox="0 0 520 260" className="w-full" aria-label="杠杆">
+        <svg viewBox="0 0 520 260" className="w-full" aria-label="杠杆" strokeLinecap="round" strokeLinejoin="round">
           {/* 杠杆（倾斜角由力矩差决定） */}
-          <line x1="120" y1="180" x2="400" y2="180" stroke="var(--fg)" strokeWidth="3" />
+          <line x1="120" y1="180" x2="400" y2="180" stroke="var(--fg)" strokeWidth="1.5" />
           {/* 支点 */}
           <polygon points="260,180 250,200 270,200" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
           {/* 左钩码 */}

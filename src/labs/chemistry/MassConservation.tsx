@@ -618,12 +618,12 @@ export default function MassConservation() {
             {/* 反应容器可视化 */}
             <div className="pt-1">
               {activeScheme === 0 && (
-                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="锥形瓶加热铜粉">
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="锥形瓶加热铜粉" strokeLinecap="round" strokeLinejoin="round">
                   {/* 锥形瓶 */}
                   <path d="M70 40 H170 L150 130 H90 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
                   <line x1="70" y1="40" x2="170" y2="40" stroke="var(--fg)" strokeWidth="1.2" />
                   {/* 铜粉（底部） */}
-                  <rect x="96" y="120" width="48" height="10" fill={curScheme.reacted ? '#3a3a3a' : '#b8860b'} opacity="0.8" />
+                  <rect x="96" y="120" width="48" height="10" fill={curScheme.reacted ? 'var(--cu-oxide)' : 'var(--cu-powder)'} opacity="0.8" />
                   {/* 气球（锥形瓶口） */}
                   <path d={curScheme.reacted
                     ? "M120 40 q-6 -14 6 -18 q12 2 6 18 Z" // 反应后气球鼓起
@@ -638,7 +638,7 @@ export default function MassConservation() {
               )}
 
               {activeScheme === 1 && (
-                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="铁钉浸硫酸铜">
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="铁钉浸硫酸铜" strokeLinecap="round" strokeLinejoin="round">
                   {/* 试管（圆底） */}
                   <path d="M105 40 v60 a30 30 0 0 0 60 0 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
                   <line x1="105" y1="42" x2="165" y2="42" stroke="var(--fg)" strokeWidth="1.2" />
@@ -647,7 +647,7 @@ export default function MassConservation() {
                     fill={curScheme.reacted ? 'rgba(120,170,110,0.4)' : 'rgba(60,120,220,0.4)'} stroke="none" />
                   <line x1="107" y1="70" x2="163" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
                   {/* 铁钉 */}
-                  <line x1="135" y1="42" x2="135" y2="95" stroke="#a0a6ad" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="135" y1="42" x2="135" y2="95" stroke="#a0a6ad" strokeWidth="1.5" strokeLinecap="round" />
                   {/* 析出红铜（反应后） */}
                   {curScheme.reacted && (
                     <>
@@ -661,7 +661,7 @@ export default function MassConservation() {
               )}
 
               {activeScheme === 2 && (
-                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="碳酸钠与盐酸">
+                <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="碳酸钠与盐酸" strokeLinecap="round" strokeLinejoin="round">
                   {/* 烧杯 */}
                   <path d="M85 40 H155 V125 H85 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
                   {/* 溶液 */}

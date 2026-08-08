@@ -237,7 +237,7 @@ export default function Pressure() {
 
       {/* ── 压强示意 ── */}
       <div className="border border-[var(--border)] p-3">
-        <svg viewBox="0 0 520 300" className="w-full" aria-label="压强">
+        <svg viewBox="0 0 520 300" className="w-full" aria-label="压强" strokeLinecap="round" strokeLinejoin="round">
           {/* 重物（压力） */}
           <rect x="230" y="40" width="60" height="50" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
           <text x="260" y="72" textAnchor="middle" fontSize="12" fill="var(--fg)" fontFamily="var(--f-mono)">F={F}N</text>

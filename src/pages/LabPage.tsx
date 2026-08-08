@@ -77,7 +77,12 @@ export default function LabPage() {
               <span className="ml-3 text-[11px] uppercase tracking-widest text-[var(--muted)] mono-font align-middle">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
               </span>
-              <ShareInline />
+              <ShareInline
+                title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+                text={lang === 'zh'
+                  ? t.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                  : t.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+              />
             </h1>
           </div>
         </div>

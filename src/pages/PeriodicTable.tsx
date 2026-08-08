@@ -14,7 +14,7 @@
  */
 import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Pause, Play, Square, Volume2 } from 'lucide-react';
+import { House, Loader2, Pause, Play, Square, Volume2 } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import ShareInline from '../components/share/ShareInline';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
@@ -67,7 +67,8 @@ export default function PeriodicTable() {
   const { t, lang } = useApp();
   const [selected, setSelected] = useState<ElementInfo | null>(null);
   const [query, setQuery] = useState('');
-  const [speaking, setSpeaking] = useState(false);
+  // 读音按钮状态：idle 空闲 / loading 加载中 / playing 播放中（给用户明确反馈）
+  const [speakState, setSpeakState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [tab, setTab] = useState<'props' | 'story'>('props');
   // 原子结构示意图：当前悬停/点击的电子层（显示该层电子数）
   const [hoveredLayer, setHoveredLayer] = useState<number | null>(null);
@@ -84,6 +85,7 @@ export default function PeriodicTable() {
   const wakeRecite = useRef<(() => void) | null>(null); // 暂停唤醒函数
   const reciteAudio = useRef<HTMLAudioElement | null>(null); // 跟读音频（复用元素，微信 X5 需手势解锁后复用）
   const speakAudio = useRef<HTMLAudioElement | null>(null); // 单点朗读音频（独立元素，避免互相打断）
+  const speakTimeout = useRef<number | null>(null); // 朗读状态复位兜底定时器
 
   const isZh = lang === 'zh';
 
@@ -114,23 +116,48 @@ export default function PeriodicTable() {
   /** 播放元素读音：优先本地预生成 MP3（一致、离线、免语音包），失败降级浏览器语音合成 */
   const speak = (e: ElementInfo) => {
     const audio = getAudio(speakAudio);
+    // 点击立即进入加载态（本地 MP3 网络加载/解码需要时间，给用户明确反馈）
+    setSpeakState('loading');
     audio.src = `/audio/${e.n}.mp3`;
-    audio.onended = () => setSpeaking(false);
+    audio.oncanplaythrough = () => setSpeakState('playing');
+    audio.onplaying = () => setSpeakState('playing');
+    audio.onended = () => {
+      if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+      setSpeakState('idle');
+    };
     audio.onerror = () => {
       // 本地音频缺失或播放失败 → 降级 speechSynthesis（设备有语音包时仍可用）
-      setSpeaking(false);
+      if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+      setSpeakState('idle');
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(e.zh);
       u.lang = 'zh-CN';
       u.rate = 0.85;
-      u.onstart = () => setSpeaking(true);
-      u.onend = () => setSpeaking(false);
-      u.onerror = () => setSpeaking(false);
+      u.onstart = () => {
+        setSpeakState('playing');
+        // 降级分支同样设置兜底复位（个别设备语音合成不触发 onend）
+        window.clearTimeout(speakTimeout.current);
+        speakTimeout.current = window.setTimeout(() => setSpeakState('idle'), 4000);
+      };
+      u.onend = () => {
+        if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+        setSpeakState('idle');
+      };
+      u.onerror = () => {
+        if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+        setSpeakState('idle');
+      };
       window.speechSynthesis.speak(u);
     };
-    audio.play().catch(() => setSpeaking(false));
-    setSpeaking(true);
+    audio.play().catch(() => {
+      if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+      setSpeakState('idle');
+    });
+    // 兜底：个别环境 onended 不触发（微信 X5 等），按音频时长估算后复位
+    // MP3 均约 1.8s，此处取 4s 确保结束状态可靠复位
+    window.clearTimeout(speakTimeout.current);
+    speakTimeout.current = window.setTimeout(() => setSpeakState('idle'), 4000);
   };
 
   /** 播放单个 MP3，返回 Promise（播放结束 / 出错即 resolve）；复用同一音频元素（微信 X5 兼容） */
@@ -563,18 +590,47 @@ export default function PeriodicTable() {
                 <div className="text-[10px] mono-font text-[var(--muted)]">#{selected.n}</div>
                 <div className="flex items-center gap-2">
                   <span className="text-3xl font-bold serif-font text-[var(--fg)]">{selected.zh}</span>
-                  {/* 读音按钮：放在中文名旁边 */}
+                  {/* 读音按钮：三态反馈（空闲/加载中/播放中），让用户明确知道状态 */}
                   <button
                     type="button"
                     onClick={() => speak(selected)}
-                    title={lang === 'zh' ? '朗读' : 'Listen'}
-                    aria-label={lang === 'zh' ? '朗读' : 'Listen'}
-                    className="flex items-center justify-center w-8 h-8 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                    disabled={speakState === 'loading'}
+                    title={
+                      lang === 'zh'
+                        ? speakState === 'loading' ? '加载中…' : speakState === 'playing' ? '播放中' : '朗读'
+                        : speakState === 'loading' ? 'Loading…' : speakState === 'playing' ? 'Playing' : 'Listen'
+                    }
+                    aria-label={
+                      lang === 'zh'
+                        ? speakState === 'loading' ? '加载中' : speakState === 'playing' ? '播放中' : '朗读'
+                        : speakState === 'loading' ? 'Loading' : speakState === 'playing' ? 'Playing' : 'Listen'
+                    }
+                    className={`flex items-center justify-center w-8 h-8 transition-colors ${
+                      speakState === 'playing'
+                        ? 'text-[var(--fg)]'
+                        : 'text-[var(--muted)] hover:text-[var(--fg)] disabled:opacity-60'
+                    }`}
                   >
-                    <Volume2 className="w-4 h-4" />
+                    {speakState === 'loading' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Volume2 className={`w-4 h-4 ${speakState === 'playing' ? 'animate-pulse' : ''}`} />
+                    )}
                   </button>
                 </div>
                 <div className="text-sm mono-font text-[var(--muted)]">{selected.symbol}</div>
+                {/* 读音状态提示（加载中/播放中/空闲） */}
+                <div className="mt-0.5 h-3 text-[10px] mono-font">
+                  {speakState === 'loading' && (
+                    <span className="text-[var(--muted)]">{lang === 'zh' ? '读音加载中…' : 'Loading audio…'}</span>
+                  )}
+                  {speakState === 'playing' && (
+                    <span className="inline-flex items-center gap-1 text-[var(--fg)]">
+                      <Volume2 className="w-3 h-3" />
+                      {lang === 'zh' ? '播放中' : 'Playing'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

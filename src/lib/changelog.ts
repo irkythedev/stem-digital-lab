@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.9.2';
+export const APP_VERSION = '1.9.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.9.3',
+    date: '2026-08',
+    zh: [
+      '修复：有新版本时点一次刷新即更新到位（不再需要点两次）',
+      '元素读音按钮增加加载中/播放中状态提示',
+      '分享文案更丰富：实验分享带实验名与特色描述',
+      '图标与实验图优化：favicon 三形状更舒展，实验图线条统一、深色主题可读性提升',
+      '使用说明同步更新（反馈通道说明等）',
+    ],
+    en: [
+      'Fixed: one tap on the update dot now refreshes to the latest version',
+      'Element pronunciation button shows loading/playing states',
+      'Richer share text: lab shares include the lab name and a highlight',
+      'Visual polish: roomier favicon shapes, unified stroke weights across experiments, better dark-theme readability',
+      'Guide updated (feedback channel notes, etc.)',
+    ],
+  },
   {
     version: '1.9.2',
     date: '2026-08',

@@ -12,19 +12,26 @@ import { useApp } from '../../lib/app-context';
 interface ShareDialogProps {
   url: string;
   onClose: () => void;
+  /** 自定义分享标题；缺省用站点通用标题 */
+  title?: string;
+  /** 自定义分享正文；缺省用站点通用文案 */
+  text?: string;
 }
 
-export default function ShareDialog({ url, onClose }: ShareDialogProps) {
+export default function ShareDialog({ url, onClose, title, text }: ShareDialogProps) {
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   // 微信内置浏览器检测：点右上角「···」即可转发，无需/不能程序化调起
   const isWechat = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
 
+  const shareTitle = title || t.shareTitle;
+  const shareText = text || t.shareText;
+
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title: t.shareTitle, text: t.shareText, url });
+        await navigator.share({ title: shareTitle, text: shareText, url });
         return;
       } catch (err) {
         if ((err as Error)?.name === 'AbortError') return; // 用户取消

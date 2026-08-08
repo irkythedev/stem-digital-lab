@@ -267,7 +267,7 @@ export default function Buoyancy() {
 
       {/* ── 实验示意 ── */}
       <div className="border border-[var(--border)] p-3">
-        <svg viewBox="0 0 520 320" className="w-full" aria-label="浮力实验">
+        <svg viewBox="0 0 520 320" className="w-full" aria-label="浮力实验" strokeLinecap="round" strokeLinejoin="round">
           {/* 弹簧测力计外壳 */}
           <rect x="180" y="20" width="40" height="60" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
           <text x="200" y="58" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">{FReading.toFixed(1)}N</text>

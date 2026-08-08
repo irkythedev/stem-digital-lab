@@ -91,9 +91,29 @@ export default function Header() {
             {hasUpdate && (
               <button
                 type="button"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
                   showToast();
+                  // PWA 双刷新问题：旧 SW 拦截 reload 返回缓存旧页。
+                  // 先触发 SW 更新并等待新 SW 激活，再刷新——一次到位。
+                  try {
+                    if ('serviceWorker' in navigator) {
+                      const reg = await navigator.serviceWorker.getRegistration();
+                      if (reg) {
+                        await reg.update();
+                        // 等待新 SW 激活（autoUpdate 注入 skipWaiting，install 后自动 activate）
+                        const deadline = Date.now() + 5000;
+                        await new Promise<void>((resolve) => {
+                          const tick = () => {
+                            if (reg.active?.state === 'activated' && navigator.serviceWorker.controller) resolve();
+                            else if (Date.now() > deadline) resolve();
+                            else setTimeout(tick, 100);
+                          };
+                          tick();
+                        });
+                      }
+                    }
+                  } catch { /* 无 SW 环境：直接刷新 */ }
                   window.location.reload();
                 }}
                 title="有新版本，点击刷新"

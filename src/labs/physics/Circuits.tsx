@@ -365,7 +365,7 @@ export default function Circuits() {
                 label={isHouse ? 'L–N' : gaugeLabel('voltage')}
               />
             </div>
-            <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel}>
+            <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
               {style.id === 'parallelHouse' ? (
                 /* ── 家庭电路：真实 L/N 双母线结构 ── */
                 <HouseholdCircuit
