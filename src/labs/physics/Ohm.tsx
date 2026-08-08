@@ -650,17 +650,18 @@ export default function Ohm() {
                 <Bulb
                   cx={250}
                   cy={60}
-                  r={20}
+                  r={14}
                   glow={Math.min(1, effectiveI / 1.2)}
                   label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
                   labelY={88}
                 />
               ) : (
+                /* 定值电阻：细长矩形（与滑动变阻器同风格，两端接导线） */
                 <rect
                   x="230"
-                  y="45"
+                  y="53"
                   width="40"
-                  height="30"
+                  height="14"
                   fill="var(--muted)"
                   fillOpacity={effectiveI > 0.01 ? 0.05 + 0.15 * Math.min(1, effectiveI / 1.2) : 0.05}
                   style={{ transition: 'fill-opacity 0.3s ease-out' }}
