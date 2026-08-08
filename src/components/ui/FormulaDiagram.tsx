@@ -62,7 +62,7 @@ export default function FormulaDiagram({ type, className = '' }: FormulaDiagramP
         {/* 边长标注（紧贴各自边中点：a 竖直边右侧 / b 水平边上方 / c 斜边中点旁） */}
         <text x={right.x + 7} y={right.y - a / 2 + 2} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">a</text>
         <text x={right.x + b / 2 - 4} y={right.y - 6} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">b</text>
-        <text x={right.x + b / 2 - 22} y={right.y - a / 2 + 10} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">c</text>
+        <text x={right.x + b / 2 - 13} y={right.y - a / 2 + 4} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">c</text>
       </svg>
     );
   }
