@@ -2,12 +2,12 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.1.0-blue)
+![version](https://img.shields.io/badge/版本-v1.9.4-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
-本地运行 · 无需登录 · 数据不上传 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
+本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
 
 </div>
 
@@ -17,20 +17,22 @@
 
 ### 简介
 
-数理化数字实验室是一个**本地运行、无需登录、数据不上传**的初中 STEM 探究空间。每个实验都遵循**三幕式探究**（预测 → 探索 → 结论），鼓励学生先猜想、再操作、后归纳，而非被动跟随固定步骤。
+数理化数字实验室是一个**无需登录**的初中 STEM 探究空间，每个实验遵循**三幕式探究**（预测 → 探索 → 结论），鼓励学生先猜想、再操作、后归纳，而非被动跟随固定步骤。
 
 - 🌐 中英双语，右上角一键切换
 - 🌗 深浅主题（默认浅色，适合希沃/投影大屏）
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
-- 🧪 零后端、零上传：反馈与数据仅存本机浏览器 localStorage
+- 🎲 首页「随机探索」一键随机进入实验或工具
+- 🧪 15 个交互实验 + 元素周期表工具（118 元素全览、实物照片、中文读音、中考跟读）
 
-### 实验清单
+### 实验与工具清单
 
-| 科目 | 年级 | 实验 |
+| 科目 | 年级 | 内容 |
 |---|---|---|
 | 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
-| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 |
-| 化学 | 9 | 质量守恒定律 · 酸碱中和 |
+| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
+| 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
+| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） |
 
 | ID | 名称 | 说明 |
 |---|---|---|
@@ -41,8 +43,15 @@
 | `ohm` | 欧姆定律 | 探究电流与电压、电阻的定量关系 |
 | `circuits` | 串并联电路 | 对比串联与并联的电流、电压分配规律 |
 | `lens` | 凸透镜成像 | 调节物距，观察倒立/正立、放大/缩小的像 |
+| `buoyancy` | 浮力 | 探究浮力与排开液体体积、液体密度的关系 |
+| `lever` | 杠杆 | 探究杠杆平衡条件 F₁l₁=F₂l₂ |
+| `pressure` | 压强 | 探究压强 p=F/S 与压力、受力面积的关系 |
+| `pulley` | 滑轮 | 探究定滑轮与动滑轮的特点 |
 | `mass-conservation` | 质量守恒定律 | 三个方案对比验证化学反应前后质量不变 |
 | `neutralization` | 酸碱中和 | 滴定实验观察 pH 突跃与指示剂颜色变化 |
+| `electrolysis` | 电解水 | 观察正氧负氢体积比 2:1，探究水的组成 |
+| `metal-activity` | 金属活动性 | 置换反应验证 Al > Cu > Ag 的活动性顺序 |
+| `/periodic-table` | 元素周期表（工具） | 118 元素全览、检索、实物照片、中文读音、中考跟读（前 20 号/金属活动性/常见元素） |
 
 ### 快速开始
 
@@ -52,10 +61,10 @@ npm run dev        # 开发服务器（默认 http://localhost:3000）
 npm run build      # 生产构建
 npm run preview    # 本地预览构建产物
 npm run test       # 运行测试
-npm run lint       # 类型检查
 ```
 
 > 局域网访问：开发服务器监听 `0.0.0.0`，启动后其他设备打开 `http://<本机局域网IP>:3000`。
+> Node.js 建议使用 nvm 管理的 v24.19.0（npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
 
 ### 三幕式探究
 
@@ -67,6 +76,13 @@ npm run lint       # 类型检查
 
 > 教学建议：先让学生独立预测 → 再邀请学生描述证据 → 最后共同完成结论。
 
+### 元素周期表工具
+
+- 118 个元素完整表格，支持检索（符号/中文/英文）
+- 点击元素查看详情：基础属性（IUPAC 标准原子量 + 不确定度）、百科故事、实物照片（可放大）
+- 中文读音（内置离线语音包，不依赖设备语音包）；**中考跟读**：前 20 号元素、金属活动性顺序、常见元素三清单连读，可调次数与间隔
+- 原子结构示意图：点击电子层查看该层电子数
+
 ### 项目结构
 
 ```
@@ -75,19 +91,20 @@ src/
 ├── components/
 │   ├── lab/           # 共享实验原语（坐标平面/表盘/反馈面板等）
 │   ├── layout/        # 外壳（Header / Footer）
-│   ├── feedback/      # 反馈气泡与面板
-│   └── ui/            # 通用 UI（图标/公式/占位页）
-├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 全局状态
-└── pages/             # 首页 / 科目 / 实验 / 使用说明
+│   ├── feedback/      # 反馈气泡与面板 / 分享对话框
+│   ├── share/         # 标题内嵌分享按钮
+│   └── ui/            # 通用 UI（科目/实验图标、公式、占位页）
+├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 元素数据 / 全局状态
+└── pages/             # 首页 / 科目 / 实验 / 周期表 / 使用说明
 ```
 
 ### 反馈
 
-右下角浮动气泡提供**实验反馈**与**项目反馈**，仅保存在本机浏览器 `localStorage`，不上传、不需要账号。
+右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后发送给开发者（腾讯云开发 CloudBase）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
 
 ### 版本与标签
 
-当前版本：`v1.1.0`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。
+当前版本：`v1.9.4`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。版本号点击可查看面向用户的中英双语更新记录。
 
 ### 许可
 
@@ -97,7 +114,7 @@ src/
 
 - 本项目为**教学演示与个人探究**参考工具，不构成任何专业意见或承诺。
 - 实验数据、公式与交互结果已尽力校对，但**不保证绝对正确**，教学中请以权威教材为准。
-- 本项目本地运行、默认不上传数据，但请对保存于本机的内容自行负责；在线版本也可能使用浏览器本地存储。
+- 反馈会发送给开发者；离线时暂存本机，联网后补发。请对保存于本机的内容自行负责。
 
 ---
 
@@ -105,20 +122,22 @@ src/
 
 ### Overview
 
-**STEM Digital Lab** is a **local-first, no-login, zero-upload** middle-school STEM exploration space (Grades 7–9). Live at https://stem.irky.dev. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
+**STEM Digital Lab** is a **no-login** middle-school STEM exploration space (Grades 7–9). Live at https://stem.irky.dev. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
 
 - 🌐 Bilingual (zh/en), switchable from the header
 - 🌗 Light & dark themes (light by default for classroom projection)
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
-- 🧪 Zero-backend, zero-upload: feedback & data stay in the browser's localStorage
+- 🎲 "Random explore" button on the homepage jumps into a random lab or tool
+- 🧪 15 interactive labs + a Periodic Table tool (all 118 elements, photos, pronunciation, recite mode)
 
-### Labs
+### Labs & Tools
 
-| Subject | Grades | Labs |
+| Subject | Grades | Content |
 |---|---|---|
 | Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
-| Physics | 8–9 | Ohm's Law · Series & Parallel Circuits · Convex Lens Imaging |
-| Chemistry | 9 | Conservation of Mass · Acid-Base Titration |
+| Physics | 8–9 | Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys |
+| Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
+| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) |
 
 | ID | Name | Description |
 |---|---|---|
@@ -129,8 +148,15 @@ src/
 | `ohm` | Ohm's Law | Explore I = U/R through interactive circuits |
 | `circuits` | Series & Parallel Circuits | Compare current and voltage in series vs parallel |
 | `lens` | Convex Lens Imaging | Adjust object distance to see real and virtual images |
+| `buoyancy` | Buoyancy | Explore buoyancy vs displaced volume and liquid density |
+| `lever` | Levers | Explore the balance condition F₁l₁=F₂l₂ |
+| `pressure` | Pressure | Explore p=F/S vs force and contact area |
+| `pulley` | Pulleys | Explore fixed and movable pulleys |
 | `mass-conservation` | Conservation of Mass | Three experiments proving mass is conserved |
 | `neutralization` | Acid-Base Titration | Titrate to see the pH jump and indicator color shift |
+| `electrolysis` | Electrolysis of Water | See O₂ and H₂ in a 2:1 ratio, explore water's composition |
+| `metal-activity` | Metal Activity | Displacement reactions verifying Al > Cu > Ag |
+| `/periodic-table` | Periodic Table (tool) | All 118 elements, search, photos, pronunciation, recite mode (first 20 / activity series / common elements) |
 
 ### Getting Started
 
@@ -140,10 +166,10 @@ npm run dev        # Dev server (default http://localhost:3000)
 npm run build      # Production build
 npm run preview    # Preview the build locally
 npm run test       # Run tests
-npm run lint       # Type-check
 ```
 
 > LAN access: the dev server listens on `0.0.0.0`; open `http://<your-LAN-IP>:3000` from other devices.
+> Node.js: use nvm-managed v24.19.0 (npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
 
 ### Three-Act Inquiry
 
@@ -155,6 +181,13 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 
 > Teaching suggestion: let students predict independently, invite them to describe evidence, then complete the conclusion together.
 
+### Periodic Table Tool
+
+- All 118 elements with search (symbol / Chinese / English)
+- Tap an element for details: properties (IUPAC standard atomic weights with uncertainty), mini-wiki story, and a real photo (tap to enlarge)
+- Chinese pronunciation with built-in offline audio; **Recite mode**: first 20 elements, activity series, and common elements, with adjustable repeats and gaps
+- Bohr diagram: tap a shell to see its electron count
+
 ### Project Structure
 
 ```
@@ -163,19 +196,20 @@ src/
 ├── components/
 │   ├── lab/           # Shared primitives (coord plane / gauges / feedback)
 │   ├── layout/        # Shell (Header / Footer)
-│   ├── feedback/      # Feedback FAB & panel
-│   └── ui/            # Generic UI (icons / formula / placeholders)
-├── lib/               # Registry / subjects / i18n / feedback storage / global state
-└── pages/             # Home / subject / lab / guide
+│   ├── feedback/      # Feedback FAB & panel / share dialog
+│   ├── share/         # Inline share button
+│   └── ui/            # Generic UI (subject/lab icons, formula, placeholders)
+├── lib/               # Registry / subjects / i18n / feedback storage / elements / global state
+└── pages/             # Home / subject / lab / periodic table / guide
 ```
 
 ### Feedback
 
-A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, stored only in the browser's `localStorage` — nothing is uploaded and no account is required.
+A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer via Tencent CloudBase; while offline or on network errors it is queued locally and retried automatically. No account is required.
 
 ### Versioning & Tags
 
-Current version: `v1.1.0`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`.
+Current version: `v1.9.4`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`. Click the version badge for a bilingual changelog.
 
 ### License
 
@@ -185,7 +219,7 @@ This project is open-sourced under the **GNU Affero General Public License v3 (A
 
 - This project is a **teaching/demo and personal inquiry** reference tool and does not constitute professional advice or any guarantee.
 - Experimental data, formulas, and interactions have been carefully proofread but are **not guaranteed to be error-free**; teaching should defer to authoritative textbooks.
-- The project runs locally and uploads nothing by default, but you are responsible for content saved on your own device; the online version may also use browser local storage.
+- Feedback is sent to the developer and queued locally while offline. You are responsible for content saved on your own device.
 
 ---
 
