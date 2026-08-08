@@ -32,11 +32,21 @@ type ElementType = 'resistor' | 'bulb';
 /** 灯泡模型：钨丝电阻随电压（温度）升高，R_eff = R₀ + γ·U */
 const BULB_GAMMA = 0.4; // Ω/V
 
-/** 采样 I-U 曲线：U ∈ [0, 12]；定值电阻 I=U/(R+Rp)，灯泡 I=U/(R+γU+Rp) */
+/** 元件动态电阻：定值电阻 = R，灯泡 = R₀ + γ·U（钨丝升温） */
+function elementResistance(r: number, element: ElementType, u: number): number {
+  return element === 'bulb' ? r + BULB_GAMMA * u : r;
+}
+
+/**
+ * 采样 I-U 曲线：U 为电源电压 ∈ [0, 12]。
+ * 返回 [元件两端电压 U_elem, 电流 I]——横轴严格用元件真实压降（伏安法口径），
+ * 定值电阻斜率 = 1/R，与结论口径一致；变阻器 Rp 参与分压不影响横轴语义。
+ */
 function sampleOhm(r: number, element: ElementType, rp = 0): [number, number][] {
   const pts: [number, number][] = [];
   for (let u = 0; u <= 12.0001; u += 0.1) {
-    pts.push([u, element === 'bulb' ? u / (r + BULB_GAMMA * u + rp) : u / (r + rp)]);
+    const i = element === 'bulb' ? u / (r + BULB_GAMMA * u + rp) : u / (r + rp);
+    pts.push([i * elementResistance(r, element, u), i]);
   }
   return pts;
 }
@@ -59,7 +69,7 @@ const copy = {
     elementBulb: '小灯泡',
     bulbModelHint: '小灯泡采用简化非线性模型：钨丝升温后电阻增大，因此 I-U 图像不再是直线；这用于展示趋势，不代表完整实验数据。',
     measureTitle: '测未知电阻',
-    measureIntro: '这是一个未知电阻（阻值隐藏）。拖动 U，从电流表读数算出 R = U/I，多测几组取平均。',
+    measureIntro: '这是一个未知电阻（阻值隐藏）。看电压表读数 V（元件两端电压）和电流表读数 I，算出 R = V/I，多测几组取平均。',
     measureReveal: '揭示真实值',
     measureHidden: '? Ω',
     measureResult: '你的测量平均值',
@@ -170,7 +180,7 @@ const copy = {
     elementBulb: 'Light bulb',
     bulbModelHint: 'The bulb uses a simplified nonlinear model: a hotter tungsten filament has higher resistance, so the I-U graph is not straight. This shows the trend, not complete experimental data.',
     measureTitle: 'Measure unknown resistance',
-    measureIntro: 'This is an unknown resistor (value hidden). Drag U, read I from the ammeter, compute R = U/I, repeat and average.',
+    measureIntro: 'This is an unknown resistor (value hidden). Read the voltmeter V (voltage across the element) and the ammeter I, compute R = V/I, repeat and average.',
     measureReveal: 'Reveal true value',
     measureHidden: '? Ω',
     measureResult: 'Your measured average',
@@ -289,7 +299,7 @@ export default function Ohm() {
   const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-mid', x: 180, y: 60 });
   const [meterV, setMeterV] = useState<MeterTarget | null>({ id: 'element', x: 250, y: 28 });
   const [meterErr, setMeterErr] = useState<string | null>(null);
-  const [pinned, setPinned] = useState<{ id: number; r: number; element: ElementType }[]>([]);
+  const [pinned, setPinned] = useState<{ id: number; r: number; element: ElementType; rp: number }[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [conclusion, setConclusion] = useState<{
     q1: 'prop' | 'inv' | 'none' | null;
@@ -307,8 +317,8 @@ export default function Ohm() {
   const i = currentOf(u, r, element, rp);
   /** 有效电流：开关断开时为 0 */
   const effectiveI = switchOn ? i : 0;
-  /** 元件两端电压（串联变阻器分压后，元件两端电压 = I·R） */
-  const elemVoltage = switchOn ? i * r : 0;
+  /** 元件两端电压：定值电阻 = I·R，灯泡 = I·(R₀+γU)（动态电阻，与 I-U 曲线一致） */
+  const elemVoltage = switchOn ? i * elementResistance(r, element, u) : 0;
 
   const currentCurve: CoordCurve = useMemo(
     () => ({
@@ -321,9 +331,11 @@ export default function Ohm() {
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
     id: `pin${p.id}`,
-    points: sampleOhm(p.r, p.element, 0),
+    points: sampleOhm(p.r, p.element, p.rp),
     dashed: true,
-    label: p.element === 'bulb' ? `灯泡 R₀=${p.r}Ω` : `R = ${p.r}Ω`,
+    label:
+      (p.element === 'bulb' ? `灯泡 R₀=${p.r}Ω` : `R = ${p.r}Ω`) +
+      (p.rp > 0 ? ` (Rp=${p.rp}Ω)` : ''),
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
@@ -399,6 +411,7 @@ export default function Ohm() {
 
   const reveal = () => {
     setRevealed(true);
+    setRp(0); // 揭示图像时归零变阻器：U 直接加在元件两端，横轴 0-12V 与预测题一致，斜率 = 1/R
     setStage('explore');
   };
 
@@ -409,6 +422,7 @@ export default function Ohm() {
         id: prev.length + 1,
         snapshot: [
           { label: 'U', value: `${u.toFixed(1)}V` },
+          { label: 'V', value: `${elemVoltage.toFixed(2)}V` },
           { label: 'R', value: measureMode && !rRevealed ? t.measureHidden : `${r.toFixed(0)}Ω` },
           { label: 'I', value: `${effectiveI.toFixed(2)}A` },
           ...(!switchOn ? [{ label: '开关', value: t.switchOff }] : []),
@@ -427,6 +441,7 @@ export default function Ohm() {
       tryIt: () => {
         setR(10);
         setU(12);
+        setRp(0); // 归零变阻器：U 直接加在元件两端，读数 = U/R，图像斜率 = 1/R
       },
     },
     {
@@ -437,6 +452,7 @@ export default function Ohm() {
       tryIt: () => {
         setU(6);
         setR(5);
+        setRp(0); // 归零变阻器：I = U/R 严格成立
       },
     },
     {
@@ -447,6 +463,7 @@ export default function Ohm() {
       tryIt: () => {
         setU(6);
         setR(10);
+        setRp(0); // 归零：U=6V、R=10Ω → I=0.60A 与提示一致
       },
     },
     {
@@ -457,6 +474,7 @@ export default function Ohm() {
       tryIt: () => {
         setU(9);
         setR(30);
+        setRp(15); // 自由探索保留变阻器，观察分压对斜率的影响
       },
     },
     {
@@ -471,11 +489,12 @@ export default function Ohm() {
         setSwitchOn(true);
         setU(6);
         setR(15);
+        setRp(0); // 归零：U/I = R 直接成立（伏安法也支持用元件电压 V/I）
       },
     },
   ];
 
-  const isPinned = pinned.some((p) => p.r === r && p.element === element);
+  const isPinned = pinned.some((p) => p.r === r && p.element === element && p.rp === rp);
 
   const stageOrder: Stage[] = ['predict', 'explore', 'conclude'];
   const stageIdx = stageOrder.indexOf(stage);
@@ -712,7 +731,7 @@ export default function Ohm() {
             <CoordPlane
               curves={curves}
               xMin={0}
-              xMax={12}
+              xMax={Math.max(2.4, Math.max(...curves.flatMap((c) => (c.points ?? []).map(([x]) => x))) + 0.4)}
               yMin={0}
               yMax={Math.max(2.4, ...curves.flatMap((c) => (c.points ?? []).map(([, y]) => y)))}
               ariaLabel={`I vs U graph`}
@@ -726,11 +745,21 @@ export default function Ohm() {
             <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.readout}
             </h3>
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <p className="text-[10px] mono-font text-[var(--muted)] mb-2">
+              {lang === 'zh' ? 'U 为电源电压，V 为元件两端电压（电压表读数）' : 'U is the supply voltage; V is across the element (voltmeter)'}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div>
                 <p className="text-[11px] text-[var(--muted)] mono-font">U</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {u.toFixed(1)}
+                  <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] text-[var(--muted)] mono-font">V</p>
+                <p className="text-sm mono-font text-[var(--fg)]">
+                  {elemVoltage.toFixed(2)}
                   <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
                 </p>
               </div>
@@ -755,15 +784,15 @@ export default function Ohm() {
                 </p>
               </div>
             </div>
-            {/* 测未知电阻：从观察记录算平均 R */}
+            {/* 测未知电阻：用元件两端电压 V（电压表读数）÷ I 算平均 R——伏安法口径，变阻器分压不影响 */}
             {measureMode && observations.length > 0 && (
               <p className="text-[11px] mono-font text-[var(--muted)] mt-2">
                 {t.measureResult}:{' '}
                 {(
                   observations.reduce((acc, o) => {
-                    const uVal = Number(o.snapshot.find((s) => s.label === 'U')?.value.replace('V', ''));
+                    const vVal = Number(o.snapshot.find((s) => s.label === 'V')?.value.replace('V', ''));
                     const iVal = Number(o.snapshot.find((s) => s.label === 'I')?.value.replace('A', ''));
-                    return acc + (iVal > 0 ? uVal / iVal : 0);
+                    return acc + (iVal > 0 ? vVal / iVal : 0);
                   }, 0) / observations.length
                 ).toFixed(1)}
                 Ω
@@ -928,9 +957,9 @@ export default function Ohm() {
                   type="button"
                   onClick={() => {
                     if (isPinned) {
-                      setPinned((prev) => prev.filter((p) => p.r !== r || p.element !== element));
+                      setPinned((prev) => prev.filter((p) => p.r !== r || p.element !== element || p.rp !== rp));
                     } else {
-                      setPinned((prev) => [...prev, { id: prev.length + 1, r, element }]);
+                      setPinned((prev) => [...prev, { id: prev.length + 1, r, element, rp }]);
                     }
                   }}
                   className={`text-xs mono-font px-2 py-1 border transition-colors ${

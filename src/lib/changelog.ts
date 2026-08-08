@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.12.1';
+export const APP_VERSION = '1.12.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.12.2',
+    date: '2026-08',
+    zh: [
+      '修复欧姆定律实验的电压口径：伏安法测电阻改用元件两端电压（电压表读数）计算，结果与真实值精确一致；任务卡自动归零滑动变阻器，特殊点验证读数与提示一致；小灯泡电压表读数改为含灯丝升温的动态电阻',
+    ],
+    en: [
+      'Fixed voltage semantics in Ohm\'s law lab: unknown resistance now uses the voltmeter reading across the element (V/I), matching the true value exactly; task cards reset the rheostat so readings match the prompts; bulb voltmeter now uses the hot-filament dynamic resistance',
+    ],
+  },
   {
     version: '1.12.1',
     date: '2026-08',
