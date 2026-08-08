@@ -422,7 +422,10 @@ export function Rheostat({
         stroke="var(--fg)"
         strokeWidth="1.2"
       />
-      {/* 滑片：斜箭头指向电阻体（用 transform translateX 平滑过渡，CSS transform 可过渡） */}
+      {/* 接线端子：电阻体两端接入电路（教科书符号，一上一下接入） */}
+      <circle cx={x - w / 2} cy={y} r="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
+      <circle cx={x + w / 2} cy={y} r="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
+      {/* 滑片：斜向下的箭头（教科书画法），尖端指向电阻体下方；用 transform translateX 平滑过渡 */}
       <g
         style={{
           transform: `translateX(${wiperX}px)`,
@@ -431,12 +434,13 @@ export function Rheostat({
       >
         <line
           x1={0}
-          y1={y + h / 2}
+          y1={y - h / 2 - 3}
           x2={7}
-          y2={y - h / 2 - 3}
+          y2={y + h / 2 + 1}
           stroke="var(--fg)"
           strokeWidth="1.3"
         />
+        <path d={`M7 ${y + h / 2 + 1} l-2.6 3.8 h5.2 Z`} fill="var(--fg)" />
       </g>
       {label && (
         <text x={x} y={y + h + 18} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
