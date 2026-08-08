@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.12.0';
+export const APP_VERSION = '1.12.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.12.1',
+    date: '2026-08',
+    zh: [
+      '修复数学公式速查勾股定理配图：改为课本常见的「竖短横长」画法，三个正方形与三角形边长严格对应，大小比例更协调',
+    ],
+    en: [
+      'Fixed the Pythagorean diagram in Math Formulas: now drawn in the textbook style with the shorter leg vertical, squares strictly matching each side length',
+    ],
+  },
   {
     version: '1.12.0',
     date: '2026-08',

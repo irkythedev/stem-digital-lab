@@ -34,34 +34,35 @@ export default function FormulaDiagram({ type, className = '' }: FormulaDiagramP
 
   if (type === 'pythagorean') {
     // 勾股定理（3-4-5 精确比例）：a=3, b=4, c=5，三边正方形面积 a²+b²=c²
-    // 单位 u=20px：a=60, b=80, c=100；直角点 (90,105)，整体居中于 300×190 视口
+    // 课本常见画法：竖直边为短边 a=60，水平边为长边 b=80，斜边 c=100
+    // 单位 u=20px；直角点 (70,105)，整体居中于 300×190 视口
     const u = 20;
     const a = 3 * u, b = 4 * u, c = 5 * u; // 60, 80, 100
-    const right = { x: 90, y: 105 };
-    const hEnd = { x: right.x + a, y: right.y };   // a 边末端 (150,105)
-    const vEnd = { x: right.x, y: right.y - b };   // b 边末端 (90,25)
+    const right = { x: 70, y: 105 };
+    const hEnd = { x: right.x + b, y: right.y };   // b 边末端 (150,105)
+    const vEnd = { x: right.x, y: right.y - a };   // a 边末端 (70,45)
     return (
       <svg viewBox="0 0 300 190" className={className} role="img" aria-label={labels.pythagorean}>
-        {/* 直角三角形（直角点 right，水平边 a，竖直边 b，斜边连接两端） */}
+        {/* 直角三角形（直角点 right，水平边 b，竖直边 a，斜边连接两端） */}
         <path d={`M${right.x} ${right.y} L${hEnd.x} ${hEnd.y} L${vEnd.x} ${vEnd.y} Z`} fill={BG} stroke={FG} strokeWidth="1.4" />
         {/* 直角标记 */}
         <path d={`M${right.x + 14} ${right.y} L${right.x + 14} ${right.y - 14} L${right.x} ${right.y - 14}`} fill="none" stroke={FG} strokeWidth="1" />
-        {/* 正方形 a²（水平边下方，边长 60） */}
-        <rect x={right.x} y={right.y} width={a} height={a} fill="none" stroke={MUT} strokeWidth="1" strokeDasharray="4 3" />
-        {/* 正方形 b²（竖直边外侧，边长 80，与竖直边同高） */}
-        <rect x={right.x - b} y={right.y - b} width={b} height={b} fill="none" stroke={MUT} strokeWidth="1" strokeDasharray="4 3" />
-        {/* 正方形 c²（斜边外侧，旋转使边贴合斜边）：斜边向量 (a,-b)，角度 atan2(-b,a) */}
-        <g transform={`translate(${hEnd.x} ${hEnd.y}) rotate(${(Math.atan2(-b, a) * 180) / Math.PI})`}>
+        {/* 正方形 a²（竖直边外侧，边长 60，与竖直边同高） */}
+        <rect x={right.x - a} y={right.y - a} width={a} height={a} fill="none" stroke={MUT} strokeWidth="1" strokeDasharray="4 3" />
+        {/* 正方形 b²（水平边下方，边长 80） */}
+        <rect x={right.x} y={right.y} width={b} height={b} fill="none" stroke={MUT} strokeWidth="1" strokeDasharray="4 3" />
+        {/* 正方形 c²（斜边外侧，旋转使边贴合斜边）：斜边向量 (b,-a)，角度 atan2(-a,b) */}
+        <g transform={`translate(${hEnd.x} ${hEnd.y}) rotate(${(Math.atan2(-a, b) * 180) / Math.PI})`}>
           <rect x="0" y="0" width={c} height={c} fill="none" stroke={FG} strokeWidth="1.2" />
           <text x={c / 2} y={c / 2 + 4} fontSize="12" fill={FG} textAnchor="middle" fontFamily="var(--f-serif)" fontStyle="italic">c²</text>
         </g>
         {/* 面积标注（正方形中心附近） */}
-        <text x={right.x + a / 2 - 7} y={right.y + a / 2 + 3} fontSize="12" fill={MUT} fontFamily="var(--f-serif)" fontStyle="italic">a²</text>
-        <text x={right.x - b + 35} y={right.y - b / 2 + 2} fontSize="12" fill={MUT} fontFamily="var(--f-serif)" fontStyle="italic">b²</text>
-        {/* 边长标注（紧贴各自边中点：a 底边上方 / b 竖直边右侧 / c 斜边中点旁） */}
-        <text x={right.x + a / 2 - 4} y={right.y - 6} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">a</text>
-        <text x={right.x + 7} y={right.y - b / 2 + 2} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">b</text>
-        <text x={right.x + a / 2 - 6} y={right.y - b / 2 + 1} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">c</text>
+        <text x={right.x - a + 12} y={right.y - a / 2 + 2} fontSize="12" fill={MUT} fontFamily="var(--f-serif)" fontStyle="italic">a²</text>
+        <text x={right.x + b / 2 - 7} y={right.y + b / 2 + 3} fontSize="12" fill={MUT} fontFamily="var(--f-serif)" fontStyle="italic">b²</text>
+        {/* 边长标注（紧贴各自边中点：a 竖直边右侧 / b 水平边上方 / c 斜边中点旁） */}
+        <text x={right.x + 7} y={right.y - a / 2 + 2} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">a</text>
+        <text x={right.x + b / 2 - 4} y={right.y - 6} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">b</text>
+        <text x={right.x + b / 2 - 22} y={right.y - a / 2 + 10} fontSize="10" fill={FG} fontFamily="var(--f-serif)" fontStyle="italic">c</text>
       </svg>
     );
   }
