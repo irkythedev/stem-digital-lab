@@ -169,10 +169,10 @@ export function Battery({ cx = 40, cy = 110 }: { cx?: number; cy?: number }) {
         <line x1={cx - 18} y1={cy - 40} x2={cx + 18} y2={cy - 40} />
         <line x1={cx - 8} y1={cy - 28} x2={cx + 8} y2={cy - 28} />
       </g>
-      <text x={cx + 24} y={cy - 34} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
+      <text x={cx + 24} y={cy - 46} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
         +
       </text>
-      <text x={cx + 24} y={cy - 22} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
+      <text x={cx + 24} y={cy - 20} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
         −
       </text>
     </g>
