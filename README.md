@@ -102,7 +102,7 @@ src/
 
 ### 反馈
 
-右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信（PushPlus 推送）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
+右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信（Server酱推送）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
 
 ### 版本与标签
 
@@ -207,7 +207,7 @@ src/
 
 ### Feedback
 
-A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat via PushPlus; while offline or on network errors it is queued locally and retried automatically. No account is required.
+A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat via Server酱; while offline or on network errors it is queued locally and retried automatically. No account is required.
 
 ### Versioning & Tags
 

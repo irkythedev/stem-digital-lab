@@ -1,9 +1,9 @@
 /**
- * 反馈存储：PushPlus 微信推送（无后端，前端直连）+ 本地队列兜底。
+ * 反馈存储：Server酱微信推送（无后端，前端直连）+ 本地队列兜底。
  * 推送成功 → 删除本地记录；失败（离线/未配置/网络异常）→ 留在本地，
  * 下次打开页面自动重试补传。教师微信实时收到反馈。
  */
-import { isPushPlusConfigured, PUSHPLUS_CONFIG } from './pushplus-config';
+import { isServerChanConfigured, SERVERCHAN_CONFIG } from './serverchan-config';
 
 export type FeedbackType = 'experiment' | 'project';
 export type FeedbackRating = 'helpful' | 'neutral' | 'not-helpful';
@@ -71,41 +71,39 @@ const CATEGORY_ZH: Record<FeedbackCategory, string> = {
   content: '内容', interaction: '交互', visual: '视觉', language: '语言', bug: '问题', suggestion: '建议',
 };
 
-/** 单条记录 → PushPlus 推送内容（txt 纯文本，逐行展示） */
+/** 单条记录 → Server酱 desp 正文（Markdown，逐行展示） */
 function formatPushContent(record: FeedbackRecord): string {
   const lines: string[] = [
-    `类型：${record.type === 'experiment' ? '实验反馈' : '项目反馈'}`,
-    `位置：${record.labId ?? '通用'}`,
-    `评分：${record.rating ? RATING_ZH[record.rating] : '未评'}`,
-    `分类：${record.categories.length ? record.categories.map((c) => CATEGORY_ZH[c]).join('、') : '未选'}`,
-    `语言：${record.language === 'zh' ? '中文' : 'English'}`,
-    `时间：${new Date(record.createdAt).toLocaleString('zh-CN', { hour12: false })}`,
+    `- **类型**：${record.type === 'experiment' ? '实验反馈' : '项目反馈'}`,
+    `- **位置**：${record.labId ?? '通用'}`,
+    `- **评分**：${record.rating ? RATING_ZH[record.rating] : '未评'}`,
+    `- **分类**：${record.categories.length ? record.categories.map((c) => CATEGORY_ZH[c]).join('、') : '未选'}`,
+    `- **语言**：${record.language === 'zh' ? '中文' : 'English'}`,
+    `- **时间**：${new Date(record.createdAt).toLocaleString('zh-CN', { hour12: false })}`,
   ];
   if (record.message.trim()) {
-    lines.push(`内容：${record.message.trim()}`);
+    lines.push(`\n${record.message.trim()}`);
   }
   return lines.join('\n');
 }
 
-/** 提交单条反馈到 PushPlus 微信推送。返回 true=推送成功 */
+/** 提交单条反馈到 Server酱微信推送。返回 true=推送成功 */
 export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean> {
-  if (!isPushPlusConfigured()) return false;
+  if (!isServerChanConfigured()) return false;
   try {
-    const res = await fetch(PUSHPLUS_CONFIG.apiUrl, {
+    const res = await fetch(`${SERVERCHAN_CONFIG.apiBase}/${SERVERCHAN_CONFIG.sendKey}.send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        token: PUSHPLUS_CONFIG.token,
-        title: PUSHPLUS_CONFIG.title,
-        content: formatPushContent(record),
-        template: PUSHPLUS_CONFIG.template,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        title: SERVERCHAN_CONFIG.title,
+        desp: formatPushContent(record),
       }),
     });
     if (!res.ok) return false;
-    // PushPlus 接口即使业务失败也返回 HTTP 200，需检查 body.code
+    // Server酱成功返回 { code: 0, message: 'ok', ... }
     const json: unknown = await res.json();
     const code = (json as { code?: number } | null)?.code;
-    return code === 200;
+    return code === 0;
   } catch {
     return false;
   }
@@ -116,7 +114,7 @@ let flushing = false;
 /** 将本地待发队列逐条推送；成功的移除，失败的保留待下次重试 */
 export async function flushFeedbackQueue(): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!isPushPlusConfigured()) return;
+  if (!isServerChanConfigured()) return;
   if (flushing) return;
   flushing = true;
   try {

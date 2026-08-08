@@ -21,10 +21,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.12.0',
     date: '2026-08',
     zh: [
-      '反馈通道升级：实验/项目反馈提交后实时推送到开发者微信（PushPlus 推送），反馈直达、更及时；离线时仍自动暂存本机，联网后补发',
+      '反馈通道升级：实验/项目反馈提交后实时推送到开发者微信（Server酱推送，免实名、免费），反馈直达、更及时；离线时仍自动暂存本机，联网后补发',
     ],
     en: [
-      'Feedback channel upgrade: experiment/project feedback now arrives on the developer\'s WeChat in real time via PushPlus; offline feedback is still queued locally and auto-sent when back online',
+      'Feedback channel upgrade: experiment/project feedback now arrives on the developer\'s WeChat in real time via Server酱 (no real-name verification, free); offline feedback is still queued locally and auto-sent when back online',
     ],
   },
   {
