@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.9.4';
+export const APP_VERSION = '1.10.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.10.0',
+    date: '2026-08',
+    zh: [
+      '物理新增「物理常量速查」工具：常用常量与典型数值一表全览，支持分类筛选与检索，点开查看物理意义、应用场景与关联实验',
+    ],
+    en: [
+      'Physics adds a "Physics Constants" tool: common constants and typical values at a glance, with category filters and search; tap a card for meaning, usage, and related labs',
+    ],
+  },
   {
     version: '1.9.4',
     date: '2026-08',

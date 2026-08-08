@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shuffle } from 'lucide-react';
+import { Gauge, Shuffle } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import { labsForSubject, labs } from '../lib/labs';
@@ -22,11 +22,12 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
 
-  // 随机探索：从全部实验 + 元素周期表工具中随机选一个进入
+  // 随机探索：从全部实验 + 工具（周期表/物理常量）中随机选一个进入
   const randomExplore = () => {
     const destinations: string[] = [
       ...labs.map((lab) => `/lab/${lab.id}`),
       '/periodic-table',
+      '/physics-constants',
     ];
     const pick = destinations[Math.floor(Math.random() * destinations.length)];
     navigate(pick);
@@ -134,28 +135,48 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* 化学工具区：元素周期表（独立于实验，单独成组） */}
-              {subject.id === 'chemistry' && (
+              {/* 工具区：化学 → 元素周期表；物理 → 物理常量速查（独立于实验，单独成组） */}
+              {(subject.id === 'chemistry' || subject.id === 'physics') && (
                 <div className="mt-6">
                   <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
                     // {lang === 'zh' ? '工具' : 'Tools'}
                   </h3>
-                  <Link
-                    to="/periodic-table"
-                    className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
-                  >
-                    <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                      <PeriodicTableIcon className="w-7 h-7" />
-                    </div>
-                    <div className="min-w-0">
-                      <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                        {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
-                      </span>
-                      <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
-                        {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
-                      </span>
-                    </div>
-                  </Link>
+                  {subject.id === 'chemistry' && (
+                    <Link
+                      to="/periodic-table"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
+                    >
+                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                        <PeriodicTableIcon className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                          {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+                        </span>
+                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
+                        </span>
+                      </div>
+                    </Link>
+                  )}
+                  {subject.id === 'physics' && (
+                    <Link
+                      to="/physics-constants"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
+                    >
+                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                        <Gauge className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                          {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+                        </span>
+                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          {lang === 'zh' ? '常用常量与典型数值一表全览，附物理意义与应用' : 'Common constants at a glance, with meaning and usage'}
+                        </span>
+                      </div>
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
