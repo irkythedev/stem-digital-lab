@@ -647,14 +647,21 @@ export default function Ohm() {
               <Rheostat x={190} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
               {/* 元件：定值电阻（矩形，发热随电流）或小灯泡（发光随电流） */}
               {element === 'bulb' ? (
-                <Bulb
-                  cx={250}
-                  cy={60}
-                  r={14}
-                  glow={Math.min(1, effectiveI / 1.2)}
-                  label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
-                  labelY={88}
-                />
+                <>
+                  {/* 灯泡连接线：导线（到 x=230/270）与灯泡边缘（x=236/264）之间补短接线 */}
+                  <g stroke="var(--fg)" strokeWidth="1.2" fill="none">
+                    <line x1="230" y1="60" x2="236" y2="60" />
+                    <line x1="264" y1="60" x2="270" y2="60" />
+                  </g>
+                  <Bulb
+                    cx={250}
+                    cy={60}
+                    r={14}
+                    glow={Math.min(1, effectiveI / 1.2)}
+                    label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
+                    labelY={88}
+                  />
+                </>
               ) : (
                 /* 定值电阻：细长矩形（与滑动变阻器同风格，两端接导线） */
                 <rect
