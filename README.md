@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.11.0-blue)
+![version](https://img.shields.io/badge/版本-v1.11.1-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
@@ -53,7 +53,7 @@
 | `metal-activity` | 金属活动性 | 置换反应验证 Al > Cu > Ag 的活动性顺序 |
 | `/periodic-table` | 元素周期表（工具） | 118 元素全览、检索、实物照片、中文读音、中考跟读（前 20 号/金属活动性/常见元素） |
 | `/physics-constants` | 物理常量速查（工具） | 常用物理常量与典型数值一表全览，支持分类筛选与检索 |
-| `/math-formulas` | 数学公式速查（工具） | 19 个初中数学公式分类速览，配图与易错点提醒，一键跳转对应探究 |
+| `/math-formulas` | 数学公式速查（工具） | 19 个初中数学公式分类速览，配图与易错点提醒，一键跳转对应探究；支持中文/英文/章节/公式符号检索（如 八下、kx、π）|
 
 ### 快速开始
 
