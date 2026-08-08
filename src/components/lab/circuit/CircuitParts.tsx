@@ -165,9 +165,9 @@ export function Battery({ cx = 40, cy = 110 }: { cx?: number; cy?: number }) {
   // 竖式电池：长线（正极）在 cy-40，短线（负极）在 cy-28，正极接干路（上方）、负极接回流（下方）
   return (
     <g>
-      <g stroke="var(--fg)" strokeWidth="1.5">
+      <g stroke="var(--fg)" strokeWidth="2">
         <line x1={cx - 18} y1={cy - 40} x2={cx + 18} y2={cy - 40} />
-        <line x1={cx - 8} y1={cy - 28} x2={cx + 8} y2={cy - 28} strokeWidth="3" />
+        <line x1={cx - 8} y1={cy - 28} x2={cx + 8} y2={cy - 28} />
       </g>
       <text x={cx + 24} y={cy - 34} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
         +
