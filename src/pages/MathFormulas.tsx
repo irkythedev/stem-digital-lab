@@ -41,14 +41,23 @@ export default function MathFormulas() {
   const [zoomDiagram, setZoomDiagram] = useState(false);
 
   const queryLower = query.trim().toLowerCase();
-  // 检索：公式名（中文包含/英文前缀）
+  // 章节缩写展开（八下→八年级下册 等），便于用常用简称检索
+  const chapterQuery = queryLower
+    .replace(/七上/g, '七年级上册').replace(/七下/g, '七年级下册')
+    .replace(/八上/g, '八年级上册').replace(/八下/g, '八年级下册')
+    .replace(/九上/g, '九年级上册').replace(/九下/g, '九年级下册');
+  // 公式符号检索：去空格后匹配公式源码与中文表述（搜 "kx"/"l="/"π" 也能定位）
+  const symbolQuery = queryLower.replace(/\s+/g, '');
+  // 检索：公式名（中文包含/英文包含）、章节（含缩写）、公式符号、中文说明
   const filtered = FORMULAS.filter((f) => {
     if (cat !== 'all' && f.category !== cat) return false;
     if (!queryLower) return true;
     return (
       f.name.zh.includes(queryLower) ||
-      f.name.en.toLowerCase().startsWith(queryLower) ||
-      f.chapter.includes(queryLower)
+      f.name.en.toLowerCase().includes(queryLower) ||
+      f.chapter.includes(chapterQuery) ||
+      f.label.zh.includes(queryLower) ||
+      f.formula.toLowerCase().replace(/\s+/g, '').includes(symbolQuery)
     );
   });
 

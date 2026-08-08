@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.11.0';
+export const APP_VERSION = '1.11.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.11.1',
+    date: '2026-08',
+    zh: [
+      '数学公式速查检索升级：可按公式符号（如 kx、π、l=）或章节简称（如「八下」「九上」）直接搜，英文名也能用关键词匹配，找到公式更容易',
+    ],
+    en: [
+      'Math Formulas search upgrade: look up by formula symbols (e.g. kx, π, l=) or chapter shorthand (e.g. "八下", "九上"), and English names now match by any keyword',
+    ],
+  },
   {
     version: '1.11.0',
     date: '2026-08',
