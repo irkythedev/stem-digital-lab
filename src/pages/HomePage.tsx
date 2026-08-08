@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Gauge, Shuffle } from 'lucide-react';
+import { Gauge, Shuffle, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import { labsForSubject, labs } from '../lib/labs';
@@ -22,12 +22,13 @@ export default function HomePage() {
   const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
 
-  // 随机探索：从全部实验 + 工具（周期表/物理常量）中随机选一个进入
+  // 随机探索：从全部实验 + 工具（周期表/物理常量/数学公式）中随机选一个进入
   const randomExplore = () => {
     const destinations: string[] = [
       ...labs.map((lab) => `/lab/${lab.id}`),
       '/periodic-table',
       '/physics-constants',
+      '/math-formulas',
     ];
     const pick = destinations[Math.floor(Math.random() * destinations.length)];
     navigate(pick);
@@ -135,12 +136,30 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* 工具区：化学 → 元素周期表；物理 → 物理常量速查（独立于实验，单独成组） */}
-              {(subject.id === 'chemistry' || subject.id === 'physics') && (
+              {/* 工具区：数学 → 公式速查；物理 → 常量速查；化学 → 周期表（独立于实验） */}
+              {(subject.id === 'math' || subject.id === 'physics' || subject.id === 'chemistry') && (
                 <div className="mt-6">
                   <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
                     // {lang === 'zh' ? '工具' : 'Tools'}
                   </h3>
+                  {subject.id === 'math' && (
+                    <Link
+                      to="/math-formulas"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
+                    >
+                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                        <Sigma className="w-7 h-7" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                          {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
+                        </span>
+                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          {lang === 'zh' ? '核心公式一表全览，附口诀、易错点与应用' : 'Core formulas with mnemonics, pitfalls, and usage'}
+                        </span>
+                      </div>
+                    </Link>
+                  )}
                   {subject.id === 'chemistry' && (
                     <Link
                       to="/periodic-table"

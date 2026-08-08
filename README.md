@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.9.4-blue)
+![version](https://img.shields.io/badge/版本-v1.11.0-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
@@ -23,7 +23,7 @@
 - 🌗 深浅主题（默认浅色，适合希沃/投影大屏）
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
-- 🧪 15 个交互实验 + 元素周期表工具（118 元素全览、实物照片、中文读音、中考跟读）
+- 🧪 15 个交互实验 + 3 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、数学公式速查
 
 ### 实验与工具清单
 
@@ -32,7 +32,7 @@
 | 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
 | 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
 | 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
-| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） |
+| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 数学公式速查 |
 
 | ID | 名称 | 说明 |
 |---|---|---|
@@ -52,6 +52,8 @@
 | `electrolysis` | 电解水 | 观察正氧负氢体积比 2:1，探究水的组成 |
 | `metal-activity` | 金属活动性 | 置换反应验证 Al > Cu > Ag 的活动性顺序 |
 | `/periodic-table` | 元素周期表（工具） | 118 元素全览、检索、实物照片、中文读音、中考跟读（前 20 号/金属活动性/常见元素） |
+| `/physics-constants` | 物理常量速查（工具） | 常用物理常量与典型数值一表全览，支持分类筛选与检索 |
+| `/math-formulas` | 数学公式速查（工具） | 19 个初中数学公式分类速览，配图与易错点提醒，一键跳转对应探究 |
 
 ### 快速开始
 

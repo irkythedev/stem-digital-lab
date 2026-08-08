@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学实验 · 二次函数 y = ax² + bx + c 三幕式探究（人教版 九上第 22 章）
+ * 数学探究 · 二次函数 y = ax² + bx + c 三幕式探究（人教版 九上第 22 章）
  *
  * 幕 1 预测：给定 y = -2x² + 3，先猜开口方向 / 顶点 / 与 y 轴交点，再揭示图像
  * 幕 2 探索：控制变量卡（a / b / c 各自隔离）+ 钉住曲线对比 + 观察笔记
@@ -57,7 +57,7 @@ const copy = {
     stageConclude: '结论',
     stageDone: '完成',
     nextStage: '下一步 →',
-    redoLabel: '再次实验',
+    redoLabel: '重新探究',
     // 幕1 预测
     predictTitle: '预测',
     predictQuestion: '看这个函数：',

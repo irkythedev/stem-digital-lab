@@ -7,7 +7,7 @@
  * P0 阶段实验列表为占位，后续由 labs 注册表填充。
  */
 import { Link, useParams } from 'react-router-dom';
-import { Gauge } from 'lucide-react';
+import { Gauge, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
 import { labsForSubject } from '../lib/labs';
@@ -50,12 +50,26 @@ export default function SubjectPage() {
         />
       </div>
 
-      {/* 工具区：化学 → 元素周期表；物理 → 物理常量速查 */}
-      {(subject.id === 'chemistry' || subject.id === 'physics') && (
+      {/* 工具区：数学 → 公式速查；物理 → 物理常量速查；化学 → 元素周期表 */}
+      {(subject.id === 'math' || subject.id === 'physics' || subject.id === 'chemistry') && (
         <section className="mb-8">
           <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
             // {lang === 'zh' ? '工具' : 'Tools'}
           </h2>
+          {subject.id === 'math' && (
+            <Link
+              to="/math-formulas"
+              className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
+            >
+              <span className="flex items-center gap-3">
+                <Sigma className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
+                <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
+                  {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
+                </span>
+              </span>
+              <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          )}
           {subject.id === 'chemistry' && (
             <Link
               to="/periodic-table"

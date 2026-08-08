@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学实验 · 圆的性质探究三幕式（人教版 九上第24章）
+ * 数学探究 · 圆的性质探究三幕式（人教版 九上第24章）
  *
  * 幕 1 预测：给定圆 + 弦，猜过圆心作垂线是否平分弦
  * 幕 2 探索：三个任务卡（垂径定理 / 圆周角定理 / 直径对直角）
@@ -30,7 +30,7 @@ const copy = {
     stageConclude: '结论',
     stageDone: '完成',
     nextStage: '下一步 →',
-    redoLabel: '再次实验',
+    redoLabel: '重新探究',
     // 幕1 预测
     predictTitle: '预测',
     predictQuestion: '在一个圆中画一条弦 AB，过圆心 O 作 AB 的垂线，垂足为 E。',
