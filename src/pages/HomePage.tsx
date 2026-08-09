@@ -10,7 +10,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Gauge, Shuffle, Sigma } from 'lucide-react';
+import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import { labsForSubject, labs } from '../lib/labs';
@@ -29,6 +29,7 @@ export default function HomePage() {
       '/periodic-table',
       '/physics-constants',
       '/math-formulas',
+      '/physics-formulas',
     ];
     const pick = destinations[Math.floor(Math.random() * destinations.length)];
     navigate(pick);
@@ -179,22 +180,40 @@ export default function HomePage() {
                     </Link>
                   )}
                   {subject.id === 'physics' && (
-                    <Link
-                      to="/physics-constants"
-                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
-                    >
-                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                        <Gauge className="w-7 h-7" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                          {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
-                        </span>
-                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
-                          {lang === 'zh' ? '常用常量与典型数值一表全览，附物理意义与应用' : 'Common constants at a glance, with meaning and usage'}
-                        </span>
-                      </div>
-                    </Link>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Link
+                        to="/physics-constants"
+                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                      >
+                        <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                          <Gauge className="w-7 h-7" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                            {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+                          </span>
+                          <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                            {lang === 'zh' ? '常用常量与典型数值一表全览，附物理意义与应用' : 'Common constants at a glance, with meaning and usage'}
+                          </span>
+                        </div>
+                      </Link>
+                      <Link
+                        to="/physics-formulas"
+                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                      >
+                        <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+                          <Calculator className="w-7 h-7" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
+                            {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
+                          </span>
+                          <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                            {lang === 'zh' ? '核心公式分类速览，相关常量一键跳转' : 'Core formulas at a glance, with related constants linked'}
+                          </span>
+                        </div>
+                      </Link>
+                    </div>
                   )}
                 </div>
               )}
