@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.12.2';
+export const APP_VERSION = '1.13.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.13.0',
+    date: '2026-08',
+    zh: [
+      '物理新增「物理公式速查」工具：29 个初中物理核心公式按力学/热学/光学/声学/电学分类，点开看公式、单位、适用条件与易错点；公式与常量双向关联——点公式里的相关常量直接跳到常量页（带数值），常量页也能反查用到它的公式',
+    ],
+    en: [
+      'Physics adds a "Physics Formulas" tool: 29 core formulas grouped by mechanics / thermal / optics / sound / electricity, each with units, conditions and pitfalls; formulas and constants are cross-linked both ways — tap a related constant in a formula to jump to it (with its value), and each constant shows the formulas that use it',
+    ],
+  },
   {
     version: '1.12.2',
     date: '2026-08',

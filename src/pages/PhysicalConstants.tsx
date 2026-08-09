@@ -7,11 +7,12 @@
  * 复刻元素周期表交互模型：分类筛选 + 检索 + 网格卡片墙 + 点开详情卡。
  * 数据来自 src/lib/constants.ts（依据 physics_kb 提炼，数值对照教材附录）。
  */
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { House, Search } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
+import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
 import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 
@@ -19,9 +20,22 @@ const CATEGORIES: ConstantCategory[] = ['mech', 'thermal', 'optics', 'sound', 'e
 
 export default function PhysicalConstants() {
   const { t, lang } = useApp();
+  const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicalConstant | null>(null);
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<ConstantCategory | 'all'>('all');
+
+  // 从公式页跳转聚焦：?focus=<常量符号>
+  const focusSymbol = params.get('focus');
+  useEffect(() => {
+    if (focusSymbol) {
+      const c = CONSTANTS.find((x) => x.symbol === focusSymbol);
+      if (c) setSelected(c);
+    }
+  }, [focusSymbol]);
+
+  /** 该常量被哪些公式使用（双向关联反查） */
+  const formulasUsing = (sym: string) => PHYSICS_FORMULAS.filter((f) => f.relatedConstants?.includes(sym));
 
   const queryLower = query.trim().toLowerCase();
   // 检索：符号精确匹配优先（如 "u"→仅 U 电压类）；否则符号前缀 / 中文包含 / 英文前缀 / 数值包含
@@ -188,6 +202,26 @@ export default function PhysicalConstants() {
                   </Link>
                 )}
               </div>
+
+              {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
+              {formulasUsing(selected.symbol).length > 0 && (
+                <div className="border border-[var(--border)] p-2.5">
+                  <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '用于公式' : 'Used in formulas'}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formulasUsing(selected.symbol).map((f) => (
+                      <Link
+                        key={f.id}
+                        to={`/physics-formulas?focus=${f.id}`}
+                        className="text-xs mono-font underline hover:text-[var(--fg)]"
+                      >
+                        {lang === 'zh' ? f.name.zh : f.name.en}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

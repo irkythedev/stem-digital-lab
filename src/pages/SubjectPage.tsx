@@ -7,7 +7,7 @@
  * P0 阶段实验列表为占位，后续由 labs 注册表填充。
  */
 import { Link, useParams } from 'react-router-dom';
-import { Gauge, Sigma } from 'lucide-react';
+import { Calculator, Gauge, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
 import { labsForSubject } from '../lib/labs';
@@ -93,6 +93,20 @@ export default function SubjectPage() {
                 <Gauge className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
                 <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
                   {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+                </span>
+              </span>
+              <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>
+            </Link>
+          )}
+          {subject.id === 'physics' && (
+            <Link
+              to="/physics-formulas"
+              className="group flex items-center justify-between border-t border-b border-[var(--border)] py-5 transition-colors hover:border-[var(--fg)]"
+            >
+              <span className="flex items-center gap-3">
+                <Calculator className="w-5 h-5 text-[var(--muted)] transition-colors group-hover:text-[var(--fg)]" />
+                <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font">
+                  {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
                 </span>
               </span>
               <span className="text-[var(--muted)] mono-font transition-transform group-hover:translate-x-1">→</span>

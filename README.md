@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.12.2-blue)
+![version](https://img.shields.io/badge/版本-v1.13.0-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
@@ -23,7 +23,7 @@
 - 🌗 深浅主题（默认浅色，适合希沃/投影大屏）
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
-- 🧪 15 个交互实验 + 3 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、数学公式速查
+- 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
 
 ### 实验与工具清单
 
@@ -32,7 +32,7 @@
 | 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
 | 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
 | 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
-| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 数学公式速查 |
+| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 物理公式速查 · 数学公式速查 |
 
 | ID | 名称 | 说明 |
 |---|---|---|
@@ -53,6 +53,7 @@
 | `metal-activity` | 金属活动性 | 置换反应验证 Al > Cu > Ag 的活动性顺序 |
 | `/periodic-table` | 元素周期表（工具） | 118 元素全览、检索、实物照片、中文读音、中考跟读（前 20 号/金属活动性/常见元素） |
 | `/physics-constants` | 物理常量速查（工具） | 常用物理常量与典型数值一表全览，支持分类筛选与检索 |
+| `/physics-formulas` | 物理公式速查（工具） | 29 个初中物理核心公式分类速览，公式与常量双向关联互跳 |
 | `/math-formulas` | 数学公式速查（工具） | 19 个初中数学公式分类速览，配图与易错点提醒，一键跳转对应探究；支持中文/英文/章节/公式符号检索（如 八下、kx、π）|
 
 ### 快速开始
@@ -130,7 +131,7 @@ src/
 - 🌗 Light & dark themes (light by default for classroom projection)
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
-- 🧪 15 interactive labs + a Periodic Table tool (all 118 elements, photos, pronunciation, recite mode)
+- 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
 
 ### Labs & Tools
 
@@ -139,7 +140,7 @@ src/
 | Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
 | Physics | 8–9 | Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys |
 | Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
-| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) |
+| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas |
 
 | ID | Name | Description |
 |---|---|---|
@@ -159,6 +160,9 @@ src/
 | `electrolysis` | Electrolysis of Water | See O₂ and H₂ in a 2:1 ratio, explore water's composition |
 | `metal-activity` | Metal Activity | Displacement reactions verifying Al > Cu > Ag |
 | `/periodic-table` | Periodic Table (tool) | All 118 elements, search, photos, pronunciation, recite mode (first 20 / activity series / common elements) |
+| `/physics-constants` | Physics Constants (tool) | Common constants and typical values at a glance, with filters and search |
+| `/physics-formulas` | Physics Formulas (tool) | 29 core formulas, cross-linked both ways with related constants |
+| `/math-formulas` | Math Formulas (tool) | 19 core formulas with diagrams and pitfalls, searchable by zh/en/chapter/symbol |
 
 ### Getting Started
 
