@@ -107,10 +107,6 @@ src/
 
 右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信（Server酱推送）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
 
-### 版本与标签
-
-当前版本：`v1.9.4`。遵循语义化版本（SemVer）：`MAJOR.MINOR.PATCH`。每次发布在 `master` 上打 tag：`git tag -a vX.Y.Z -m "..."`。版本号点击可查看面向用户的中英双语更新记录。
-
 ### 许可
 
 本项目基于 **GNU Affero General Public License v3 (AGPL-3.0)** 开源（见 `LICENSE` 文件）。你可以自由使用、修改与分发，**但任何衍生作品都必须以 AGPL-3.0 开源**（含通过网络提供的服务），并**保留原作者版权声明**，不允许闭源拿走。
@@ -216,10 +212,6 @@ src/
 ### Feedback
 
 A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat via Server酱; while offline or on network errors it is queued locally and retried automatically. No account is required.
-
-### Versioning & Tags
-
-Current version: `v1.9.4`. Follows Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`. Tag each release on `master`: `git tag -a vX.Y.Z -m "..."`. Click the version badge for a bilingual changelog.
 
 ### License
 
