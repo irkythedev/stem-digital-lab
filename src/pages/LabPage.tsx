@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
+import AskAiButton from '../components/ai/AskAiButton';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
@@ -96,6 +97,10 @@ export default function LabPage() {
                 text={lang === 'zh'
                   ? t.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
                   : t.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+              />
+              <AskAiButton
+                className="ml-3"
+                question={lang === 'zh' ? `请讲解实验「${lab.name.zh}」的原理与操作要点` : `Explain the lab "${lab.name.en}" — its principle and key steps`}
               />
             </h1>
           </div>

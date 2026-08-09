@@ -18,6 +18,7 @@ import { House, Loader2, Pause, Play, Square, Volume2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
+import AskAiButton from '../components/ai/AskAiButton';
 import ShareInline from '../components/share/ShareInline';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 
@@ -597,6 +598,11 @@ export default function PeriodicTable() {
             >
               ×
             </button>
+
+            {/* 问 AI：一键讲解当前元素 */}
+            <div className="px-1 pt-1">
+              <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
+            </div>
 
             <div className="flex items-start justify-between pr-8">
               <div>
