@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.13.0';
+export const APP_VERSION = '1.15.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,42 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.15.0',
+    date: '2026-08',
+    zh: [
+      '新增「AI 学习助手」（顶栏入口）：您自带 API Key（仅限大陆可用服务商：DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包或自定义端点），辅助解释初中数理化知识',
+      '首次使用先阅读并同意使用须知，再进入设置；Key 仅存本机浏览器、对话直连您所选的服务商、本站无后端不记录任何内容',
+      'AI 会结合当前页面内容作答（如当前公式、实验、元素），模型列表在连接成功后自动获取；AI 内容仅供参考，请以教材和老师讲解为准',
+      '首页移动端优化：三学科并排展示、每日科学板块，竖屏首屏即可看到页脚',
+    ],
+    en: [
+      'New "AI Assistant" (header entry): bring your own API key (mainland-China providers: DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao or a custom endpoint) for help with middle-school math, physics and chemistry',
+      'Read and accept the terms first, then configure; the key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing',
+      'AI answers are grounded in the current page (formula, lab, element); the model list is fetched after a successful connection; output is for reference — trust the textbook and your teacher',
+      'Homepage optimized for mobile: three subjects side by side and the Daily Science block, so the footer fits on the first screen in portrait',
+    ],
+  },
+  {
+    version: '1.14.0',
+    date: '2026-08',
+    zh: [
+      '首页新增「每日科学」板块：每天随机展示一位科学家的名言与小故事（以国内/华人科学家为主），可一键换一条，中英双语',
+    ],
+    en: [
+      'Homepage adds a "Daily Science" block: a scientist quote with a short story each day (mostly Chinese scientists), shuffleable and bilingual',
+    ],
+  },
+  {
+    version: '1.13.1',
+    date: '2026-08',
+    zh: [
+      '修复串并联电路实验结论幕的对错反馈：答题后现在会正确显示 ✓/✗（此前对错标记不显示）；灯泡灯丝点亮改为平滑渐变；化学实验液面颜色在深色主题下更清晰',
+    ],
+    en: [
+      'Fixed the answer feedback in the series-parallel circuits lab: correct/incorrect marks now appear after answering (previously missing); bulb filament brightens smoothly; chemical liquid colors are brighter in dark theme',
+    ],
+  },
   {
     version: '1.13.0',
     date: '2026-08',

@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
+import DailyQuote from '../components/ui/DailyQuote';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import { labsForSubject, labs } from '../lib/labs';
@@ -38,16 +39,16 @@ export default function HomePage() {
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
       {/* Brand Main Title Header */}
-      <div className="mb-10 flex flex-col items-start max-w-2xl">
-        <h1 className="text-base font-bold tracking-widest uppercase mono-font mb-4 text-[var(--fg)]">
+      <div className="mb-6 sm:mb-10 flex flex-col items-start max-w-2xl">
+        <h1 className="text-base font-bold tracking-widest uppercase mono-font mb-2 sm:mb-4 text-[var(--fg)]">
           {t.brandName}
         </h1>
-        <p className="text-base sm:text-lg text-[var(--muted)] serif-font italic mb-4">{t.subtitle}</p>
-        <p className="text-xs sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
+        <p className="text-sm sm:text-lg text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
+        <p className="text-[11px] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
       </div>
 
       {/* ── 学科切换卡片 ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full mb-8">
+      <div className="grid grid-cols-3 gap-3 sm:gap-6 w-full mb-6 sm:mb-8">
         {subjectList.map((subject) => {
           const meta = t.subjects[subject.id];
           const isActive = activeSubject === subject.id;
@@ -56,26 +57,27 @@ export default function HomePage() {
               key={subject.id}
               type="button"
               onClick={() => setActiveSubject(activeSubject === subject.id ? null : subject.id)}
-              className={`group border-t pt-4 pb-5 flex flex-col text-left transition-all duration-300 ${
+              className={`group border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col text-left transition-all duration-300 ${
                 isActive
                   ? 'border-[var(--fg)]'
-                  : 'border-[var(--border)] hover:border-[var(--fg)] opacity-50 hover:opacity-100'
+                  : 'border-[var(--border)] hover:border-[var(--fg)] opacity-60 hover:opacity-100'
               }`}
             >
-              <div className="h-12 flex items-center justify-start mb-3 text-[var(--fg)]">
+              <div className="h-9 sm:h-12 flex items-center justify-start mb-1.5 sm:mb-3 text-[var(--fg)]">
                 <SubjectIcon
                   subjectId={subject.id}
-                  className="w-9 h-9 stroke-[1.0] transition-transform group-hover:-translate-y-1 duration-300"
-                  glyphClassName="text-4xl transition-transform group-hover:-translate-y-1 duration-300"
+                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform group-hover:-translate-y-1 duration-300"
+                  glyphClassName="text-3xl sm:text-4xl transition-transform group-hover:-translate-y-1 duration-300"
                 />
               </div>
-              <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-1.5">
+              <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">
                 {meta.title}
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] mono-font mb-3">
+              <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] mono-font mb-1 sm:mb-3">
                 {lang === 'zh' ? subject.gradeZh : subject.gradeEn}
               </span>
-              <div className="flex flex-col space-y-1">
+              {/* 状态与说明：桌面显示，移动端隐藏（三列窄卡精简） */}
+              <div className="hidden sm:flex flex-col space-y-1">
                 <span className="text-[11px] font-bold text-[var(--fg)] mono-font">[{meta.status}]</span>
                 <span className="text-[11px] text-[var(--muted)] sans-font leading-relaxed">{meta.note}</span>
               </div>
@@ -96,8 +98,11 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* ── 实验列表（淡入淡出） ── */}
-      <div className="relative min-h-[200px]">
+      {/* ── 每日科学：名人名言与故事（当天固定 + 可换一条） ── */}
+      <DailyQuote lang={lang} />
+
+      {/* ── 实验列表（淡入淡出）：未展开学科时无占位高度，避免与页脚间留白 ── */}
+      <div className={`relative ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
           const labs = labsForSubject(subject.id);
@@ -112,7 +117,7 @@ export default function HomePage() {
               aria-hidden={!isActive}
             >
               {/* 实验网格 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {labs.map((lab) => {
                   const Icon = lab.icon;
                   return (

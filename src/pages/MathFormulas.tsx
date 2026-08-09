@@ -10,7 +10,9 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { House, Image as ImageIcon, Search } from 'lucide-react';
+import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
+import { useAiContext } from '../lib/ai-context';
 import { FORMULAS, FORMULA_CATEGORY_ZH, FORMULA_CATEGORY_EN, type FormulaCategory, type MathFormula } from '../lib/formulas';
 import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
@@ -39,6 +41,17 @@ export default function MathFormulas() {
   const [cat, setCat] = useState<FormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
   const [zoomDiagram, setZoomDiagram] = useState(false);
+  const { setAiCtx } = useAiContext();
+  // AI 上下文：选中公式时注入公式/说明/易错/常量
+  useEffect(() => {
+    if (selected) {
+      setAiCtx({
+        topic: `数学公式：${selected.name.zh}`,
+        knowledge: `公式：${selected.formula}。说明：${selected.label.zh}。章节：${selected.chapter}。`,
+      });
+    }
+    return () => setAiCtx({});
+  }, [selected, setAiCtx]);
 
   const queryLower = query.trim().toLowerCase();
   // 章节缩写展开（八下→八年级下册 等），便于用常用简称检索

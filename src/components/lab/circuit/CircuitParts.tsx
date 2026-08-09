@@ -27,7 +27,12 @@ export function Bulb({
 }) {
   const g = Math.max(0, Math.min(1, glow));
   const lit = g > 0.02;
-  const filamentColor = g > 0.25 ? '#ffd166' : 'var(--fg)'; // 灯丝：通电变暖黄
+  // 灯丝颜色：熄灭用主题灰，点亮后平滑过渡到暖黄（消除 g 阈值突变）
+  const glowT = Math.min(1, Math.max(0, (g - 0.15) / 0.35)); // 0.15 → 0.5 渐变
+  const filamentColor =
+    g <= 0.15
+      ? 'var(--fg)'
+      : `rgb(${Math.round(138 + 117 * glowT)}, ${Math.round(138 + 71 * glowT)}, ${Math.round(144 - 42 * glowT)})`;
   return (
     <g>
       {/* 光晕外圈（扩散） */}

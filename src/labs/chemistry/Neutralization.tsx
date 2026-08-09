@@ -89,11 +89,11 @@ function useLiquidY(target: number): number {
 /** pH → 指示剂颜色（石蕊：红 → 蓝；简化 RGB 插值） */
 function phColor(pH: number): string {
   const clamped = Math.max(0, Math.min(14, pH));
-  // 从红 (220,60,60) 经紫 (150,90,160) 到蓝 (60,90,200)
+  // 从红 (235,85,85) 经紫 (170,105,170) 到蓝 (95,120,215)——加亮版，暗色主题下仍清晰
   const t = clamped / 14;
-  const r = Math.round(220 - 160 * t);
-  const g = Math.round(60 + 30 * t);
-  const b = Math.round(60 + 140 * t);
+  const r = Math.round(235 - 140 * t);
+  const g = Math.round(85 + 35 * t);
+  const b = Math.round(85 + 130 * t);
   return `rgb(${r}, ${g}, ${b})`;
 }
 

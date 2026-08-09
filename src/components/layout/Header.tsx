@@ -7,14 +7,16 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useAiContext } from '../../lib/ai-context';
 import { APP_VERSION } from '../../lib/changelog';
 import VersionDialog from '../feedback/VersionDialog';
 import type { ThemeMode } from '../../lib/app-context';
 
 export default function Header() {
   const { t, lang, setLang, themeMode, setThemeMode } = useApp();
+  const { open: aiOpen, setOpen: setAiOpen, configured: aiConfigured } = useAiContext();
   const [showVersion, setShowVersion] = useState(false);
   const [hasUpdate, setHasUpdate] = useState(false);
   const [toast, setToast] = useState(false);
@@ -84,7 +86,7 @@ export default function Header() {
           }}
           title="v{APP_VERSION}"
           aria-label="version"
-          className="flex items-center gap-1.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="flex items-center gap-1.5 self-end mb-0.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
             v{APP_VERSION}
@@ -134,7 +136,21 @@ export default function Header() {
         </div>
       )}
 
-      <div className="flex items-center space-x-4 text-[11px] mono-font uppercase tracking-wider">
+      <div className="flex items-center gap-2 sm:gap-4 text-[11px] mono-font uppercase tracking-wider">
+        {/* AI Assistant entry（版本号在左侧品牌区，此处无绿点遮挡） */}
+        <button
+          type="button"
+          onClick={() => setAiOpen(!aiOpen)}
+          aria-label="AI 学习助手"
+          title={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
+          className="relative flex items-center justify-center px-2 py-2 text-[var(--fg)] transition-colors hover:opacity-70"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          {!aiConfigured && (
+            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--error)]" aria-hidden="true" />
+          )}
+        </button>
+
         {/* Language Switcher (single toggle button) */}
         <button
           onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}

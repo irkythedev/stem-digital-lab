@@ -8,8 +8,10 @@
  */
 import { Link, useParams } from 'react-router-dom';
 import { House } from 'lucide-react';
+import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
+import { useAiContext } from '../lib/ai-context';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
@@ -19,6 +21,18 @@ export default function LabPage() {
   const { t, lang } = useApp();
 
   const lab = labId ? labMap[labId] : undefined;
+  const { setAiCtx } = useAiContext();
+  // AI 上下文：注入当前实验的名称/描述/章节
+  useEffect(() => {
+    if (lab) {
+            const grade = subjects[lab.subject as keyof typeof subjects]?.gradeZh ?? '';
+      setAiCtx({
+        topic: `${lab.name.zh}实验（${grade}）`,
+        knowledge: `${lab.name.zh}实验（${lab.subject === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。`,
+      });
+    }
+    return () => setAiCtx({});
+  }, [lab, setAiCtx]);
 
   if (!lab) {
     return (
