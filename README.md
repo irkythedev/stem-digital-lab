@@ -24,8 +24,8 @@
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
-- 🤖 AI 学习助手（顶栏入口）：自带 API Key 辅助解释数理化知识，Key 仅存本机、对话直连服务商、本站不记录
-- 💬 首页「每日科学」：每天一位科学家的名言与小故事（以国内/华人科学家为主）
+- 🤖 AI 学习助手（顶栏入口）：配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
+- 💬 首页「每日科学」：每天一位科学家的名言与小故事
 
 ### 实验与工具清单
 
@@ -91,7 +91,7 @@ npm run test       # 运行测试
 ### AI 学习助手
 
 - 顶栏入口，辅助解释初中数学（人教版）、物理（苏科版）、化学（人教版）知识，会结合当前页面内容作答
-- 使用您自带的 API Key：仅限大陆可用服务商（DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包 / 自定义端点），本站不提供、不代购、不收取任何费用
+- 使用您自己的 API Key：仅限大陆可用服务商（DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包 / 自定义端点），本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
 
@@ -142,8 +142,8 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): bring your own API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
-- 💬 Daily Science on the homepage: a scientist quote and short story each day (mostly Chinese scientists)
+- 🤖 AI assistant (header entry): configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- 💬 Daily Science on the homepage: a scientist quote and short story each day
 
 ### Labs & Tools
 
@@ -209,7 +209,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 ### AI Assistant
 
 - Header entry that helps explain middle-school math (PEP), physics (Su-Ke) and chemistry (PEP), grounded in the current page
-- Bring your own API key: mainland-China providers only (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
+- Use your own API key: mainland-China providers only (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
 
