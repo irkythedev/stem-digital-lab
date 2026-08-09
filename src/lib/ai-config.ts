@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * AI 学习助手配置：用户自带 API Key（本站不提供、不代购、不收取费用）。
+ * AI 学习助手配置：用户自行配置 API Key（本站不提供、不代购、不收取费用）。
  *
  * 合规与隐私设计：
  * - 预设仅限大陆可用服务商（OpenAI 兼容格式），外加自定义端点；
@@ -35,6 +35,11 @@ export const AI_PROVIDERS: AiProvider[] = [
   },
   { id: 'custom', name: '自定义端点', baseUrl: '', models: [], note: '任意 OpenAI 兼容地址，一切权责由您自行承担' },
 ];
+
+/** 端点归一化：兼容 Base URL（…/v1）与完整端点（…/v1/chat/completions），用户无感 */
+export function normalizeBaseUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+}
 
 export interface AiConfig {
   providerId: string;
@@ -104,7 +109,7 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
 
 /** 拉取服务商实际可用模型列表（OpenAI 兼容 GET /models） */
 export async function fetchModels(baseUrl: string, apiKey: string): Promise<string[]> {
-  const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, {
+  const res = await fetch(`${normalizeBaseUrl(baseUrl)}/models`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${apiKey.trim()}` },
   });
@@ -121,7 +126,7 @@ export async function streamChat(
   onDelta: (text: string) => void,
   signal?: AbortSignal,
 ): Promise<string> {
-  const url = `${cfg.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  const url = `${normalizeBaseUrl(cfg.baseUrl)}/chat/completions`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
