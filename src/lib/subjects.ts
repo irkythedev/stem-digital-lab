@@ -32,7 +32,7 @@ export const subjects: Record<SubjectId, SubjectMeta> = {
   chemistry: {
     id: 'chemistry',
     path: '/subject/chemistry',
-    gradeZh: '九年级',
+    gradeZh: '9年级',
     gradeEn: 'Grade 9',
   },
 };

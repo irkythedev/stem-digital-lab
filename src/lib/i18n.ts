@@ -31,7 +31,7 @@ export const translations = {
       },
       chemistry: {
         title: '化学',
-        sub: '九年级',
+        sub: '9年级',
         status: '仿真实验中',
         note: '元素周期表 · 电解水 · 金属活动性 · 酸碱中和 · 质量守恒定律',
       },
