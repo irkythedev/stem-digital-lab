@@ -7,7 +7,7 @@
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
 import { Link, useParams } from 'react-router-dom';
-import { House } from 'lucide-react';
+import { FlaskConical  } from 'lucide-react';;
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
@@ -77,7 +77,7 @@ export default function LabPage() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <House className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
         </Link>
       </nav>
 

@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search } from 'lucide-react';
+import { FlaskConical, Search  } from 'lucide-react';;
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
@@ -79,7 +79,7 @@ export default function PhysicalConstants() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <House className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
         </Link>
       </nav>
 

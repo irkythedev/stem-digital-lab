@@ -14,7 +14,7 @@
  */
 import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2 } from 'lucide-react';
+import { FlaskConical, Loader2, Pause, Play, Square, Volume2  } from 'lucide-react';;
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -334,7 +334,7 @@ export default function PeriodicTable() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <House className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
