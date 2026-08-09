@@ -9,7 +9,7 @@
  */
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Image as ImageIcon, Search } from 'lucide-react';
+import { FlaskConical, Image as ImageIcon, Search  } from 'lucide-react';;
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -87,7 +87,7 @@ export default function MathFormulas() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <House className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
         </Link>
       </nav>
 

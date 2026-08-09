@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search } from 'lucide-react';
+import { FlaskConical, Search  } from 'lucide-react';;
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
@@ -20,7 +20,7 @@ import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
-import { Image as ImageIcon } from 'lucide-react';
+import { Image as ImageIcon  } from 'lucide-react';;
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
 
 const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
@@ -106,7 +106,7 @@ export default function PhysicsFormulas() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <House className="w-3.5 h-3.5" />
+          <FlaskConical className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
