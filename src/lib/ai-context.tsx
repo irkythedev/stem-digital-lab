@@ -2,9 +2,10 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * AI 上下文：全局 AI 助手状态（面板开关）+ 页面知识注入。
+ * AI 上下文：全局 AI 助手状态 + 页面知识注入 + 一键问 AI 触发。
  * - open/setOpen：Header 的 AI 按钮控制助手面板开关
  * - setAiCtx：各页面向系统提示词注入当前页面实际知识（避免 AI 自由发挥）
+ * - ask/askAi：页面「问 AI」按钮一键触发——携带预填问题，自动打开面板
  */
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
@@ -24,6 +25,10 @@ interface AiContextValue {
   setConfigured: (v: boolean) => void;
   aiCtx: AiPageContext;
   setAiCtx: (ctx: AiPageContext) => void;
+  /** 一键问 AI：页面按钮携带的预填问题（消费后清空） */
+  ask: string | null;
+  askAi: (question: string) => void;
+  setAsk: (q: string | null) => void;
 }
 
 const AiContext = createContext<AiContextValue>({
@@ -33,6 +38,9 @@ const AiContext = createContext<AiContextValue>({
   setConfigured: () => undefined,
   aiCtx: {},
   setAiCtx: () => undefined,
+  ask: null,
+  askAi: () => undefined,
+  setAsk: () => undefined,
 });
 
 export function AiProvider({ children }: { children: ReactNode }) {
@@ -49,8 +57,15 @@ export function AiProvider({ children }: { children: ReactNode }) {
     }
   });
   const [aiCtx, setAiCtx] = useState<AiPageContext>({});
+  const [ask, setAsk] = useState<string | null>(null);
+
+  const askAi = (question: string) => {
+    setAsk(question);
+    setOpen(true);
+  };
+
   return (
-    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx }}>
+    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx, ask, askAi, setAsk }}>
       {children}
     </AiContext.Provider>
   );

@@ -15,6 +15,7 @@ import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCat
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
+import AskAiButton from '../components/ai/AskAiButton';
 import ShareInline from '../components/share/ShareInline';
 
 const CATEGORIES: ConstantCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
@@ -215,6 +216,10 @@ export default function PhysicalConstants() {
                 )}
               </div>
 
+              {/* 问 AI：一键讲解当前常量 */}
+              <div className="px-0.5 pt-1.5">
+                <AskAiButton question={lang === 'zh' ? `请讲解常量「${selected.name.zh}」的物理意义与应用` : `Explain the constant "${selected.name.en}" — its physical meaning and usage`} />
+              </div>
               {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
               {formulasUsing(selected.symbol).length > 0 && (
                 <div className="border border-[var(--border)] p-2.5">

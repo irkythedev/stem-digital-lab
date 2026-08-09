@@ -2,17 +2,19 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * AI 学习助手（Header 按钮触发，右上角面板）：
- * - 入口在 Header 右侧（版本号在左侧，无绿点遮挡问题）；
- * - 首次使用：先展示使用须知，点「我同意并继续」才进入配置表单（两步流程）；
- * - 用户自行配置 API Key（仅存本机 localStorage），本站不提供、不记录；
- * - 对话流式输出，会话记录仅存本机 sessionStorage（关页即清）；
+ * AI 学习助手（Header 入口，右上角面板）——单轮问答 + 链式追问，不保留历史。
+ *
+ * 合规设计：
+ * - 无对话历史存储（不写 localStorage/sessionStorage）——数据留存问题从根上消除；
+ * - 单轮问答：每次提问独立，仅「继续问」时携带上一轮问答作为参考（内存态，关页即清）；
+ * - 首次使用：先阅读使用须知，点「我同意并继续」才进入设置（两步流程）；
+ * - 用户自带 API Key（仅存本机 localStorage），本站不提供、不记录；
  * - 自动注入当前页面知识（AiContext）到系统提示词，避免 AI 自由发挥；
  * - 免责声明常驻：AI 生成内容仅供参考，请以教材和老师讲解为准。
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Eye, EyeOff, Settings, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, RotateCcw, Settings, Trash2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
@@ -20,13 +22,6 @@ import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
   type AiConfig, type AiProvider,
 } from '../../lib/ai-config';
-
-const SESSION_KEY = 'stem-ai-session';
-
-interface ChatMsg {
-  role: 'user' | 'assistant';
-  content: string;
-}
 
 /** 当前页面 → 主题提示（注入系统提示词） */
 function pageSubject(pathname: string, lang: 'zh' | 'en'): string | undefined {
@@ -50,44 +45,57 @@ function pageSubject(pathname: string, lang: 'zh' | 'en'): string | undefined {
 export default function AiAssistant() {
   const { lang } = useApp();
   const location = useLocation();
-  const { open, setOpen, setConfigured, aiCtx } = useAiContext();
+  const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk } = useAiContext();
   const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
   const [view, setView] = useState<'terms' | 'settings' | 'chat'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [model, setModel] = useState(''); // 模型由测试连接后的实际列表决定，不预设
-  /** 实际可用模型列表（测试连接成功后拉取）；空则用预设或手输 */
+  const [model, setModel] = useState('');
   const [liveModels, setLiveModels] = useState<string[]>([]);
   const [modelNote, setModelNote] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // 单轮问答：当前输入 / 当前回答 / 上一轮问答（链式追问，仅内存）
   const [input, setInput] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [pending, setPending] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const lastExchange = useRef<{ user: string; assistant: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const listRef = useRef<HTMLDivElement | null>(null);
+  const answerRef = useRef<HTMLDivElement | null>(null);
 
   const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
 
   // 打开时：已配置 → 对话视图；未配置 → 须知视图（两步流程第一步）
   useEffect(() => {
-    if (open) {
-      setView(config ? 'chat' : 'terms');
-      if (config) {
-        const s = sessionStorage.getItem(SESSION_KEY);
-        setMessages(s ? (JSON.parse(s) as ChatMsg[]) : []);
-      }
-    }
+    if (open) setView(config ? 'chat' : 'terms');
   }, [open, config]);
 
-  // 消息列表自动滚底
+  // 页面「问 AI」触发：携带预填问题
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    if (ask) {
+      setPending(ask);
+      setAsk('');
+    }
+  }, [ask, setAsk]);
 
-  // 切换预设：自动带出模型列表
+  // pending 就绪后自动发送（已配置时）
+  useEffect(() => {
+    if (pending && config) {
+      setInput(pending);
+      void sendQuestion(pending);
+      setPending(null);
+    }
+  }, [pending, config]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 回答区自动滚底
+  useEffect(() => {
+    answerRef.current?.scrollTo({ top: answerRef.current.scrollHeight, behavior: 'smooth' });
+  }, [answer]);
+
+  // 切换预设
   const selectProvider = (id: string) => {
     setProviderId(id);
     setModel('');
@@ -96,7 +104,7 @@ export default function AiAssistant() {
     setTestResult(null);
   };
 
-  // 测试连接（成功则拉取实际模型列表）
+  // 测试连接
   const testConnection = async () => {
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     setTesting(true);
@@ -146,7 +154,7 @@ export default function AiAssistant() {
     setTesting(false);
   };
 
-  // 保存配置（已在第二步，同意已隐含）
+  // 保存配置
   const save = () => {
     const baseUrl = normalizeBaseUrl(providerId === 'custom' ? (document.getElementById('ai-custom-url') as HTMLInputElement)?.value.trim() || '' : provider.baseUrl);
     if (!apiKey.trim() || !baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写 API Key 与端点地址' : 'Fill in API key and endpoint' }); return; }
@@ -156,70 +164,62 @@ export default function AiAssistant() {
     setConfigured(true);
     setConfig(cfg);
     setView('chat');
-    setMessages([]);
   };
 
   // 清除全部 AI 数据
   const clearAll = () => {
     clearAiConfig();
-    sessionStorage.removeItem(SESSION_KEY);
     setConfigured(false);
     setConfig(null);
-    setMessages([]);
     setView('terms');
     setApiKey('');
+    lastExchange.current = null;
   };
 
-  // 发送消息
-  const send = async () => {
-    const text = input.trim();
-    if (!text || busy || !config) return;
-    const next: ChatMsg[] = [...messages, { role: 'user', content: text }];
-    setMessages(next);
-    setInput('');
-    setBusy(true);
+  // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
+  const sendQuestion = async (text: string, followUp = false) => {
+    const q = text.trim();
+    if (!q || busy || !config) return;
+    setAnswer('');
     setError(null);
-    const assistant: ChatMsg = { role: 'assistant', content: '' };
-    setMessages([...next, assistant]);
+    setBusy(true);
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+      { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
+    ];
+    if (followUp && lastExchange.current) {
+      messages.push({ role: 'user', content: lastExchange.current.user });
+      messages.push({ role: 'assistant', content: lastExchange.current.assistant });
+    }
+    messages.push({ role: 'user', content: q });
     abortRef.current = new AbortController();
     try {
-      const full = await streamChat(
-        config,
-        [
-          { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
-          ...next.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-        ],
-        (delta) => {
-          assistant.content += delta;
-          setMessages((prev) => [...prev.slice(0, -1), { ...assistant }]);
-        },
-        abortRef.current.signal,
-      );
-      assistant.content = full;
-      setMessages((prev) => [...prev.slice(0, -1), { ...assistant }]);
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify([...next, { role: 'assistant', content: full }]));
+      const full = await streamChat(config, messages, (delta) => setAnswer((a) => a + delta), abortRef.current.signal);
+      setAnswer(full);
+      lastExchange.current = { user: q, assistant: full };
     } catch (e) {
       const msg = (e as Error).message;
-      if (msg.includes('abort')) {
-        // 用户主动停止：保留已生成的部分回答
-        if (assistant.content) {
-          setMessages((prev) => [...prev.slice(0, -1), { ...assistant }]);
-          sessionStorage.setItem(SESSION_KEY, JSON.stringify([...next, { role: 'assistant', content: assistant.content }]));
-        } else {
-          setMessages((prev) => prev.slice(0, -1));
-        }
-      } else if (isNetworkError(msg)) {
-        setError(lang === 'zh' ? '网络无法访问该端点（不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy');
-        setMessages((prev) => prev.slice(0, -1));
-      } else {
-        setError((lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg);
-        setMessages((prev) => prev.slice(0, -1));
+      if (!msg.includes('abort')) {
+        setError(
+          isNetworkError(msg)
+            ? (lang === 'zh' ? '网络无法访问该端点（不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
+            : (lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg,
+        );
       }
     }
     setBusy(false);
   };
 
-  const stop = () => abortRef.current?.abort();
+  const send = () => {
+    void sendQuestion(input, true);
+  };
+
+  // 重新开始：清空上下文（新会话单轮）
+  const restart = () => {
+    lastExchange.current = null;
+    setAnswer('');
+    setInput('');
+    setError(null);
+  };
 
   if (!open) return null;
 
@@ -291,7 +291,7 @@ export default function AiAssistant() {
 
           {/* 服务商预设 */}
           <div>
-            <p className="text-[11px] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '选择服务商（仅限大陆可用）' : 'Provider (mainland China)'}</p>
+            <p className="text-[11px] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
             <div className="flex flex-wrap gap-1.5">
               {AI_PROVIDERS.map((p) => (
                 <button
@@ -337,7 +337,7 @@ export default function AiAssistant() {
             </div>
           </div>
 
-          {/* 模型：仅显示测试连接后实际获取的模型，不预设 */}
+          {/* 模型：仅显示测试连接后实际获取的模型 */}
           <div>
             <p className="text-[11px] mono-font text-[var(--muted)] mb-1">
               {lang === 'zh' ? '模型' : 'Model'}
@@ -357,7 +357,7 @@ export default function AiAssistant() {
                 <input
                   type="text"
                   placeholder={lang === 'zh' ? '或手动输入模型名…' : 'or type a model name…'}
-                  value={liveModels.length > 0 && liveModels.includes(model) ? '' : model}
+                  value={liveModels.includes(model) ? '' : model}
                   onChange={(e) => setModel(e.target.value.trim())}
                   className="mt-1.5 w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
                 />
@@ -386,7 +386,7 @@ export default function AiAssistant() {
               {testing ? (lang === 'zh' ? '测试中…' : 'Testing…') : lang === 'zh' ? '测试连接' : 'Test'}
             </button>
             <button type="button" onClick={save} className="px-3 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors">
-              {lang === 'zh' ? '保存并开始' : 'Save & start'}
+              {lang === 'zh' ? '保存' : 'Save'}
             </button>
             <button type="button" onClick={clearAll} className="ml-auto inline-flex items-center gap-1 text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
               <Trash2 className="w-3 h-3" />
@@ -398,45 +398,59 @@ export default function AiAssistant() {
           )}
         </div>
       ) : (
-        /* ── 对话视图 ── */
+        /* ── 单轮问答视图（+ 链式追问，无历史存储） ── */
         <>
-          <div ref={listRef} className="flex-1 overflow-y-auto max-h-[40vh] min-h-[160px] p-3 space-y-2.5 text-sm serif-font">
-            {messages.length === 0 && (
-              <p className="text-xs text-[var(--muted)] italic text-center pt-6">
-                {lang === 'zh' ? '向 AI 提问数理化问题，如「为什么铁块会沉、轮船会浮？」' : 'Ask about math, physics or chemistry — e.g. "Why does iron sink but a ship floats?"'}
-              </p>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-                <div className={`inline-block max-w-[85%] px-2.5 py-1.5 border ${m.role === 'user' ? 'border-[var(--fg)]' : 'border-[var(--border)]'} text-left text-xs leading-relaxed whitespace-pre-wrap`}>
-                  {m.content || '…'}
+          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[40vh] min-h-[140px] p-3 text-sm serif-font">
+            {answer || pending ? (
+              <div className="text-left">
+                <div className="inline-block max-w-[92%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap">
+                  {answer || (lang === 'zh' ? '…' : '…')}
                 </div>
               </div>
-            ))}
-            {error && <p className="text-[11px] text-[var(--error)] mono-font">{error}</p>}
+            ) : (
+              <p className="text-xs text-[var(--muted)] italic text-center pt-6">
+                {lang === 'zh'
+                  ? '点击页面上的「问 AI」按钮，或直接输入问题（如「为什么铁块会沉、轮船会浮？」）'
+                  : 'Tap "Ask AI" on a page, or type a question (e.g. "Why does iron sink but a ship floats?")'}
+              </p>
+            )}
+            {error && <p className="mt-2 text-[11px] text-[var(--error)] mono-font">{error}</p>}
+            {/* 链式追问操作：继续问（携带上一轮）/ 重新开始（清空上下文） */}
+            {answer && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-[10px] text-[var(--muted)]">
+                  {lastExchange.current ? (lang === 'zh' ? '已带上一轮上下文' : 'Context from last turn kept') : ''}
+                </span>
+                <button type="button" onClick={restart} className="ml-auto inline-flex items-center gap-1 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
+                  <RotateCcw className="w-3 h-3" />
+                  {lang === 'zh' ? '重新开始' : 'Restart'}
+                </button>
+              </div>
+            )}
           </div>
           <div className="border-t border-[var(--border)] p-2.5 space-y-1.5">
             <div className="flex items-end gap-1.5">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                 rows={2}
+                maxLength={2000}
                 placeholder={lang === 'zh' ? '输入问题…' : 'Ask a question…'}
                 className="flex-1 border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-none"
               />
               {busy ? (
-                <button type="button" onClick={stop} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)]">
+                <button type="button" onClick={() => abortRef.current?.abort()} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)]">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               ) : (
-                <button type="button" onClick={() => void send()} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)]">
-                  {lang === 'zh' ? '发送' : 'Send'}
+                <button type="button" onClick={send} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)]">
+                  {lang === 'zh' ? '提问' : 'Ask'}
                 </button>
               )}
             </div>
             <p className="text-[10px] text-[var(--muted)] leading-relaxed">
-              {lang === 'zh' ? 'AI 生成内容仅供参考，请以教材和老师讲解为准 · 对话仅存本机，关页即清' : 'AI output is for reference — trust the textbook · Chats stay on this device only'}
+              {lang === 'zh' ? 'AI 生成内容仅供参考，请以教材和老师讲解为准 · 问答不保存，关页即清' : 'AI output is for reference — trust the textbook · Answers are not saved'}
             </p>
           </div>
         </>

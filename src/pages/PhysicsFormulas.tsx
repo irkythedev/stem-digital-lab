@@ -19,6 +19,7 @@ import { CONSTANTS } from '../lib/constants';
 import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
+import AskAiButton from '../components/ai/AskAiButton';
 import { Image as ImageIcon } from 'lucide-react';
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
 
@@ -284,6 +285,10 @@ export default function PhysicsFormulas() {
                 <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
               </div>
 
+              {/* 问 AI：一键讲解当前公式 */}
+              <div className="px-0.5">
+                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
+              </div>
               {/* 关联实验 */}
               {selected.labId && labMap[selected.labId] && (
                 <div className="px-0.5 text-xs">
