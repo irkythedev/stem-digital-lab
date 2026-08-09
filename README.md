@@ -97,7 +97,7 @@ npm run test       # 运行测试
 
 ### 每日科学
 
-- 首页固定板块：每天展示一位科学家的名言与小故事（以国内/华人科学家为主），可一键换一条
+- 首页固定板块：每天展示一位科学家的名言与小故事，可一键换一条
 - 中英双语，小故事可折叠展开
 
 ### 项目结构
@@ -215,7 +215,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 
 ### Daily Science
 
-- Fixed block on the homepage: one scientist's quote and short story each day (mostly Chinese scientists), shuffleable
+- Fixed block on the homepage: one scientist's quote and short story each day, shuffleable
 - Bilingual, with a collapsible story
 
 ### Project Structure
