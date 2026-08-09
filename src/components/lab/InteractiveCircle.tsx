@@ -18,7 +18,7 @@ const CX = 250;
 const CY = 200;
 const R = 160;
 const VIEWBOX = '0 0 500 440';
-const HIT_R = 18; // 拖拽点点击半径（触屏友好，≥36px 命中区）
+const HIT_R = 18; // 拖拽点透明命中半径（触屏友好；视觉小圆 r=5 另绘）
 
 /* ── 几何工具函数 ── */
 
@@ -464,27 +464,27 @@ export default function InteractiveCircle({
       {/* ── 可拖动点 ── */}
       {mode === 'chord' && (
         <>
-          <circle cx={a.x} cy={a.y} r={HIT_R}
-            fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2}
-            style={{ cursor: 'grab' }}
-            onPointerDown={handlePointerDown('A')} />
-          <circle cx={b.x} cy={b.y} r={HIT_R}
-            fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2}
-            style={{ cursor: 'grab' }}
-            onPointerDown={handlePointerDown('B')} />
+          {/* A 点：透明命中区（触屏友好）+ 视觉小圆 */}
+          <circle cx={a.x} cy={a.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('A')} />
+          <circle cx={a.x} cy={a.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
+          {/* B 点：透明命中区（触屏友好）+ 视觉小圆 */}
+          <circle cx={b.x} cy={b.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('B')} />
+          <circle cx={b.x} cy={b.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
         </>
       )}
       {mode === 'inscribed' && (
-        <circle cx={p.x} cy={p.y} r={HIT_R}
-          fill="var(--card-bg)" stroke="var(--accent)" strokeWidth={2}
-          style={{ cursor: 'grab' }}
-          onPointerDown={handlePointerDown('P')} />
+        <>
+          {/* P 点：透明命中区（触屏友好）+ 视觉小圆 */}
+          <circle cx={p.x} cy={p.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('P')} />
+          <circle cx={p.x} cy={p.y} r={5} fill="var(--card-bg)" stroke="var(--accent)" strokeWidth={2} pointerEvents="none" />
+        </>
       )}
       {mode === 'thales' && (
-        <circle cx={cT.x} cy={cT.y} r={HIT_R}
-          fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2}
-          style={{ cursor: 'grab' }}
-          onPointerDown={handlePointerDown('C')} />
+        <>
+          {/* C 点：透明命中区（触屏友好）+ 视觉小圆 */}
+          <circle cx={cT.x} cy={cT.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('C')} />
+          <circle cx={cT.x} cy={cT.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
+        </>
       )}
     </svg>
   );
