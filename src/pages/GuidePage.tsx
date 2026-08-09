@@ -22,7 +22,7 @@ const copy = {
     privacy: '反馈与隐私',
     privacyText: '实验反馈和项目反馈会发送给开发者；离线或网络异常时自动暂存在当前浏览器，联网后补发。无需登录账号。',
     ai: 'AI 学习助手',
-    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自带 AI 服务商（仅限大陆可用）的 API Key，本站不提供、不代购、不收取任何费用。',
+    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。',
     aiTermsTitle: '使用须知与免责',
     aiTerms: [
       '本站仅提供对话界面，不提供 AI 大模型服务，不收取任何相关费用。',
@@ -52,7 +52,7 @@ const copy = {
     privacy: 'Feedback and privacy',
     privacyText: 'Experiment and project feedback is sent to the developer; while offline or on network errors it is queued in this browser and sent automatically when back online. No account is required.',
     ai: 'AI Assistant',
-    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You bring your own API key from a mainland-China provider; this site provides no key, sells nothing and charges nothing.',
+    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing.',
     aiTermsTitle: 'Terms & disclaimer',
     aiTerms: [
       'This site only provides the chat UI — no AI model service and no fees.',
