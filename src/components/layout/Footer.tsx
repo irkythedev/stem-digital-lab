@@ -118,8 +118,8 @@ export default function Footer() {
       </div>
 
       {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} />}
-
-      <div className="flex items-center space-x-6">
+      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+        <span>© 2026 STEM DIGITAL LAB</span>
         <a
           href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
           target="_blank"
@@ -138,11 +138,6 @@ export default function Footer() {
             <path d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .982.796 1.778 1.778 1.778h6.015c.982 0 1.778-.796 1.778-1.778v-2.37a.594.594 0 0 1 .593-.593h1.482a.594.594 0 0 1 .593.593v2.37c0 2.29-1.856 4.148-4.148 4.148H9.777c-2.29 0-4.148-1.857-4.148-4.148v-5.63c0-2.29 1.857-4.148 4.148-4.148h8.297z" />
           </svg>
         </a>
-
-        <span className="text-[var(--border)]" aria-hidden="true">
-          /
-        </span>
-        <span>© 2026 STEM DIGITAL LAB</span>
       </div>
     </footer>
   );
