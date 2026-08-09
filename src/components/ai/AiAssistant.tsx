@@ -5,19 +5,19 @@
  * AI 学习助手（Header 按钮触发，右上角面板）：
  * - 入口在 Header 右侧（版本号在左侧，无绿点遮挡问题）；
  * - 首次使用：先展示使用须知，点「我同意并继续」才进入配置表单（两步流程）；
- * - 用户自带 API Key（仅存本机 localStorage），本站不提供、不记录；
+ * - 用户自行配置 API Key（仅存本机 localStorage），本站不提供、不记录；
  * - 对话流式输出，会话记录仅存本机 sessionStorage（关页即清）；
  * - 自动注入当前页面知识（AiContext）到系统提示词，避免 AI 自由发挥；
  * - 免责声明常驻：AI 生成内容仅供参考，请以教材和老师讲解为准。
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Settings, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Settings, Trash2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, fetchModels, loadAiConfig, saveAiConfig, streamChat,
+  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
   type AiConfig, type AiProvider,
 } from '../../lib/ai-config';
 
@@ -55,6 +55,7 @@ export default function AiAssistant() {
   const [view, setView] = useState<'terms' | 'settings' | 'chat'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
+  const [showKey, setShowKey] = useState(false);
   const [model, setModel] = useState(''); // 模型由测试连接后的实际列表决定，不预设
   /** 实际可用模型列表（测试连接成功后拉取）；空则用预设或手输 */
   const [liveModels, setLiveModels] = useState<string[]>([]);
@@ -100,9 +101,9 @@ export default function AiAssistant() {
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     setTesting(true);
     setTestResult(null);
-    const baseUrl = providerId === 'custom' ? (document.getElementById('ai-custom-url') as HTMLInputElement)?.value.trim() || '' : provider.baseUrl;
+    const baseUrl = normalizeBaseUrl(providerId === 'custom' ? (document.getElementById('ai-custom-url') as HTMLInputElement)?.value.trim() || '' : provider.baseUrl);
     try {
-      const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
         body: JSON.stringify({ model, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
@@ -134,7 +135,7 @@ export default function AiAssistant() {
 
   // 保存配置（已在第二步，同意已隐含）
   const save = () => {
-    const baseUrl = providerId === 'custom' ? (document.getElementById('ai-custom-url') as HTMLInputElement)?.value.trim() || '' : provider.baseUrl;
+    const baseUrl = normalizeBaseUrl(providerId === 'custom' ? (document.getElementById('ai-custom-url') as HTMLInputElement)?.value.trim() || '' : provider.baseUrl);
     if (!apiKey.trim() || !baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写 API Key 与端点地址' : 'Fill in API key and endpoint' }); return; }
     if (!model.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写或选择模型' : 'Choose or type a model' }); return; }
     const cfg: AiConfig = { providerId, apiKey: apiKey.trim(), baseUrl, model, agreed: true };
@@ -294,20 +295,30 @@ export default function AiAssistant() {
           {providerId === 'custom' && (
             <div>
               <p className="text-[11px] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? 'Base URL（OpenAI 兼容）' : 'Base URL (OpenAI-compatible)'}</p>
-              <input id="ai-custom-url" type="text" placeholder="https://your-proxy.example.com/v1" className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]" />
+              <input id="ai-custom-url" type="text" placeholder="https://your-proxy.example.com/v1 或完整端点 /chat/completions" className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]" />
             </div>
           )}
 
           {/* API Key */}
           <div>
             <p className="text-[11px] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? `API Key（${provider.name}）` : `API Key (${provider.name})`}</p>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-            />
+            <div className="relative">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+                className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 pr-8 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                aria-label={showKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--fg)]"
+              >
+                {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
+            </div>
           </div>
 
           {/* 模型：仅显示测试连接后实际获取的模型，不预设 */}
