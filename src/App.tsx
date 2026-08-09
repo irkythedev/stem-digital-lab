@@ -10,6 +10,8 @@ import { AppProvider } from './lib/app-context';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import FeedbackFab from './components/feedback/FeedbackFab';
+import AiAssistant from './components/ai/AiAssistant';
+import { AiProvider } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
 import HomePage from './pages/HomePage';
 import SubjectPage from './pages/SubjectPage';
@@ -29,6 +31,7 @@ export default function App() {
 
   return (
     <AppProvider>
+      <AiProvider>
       <div className="min-h-screen w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
         <Header />
         <Routes>
@@ -44,7 +47,9 @@ export default function App() {
         </Routes>
         <Footer />
         <FeedbackFab />
+        <AiAssistant />
       </div>
+      </AiProvider>
     </AppProvider>
   );
 }

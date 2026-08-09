@@ -165,7 +165,7 @@ export default function Circuits() {
         hint: style.copy.predict.hint[lang],
       },
       cards: style.copy.cards.map((c) => ({ title: c.title[lang], prompt: c.prompt[lang] })),
-      conclude: style.copy.conclude.map((q) => ({ question: q.question[lang], options: q.options.map((o) => o[lang]) })),
+      conclude: style.copy.conclude.map((q) => ({ question: q.question[lang], options: q.options.map((o) => o[lang]), correctIndex: q.correctIndex })),
       tips: style.copy.tips.map((x) => x[lang]),
     }),
     [styleId, lang] // eslint-disable-line react-hooks/exhaustive-deps

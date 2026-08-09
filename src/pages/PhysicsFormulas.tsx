@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { House, Search } from 'lucide-react';
 import { useApp } from '../lib/app-context';
+import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
 import { CONSTANTS } from '../lib/constants';
 import { labMap } from '../lib/labs';
@@ -31,6 +32,23 @@ export default function PhysicsFormulas() {
   const [cat, setCat] = useState<PhysicsFormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
   const [zoomDiagram, setZoomDiagram] = useState(false);
+  const { setAiCtx } = useAiContext();
+  // AI 上下文：选中公式时注入公式/说明/单位/适用条件/相关常量数值
+  useEffect(() => {
+    if (selected) {
+      const consts = (selected.relatedConstants ?? [])
+        .map((sym) => {
+          const c = CONSTANTS.find((x) => x.symbol === sym);
+          return c ? `${sym}=${c.value} ${c.unit}` : sym;
+        })
+        .join('，');
+      setAiCtx({
+        topic: `物理公式：${selected.name.zh}`,
+        knowledge: `公式：${selected.formula}。说明：${selected.label.zh}。单位：${selected.unit}。适用条件：${selected.condition.zh}。章节：${selected.chapter}。${consts ? `相关常量：${consts}。` : ''}`,
+      });
+    }
+    return () => setAiCtx({});
+  }, [selected, setAiCtx]);
 
   // 从常量页跳转聚焦：?focus=<公式 id>
   const focusId = params.get('focus');

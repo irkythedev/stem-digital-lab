@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.13.0-blue)
+![version](https://img.shields.io/badge/版本-v1.15.0-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
 
@@ -24,6 +24,8 @@
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
+- 🤖 AI 学习助手（顶栏入口）：自带 API Key 辅助解释数理化知识，Key 仅存本机、对话直连服务商、本站不记录
+- 💬 首页「每日科学」：每天一位科学家的名言与小故事（以国内/华人科学家为主）
 
 ### 实验与工具清单
 
@@ -132,6 +134,8 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
+- 🤖 AI assistant (header entry): bring your own API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- 💬 Daily Science on the homepage: a scientist quote and short story each day (mostly Chinese scientists)
 
 ### Labs & Tools
 

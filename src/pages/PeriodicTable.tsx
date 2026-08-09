@@ -15,7 +15,9 @@
 import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { House, Loader2, Pause, Play, Square, Volume2 } from 'lucide-react';
+import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
+import { useAiContext } from '../lib/ai-context';
 import ShareInline from '../components/share/ShareInline';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 
@@ -66,6 +68,17 @@ const GAP_OPTIONS = [1000, 1800, 2600];
 export default function PeriodicTable() {
   const { t, lang } = useApp();
   const [selected, setSelected] = useState<ElementInfo | null>(null);
+  const { setAiCtx } = useAiContext();
+  // AI 上下文：选中元素时注入
+  useEffect(() => {
+    if (selected) {
+      setAiCtx({
+        topic: `化学元素：${selected.zh}`,
+        knowledge: `元素 ${selected.symbol}（中文名 ${selected.zh}，英文 ${selected.en}）：${selected.zh}元素，符号 ${selected.symbol}。`,
+      });
+    }
+    return () => setAiCtx({});
+  }, [selected, setAiCtx]);
   const [query, setQuery] = useState('');
   // 读音按钮状态：idle 空闲 / loading 加载中 / playing 播放中（给用户明确反馈）
   const [speakState, setSpeakState] = useState<'idle' | 'loading' | 'playing'>('idle');

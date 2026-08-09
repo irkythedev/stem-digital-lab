@@ -14,6 +14,7 @@ import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
 import { labMap } from '../lib/labs';
+import { useAiContext } from '../lib/ai-context';
 import ShareInline from '../components/share/ShareInline';
 
 const CATEGORIES: ConstantCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
@@ -36,6 +37,17 @@ export default function PhysicalConstants() {
 
   /** 该常量被哪些公式使用（双向关联反查） */
   const formulasUsing = (sym: string) => PHYSICS_FORMULAS.filter((f) => f.relatedConstants?.includes(sym));
+  const { setAiCtx } = useAiContext();
+  // AI 上下文：选中常量时注入数值/意义/用途
+  useEffect(() => {
+    if (selected) {
+      setAiCtx({
+        topic: `物理常量：${selected.name.zh}`,
+        knowledge: `${selected.symbol} = ${selected.value} ${selected.unit}（${selected.name.zh}）。物理意义：${selected.meaning.zh}。应用：${selected.usage.zh}。章节：${selected.chapter}。`,
+      });
+    }
+    return () => setAiCtx({});
+  }, [selected, setAiCtx]);
 
   const queryLower = query.trim().toLowerCase();
   // 检索：符号精确匹配优先（如 "u"→仅 U 电压类）；否则符号前缀 / 中文包含 / 英文前缀 / 数值包含

@@ -41,9 +41,10 @@ export default function Footer() {
         <span className="hidden sm:inline text-[var(--border)]" aria-hidden="true">
           /
         </span>
-        <span>{t.authorRole}</span>
-        {/* 其他作品：作品集图标 + 圆角数字徽标，点击展开 */}
-        {t.works.length > 0 && (
+        <span className="inline-flex items-center gap-2">
+          <span>{t.authorRole}</span>
+          {/* 其他作品：作品集图标 + 圆角数字徽标，点击展开（与项目描述同行） */}
+          {t.works.length > 0 && (
           <span className="relative">
             <button
               type="button"
@@ -75,7 +76,8 @@ export default function Footer() {
               </span>
             )}
           </span>
-        )}
+          )}
+        </span>
       </div>
 
       <div className="flex flex-col items-center gap-1.5 text-center">
