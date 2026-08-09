@@ -36,6 +36,11 @@ export const AI_PROVIDERS: AiProvider[] = [
   { id: 'custom', name: '自定义端点', baseUrl: '', models: [], note: '任意 OpenAI 兼容地址，一切权责由您自行承担' },
 ];
 
+/** 网络类错误判断：浏览器 fetch 失败的常见消息（含跨域/网络不可达） */
+export function isNetworkError(msg: string): boolean {
+  return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg);
+}
+
 /** 端点归一化：兼容 Base URL（…/v1）与完整端点（…/v1/chat/completions），用户无感 */
 export function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');

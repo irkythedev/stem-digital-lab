@@ -17,7 +17,7 @@ import { useApp } from '../../lib/app-context';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
+  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
   type AiConfig, type AiProvider,
 } from '../../lib/ai-config';
 
@@ -125,10 +125,23 @@ export default function AiAssistant() {
         }
       } else {
         const j = await res.json().catch(() => null);
-        setTestResult({ ok: false, msg: (j?.error?.message || `HTTP ${res.status}`).slice(0, 80) });
+        const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
+        setTestResult({
+          ok: false,
+          msg:
+            res.status === 404
+              ? (lang === 'zh' ? '端点返回 404：请检查 API 地址是否正确（路径或版本可能有差异）' : 'Endpoint returned 404: check that the API URL is correct (path or version may differ)')
+              : detail,
+        });
       }
     } catch (e) {
-      setTestResult({ ok: false, msg: (e as Error).message.slice(0, 80) });
+      const msg = (e as Error).message;
+      setTestResult({
+        ok: false,
+        msg: isNetworkError(msg)
+          ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
+          : msg.slice(0, 80),
+      });
     }
     setTesting(false);
   };
@@ -195,6 +208,9 @@ export default function AiAssistant() {
         } else {
           setMessages((prev) => prev.slice(0, -1));
         }
+      } else if (isNetworkError(msg)) {
+        setError(lang === 'zh' ? '网络无法访问该端点（不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy');
+        setMessages((prev) => prev.slice(0, -1));
       } else {
         setError((lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg);
         setMessages((prev) => prev.slice(0, -1));
