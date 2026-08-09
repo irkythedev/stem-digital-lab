@@ -2,9 +2,13 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * PWA 安装引导：
- * - 安卓 Chrome：监听 beforeinstallprompt，显示「安装应用」按钮
- * - iOS Safari：无安装事件，提供「添加到主屏幕」文字引导
+ * PWA 安装引导：按系统/浏览器差异化提示。
+ * - Android / 桌面 Chrome·Edge（可安装）：监听 beforeinstallprompt，显示「安装应用」按钮
+ * - iOS Safari：Safari → 分享 → 添加到主屏幕
+ * - iOS Chrome/Firefox（同为 WebKit）：分享按钮 → 添加到主屏幕（系统分享菜单）
+ * - Android 其他浏览器：浏览器菜单 → 添加到主屏幕
+ * - 桌面 Firefox/Safari：浏览器菜单 → 安装应用
+ * - 微信内置浏览器 / 已安装 standalone：不显示（PWA 安装不适用）
  */
 import { useEffect, useState } from 'react';
 import { useApp } from '../../lib/app-context';
@@ -17,9 +21,8 @@ interface BeforeInstallPromptEvent extends Event {
 export default function InstallAppButton() {
   const { t } = useApp();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
-  const [showIosHint, setShowIosHint] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   useEffect(() => {
     const onBeforeInstall = (e: Event) => {
@@ -30,11 +33,10 @@ export default function InstallAppButton() {
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onInstalled);
 
-    // 检测 iOS + 是否已作为独立应用运行（已安装 PWA 则不再引导）
     const ua = window.navigator.userAgent;
-    const iOS = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: boolean }).MSStream;
-    setIsIOS(iOS);
-    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (navigator as { standalone?: boolean }).standalone === true;
     setIsStandalone(standalone);
 
     return () => {
@@ -43,20 +45,33 @@ export default function InstallAppButton() {
     };
   }, []);
 
+  // 系统 / 浏览器识别（UA）
+  const ua = typeof window !== 'undefined' ? window.navigator.userAgent : '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !(window as unknown as { MSStream?: boolean }).MSStream;
+  const isAndroid = /Android/i.test(ua);
+  const isWechat = /MicroMessenger/i.test(ua);
+  const isIOSChrome = /CriOS/i.test(ua);
+  const isIOSFirefox = /FxiOS/i.test(ua);
+  const isIOSNonSafari = isIOS && (isIOSChrome || isIOSFirefox);
+  const isChromium = /Chrome|CriOS|Edg/i.test(ua);
+  const isDesktop = !isIOS && !isAndroid;
+
   const handleInstall = async () => {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') setDeferredPrompt(null);
-    } else if (isIOS) {
-      setShowIosHint(true);
+    } else {
+      setShowHint((v) => !v);
     }
   };
 
   // 已作为独立 PWA 运行：不显示任何安装入口
   if (isStandalone) return null;
+  // 微信内置浏览器：不支持 PWA 安装，不显示
+  if (isWechat) return null;
 
-  // 安卓可安装：显示安装按钮
+  // Android / 桌面 Chrome·Edge 可安装：显示安装按钮
   if (deferredPrompt) {
     return (
       <button
@@ -69,26 +84,66 @@ export default function InstallAppButton() {
     );
   }
 
-  // iOS：显示「添加到主屏幕」引导
+  // iOS：按 Safari / 其他浏览器给差异化「添加到主屏幕」引导
   if (isIOS) {
     return (
       <div className="relative">
         <button
           type="button"
-          onClick={() => setShowIosHint((v) => !v)}
+          onClick={handleInstall}
           className="underline hover:text-[var(--fg)] transition-colors"
         >
           {t.addToHome}
         </button>
-        {showIosHint && (
+        {showHint && (
           <span className="block max-w-[10rem] normal-case leading-snug">
-            Safari → 分享 → 添加到主屏幕
+            {isIOSNonSafari ? t.addToHomeHintIOS : t.addToHomeHintSafari}
           </span>
         )}
       </div>
     );
   }
 
-  // 桌面浏览器：无安装提示，不显示
+  // Android 非 Chrome（Firefox/UC/QQ 等，无原生安装事件）
+  if (isAndroid) {
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleInstall}
+          className="underline hover:text-[var(--fg)] transition-colors"
+        >
+          {t.addToHome}
+        </button>
+        {showHint && (
+          <span className="block max-w-[10rem] normal-case leading-snug">
+            {t.addToHomeHintAndroid}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // 桌面非 Chromium（Firefox/Safari）：浏览器菜单 → 安装应用
+  if (isDesktop && !isChromium) {
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleInstall}
+          className="underline hover:text-[var(--fg)] transition-colors"
+        >
+          {t.installApp}
+        </button>
+        {showHint && (
+          <span className="block max-w-[10rem] normal-case leading-snug">
+            {t.installHintDesktop}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  // 其他（无安装途径）
   return null;
 }

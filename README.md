@@ -91,7 +91,7 @@ npm run test       # 运行测试
 ### AI 学习助手
 
 - 顶栏入口，辅助解释初中数学（人教版）、物理（苏科版）、化学（人教版）知识，会结合当前页面内容作答
-- 使用您自己的 API Key：仅限大陆可用服务商（DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包 / 自定义端点），本站不提供、不代购、不收取任何费用
+- 使用您自己的 API Key：支持 DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包等预设及自定义端点，本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
 
@@ -209,7 +209,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 ### AI Assistant
 
 - Header entry that helps explain middle-school math (PEP), physics (Su-Ke) and chemistry (PEP), grounded in the current page
-- Use your own API key: mainland-China providers only (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
+- Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
 
