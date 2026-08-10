@@ -67,10 +67,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.13.1',
     date: '2026-08',
     zh: [
-      '修复串并联电路实验结论幕的对错反馈：答题后现在会正确显示 ✓/✗（此前对错标记不显示）；灯泡灯丝点亮改为平滑渐变；化学实验液面颜色在深色主题下更清晰',
+      '修复串并联电路实验的结论反馈：答题后正确显示 ✓/✗；优化实验视觉效果（灯泡点亮渐变、深色主题下液面颜色更清晰）',
     ],
     en: [
-      'Fixed the answer feedback in the series-parallel circuits lab: correct/incorrect marks now appear after answering (previously missing); bulb filament brightens smoothly; chemical liquid colors are brighter in dark theme',
+      'Fixed the conclusion feedback in the series-parallel circuits lab: ✓/✗ now shows correctly after answering; polished lab visuals (smooth bulb glow, clearer liquid colors in dark theme)',
     ],
   },
   {
@@ -87,10 +87,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.12.2',
     date: '2026-08',
     zh: [
-      '修复欧姆定律实验并贴近教材：电压口径统一为电阻两端电压（电压表读数），伏安法测电阻结果与真实值精确一致；探究流程按教材表述（保持 R 不变变电压 / 保持电压不变换 R），伏安法按教材操作（变阻器先调至最大保护电路再逐渐调小）；小灯泡电压表读数含灯丝升温的动态电阻；特殊点验证读数与提示一致；电路图符号对齐教科书（滑动变阻器斜向下箭头+接线端子）',
+      '欧姆定律实验更贴近教材：探究流程按教材表述（保持 R 不变变电压 / 保持电压不变换 R），伏安法按教材操作（变阻器先调至最大保护电路再逐渐调小），电压表读数更准确；电路图符号对齐教科书（滑动变阻器斜向下箭头+接线端子）',
     ],
     en: [
-      'Fixed voltage semantics in the Ohm\'s law lab and aligned it with the textbook: voltage means the drop across the resistor (voltmeter reading), so voltmeter-ammeter resistance matches the true value exactly; exploration follows the textbook wording (fix R and vary V / fix V and swap R); voltmeter-ammeter method follows textbook procedure (rheostat at maximum to protect, then reduce); bulb voltmeter uses hot-filament dynamic resistance; special-point readings match prompts',
+      'The Ohm\'s law lab is now closer to the textbook: exploration follows the textbook wording (fix R and vary V / fix V and swap R), the rheostat starts at maximum to protect the circuit, voltmeter readings are more accurate, and circuit symbols match the textbook (sliding rheostat with diagonal arrow and terminals)',
     ],
   },
   {
@@ -107,10 +107,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.12.0',
     date: '2026-08',
     zh: [
-      '反馈通道升级：实验/项目反馈提交后实时推送到开发者微信（Server酱推送，免实名、免费），反馈直达、更及时；离线时仍自动暂存本机，联网后补发',
+      '反馈更及时：实验/项目反馈提交后直达开发者；离线时自动保存，联网后自动补发',
     ],
     en: [
-      'Feedback channel upgrade: experiment/project feedback now arrives on the developer\'s WeChat in real time via Server酱 (no real-name verification, free); offline feedback is still queued locally and auto-sent when back online',
+      'Faster feedback delivery: experiment/project feedback reaches the developer directly, and is saved automatically when offline and re-sent once back online',
     ],
   },
   {
@@ -151,10 +151,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.9.4',
     date: '2026-08',
     zh: [
-      '修复：新版本刷新改为等新版加载完成后自动刷新，一次点击即可更新到位',
+      '修复：新版本更新一次点击即可到位',
     ],
     en: [
-      'Fixed: update refresh now waits for the new Service Worker before reloading, so one tap updates in place',
+      'Fixed: a new version now updates in place with a single tap',
     ],
   },
   {
@@ -165,14 +165,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       '元素读音按钮增加加载中/播放中状态提示',
       '分享文案更丰富：实验分享带实验名与特色描述',
       '图标与实验图优化：favicon 三形状更舒展，实验图线条统一、深色主题可读性提升',
-      '使用说明同步更新（反馈通道说明等）',
-    ],
+        ],
     en: [
       'Fixed: one tap on the update dot now refreshes to the latest version',
       'Element pronunciation button shows loading/playing states',
       'Richer share text: lab shares include the lab name and a highlight',
       'Visual polish: roomier favicon shapes, unified stroke weights across experiments, better dark-theme readability',
-      'Guide updated (feedback channel notes, etc.)',
     ],
   },
   {
@@ -207,12 +205,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     zh: [
       '元素详情新增实物照片：104 个元素可查看真实外观，点击可放大（照片来自 images-of-elements，遵循 CC BY 3.0 署名）',
       '原子结构示意图优化：第一层电子环更容易点击，修复悬停时卡片晃动问题',
-      '反馈通道升级：提交的反馈将通过腾讯云开发（CloudBase）送达开发者，离线时自动保存并在联网后补发',
+      '反馈通道升级：提交的反馈可及时送达开发者，离线时自动保存、联网后补发',
     ],
     en: [
       'Element details now show real photos for 104 elements, tappable to enlarge (photos from images-of-elements, CC BY 3.0)',
       'Bohr diagram improvements: inner shell is easier to tap; fixed card jitter on hover',
-      'Feedback now reaches the developer via Tencent CloudBase, with offline queue and auto-retry',
+      'Feedback now reaches the developer promptly, saved automatically when offline and re-sent once back online',
     ],
   },
   {
@@ -230,16 +228,16 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-08',
     zh: [
       '元素周期表新增「中考跟读」：前 20 号元素、金属活动性顺序、常见元素三大必背清单，可调朗读次数与跟读间隔，逐元素连读并高亮对应格子',
-      '元素详情相对原子质量升级为 IUPAC 标准原子量（含不确定度）；无稳定同位素的元素明确标注质量数',
+      '元素详情相对原子质量升级为国际标准原子量，数据更准确；无稳定同位素的元素明确标注质量数',
       '原子结构示意图可点击/悬停电子层，查看每层电子数',
-      '元素读音改为内置语音（118 个元素离线发音，不再依赖设备语音包）；修正个别元素数据与类别',
+      '元素读音改为内置语音：118 个元素离线发音；修正个别元素数据与类别',
       '周期表页与实验入口支持一键分享，界面细节优化',
     ],
     en: [
       'Periodic Table adds a "Recite" mode: three must-memorize lists (first 20 elements, activity series, common elements) with adjustable repeats and gaps, sequential audio with live cell highlighting',
-      'Atomic masses upgraded to IUPAC standard atomic weights (with uncertainty); elements without stable isotopes are clearly marked with mass numbers',
+      'Atomic masses upgraded to international standard values for greater accuracy; elements without stable isotopes are clearly marked with mass numbers',
       'Tap or hover a shell in the Bohr diagram to see its electron count',
-      'Element pronunciation now uses built-in offline audio for all 118 elements; some data and category fixes',
+      'Element pronunciation now uses built-in offline audio: all 118 elements speak offline; some data and category fixes',
       'Share buttons added to the periodic table and lab entries; UI polish',
     ],
   },
@@ -297,10 +295,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.4.2',
     date: '2026-08',
     zh: [
-      '电解水装置改为标准双管电解器：两支竖直玻璃管底部连通、电极插入水中、直流电源与导线在电解器外部上方，不再浸入水中',
+      '电解水装置改为标准双管电解器：两支竖直玻璃管底部连通、电极插入水中，直流电源与导线在电解器外部上方',
     ],
     en: [
-      'Electrolysis now uses a standard two-tube cell: vertical tubes connected at the base, electrodes in the water, DC supply and wires placed above/outside the cell (no longer submerged)',
+      'Electrolysis now uses a standard two-tube cell: vertical tubes connected at the base, electrodes in the water, DC supply and wires placed above/outside the cell',
     ],
   },
   {
@@ -336,10 +334,10 @@ export const CHANGELOG: ChangelogEntry[] = [
 
     date: '2026-08',
     zh: [
-      '参数滑块标签改为保留大小写：一次函数 k、b，二次函数 a、b、c，反比例 k 等按数学教材原样小写显示',
+      '参数标签按教材原样显示：一次函数 k、b，二次函数 a、b、c，反比例 k 等小写',
     ],
     en: [
-      'Param slider labels now preserve case: linear k, b; quadratic a, b, c; inverse k display in lowercase as in the textbook',
+      'Parameter labels follow the textbook: linear k, b; quadratic a, b, c; inverse k — all lowercase',
     ],
   },
   {
@@ -363,12 +361,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     zh: [
       '每个实验页标题旁新增分享按钮：一键分享该实验（二维码 / 系统分享 / 复制链接），并针对微信给出转发引导',
       '电路图更贴近真实实验：电压表的并联引线改为「接上才显示」，默认不再有悬空的引线',
-      '修正圆周角定理证明步骤（补充外角定理推导）、标题年级位置与重复提示文字',
+      '修正圆周角定理的证明步骤（补充外角定理推导）',
     ],
     en: [
       'Each lab page now has a share button next to the title: share that lab via QR / native share / copy link, with WeChat forwarding guidance',
       'Circuit diagrams match real experiments: voltmeter leads now appear only when attached — no more dangling wires by default',
-      'Fixed the inscribed-angle theorem proof (added exterior-angle derivation), title grade placement, and duplicate hint text',
+      'Fixed the inscribed-angle theorem proof (added the exterior-angle derivation)',
     ],
   },
   {
@@ -377,12 +375,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     zh: [
       '新增 4 个物理实验：浮力（阿基米德原理）、杠杆的平衡条件、压强、滑轮',
       '数学实验升级：圆的性质新增证明步骤引导，函数类补充代数推导，建立「观察 → 猜想 → 证明」的数学思维闭环',
-      '欧姆定律更贴合教材伏安法：滑动变阻器调压 + 参数滑块随所选元件自动匹配',
+      '欧姆定律更贴合教材伏安法：滑动变阻器调压',
     ],
     en: [
       'Added 4 physics labs: Buoyancy (Archimedes\' principle), Lever balance, Pressure, and Pulleys',
       'Math labs upgraded: circle properties now guide proof steps; function labs add algebraic derivation — building an observe → conjecture → prove loop',
-      'Ohm\'s law now matches the textbook voltmeter-ammeter method: rheostat adjusts voltage, parameter sliders auto-match the selected element',
+      'Ohm\'s law now matches the textbook voltmeter-ammeter method: rheostat adjusts voltage',
     ],
   },
   {
