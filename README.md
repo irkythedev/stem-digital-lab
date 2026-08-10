@@ -13,6 +13,10 @@
 
 ---
 
+**语言 / Language：** [中文说明](#zh) · [English](#en)
+
+<span id="zh"></span>
+
 ## 中文说明
 
 ### 简介
@@ -94,6 +98,7 @@ npm run test       # 运行测试
 - 使用您自己的 API Key：支持 DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包等预设及自定义端点，本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
+- 问答为单轮形式：点击页面「问 AI」按钮提问，回答末尾会推荐 2~3 个可继续点击了解的问题，不提供自由输入框，也不保存任何对话记录
 
 ### 每日科学
 
@@ -131,6 +136,8 @@ src/
 
 ---
 
+<span id="en"></span>
+
 ## English
 
 ### Overview
@@ -142,7 +149,7 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- 🤖 AI assistant (header entry): configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged; single-turn Q&A driven by page buttons (no free-text input), with 2–3 recommended follow-up questions at the end of each answer
 - 💬 Daily Science on the homepage: a scientist quote and short story each day
 
 ### Labs & Tools
