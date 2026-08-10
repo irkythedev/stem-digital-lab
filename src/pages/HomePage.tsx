@@ -36,6 +36,18 @@ export default function HomePage() {
     navigate(pick);
   };
 
+  // 展开学科时若实验列表不在视口内，平滑滚动到列表顶部（矮屏/长列表兜底）
+  const scrollToLabList = () => {
+    requestAnimationFrame(() => {
+      const el = document.getElementById('lab-list');
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      if (top < 0 || top > window.innerHeight) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  };
+
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
       {/* Brand Main Title Header */}
@@ -56,7 +68,11 @@ export default function HomePage() {
             <button
               key={subject.id}
               type="button"
-              onClick={() => setActiveSubject(activeSubject === subject.id ? null : subject.id)}
+              onClick={() => {
+                const next = activeSubject === subject.id ? null : subject.id;
+                setActiveSubject(next);
+                if (next) scrollToLabList();
+              }}
               className={`group border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col text-left transition-all duration-300 ${
                 isActive
                   ? 'border-[var(--fg)]'
@@ -98,11 +114,8 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* ── 每日科学：名人名言与故事（当天固定 + 可换一条） ── */}
-      <DailyQuote lang={lang} />
-
-      {/* ── 实验列表（淡入淡出）：未展开学科时无占位高度，避免与页脚间留白 ── */}
-      <div className={`relative ${activeSubject ? 'min-h-[200px]' : ''}`}>
+      {/* ── 实验列表（淡入淡出）：紧跟学科卡片，点击后即时可见；未展开时无占位高度 ── */}
+      <div id="lab-list" className={`relative ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
           const labs = labsForSubject(subject.id);
@@ -226,6 +239,9 @@ export default function HomePage() {
           );
         })}
       </div>
+
+      {/* ── 每日科学：名人名言与故事（当天固定 + 可换一条） ── */}
+      <DailyQuote lang={lang} />
     </main>
   );
 }
