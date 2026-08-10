@@ -40,8 +40,8 @@ export const translations = {
     authorRole: '初中 STEM 数字探究项目',
     moreWorks: '其他作品',
     works: [
-      { name: 'AquaInsight · 水气耦合智能研判', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png' },
-      { name: '百年回响 · 文博青春造物节', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg' },
+      { name: 'AquaInsight · 水气研判', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png' },
+      { name: '百年回响 · 文博', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg' },
     ],
     gitee: 'Gitee 项目',
     system: '系统',
@@ -111,8 +111,8 @@ export const translations = {
     authorRole: 'Middle School STEM Project',
     moreWorks: 'Other Works',
     works: [
-      { name: 'AquaInsight · Water-Air Coupled Intelligence', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png' },
-      { name: '100 Years Echo · Youth Cultural Expo', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg' },
+      { name: 'AquaInsight · Water-Air', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png' },
+      { name: '100 Years Echo · Expo', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg' },
     ],
     gitee: 'View on Gitee',
     system: 'System',
