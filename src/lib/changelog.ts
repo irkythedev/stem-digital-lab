@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.15.3';
+export const APP_VERSION = '1.15.4';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.15.4',
+    date: '2026-08',
+    zh: [
+      '[优化] 首页学科卡片不再显示「建设中」等开发状态标签，展示更干净',
+      '[优化] 浏览器标签页标题随页面变化：实验页显示实验名称，工具页显示工具名称',
+      '[优化] 无障碍改进：键盘用户可一键跳过导航直达内容；系统开启「减少动效」时停用装饰动画',
+    ],
+    en: [
+      '[Improved] Homepage subject cards no longer show development status labels — cleaner presentation',
+      '[Improved] Browser tab titles now match the page: labs show the lab name, tools show the tool name',
+      '[Improved] Accessibility: keyboard users can skip navigation to reach content; decorative animations pause when the system "reduce motion" setting is on',
+    ],
+  },
   {
     version: '1.15.3',
     date: '2026-08',

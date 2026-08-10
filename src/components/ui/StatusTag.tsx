@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 简单状态标签：方括号 + 等宽字体，如 [算法构建中]。
+ * 简单状态标签：方括号 + 等宽字体，如 [探究中]。
  */
 import type { ReactNode } from 'react';
 

@@ -28,6 +28,11 @@ const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'soun
 
 export default function PhysicsFormulas() {
   const { t, lang } = useApp();
+  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
+  useEffect(() => {
+    document.title = `${lang === 'zh' ? '物理公式速查' : 'Physics Formulas'} - ${t.brandName}`;
+    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
+  }, [lang, t.brandName]);
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicsFormula | null>(null);
   useLockBodyScroll(!!selected);

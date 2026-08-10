@@ -7,7 +7,7 @@
  * 复刻物理常量页交互模型：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
  * 数据来自 src/lib/formulas.ts（依据 math_kb 提炼），公式用 KaTeX 渲染。
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { House, Image as ImageIcon, Search    } from 'lucide-react';;;;
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
@@ -38,6 +38,11 @@ function renderRich(text: string): ReactNode[] {
 
 export default function MathFormulas() {
   const { t, lang } = useApp();
+  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
+  useEffect(() => {
+    document.title = `${lang === 'zh' ? '数学公式速查' : 'Math Formulas'} - ${t.brandName}`;
+    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
+  }, [lang, t.brandName]);
   const [selected, setSelected] = useState<MathFormula | null>(null);
   useLockBodyScroll(!!selected);
   const [query, setQuery] = useState('');

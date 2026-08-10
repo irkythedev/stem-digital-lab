@@ -12,7 +12,6 @@ import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
 import { labsForSubject } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
-import UnderConstruction from '../components/ui/UnderConstruction';
 import SubjectHeading from '../components/layout/SubjectHeading';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
@@ -149,8 +148,6 @@ export default function SubjectPage() {
           </div>
         )}
       </section>
-
-      <UnderConstruction />
     </main>
   );
 }
