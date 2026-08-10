@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 docs/
+src/smoke.test.ts
+vitest.config.ts

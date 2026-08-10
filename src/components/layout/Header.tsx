@@ -96,24 +96,35 @@ export default function Header() {
                 onClick={(e) => {
                   e.stopPropagation();
                   showToast();
-                  // PWA 双刷新问题根因：旧 SW 是页面 controller，reload 由它服务会返回缓存旧页。
-                  // 正确流程：reg.update() 触发新 SW 下载 → install(skipWaiting) → activate(clientsClaim)
-                  // → controllerchange（新 SW 接管）→ 此刻 reload 才由新 SW 服务，一次到位。
-                  let reloaded = false;
-                  const doReload = () => {
-                    if (reloaded) return;
-                    reloaded = true;
-                    window.location.reload();
-                  };
+                  // 更新流程（事件驱动，无固定短超时竞态）：
+                  // reg.update() 下载新 SW → install（8.6MB 预缓存，需要时间）
+                  // → sw 自带 skipWaiting 自动激活 → controllerchange 触发
+                  // → 此刻新 SW 已接管页面，reload 一次到位。
+                  // 不做固定 3s 兜底（会打断 install 导致旧页反复刷新）。
                   if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.addEventListener('controllerchange', doReload, { once: true });
+                    let reloaded = false;
+                    const onceReload = () => {
+                      if (reloaded) return;
+                      reloaded = true;
+                      window.location.reload();
+                    };
+                    navigator.serviceWorker.addEventListener('controllerchange', onceReload, { once: true });
                     navigator.serviceWorker
                       .getRegistration()
-                      .then((reg) => (reg ? reg.update() : null))
-                      .catch(() => { /* 更新失败：直接刷新兜底 */ })
-                      .finally(() => setTimeout(doReload, 3000)); // 3s 兜底，避免永不触发卡死
+                      .then((reg) => {
+                        if (!reg) { onceReload(); return; }
+                        if (!reg.waiting && !reg.installing) {
+                          // 尚无新 SW：触发检查下载
+                          reg.update().catch(() => onceReload());
+                        }
+                        // waiting / installing 已存在：sw 自带 skipWaiting，
+                        // install 完成后自动 activate → controllerchange 驱动刷新
+                      })
+                      .catch(() => onceReload());
+                    // 长兜底仅作慢网保险（8.6MB 预缓存正常 10s 内完成，20s 足够）
+                    setTimeout(onceReload, 20000);
                   } else {
-                    doReload();
+                    window.location.reload();
                   }
                 }}
                 title="有新版本，点击刷新"
