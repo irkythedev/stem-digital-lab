@@ -13,9 +13,7 @@
 
 ---
 
-**语言 / Language：** [中文说明](#zh) · [English](#en)
-
-<span id="zh"></span>
+**语言 / Language：** [中文说明](#中文说明) · [English](#english)
 
 ## 中文说明
 
@@ -135,8 +133,6 @@ src/
 - 反馈会发送给开发者；离线时暂存本机，联网后补发。请对保存于本机的内容自行负责。
 
 ---
-
-<span id="en"></span>
 
 ## English
 
