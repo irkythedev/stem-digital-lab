@@ -24,23 +24,23 @@ export const CHANGELOG: ChangelogEntry[] = [
       '新增「AI 学习助手」（顶栏入口）：支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等预设及自定义端点，您自行配置 API Key 即可使用，辅助解释初中数理化知识',
       '首次使用先阅读并同意使用须知，再进入设置；Key 仅存本机浏览器、对话直连您所选的服务商、本站无后端不记录任何内容',
       'AI 会结合当前页面内容作答（如当前公式、实验、元素），模型列表在连接成功后自动获取；AI 内容仅供参考，请以教材和老师讲解为准',
-      '首页移动端优化：三学科并排展示、每日科学板块，竖屏首屏即可看到页脚',
+      '优化移动端竖屏视觉效果',
     ],
     en: [
       'New "AI Assistant" (header entry): presets for DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and a custom endpoint — configure your own API key for help with middle-school math, physics and chemistry',
       'Read and accept the terms first, then configure; the key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing',
       'AI answers are grounded in the current page (formula, lab, element); the model list is fetched after a successful connection; output is for reference — trust the textbook and your teacher',
-      'Homepage optimized for mobile: three subjects side by side and the Daily Science block, so the footer fits on the first screen in portrait',
+      'Improved mobile portrait visuals',
     ],
   },
   {
     version: '1.14.0',
     date: '2026-08',
     zh: [
-      '首页新增「每日科学」板块：每天随机展示一位科学家的名言与小故事（以国内/华人科学家为主），可一键换一条，中英双语',
+      '首页新增「每日科学」板块：每天展示一位科学家的名言与小故事，可一键换一条，中英双语',
     ],
     en: [
-      'Homepage adds a "Daily Science" block: a scientist quote with a short story each day (mostly Chinese scientists), shuffleable and bilingual',
+      'Homepage adds a "Daily Science" block: a scientist quote with a short story each day, shuffleable and bilingual',
     ],
   },
   {

@@ -9,7 +9,8 @@
  */
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { FlaskConical, Image as ImageIcon, Search  } from 'lucide-react';;
+import { House, Image as ImageIcon, Search    } from 'lucide-react';;;;
+import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -17,6 +18,7 @@ import { FORMULAS, FORMULA_CATEGORY_ZH, FORMULA_CATEGORY_EN, type FormulaCategor
 import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
+import AskAiButton from '../components/ai/AskAiButton';
 import FormulaDiagram from '../components/ui/FormulaDiagram';
 import FunctionDiagram from '../components/ui/FunctionDiagram';
 
@@ -37,6 +39,7 @@ function renderRich(text: string): ReactNode[] {
 export default function MathFormulas() {
   const { t, lang } = useApp();
   const [selected, setSelected] = useState<MathFormula | null>(null);
+  useLockBodyScroll(!!selected);
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<FormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
@@ -87,7 +90,7 @@ export default function MathFormulas() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <FlaskConical className="w-3.5 h-3.5" />
+          <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
@@ -248,6 +251,11 @@ export default function MathFormulas() {
                     {lang === 'zh' ? `关联探究：${labMap[selected.labId].name.zh}` : `Related: ${labMap[selected.labId].name.en}`}
                   </Link>
                 )}
+              </div>
+
+              {/* 问 AI：看完内容后可一键讲解当前公式 */}
+              <div className="px-0.5 pt-2">
+                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理与易错点` : `Explain the formula "${selected.name.en}" — its principle and common pitfalls`} />
               </div>
             </div>
           </div>

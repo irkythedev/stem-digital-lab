@@ -7,9 +7,10 @@
  * 复刻元素周期表交互模型：分类筛选 + 检索 + 网格卡片墙 + 点开详情卡。
  * 数据来自 src/lib/constants.ts（依据 physics_kb 提炼，数值对照教材附录）。
  */
+import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Search  } from 'lucide-react';;
+import { House, Search    } from 'lucide-react';;;;
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
@@ -24,6 +25,7 @@ export default function PhysicalConstants() {
   const { t, lang } = useApp();
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicalConstant | null>(null);
+  useLockBodyScroll(!!selected);
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<ConstantCategory | 'all'>('all');
 
@@ -79,7 +81,7 @@ export default function PhysicalConstants() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <FlaskConical className="w-3.5 h-3.5" />
+          <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
@@ -216,8 +218,8 @@ export default function PhysicalConstants() {
                 )}
               </div>
 
-              {/* 问 AI：一键讲解当前常量 */}
-              <div className="px-0.5 pt-1.5">
+              {/* 问 AI：看完内容后可一键讲解当前常量 */}
+              <div className="px-0.5 pt-2">
                 <AskAiButton question={lang === 'zh' ? `请讲解常量「${selected.name.zh}」的物理意义与应用` : `Explain the constant "${selected.name.en}" — its physical meaning and usage`} />
               </div>
               {/* 用于公式（双向关联：点击跳公式页并聚焦） */}

@@ -11,6 +11,7 @@
  * 教材依据：ch08「金属活动性顺序——铝、铜、银」
  */
 import { useEffect, useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
@@ -279,9 +280,13 @@ export default function MetalActivity() {
           );
         })}
         <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors">{c.redoLabel}</button>
+          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
+)] transition-colors">{c.redoLabel}</button>
         </div>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       {/* ── 反应卡切换 ── */}
       <div className="flex gap-2">

@@ -11,6 +11,7 @@
  * 教材依据：ch11「学生实验 探究杠杆的平衡条件」+ 杠杆原理（阿基米德）
  */
 import { useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -231,9 +232,13 @@ export default function Lever() {
           );
         })}
         <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors">{c.redoLabel}</button>
+          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
+)] transition-colors">{c.redoLabel}</button>
         </div>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       {/* ── 杠杆示意 ── */}
       <div className="border border-[var(--border)] p-3">

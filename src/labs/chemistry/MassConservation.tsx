@@ -16,6 +16,7 @@
  * 复用组件：BalanceScale（天平）、MicroAnimation（微观动画）、ExploreStage。
  */
 import { useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import BalanceScale from '../../components/lab/BalanceScale';
@@ -440,10 +441,13 @@ export default function MassConservation() {
             onClick={redoAll}
             className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors"
           >
-            {c.redoLabel}
+           {c.redoLabel}
           </button>
         </div>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       {/* ── 天平 ── */}
       <div className="border border-[var(--border)] p-3">

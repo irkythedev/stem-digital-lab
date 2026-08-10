@@ -25,12 +25,10 @@ const copy = {
     aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。',
     aiTermsTitle: '使用须知与免责',
     aiTerms: [
-      '本站仅提供对话界面，不提供 AI 大模型服务，不收取任何相关费用。',
-      '您自行注册、购买并管理所选 AI 服务商的 API 服务，费用由您与该服务商结算。',
-      'API Key 仅保存在您自己的浏览器本地，本站不采集、不存储、不中转。',
-      '对话内容由浏览器直接发送至所选 AI 服务商，其处理遵循该服务商的隐私政策与服务条款；本站无后端，不存储、不记录任何对话内容。',
-      'AI 助手仅用于初中数学（人教版）、物理（苏科版）、化学（人教版）学习辅助，不回答学习以外的内容；生成内容仅供参考，可能出错，请以教材和老师讲解为准。',
-      '相关权责由您与所选 AI 服务商自行承担，与本站无关；请合理合法使用，未成年人请在老师或家长指导下使用。',
+      { title: '服务性质与费用', body: '本站为纯前端静态页面，仅提供对话界面，不提供任何 AI 大模型服务，也不收取任何费用。您需自行注册并管理所选 AI 服务商的 API，相关费用由您与服务商结算。' },
+      { title: '数据与隐私安全', body: '您的 API Key 仅保存在您本机浏览器的本地存储中。本站无后端服务器，不采集、不存储、不中转任何密钥或对话内容。对话数据由您的浏览器直接发送至您所选的服务商。请妥善保管您的 API Key，防范泄露风险。' },
+      { title: '学习辅助声明', body: '本 AI 助手专为初中数学（人教版）、物理（苏科版）、化学（人教版）学习辅助设计。AI 生成的内容存在不准确的可能，仅供参考，请务必以学校教材和任课老师的讲解为准。未成年人请在监护人的指导下配置和使用。' },
+      { title: '合规与责任限制', body: '请合法合规使用本工具，严禁用于生成或传播任何违法违规内容。由于网络环境或服务商跨域（CORS）限制导致的连接问题，本站无法干预。因使用本工具及所选 AI 服务产生的相关权责，由您与服务商自行承担。' },
     ],
   },
   en: {
@@ -55,12 +53,10 @@ const copy = {
     aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing.',
     aiTermsTitle: 'Terms & disclaimer',
     aiTerms: [
-      'This site only provides the chat UI — no AI model service and no fees.',
-      'You register, purchase and manage the API of your chosen provider yourself.',
-      'Your API key stays in your browser only; this site never collects, stores or relays it.',
-      'Chats go directly from your browser to your chosen provider under that provider\'s policies; this site has no backend and stores or logs nothing.',
-      'The assistant is limited to junior-high math (PEP), physics (Su-Ke) and chemistry (PEP) learning aid; generated content is for reference and may be wrong — trust the textbook and your teacher.',
-      'All responsibility lies with you and your chosen provider; use it lawfully, and minors should use it under teacher or parent guidance.',
+      { title: 'Service nature and fees', body: 'This site is a pure front-end static page that only provides the chat UI — no AI model service, no fees. You register and manage the API of your chosen provider yourself; fees are settled with that provider.' },
+      { title: 'Data and privacy', body: 'Your API key stays only in your browser\'s local storage. This site has no backend — it never collects, stores or relays keys or conversations. Chat data goes straight from your browser to your chosen provider. Keep your key safe.' },
+      { title: 'Learning aid only', body: 'This assistant is limited to junior-high math (PEP), physics (Su-Ke) and chemistry (PEP) learning aid. AI output may be inaccurate — for reference; always defer to the textbook and your teacher. Minors should configure and use it under a guardian\'s guidance.' },
+      { title: 'Compliance and liability', body: 'Use this tool lawfully; never generate or spread unlawful content. Connection issues caused by network or provider CORS restrictions are outside this site\'s control. Responsibility lies with you and your chosen provider.' },
     ],
   },
 };
@@ -109,7 +105,10 @@ export default function GuidePage() {
             {c.aiTerms.map((t, i) => (
               <li key={i} className="text-xs text-[var(--muted)] serif-font leading-relaxed flex gap-2">
                 <span className="text-[var(--fg)] mono-font shrink-0">{i + 1}.</span>
-                {t}
+                <span>
+                  <strong className="font-bold text-[var(--fg)]">{t.title}</strong>
+                  {t.body}
+                </span>
               </li>
             ))}
           </ul>

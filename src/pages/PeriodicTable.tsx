@@ -14,7 +14,8 @@
  */
 import { useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { FlaskConical, Loader2, Pause, Play, Square, Volume2  } from 'lucide-react';;
+import { House, Loader2, Pause, Play, Square, Volume2    } from 'lucide-react';;;;
+import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -69,6 +70,7 @@ const GAP_OPTIONS = [1000, 1800, 2600];
 export default function PeriodicTable() {
   const { t, lang } = useApp();
   const [selected, setSelected] = useState<ElementInfo | null>(null);
+  useLockBodyScroll(!!selected);
   const { setAiCtx } = useAiContext();
   // AI 上下文：选中元素时注入
   useEffect(() => {
@@ -334,7 +336,7 @@ export default function PeriodicTable() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <FlaskConical className="w-3.5 h-3.5" />
+          <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
@@ -598,11 +600,6 @@ export default function PeriodicTable() {
             >
               ×
             </button>
-
-            {/* 问 AI：一键讲解当前元素 */}
-            <div className="px-1 pt-1">
-              <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
-            </div>
 
             <div className="flex items-start justify-between pr-8">
               <div>
@@ -901,6 +898,11 @@ export default function PeriodicTable() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* 问 AI：看完元素详情后可一键提问 */}
+            <div className="px-1 pt-2">
+              <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
             </div>
           </div>
         </div>

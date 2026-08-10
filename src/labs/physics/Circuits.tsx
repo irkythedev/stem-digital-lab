@@ -15,6 +15,7 @@
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
 import { useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -338,10 +339,13 @@ export default function Circuits() {
               className="underline text-[var(--muted)] hover:text-[var(--fg)]"
             >
               {t.redoLabel} ↻
-            </button>
+        </button>
           )}
         </span>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + 读数 */}
