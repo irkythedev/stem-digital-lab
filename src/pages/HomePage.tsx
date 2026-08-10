@@ -94,7 +94,6 @@ export default function HomePage() {
               </span>
               {/* 状态与说明：桌面显示，移动端隐藏（三列窄卡精简） */}
               <div className="hidden sm:flex flex-col space-y-1">
-                <span className="text-[11px] font-bold text-[var(--fg)] mono-font">[{meta.status}]</span>
                 <span className="text-[11px] text-[var(--muted)] sans-font leading-relaxed">{meta.note}</span>
               </div>
             </button>

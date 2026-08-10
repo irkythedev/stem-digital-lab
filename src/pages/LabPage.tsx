@@ -23,6 +23,13 @@ export default function LabPage() {
 
   const lab = labId ? labMap[labId] : undefined;
   const { setAiCtx } = useAiContext();
+  // 动态标签页标题：实验名 - 品牌名（随语言切换），离开恢复默认
+  useEffect(() => {
+    if (lab) {
+      document.title = `${lab.name[lang]} - ${t.brandName}`;
+      return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
+    }
+  }, [lang, lab, t.brandName]);
   // AI 上下文：注入当前实验的名称/描述/章节
   useEffect(() => {
     if (lab) {
