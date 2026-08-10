@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Eye, EyeOff, RotateCcw, Settings, Trash2 } from 'lucide-react';
+import { BookOpen, Coins, Eye, EyeOff, Scale, Settings, ShieldCheck, Trash2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
@@ -42,6 +42,41 @@ function pageSubject(pathname: string, lang: 'zh' | 'en'): string | undefined {
   return undefined;
 }
 
+/** 从回答文本解析「推荐追问」：正文 + 推荐问题列表 */
+function parseRecQuestions(text: string): { body: string; recs: string[] } {
+  // 1. 精确 marker（中英）——字符串匹配优先
+  const markers = ['可以继续了解：', 'You can also explore:'];
+  let idx = -1;
+  let markerLen = 0;
+  for (const m of markers) {
+    const found = text.lastIndexOf(m);
+    if (found !== -1) {
+      idx = found;
+      markerLen = m.length;
+      break;
+    }
+  }
+  // 2. 变体回退（AI 可能输出近似格式：无冒号、换说法、英文变体）
+  if (idx === -1) {
+    const variant = text.match(
+      /(?:可以继续了解|你可以继续了解|还想了解|You (?:may|can) also (?:explore|ask|check)|Follow[- ]?up questions?)[:：]?/g,
+    );
+    if (variant && variant.length > 0) {
+      const v = variant[variant.length - 1];
+      idx = text.lastIndexOf(v);
+      markerLen = v.length;
+    }
+  }
+  if (idx === -1) return { body: text, recs: [] };
+  const recs = text
+    .slice(idx + markerLen)
+    .split('\n')
+    .map((l) => l.replace(/^\s*\d+[.、)\]]?\s*/, '').trim())
+    .filter((l) => l && l.length > 2)
+    .slice(0, 3);
+  return { body: text.slice(0, idx).trim(), recs };
+}
+
 export default function AiAssistant() {
   const { lang } = useApp();
   const location = useLocation();
@@ -56,15 +91,50 @@ export default function AiAssistant() {
   const [modelNote, setModelNote] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  // 单轮问答：当前输入 / 当前回答 / 上一轮问答（链式追问，仅内存）
-  const [input, setInput] = useState('');
+  // 由 AI 推荐驱动的追问：当前回答 / 推荐追问列表 / 待发问题 / 上一轮问答（内存）
   const [answer, setAnswer] = useState('');
+  const [recs, setRecs] = useState<string[]>([]);
   const [pending, setPending] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastExchange = useRef<{ user: string; assistant: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const answerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // 面板位置（标题栏拖动，localStorage 记忆 UI 偏好——非对话内容）
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem('stem-ai-pos');
+      return raw ? (JSON.parse(raw) as { x: number; y: number }) : null;
+    } catch {
+      return null;
+    }
+  });
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+
+  const onTitlePointerDown = (e: React.PointerEvent) => {
+    const rect = panelRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+  const onTitlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const w = panelRef.current?.offsetWidth ?? 320;
+    const h = panelRef.current?.offsetHeight ?? 420;
+    const nx = Math.max(8, Math.min(e.clientX - dragRef.current.dx, window.innerWidth - w - 8));
+    const ny = Math.max(8, Math.min(e.clientY - dragRef.current.dy, window.innerHeight - h - 8));
+    setPos({ x: nx, y: ny });
+  };
+  const onTitlePointerUp = () => {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    // 记录位置（UI 偏好，非敏感内容）
+    try {
+      window.localStorage.setItem('stem-ai-pos', JSON.stringify(pos));
+    } catch { /* ignore */ }
+  };
 
   const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
 
@@ -84,8 +154,7 @@ export default function AiAssistant() {
   // pending 就绪后自动发送（已配置时）
   useEffect(() => {
     if (pending && config) {
-      setInput(pending);
-      void sendQuestion(pending);
+      void sendQuestion(pending, false);
       setPending(null);
     }
   }, [pending, config]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -181,6 +250,7 @@ export default function AiAssistant() {
     const q = text.trim();
     if (!q || busy || !config) return;
     setAnswer('');
+    setRecs([]);
     setError(null);
     setBusy(true);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
@@ -194,43 +264,48 @@ export default function AiAssistant() {
     abortRef.current = new AbortController();
     try {
       const full = await streamChat(config, messages, (delta) => setAnswer((a) => a + delta), abortRef.current.signal);
-      setAnswer(full);
+      const { body, recs: parsedRecs } = parseRecQuestions(full);
+      setAnswer(body);
+      setRecs(parsedRecs);
       lastExchange.current = { user: q, assistant: full };
     } catch (e) {
       const msg = (e as Error).message;
       if (!msg.includes('abort')) {
+        const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
         setError(
           isNetworkError(msg)
             ? (lang === 'zh' ? '网络无法访问该端点（不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
-            : (lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg,
+            : authFailed
+              ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired — open Settings to reconfigure')
+              : (lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg,
         );
       }
     }
     setBusy(false);
   };
 
-  const send = () => {
-    void sendQuestion(input, true);
-  };
-
-  // 重新开始：清空上下文（新会话单轮）
-  const restart = () => {
-    lastExchange.current = null;
-    setAnswer('');
-    setInput('');
-    setError(null);
+  // 点击 AI 推荐的问题：携带上下文继续追问
+  const askRecommended = (q: string) => {
+    void sendQuestion(q, true);
   };
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed top-14 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col"
+      ref={panelRef}
+      className="fixed z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col"
+      style={pos ? { left: pos.x, top: pos.y } : { top: '3.5rem', right: '1rem' }}
       role="dialog"
       aria-label="AI assistant"
     >
       {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)]">
+      <div
+        className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none"
+        onPointerDown={onTitlePointerDown}
+        onPointerMove={onTitlePointerMove}
+        onPointerUp={onTitlePointerUp}
+      >
         <h2 className="text-xs font-bold tracking-widest mono-font uppercase">// {lang === 'zh' ? 'AI 学习助手' : 'AI Assistant'}</h2>
         <div className="flex items-center gap-2">
           {config && (
@@ -238,7 +313,7 @@ export default function AiAssistant() {
               <Settings className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
+          <button type="button" onClick={() => { setOpen(false); setPending(null); }} aria-label="Close" className="text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
         </div>
       </div>
 
@@ -248,27 +323,55 @@ export default function AiAssistant() {
           <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
             {lang === 'zh' ? '使用须知' : 'Terms'}
           </p>
-          <ul className="text-[11px] text-[var(--muted)] leading-relaxed list-disc pl-4 space-y-1.5">
+          <p className="border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--error)] serif-font leading-relaxed">
+            {lang === 'zh' ? '⚠ 使用 AI 助手前，请务必阅读并同意以下条款，再进行配置：' : '⚠ Please read and accept the terms below before configuring your AI service:'}
+          </p>
+          {pending && (
+            <p className="text-[11px] text-[var(--fg)] serif-font leading-relaxed">
+              {lang === 'zh' ? '您点击的问题将在配置完成后自动发送。' : 'Your question will be sent automatically once you finish the setup.'}
+            </p>
+          )}
+          <div className="space-y-2 text-[11px] text-[var(--muted)] leading-relaxed">
             {lang === 'zh' ? (
               <>
-                <li>本站仅提供对话界面，不提供任何 AI 大模型服务、不收取任何费用。</li>
-                <li>您需自行注册、购买并管理所选 AI 服务商的 API，费用由您与服务商结算。</li>
-                <li>API Key 仅保存在您本机浏览器，本站不采集、不存储、不中转。</li>
-                <li>对话由浏览器直接发送至所选服务商，本站无后端、不记录任何内容。</li>
-                <li>AI 助手仅用于初中数理化学习辅助，生成内容仅供参考，请以教材和老师讲解为准。</li>
-                <li>相关权责由您与所选 AI 服务商承担，与本站无关；请合理合法使用。</li>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><Coins className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />1. 服务性质与费用</p>
+                  <p>本站为纯前端静态页面，<strong className="font-bold text-[var(--fg)]">仅提供对话界面，不提供任何 AI 大模型服务</strong>，也不收取任何费用。您需自行注册并管理所选 AI 服务商的 API，相关费用由您与服务商结算。</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><ShieldCheck className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />2. 数据与隐私安全</p>
+                  <p>您的 API Key 仅保存在您本机浏览器的本地存储中。本站<strong className="font-bold text-[var(--fg)]">无后端服务器，不采集、不存储、不中转</strong>任何密钥或对话内容。对话数据由您的浏览器直接发送至您所选的服务商。请妥善保管您的 API Key，防范泄露风险。</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><BookOpen className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />3. 学习辅助声明</p>
+                  <p>本 AI 助手专为初中数理化学习辅助设计。AI 生成的内容存在不准确的可能，<strong className="font-bold text-[var(--fg)]">仅供参考，请务必以学校教材和任课老师的讲解为准</strong>。未成年人请在监护人的指导下配置和使用。</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><Scale className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />4. 合规与责任限制</p>
+                  <p>请合法合规使用本工具，严禁用于生成或传播任何违法违规内容。由于网络环境或服务商跨域（CORS）限制导致的连接问题，本站无法干预。因使用本工具及所选 AI 服务产生的相关权责，<strong className="font-bold text-[var(--fg)]">由您与服务商自行承担</strong>。</p>
+                </div>
               </>
             ) : (
               <>
-                <li>This site only provides the chat UI — no AI service, no fees.</li>
-                <li>Register, purchase and manage the API of your chosen provider yourself.</li>
-                <li>Your API key stays in your browser only; this site never stores or relays it.</li>
-                <li>Chats go directly to your provider; this site has no backend and logs nothing.</li>
-                <li>The assistant is for middle-school science learning aid only; output is for reference — trust the textbook and your teacher.</li>
-                <li>All responsibility lies with you and your chosen provider; use it lawfully.</li>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><Coins className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />1. Service nature and fees</p>
+                  <p>This site is a pure front-end static page that <strong className="font-bold text-[var(--fg)]">only provides the chat UI — no AI model service</strong>, no fees. You register and manage the API of your chosen provider yourself; fees are settled with that provider.</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><ShieldCheck className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />2. Data and privacy</p>
+                  <p>Your API key stays only in your browser's local storage. This site <strong className="font-bold text-[var(--fg)]">has no backend — it never collects, stores or relays</strong> keys or conversations. Chat data goes straight from your browser to your chosen provider. Keep your key safe.</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><BookOpen className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />3. Learning aid only</p>
+                  <p>This assistant is for middle-school science learning only. AI output may be inaccurate — <strong className="font-bold text-[var(--fg)]">for reference; always defer to the textbook and your teacher</strong>. Minors should configure and use it under a guardian's guidance.</p>
+                </div>
+                <div>
+                  <p className="flex items-center gap-1.5 font-bold text-[var(--fg)]"><Scale className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />4. Compliance and liability</p>
+                  <p>Use this tool lawfully; never generate or spread unlawful content. Connection issues caused by network or provider CORS restrictions are outside this site's control. Responsibility for using this tool and your chosen AI service <strong className="font-bold text-[var(--fg)]">lies with you and that provider</strong>.</p>
+                </div>
               </>
             )}
-          </ul>
+          </div>
           <button
             type="button"
             onClick={() => setView('settings')}
@@ -398,59 +501,57 @@ export default function AiAssistant() {
           )}
         </div>
       ) : (
-        /* ── 单轮问答视图（+ 链式追问，无历史存储） ── */
+        /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
-          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[40vh] min-h-[140px] p-3 text-sm serif-font">
-            {answer || pending ? (
-              <div className="text-left">
-                <div className="inline-block max-w-[92%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap">
-                  {answer || (lang === 'zh' ? '…' : '…')}
+          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[42vh] min-h-[150px] p-3 space-y-2.5 text-sm serif-font">
+            {answer || pending || busy ? (
+              <>
+                <p className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: {pending || lastExchange.current?.user || ''}</p>
+                <div className="text-left">
+                  <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap">
+                    {answer || (lang === 'zh' ? '思考中…' : 'Thinking…')}
+                  </div>
                 </div>
-              </div>
+                {error && <p className="mt-1 text-[11px] text-[var(--error)] mono-font">{error}</p>}
+                {/* AI 推荐的追问（由 prompt 约束生成，内容可控） */}
+                {!busy && recs.length > 0 && (
+                  <div className="pt-1">
+                    <p className="text-[10px] mono-font text-[var(--muted)] mb-1.5">
+                      {lang === 'zh' ? '可以继续了解：' : 'You can also explore:'}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {recs.map((q, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => askRecommended(q)}
+                          className="text-left text-[11px] serif-font px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <p className="text-xs text-[var(--muted)] italic text-center pt-6">
                 {lang === 'zh'
-                  ? '点击页面上的「问 AI」按钮，或直接输入问题（如「为什么铁块会沉、轮船会浮？」）'
-                  : 'Tap "Ask AI" on a page, or type a question (e.g. "Why does iron sink but a ship floats?")'}
+                  ? '点击页面上的「问 AI」按钮，AI 会结合当前内容为您讲解'
+                  : 'Tap "Ask AI" on a page — the assistant explains the current content'}
               </p>
             )}
-            {error && <p className="mt-2 text-[11px] text-[var(--error)] mono-font">{error}</p>}
-            {/* 链式追问操作：继续问（携带上一轮）/ 重新开始（清空上下文） */}
-            {answer && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-[10px] text-[var(--muted)]">
-                  {lastExchange.current ? (lang === 'zh' ? '已带上一轮上下文' : 'Context from last turn kept') : ''}
-                </span>
-                <button type="button" onClick={restart} className="ml-auto inline-flex items-center gap-1 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
-                  <RotateCcw className="w-3 h-3" />
-                  {lang === 'zh' ? '重新开始' : 'Restart'}
+            {busy && (
+              <div className="pt-1 flex justify-end">
+                <button type="button" onClick={() => abortRef.current?.abort()} className="text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
+                  {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>
             )}
           </div>
-          <div className="border-t border-[var(--border)] p-2.5 space-y-1.5">
-            <div className="flex items-end gap-1.5">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                rows={2}
-                maxLength={2000}
-                placeholder={lang === 'zh' ? '输入问题…' : 'Ask a question…'}
-                className="flex-1 border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-none"
-              />
-              {busy ? (
-                <button type="button" onClick={() => abortRef.current?.abort()} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)]">
-                  {lang === 'zh' ? '停止' : 'Stop'}
-                </button>
-              ) : (
-                <button type="button" onClick={send} className="px-2.5 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)]">
-                  {lang === 'zh' ? '提问' : 'Ask'}
-                </button>
-              )}
-            </div>
+          <div className="border-t border-[var(--border)] px-3 py-2">
             <p className="text-[10px] text-[var(--muted)] leading-relaxed">
-              {lang === 'zh' ? 'AI 生成内容仅供参考，请以教材和老师讲解为准 · 问答不保存，关页即清' : 'AI output is for reference — trust the textbook · Answers are not saved'}
+              {lang === 'zh' ? 'AI 生成内容仅供参考，请以教材和老师讲解为准 · 问答不保存，关页即清 · 追问由 AI 推荐' : 'AI output is for reference — trust the textbook · Answers are not saved · Follow-ups are AI-recommended'}
             </p>
           </div>
         </>

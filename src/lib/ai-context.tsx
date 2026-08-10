@@ -50,8 +50,8 @@ export function AiProvider({ children }: { children: ReactNode }) {
     try {
       const raw = window.localStorage.getItem('stem-ai-config');
       if (!raw) return false;
-      const c = JSON.parse(raw) as { apiKey?: string; baseUrl?: string; agreed?: boolean };
-      return !!(c.apiKey && c.baseUrl && c.agreed);
+      const c = JSON.parse(raw) as { apiKey?: string; baseUrl?: string; model?: string; agreed?: boolean };
+      return !!(c.apiKey && c.baseUrl && c.model && c.agreed);
     } catch {
       return false;
     }

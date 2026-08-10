@@ -7,7 +7,7 @@
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
 import { Link, useParams } from 'react-router-dom';
-import { FlaskConical  } from 'lucide-react';;
+import { House    } from 'lucide-react';;;;
 import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
@@ -77,7 +77,7 @@ export default function LabPage() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <FlaskConical className="w-3.5 h-3.5" />
+          <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
@@ -98,10 +98,7 @@ export default function LabPage() {
                   ? t.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
                   : t.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
               />
-              <AskAiButton
-                className="ml-3"
-                question={lang === 'zh' ? `请讲解实验「${lab.name.zh}」的原理与操作要点` : `Explain the lab "${lab.name.en}" — its principle and key steps`}
-              />
+
             </h1>
           </div>
         </div>

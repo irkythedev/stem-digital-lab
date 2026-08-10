@@ -9,9 +9,10 @@
  * 常量卡显示「用于公式」（点击跳回本页）。数据来自 src/lib/physics-formulas.ts
  * （依据 physics_kb formula_sheet，苏科版章节对齐）。
  */
+import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FlaskConical, Search  } from 'lucide-react';;
+import { House, Search    } from 'lucide-react';;;;
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
@@ -20,7 +21,7 @@ import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
-import { Image as ImageIcon  } from 'lucide-react';;
+import { Image as ImageIcon    } from 'lucide-react';;;;
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
 
 const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
@@ -29,6 +30,7 @@ export default function PhysicsFormulas() {
   const { t, lang } = useApp();
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicsFormula | null>(null);
+  useLockBodyScroll(!!selected);
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState<PhysicsFormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
@@ -106,7 +108,7 @@ export default function PhysicsFormulas() {
           title={t.homeIcon}
           className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
-          <FlaskConical className="w-3.5 h-3.5" />
+          <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
@@ -285,10 +287,6 @@ export default function PhysicsFormulas() {
                 <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
               </div>
 
-              {/* 问 AI：一键讲解当前公式 */}
-              <div className="px-0.5">
-                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
-              </div>
               {/* 关联实验 */}
               {selected.labId && labMap[selected.labId] && (
                 <div className="px-0.5 text-xs">
@@ -301,6 +299,10 @@ export default function PhysicsFormulas() {
                   </Link>
                 </div>
               )}
+              {/* 问 AI：看完内容后可一键讲解当前公式 */}
+              <div className="px-0.5 pt-2">
+                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
+              </div>
             </div>
           </div>
         </div>

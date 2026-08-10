@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学探究 · 反比例函数 y = k/x 三幕式探究（人教版 八下）
+ * 数学探究 · 反比例函数 y = k/x 三幕式探究（人教版 九上第 26 章）
  *
  * 幕 1 预测：给定 y = 4/x，先猜图像所在象限，再揭示图像
  * 幕 2 探索：控制变量卡（k 正负 / |k| 大小 / 特殊点）+ 钉住曲线对比 + 观察笔记
@@ -11,6 +11,7 @@
  * 复用组件：CoordPlane（坐标系，segments 绘制双曲线两支）、ExploreStage、LabIcon。
  */
 import { useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
@@ -373,10 +374,13 @@ export default function Inverse() {
               className="underline text-[var(--muted)] hover:text-[var(--fg)]"
             >
               {t.redoLabel} ↻
-            </button>
+        </button>
           )}
         </span>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}

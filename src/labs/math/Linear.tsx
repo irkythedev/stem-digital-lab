@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 数学探究 · 一次函数 y = kx + b 三幕式探究（人教版 八下第 23 章）
+ * 数学探究 · 一次函数 y = kx + b 三幕式探究（人教版 八下第 19 章）
  *
  * 幕 1 预测：给定 y = 2x - 3，先猜图像形状 / 与 y 轴交点，再揭示
  * 幕 2 探索：控制变量卡（k 斜率 / b 截距 / 特殊点 / 实际建模）+ 钉住曲线 + 观察笔记
@@ -11,6 +11,7 @@
  * 复用组件：CoordPlane、ExploreStage、LabIcon（一次函数用直线图标）。
  */
 import { useMemo, useState } from 'react';
+import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
@@ -396,10 +397,13 @@ export default function Linear() {
               className="underline text-[var(--muted)] hover:text-[var(--fg)]"
             >
               {t.redoLabel} ↻
-            </button>
+        </button>
           )}
         </span>
       </div>
+      {/* 问 AI：讲解本实验的原理与操作要点 */}
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：坐标系 + 读数 */}

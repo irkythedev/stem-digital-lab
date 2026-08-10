@@ -63,7 +63,8 @@ export function loadAiConfig(): AiConfig | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AiConfig;
-    if (parsed && parsed.apiKey && parsed.baseUrl && parsed.agreed) return parsed;
+    // 配置完整才算有效：key / 端点 / 模型 / 同意 缺一不可，否则视为未配置（面板停在须知）
+    if (parsed && parsed.apiKey && parsed.baseUrl && parsed.model && parsed.agreed) return parsed;
     return null;
   } catch {
     return null;
@@ -94,7 +95,8 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
       `3. 优先基于当前页面内容回答，不要超出页面与初中教材范围自由发挥；页面内容不足时明确说明；\n` +
       `4. 不回答医疗、法律、金融等非学习问题；拒绝生成违法违规、不健康内容；\n` +
       `5. 语言适合未成年人，积极健康；不确定的内容直接承认，禁止编造数值或结论，并提示以教材和老师讲解为准；\n` +
-      `6. 回答简明，先给结论再解释，可适当举例。` +
+      `6. 回答简明，先给结论再解释，可适当举例。\n` +
+      `7. 回答末尾另起一行，先输出一行「可以继续了解：」，随后给出 2~3 个与该知识点相关、适合初中生的追问问题（每行一个，编号 1. 2. 3.）。` +
       ref
     );
   }
@@ -107,7 +109,8 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
     '3. Base your answer on the current page content below; do not freelance beyond the page and the middle-school textbooks; if the page is not enough, say so and point to the textbook chapter.' +
     '\n4. Decline non-study topics (medical, legal, financial) and any inappropriate content.\n' +
     '5. Keep language kid-friendly and positive; admit uncertainty instead of making up numbers or conclusions; refer to the textbook and teacher.\n' +
-    '6. Be concise: conclusion first, then explanation with examples.' +
+    '6. Be concise: conclusion first, then explanation with examples.\n' +
+    '7. End with a line "You can also explore:" followed by 2-3 follow-up questions suitable for middle-schoolers (one per line, numbered 1. 2. 3.).' +
     ref
   );
 }
