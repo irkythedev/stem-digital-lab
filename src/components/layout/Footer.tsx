@@ -60,14 +60,14 @@ export default function Footer() {
               </span>
             </button>
             {showWorks && (
-              <span className="absolute left-0 bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
                 {t.works.map((w) => (
                   <a
                     key={w.url}
                     href={w.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors whitespace-nowrap"
+                    className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors leading-snug"
                   >
                     <img src={w.icon} alt="" width="14" height="14" className="flex-shrink-0" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                     <span className="normal-case tracking-normal">{w.name}</span>

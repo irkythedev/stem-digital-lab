@@ -1,7 +1,7 @@
 {
   "name": "stem-digital-lab",
   "private": true,
-  "version": "1.15.0",
+  "version": "1.15.1",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
   "license": "AGPL-3.0",
   "homepage": "https://stem.irky.dev",

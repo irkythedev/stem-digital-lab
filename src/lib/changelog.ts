@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.15.0';
+export const APP_VERSION = '1.15.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.15.1',
+    date: '2026-08',
+    zh: [
+      '移动端适配调整优化：随机探索按钮触控区域加大，页脚「其他作品」面板在手机上不再超出屏幕，作品名称精简',
+    ],
+    en: [
+      'Mobile experience refinements: larger touch target for the random-explore button, the footer "More Works" popover no longer overflows the screen, and shorter work titles',
+    ],
+  },
   {
     version: '1.15.0',
     date: '2026-08',
