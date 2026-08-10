@@ -32,12 +32,25 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
                 <span className="text-[10px] mono-font text-[var(--muted)]">{entry.date}</span>
               </div>
               <ul className="space-y-1">
-                {(lang === 'zh' ? entry.zh : entry.en).map((line, i) => (
-                  <li key={i} className="flex gap-2 text-xs serif-font leading-relaxed text-[var(--muted)]">
-                    <span className="text-[var(--border)] shrink-0">•</span>
-                    <span>{line}</span>
-                  </li>
-                ))}
+                {(lang === 'zh' ? entry.zh : entry.en).map((line, i) => {
+                  // 前缀标签（[新增]/[优化]/[修复]）加粗显示
+                  const m = line.match(/^(\[[^\]]+\])\s*(.*)$/);
+                  return (
+                    <li key={i} className="flex gap-2 text-xs serif-font leading-relaxed text-[var(--muted)]">
+                      <span className="text-[var(--border)] shrink-0">•</span>
+                      <span>
+                        {m ? (
+                          <>
+                            <strong className="text-[var(--fg)] font-bold">{m[1]}</strong>{' '}
+                            {m[2]}
+                          </>
+                        ) : (
+                          line
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
