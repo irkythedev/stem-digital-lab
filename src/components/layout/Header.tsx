@@ -27,6 +27,36 @@ export default function Header() {
     setTimeout(() => setToast(false), 2000);
   };
 
+  // 有新版本：下载新 SW → 事件驱动等待接管 → 刷新一次到位（桌面版本号绿点 / 移动端 logo 绿点共用）
+  const handleRefresh = () => {
+    showToast();
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      let reloaded = false;
+      const onceReload = () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      };
+      navigator.serviceWorker.addEventListener('controllerchange', onceReload, { once: true });
+      navigator.serviceWorker
+        .getRegistration()
+        .then((reg) => {
+          if (!reg) { onceReload(); return; }
+          if (!reg.waiting && !reg.installing) {
+            // 尚无新 SW：触发检查下载
+            reg.update().catch(() => onceReload());
+          }
+          // waiting / installing 已存在：sw 自带 skipWaiting，
+          // install 完成后自动 activate → controllerchange 驱动刷新
+        })
+        .catch(() => onceReload());
+      // 长兜底仅作慢网保险（8.6MB 预缓存正常 10s 内完成，20s 足够）
+      setTimeout(onceReload, 20000);
+    } else {
+      window.location.reload();
+    }
+  };
+
   // 检测是否有新版本：对比远端 version.json 与本版本号（fetch 失败则静默忽略）
   useEffect(() => {
     let cancelled = false;
@@ -71,12 +101,29 @@ export default function Header() {
           >
             <circle cx="12" cy="12" r="8" />
           </svg>
+          {/* 移动端更新绿点：有新版时显示在 logo 右上角（桌面用版本号旁的绿点） */}
+          {hasUpdate && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRefresh();
+              }}
+              title="有新版本，点击刷新"
+              aria-label="有新版本，点击刷新"
+              className="sm:hidden absolute -top-1 -right-1 group/dot"
+            >
+              <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />
+              <span className="absolute inset-0 rounded-full bg-green-500/50 update-dot-halo" />
+            </button>
+          )}
         </span>
         <span className="hidden sm:inline text-[10px] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
           STEM DIGITAL LAB
         </span>
         {/* 版本号：点击弹出版本历史；有更新时显示绿色呼吸灯圆点，点击圆点刷新到新版本 */}
         {/* 注意：按钮嵌在品牌区 <Link to="/"> 内，必须阻止冒泡，否则会同时跳回首页 */}
+        {/* 版本号（桌面显示；移动端隐藏——移动端仅在有新版时于 logo 右上角显示绿点） */}
         <button
           type="button"
           onClick={(e) => {
@@ -86,7 +133,7 @@ export default function Header() {
           }}
           title="v{APP_VERSION}"
           aria-label="version"
-          className="flex items-center gap-1.5 self-end mb-0.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
             v{APP_VERSION}
@@ -95,37 +142,7 @@ export default function Header() {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  showToast();
-                  // 更新流程（事件驱动，无固定短超时竞态）：
-                  // reg.update() 下载新 SW → install（8.6MB 预缓存，需要时间）
-                  // → sw 自带 skipWaiting 自动激活 → controllerchange 触发
-                  // → 此刻新 SW 已接管页面，reload 一次到位。
-                  // 不做固定 3s 兜底（会打断 install 导致旧页反复刷新）。
-                  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    let reloaded = false;
-                    const onceReload = () => {
-                      if (reloaded) return;
-                      reloaded = true;
-                      window.location.reload();
-                    };
-                    navigator.serviceWorker.addEventListener('controllerchange', onceReload, { once: true });
-                    navigator.serviceWorker
-                      .getRegistration()
-                      .then((reg) => {
-                        if (!reg) { onceReload(); return; }
-                        if (!reg.waiting && !reg.installing) {
-                          // 尚无新 SW：触发检查下载
-                          reg.update().catch(() => onceReload());
-                        }
-                        // waiting / installing 已存在：sw 自带 skipWaiting，
-                        // install 完成后自动 activate → controllerchange 驱动刷新
-                      })
-                      .catch(() => onceReload());
-                    // 长兜底仅作慢网保险（8.6MB 预缓存正常 10s 内完成，20s 足够）
-                    setTimeout(onceReload, 20000);
-                  } else {
-                    window.location.reload();
-                  }
+                  handleRefresh();
                 }}
                 title="有新版本，点击刷新"
                 aria-label="有新版本，点击刷新"

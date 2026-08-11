@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.16.1';
+export const APP_VERSION = '1.17.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.17.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 每日科学扩充：名人名言增至 48 位科学家（国内为主），新增考点速记 30 条（物理/化学/数学，契合教材），名言与考点自然混合展示',
+      '[新增] 新增南通先贤张謇（实业家、教育家）条目，卡片可点击查看「百年回响 · 江海潮声」文博展（确认后跳转）',
+      '[优化] 移动端顶部不再显示版本号，有新版本时在图标旁显示提示点；每日科学小故事在手机上直接展示，可点击查看完整内容',
+    ],
+    en: [
+      '[New] Daily Science expanded: quotes from 48 scientists (mostly Chinese) plus 30 textbook-aligned key points (physics / chemistry / math), naturally mixed',
+      '[New] Added Zhang Jian — Nantong\'s industrialist-educator — whose cards link (with confirmation) to the "100 Years Echo · Jianghai Tides" cultural expo',
+      '[Improved] Mobile: the version number is hidden from the header (an indicator dot appears when an update is available), and the daily story shows inline with a tap-to-read-full option',
+    ],
+  },
   {
     version: '1.16.1',
     date: '2026-08',

@@ -25,6 +25,8 @@ export interface ScienceQuote {
   story: { zh: string; en: string };
   /** 是否国内/华人科学家 */
   isChinese: boolean;
+  /** 彩蛋外链（可选）：条目旁显示 favicon 引导点击（如张謇 → 百年回响文博展） */
+  link?: { url: string; icon: string; title: { zh: string; en: string } };
 }
 
 export const SCIENCE_QUOTES: ScienceQuote[] = [
@@ -338,7 +340,135 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     story: { zh: '高斯 10 岁就快速算出 1 到 100 的和，19 岁解决千年难题——正十七边形尺规作图问题。', en: 'At 10 Gauss summed 1–100 instantly; at 19 he solved the ancient problem of constructing a 17-gon with compass and straightedge.' },
     isChinese: false,
   },
-];
+  {
+    id: 'zhukezhen',
+    person: { zh: '竺可桢', en: 'Zhu Kezhen' },
+    field: { zh: '气象学 · 物候学', en: 'Meteorology · Phenology' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    achievement: { zh: '中国近代气象学与物候学奠基人，数十年坚持记录物候，主持建立全国气象观测网。', en: 'Founder of modern Chinese meteorology and phenology; kept phenological records for decades and built the national weather observation network.' },
+    story: { zh: '竺可桢一生坚持写物候日记，从大学时代直到去世前一天，从未中断。他用这些记录研究气候变迁，写出了《物候学》。', en: 'Zhu kept phenological diaries from his college years until the day before he died — never missing a day. Those records became the basis of his classic book Phenology.' },
+    isChinese: true,
+  },
+  {
+    id: 'tongdizhou',
+    person: { zh: '童第周', en: 'Tong Dizhou' },
+    field: { zh: '实验胚胎学', en: 'Experimental Embryology' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    quote: { zh: '外国人能做到的事情，中国人也一定能做到。', en: 'What foreigners can achieve, the Chinese can achieve too.' },
+    story: { zh: '童第周在比利时留学时成绩优异，用金鱼卵做细胞核移植实验，培育出著名的“童鱼”，证明细胞质也能影响遗传。', en: 'While studying in Belgium, Tong transplanted cell nuclei in goldfish eggs and produced the famous "Tong fish", showing that cytoplasm can also affect heredity.' },
+    isChinese: true,
+  },
+  {
+    id: 'wangganchang',
+    person: { zh: '王淦昌', en: 'Wang Ganchang' },
+    field: { zh: '核物理', en: 'Nuclear Physics' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    achievement: { zh: '中国核物理奠基人之一，隐姓埋名参与原子弹、氢弹研制，是“863 计划”的提出者之一。', en: 'A founder of Chinese nuclear physics who worked anonymously on the atomic and hydrogen bombs, and one of the initiators of the "863 Program".' },
+    story: { zh: '王淦昌为参与核武器研制，化名“王京”隐姓埋名十七年。他晚年仍关心科学前沿，推动高新技术研究计划。', en: 'Wang worked under the alias "Wang Jing" for seventeen years on nuclear weapons. In his later years he still championed cutting-edge research programs.' },
+    isChinese: true,
+  },
+  {
+    id: 'chenshengshen',
+    person: { zh: '陈省身', en: 'Shiing-Shen Chern' },
+    field: { zh: '数学 · 微分几何', en: 'Mathematics · Differential Geometry' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    achievement: { zh: '微分几何大师，创立整体微分几何的“陈省身示性类”，晚年创办南开数学研究所。', en: 'Master of differential geometry who founded the Chern classes; in his later years he established the Nankai Institute of Mathematics.' },
+    story: { zh: '陈省身晚年说：“我们中国要成为数学大国，首先要有自己的数学研究所。”他主持建立南开数学所，推动中国数学走向世界。', en: 'Chern believed China should become a mathematical power with its own institutions. He founded the Nankai Institute to bring Chinese mathematics onto the world stage.' },
+    isChinese: true,
+  },
+  {
+    id: 'hezehui',
+    person: { zh: '何泽慧', en: 'He Zehui' },
+    field: { zh: '核物理', en: 'Nuclear Physics' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    achievement: { zh: '中国核物理学家，发现铀核三分裂与四分裂现象，参与核武器研制中的关键测量工作。', en: 'Chinese nuclear physicist who discovered the ternary and quaternary fission of uranium nuclei and led key measurements in the weapons program.' },
+    story: { zh: '何泽慧被称为“中国的居里夫人”，一生简朴，与丈夫钱三强同为中国核科学事业的开拓者。', en: 'Known as "China\'s Marie Curie", He lived simply and, with her husband Qian Sanqiang, pioneered Chinese nuclear science.' },
+    isChinese: true,
+  },
+  {
+    id: 'guoyonghuai',
+    person: { zh: '郭永怀', en: 'Guo Yonghuai' },
+    field: { zh: '力学 · 空气动力学', en: 'Mechanics · Aerodynamics' },
+    era: { zh: '中国 · 现代', en: 'China · Modern' },
+    achievement: { zh: '应用数学家与空气动力学家，“两弹一星”元勋，在飞机失事前用身体护住装有资料的公文包。', en: 'Applied mathematician and aerodynamicist, a "Two Bombs, One Satellite" hero who shielded his briefcase of research data with his body in a plane crash.' },
+    story: { zh: '1968 年郭永怀乘坐的飞机失事，他与警卫员紧紧抱在一起，用身体护住装有核试验资料的公文包，资料完好无损。', en: 'When Guo\'s plane crashed in 1968, he and his guard clutched the briefcase of nuclear-test data between their bodies; the documents survived intact.' },
+    isChinese: true,
+  },
+  {
+    id: 'tesla',
+    person: { zh: '特斯拉', en: 'Nikola Tesla' },
+    field: { zh: '电气工程', en: 'Electrical Engineering' },
+    era: { zh: '塞尔维亚裔美籍 · 近代', en: 'Serbian-American · Modern era' },
+    achievement: { zh: '交流电系统的发明者，推动交流输电取代直流输电，还研究过无线电与无线输电。', en: 'Inventor of the AC power system, which replaced direct current for transmission; also pioneered radio and wireless power ideas.' },
+    story: { zh: '特斯拉与爱迪生的“电流之战”以交流电胜出告终——今天的家庭用电、高压输电都建立在交流电系统之上。', en: 'Tesla\'s "War of the Currents" against Edison ended with AC winning — today\'s home power and high-voltage transmission all build on his system.' },
+    isChinese: false,
+  },
+  {
+    id: 'planck',
+    person: { zh: '普朗克', en: 'Max Planck' },
+    field: { zh: '物理学 · 量子论', en: 'Physics · Quantum Theory' },
+    era: { zh: '德国 · 近代', en: 'Germany · Modern era' },
+    achievement: { zh: '量子论的创始人，提出能量量子化假说（普朗克常量 h），开启物理学新纪元。', en: 'Founder of quantum theory; proposed energy quantization (Planck constant h), opening a new era of physics.' },
+    story: { zh: '普朗克最初把能量量子当作数学技巧，连他自己都怀疑，但正是这个假设解释了黑体辐射，成为量子力学的起点。', en: 'Planck first treated energy quanta as a mathematical trick — even he doubted it — yet the hypothesis explained blackbody radiation and launched quantum mechanics.' },
+    isChinese: false,
+  },
+  {
+    id: 'euler',
+    person: { zh: '欧拉', en: 'Leonhard Euler' },
+    field: { zh: '数学', en: 'Mathematics' },
+    era: { zh: '瑞士 · 近代', en: 'Switzerland · Modern era' },
+    achievement: { zh: '18 世纪最伟大的数学家之一，以欧拉公式 e^(iπ)+1=0 闻名，贡献遍及函数、数论、力学等几乎全部数学分支。', en: 'One of the greatest mathematicians of the 18th century, famous for Euler\'s identity e^(iπ)+1=0, with contributions across nearly every branch of mathematics.' },
+    story: { zh: '欧拉晚年双目失明，仍凭心算完成大量研究，一生留下八百多篇论文，是历史上最高产的数学家之一。', en: 'Euler lost his sight in his later years yet kept producing research from memory, leaving over 800 papers — among the most prolific mathematicians ever.' },
+    isChinese: false,
+  },
+  {
+    id: 'maxwell',
+    person: { zh: '麦克斯韦', en: 'James Clerk Maxwell' },
+    field: { zh: '物理学 · 电磁学', en: 'Physics · Electromagnetism' },
+    era: { zh: '英国 · 近代', en: 'UK · Modern era' },
+    achievement: { zh: '电磁理论的创立者，用麦克斯韦方程组统一电与磁，预言电磁波存在，奠定无线电技术基础。', en: 'Creator of electromagnetic theory; his equations unified electricity and magnetism, predicted electromagnetic waves and founded radio technology.' },
+    story: { zh: '麦克斯韦预言电磁波后十几年，赫兹用实验证实了它——今天收音机、手机、Wi-Fi 都建立在他的方程组上。', en: 'Years after Maxwell predicted electromagnetic waves, Hertz proved them experimentally — radios, phones and Wi-Fi all rest on his equations.' },
+    isChinese: false,
+  },
 
-/** 中文占比（用于界面标注） */
-export const CHINESE_QUOTE_RATIO = SCIENCE_QUOTES.filter((q) => q.isChinese).length / SCIENCE_QUOTES.length;
+  {
+    id: 'zhangjian1',
+    person: { zh: '张謇', en: 'Zhang Jian' },
+    field: { zh: '实业 · 教育', en: 'Industry & Education' },
+    era: { zh: '中国 · 近代（南通人）', en: 'China · Modern era (Nantong)' },
+    quote: { zh: '天之生人也，与草木无异。若遗留一二有用事业，与草木同生，即不与草木同腐。', en: 'People are born like grass and trees; if we leave behind one or two useful deeds, we live on with the grass and trees and do not rot with them.' },
+    story: { zh: '张謇是清末状元，却弃官回南通兴办实业与教育：创办大生纱厂、通州师范学校（中国第一所师范学校）、南通博物苑（中国第一座博物馆），提出“父教育而母实业”的主张。', en: 'Zhang Jian was a Number One Scholar of the late Qing who gave up office to build industry and education in Nantong: the Dasheng Cotton Mill, Tongzhou Normal School (China\'s first), and Nantong Museum (China\'s first) — guided by his belief that education is the father and industry the mother of a nation.' },
+    isChinese: true,
+    link: { url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+  },
+  {
+    id: 'zhangjian2',
+    person: { zh: '张謇', en: 'Zhang Jian' },
+    field: { zh: '实业 · 教育', en: 'Industry & Education' },
+    era: { zh: '中国 · 近代（南通人）', en: 'China · Modern era (Nantong)' },
+    quote: { zh: '愿成一分一毫有用之事，不愿居八命九命可耻之官。', en: 'I would rather accomplish the smallest useful deed than hold the most dishonourable office.' },
+    story: { zh: '张謇中状元后毅然辞官，把心血倾注在“实业救国、教育救国”上。南通人至今仍感念他——江海平原上的学校、博物馆、水利工程，处处留有他的印记。', en: 'After winning the top imperial examination, Zhang resigned his post and devoted himself to saving the nation through industry and education. Nantong still remembers him — schools, museums and waterworks across the land bear his mark.' },
+    isChinese: true,
+    link: { url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+  },
+  {
+    id: 'zhangjian3',
+    person: { zh: '张謇', en: 'Zhang Jian' },
+    field: { zh: '实业 · 教育', en: 'Industry & Education' },
+    era: { zh: '中国 · 近代（南通人）', en: 'China · Modern era (Nantong)' },
+    quote: { zh: '一个人办一县事，要有一省的眼光；办一省事，要有一国的眼光；办一国事，要有世界的眼光。', en: 'To run one county, see the whole province; to run a province, see the whole nation; to run a nation, see the whole world.' },
+    story: { zh: '张謇的目光从不局限在一家纱厂：他先后创办纺织、垦牧、航运、盐业等 20 多个企业，形成以大生纱厂为核心的近代民族工业集团，还把视野投向长江口垦牧与教育普及。', en: 'Zhang never limited his vision to one mill: he built more than 20 enterprises in textiles, reclamation, shipping and salt, forming the Dasheng industrial group — and looked far beyond, to coastal reclamation and universal education.' },
+    isChinese: true,
+    link: { url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+  },
+  {
+    id: 'zhangjian4',
+    person: { zh: '张謇', en: 'Zhang Jian' },
+    field: { zh: '实业 · 教育', en: 'Industry & Education' },
+    era: { zh: '中国 · 近代（南通人）', en: 'China · Modern era (Nantong)' },
+    quote: { zh: '实业与教育，迭相为用。', en: 'Industry and education serve each other in turn.' },
+    story: { zh: '张謇把纱厂利润投入办学，一生创办 370 多所学校，从师范、小学到纺织专门学校——用实业的钱办教育，用教育的人办实业，是他“父教育而母实业”的完整实践。', en: 'Zhang poured mill profits into schooling and founded more than 370 schools, from normal schools and primary schools to a textile college — using industry to fund education and educated people to run industry.' },
+    isChinese: true,
+    link: { url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+  },
+];
