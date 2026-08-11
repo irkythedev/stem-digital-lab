@@ -463,26 +463,45 @@ export function FixedMeter({
   glyph,
   reading,
   unit,
+  label,
+  readoutDir = 'down',
 }: {
   x: number;
   y: number;
   glyph: 'A' | 'V';
   reading: string;
   unit: string;
+  /** 仪表编号（如 A₀/A₁/A₂），传入时优先显示（教科书图例样式） */
+  label?: string;
+  /** 读数方向：下（默认，远离上方导线）或上（支路表避让下方导线） */
+  readoutDir?: 'down' | 'up';
 }) {
+  // 读数单行（值+单位合并，如 0.90A），距仪表 14px；方向按 readoutDir 避让相邻导线（label safety ≥8px）
+  const ry = readoutDir === 'up' ? y - 20 : y + 23;
   return (
     <g>
       <rect x={x - 8} y={y - 8} width="16" height="16" rx="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
       <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
-        {glyph}
+        {label ?? glyph}
       </text>
-      {/* 读数：数值（10px）+ 单位（8px 灰，SVG 内换行两行显示避免宽度溢出） */}
-      <text x={x} y={y + 23} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
-        {reading}
-      </text>
-      <text x={x} y={y + 33} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
-        {unit}
-      </text>
+      {/* 读数底衬：主题自适应半透背景 + 细边框（防压线，统一三表样式） */}
+      <g>
+        <rect
+          x={x - 19}
+          y={ry - 10}
+          width="38"
+          height="13"
+          rx="2"
+          fill="var(--bg)"
+          fillOpacity="0.88"
+          stroke="var(--border)"
+          strokeWidth="0.8"
+        />
+        <text x={x} y={ry} textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">
+          {reading}
+          {unit}
+        </text>
+      </g>
     </g>
   );
 }

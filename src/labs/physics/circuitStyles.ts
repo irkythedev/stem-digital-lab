@@ -311,7 +311,7 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
       { kind: 'bulb', r: 10, label: 'R₁', x: 200 },
       { kind: 'bulb', r: 20, label: 'R₂', x: 200 },
     ],
-    branchSwitches: false,
+    branchSwitches: true,
     fuse: false,
     fixedMeters: true,
     copy: {
@@ -384,7 +384,6 @@ export interface GeneratedTopology {
   wires: MeasurableWire[];
   comps: MeasurableComp[];
   /** 电压表引线（画在电路图上） */
-  vLeads: { x1: number; y1: number; x2: number; y2: number }[];
   /** 支路 y 坐标（并联） */
   branchYs: number[];
   /** 电流小点动画路径 */
@@ -409,14 +408,6 @@ function genSeries(config: StyleConfig): GeneratedTopology {
   const comps: MeasurableComp[] = [
     { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'u' },
   ];
-  const vLeads: { x1: number; y1: number; x2: number; y2: number }[] = [];
-  // 电池 V 引线
-  vLeads.push(
-    { x1: 58, y1: 70, x2: 72, y2: 70 },
-    { x1: 72, y1: 70, x2: 72, y2: 92 },
-    { x1: 48, y1: 82, x2: 72, y2: 82 },
-    { x1: 72, y1: 82, x2: 72, y2: 108 },
-  );
   // 元件间导线 + 每元件 V 引线
   let prevX = NODE_X;
   elems.forEach((e, i) => {
@@ -444,7 +435,6 @@ function genSeries(config: StyleConfig): GeneratedTopology {
   return {
     wires,
     comps,
-    vLeads,
     branchYs: [],
     flowPaths: [path],
     masterSwitch: { x1: SW_X1, y1: 60, x2: SW_X2, y2: 60 },
@@ -467,12 +457,8 @@ function genParallel(config: StyleConfig): GeneratedTopology {
   ];
   const comps: MeasurableComp[] = [
     { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'u' },
-  ];
-  const vLeads: { x1: number; y1: number; x2: number; y2: number }[] = [
-    { x1: 58, y1: 70, x2: 72, y2: 70 },
-    { x1: 72, y1: 70, x2: 72, y2: 92 },
-    { x1: 48, y1: 82, x2: 72, y2: 82 },
-    { x1: 72, y1: 82, x2: 72, y2: 108 },
+    // 右侧汇合母线两端 = 并联电路两端节点：电压表并联在此测电路两端电压（而非直接搭电源）
+    { id: 'bus', kind: 'bus', sense1: { x: RIGHT_X, y: ys[0] }, sense2: { x: RIGHT_X, y: RETURN_Y }, land: { x: RIGHT_X - 18, y: (ys[0] + RETURN_Y) / 2 }, voltage: 'u' },
   ];
   ys.forEach((y, i) => {
     const cur = `i${i + 1}`;
@@ -500,7 +486,6 @@ function genParallel(config: StyleConfig): GeneratedTopology {
   return {
     wires,
     comps,
-    vLeads,
     branchYs: ys,
     flowPaths: paths,
     masterSwitch: { x1: SW_X1, y1: 60, x2: SW_X2, y2: 60 },
