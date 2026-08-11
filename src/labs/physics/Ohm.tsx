@@ -10,7 +10,7 @@
  *
  * 复用组件：CoordPlane（I-U 图像）、ExploreStage（任务卡+笔记）、LabIcon。
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -19,6 +19,7 @@ import ExploreStage, { type Observation, type ExploreCard } from '../../componen
 import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
 import { Bulb, Rheostat } from '../../components/lab/circuit/CircuitParts';
+import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
 
@@ -78,6 +79,12 @@ const copy = {
     measureResult: '你的测量平均值',
     measureTrue: '真实阻值',
     switchLabel: '开关',
+    // 电路元件公式浮层（SOP 教学增强）
+    tipResistor: { formula: 'I = U / R', principle: '定值电阻阻值不变，电流与两端电压成正比（欧姆定律）' },
+    tipBulb: { formula: 'R = U / I', principle: '灯丝电阻随温度升高而增大，是动态电阻（非线性元件）' },
+    tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: '滑动变阻器串联分压，改变元件两端电压（调压 + 保护电路）' },
+    tipAmmeter: { formula: 'I = U / R', principle: '电流表串联在电路中，测量通过元件的电流' },
+    tipVoltmeter: { formula: 'U = I × R', principle: '电压表并联在元件两端，测量元件两端的电压' },
     switchOn: '闭合',
     switchOff: '断开',
     switchOpenHint: '开关断开，电路中没有电流。合上开关再看读数。',
@@ -191,6 +198,11 @@ const copy = {
     measureResult: 'Your measured average',
     measureTrue: 'True resistance',
     switchLabel: 'Switch',
+    tipResistor: { formula: 'I = U / R', principle: 'A fixed resistor keeps constant resistance; current is proportional to the voltage across it (Ohm\'s law)' },
+    tipBulb: { formula: 'R = U / I', principle: 'Filament resistance rises with temperature — a dynamic (non-linear) element' },
+    tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: 'A rheostat divides voltage in series, controlling the voltage across the element (voltage control + circuit protection)' },
+    tipAmmeter: { formula: 'I = U / R', principle: 'An ammeter connects in series and measures the current through the element' },
+    tipVoltmeter: { formula: 'U = I × R', principle: 'A voltmeter connects in parallel and measures the voltage across the element' },
     switchOn: 'Closed',
     switchOff: 'Open',
     switchOpenHint: 'The switch is open — no current flows. Close it to read the meters.',
@@ -303,6 +315,12 @@ export default function Ohm() {
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
+  // 电路元件公式浮层（SOP 教学增强）：hover/focus 元件显示公式+代入+原理
+  const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
+  const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTip({ x: r.left + r.width / 2, y: r.top + r.height / 2, ...t });
+  };
   // 电流表串联在干路（电池与开关之间，远离变阻器）
   const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-left', x: 67, y: 60 });
   const [meterV, setMeterV] = useState<MeterTarget | null>({ id: 'element', x: 250, y: 28 });
@@ -656,7 +674,16 @@ export default function Ohm() {
                 </g>
               )}
               {/* 滑动变阻器：串联在开关与元件之间（伏安法标准电路，调压+保护） */}
-              <Rheostat x={190} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
+              <g
+                tabIndex={0}
+                onMouseEnter={(ev) => showTip(ev, { name: 'Rₚ 滑动变阻器', formula: t.tipRheostat.formula, substitution: `Uₚ = ${effectiveI.toFixed(2)}A × ${rp}Ω = ${(effectiveI * rp).toFixed(2)}V`, principle: t.tipRheostat.principle })}
+                onMouseLeave={() => setTip(null)}
+                onFocus={(ev) => showTip(ev, { name: 'Rₚ 滑动变阻器', formula: t.tipRheostat.formula, substitution: `Uₚ = ${effectiveI.toFixed(2)}A × ${rp}Ω = ${(effectiveI * rp).toFixed(2)}V`, principle: t.tipRheostat.principle })}
+                onBlur={() => setTip(null)}
+                className="outline-none"
+              >
+                <Rheostat x={190} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
+              </g>
               {/* 元件：定值电阻（矩形，发热随电流）或小灯泡（发光随电流） */}
               {element === 'bulb' ? (
                 <>
@@ -665,17 +692,34 @@ export default function Ohm() {
                     <line x1="230" y1="60" x2="236" y2="60" />
                     <line x1="264" y1="60" x2="270" y2="60" />
                   </g>
-                  <Bulb
-                    cx={250}
-                    cy={60}
-                    r={14}
-                    glow={Math.min(1, effectiveI / 1.2)}
-                    label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
-                    labelY={88}
-                  />
+                  <g
+                    tabIndex={0}
+                    onMouseEnter={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(2)}A = ${elementResistance(r, element, u).toFixed(1)}Ω`, principle: t.tipBulb.principle })}
+                    onMouseLeave={() => setTip(null)}
+                    onFocus={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(2)}A = ${elementResistance(r, element, u).toFixed(1)}Ω`, principle: t.tipBulb.principle })}
+                    onBlur={() => setTip(null)}
+                    className="outline-none"
+                  >
+                    <Bulb
+                      cx={250}
+                      cy={60}
+                      r={14}
+                      glow={Math.min(1, effectiveI / 1.2)}
+                      label={element === 'bulb' ? `灯泡 R₀=${r}Ω` : undefined}
+                      labelY={88}
+                    />
+                  </g>
                 </>
               ) : (
                 /* 定值电阻：细长矩形（与滑动变阻器同风格，两端接导线） */
+                <g
+                  tabIndex={0}
+                  onMouseEnter={(ev) => showTip(ev, { name: `定值电阻 R=${r}Ω`, formula: t.tipResistor.formula, substitution: `I = ${elemVoltage.toFixed(2)}V ÷ ${r}Ω = ${effectiveI.toFixed(2)}A`, principle: t.tipResistor.principle })}
+                  onMouseLeave={() => setTip(null)}
+                  onFocus={(ev) => showTip(ev, { name: `定值电阻 R=${r}Ω`, formula: t.tipResistor.formula, substitution: `I = ${elemVoltage.toFixed(2)}V ÷ ${r}Ω = ${effectiveI.toFixed(2)}A`, principle: t.tipResistor.principle })}
+                  onBlur={() => setTip(null)}
+                  className="outline-none"
+                >
                 <rect
                   x="230"
                   y="53"
@@ -687,6 +731,7 @@ export default function Ohm() {
                   stroke={heat > 0.5 ? '#e25822' : 'var(--fg)'}
                   strokeWidth="1.2"
                 />
+                </g>
               )}
               {/* 可拖动电表探针：电流表 A（自由放置到导线测电流）、电压表 V（跨接元件两端测电压） */}
               <MeterProbe
@@ -705,6 +750,14 @@ export default function Ohm() {
                 }}
                 initial={{ x: 155, y: 140 }}
               />
+              <g
+                tabIndex={0}
+                onMouseEnter={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(2)}A × ${elementResistance(r, element, u).toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
+                onMouseLeave={() => setTip(null)}
+                onFocus={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(2)}A × ${elementResistance(r, element, u).toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
+                onBlur={() => setTip(null)}
+                className="outline-none"
+              >
               <MeterProbe
                 kind="voltage"
                 glyph="V"
@@ -721,7 +774,9 @@ export default function Ohm() {
                 }}
                 initial={{ x: 250, y: 28 }}
               />
+              </g>
             </svg>
+            {tip && <CircuitTooltip x={tip.x} y={tip.y} formula={tip.formula} substitution={tip.substitution} principle={tip.principle} name={tip.name} />}
             {/* 开关状态提示 */}
             {!switchOn && (
               <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.15.4';
+export const APP_VERSION = '1.15.5';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.15.5',
+    date: '2026-08',
+    zh: [
+      '[修复] 串并联电路图完善：三电流表样式的干路电流表 A₀ 串联在干路导线上、读数不再压线，分流/汇合处补充节点标记，电表读数统一带底衬',
+      '[修复] 电压表初始正确并联在电路两端（并联图跨右侧汇合母线两端、串联图跨元件两端），不再直接搭在电源上；电源处不再有多余引线',
+      '[优化] 悬停电路元件（电表/电阻/滑动变阻器）显示公式推导浮层：公式原型 + 数值代入 + 物理原理',
+    ],
+    en: [
+      '[Fixed] Series/parallel circuit diagrams refined: the main-line ammeter A₀ sits on the main-line wire with its reading clear of any wire, junction dots mark branch split/join points, and meter readings share a unified background card',
+      '[Fixed] The voltmeter now starts correctly across the circuit (the right bus in parallel diagrams, the first element in series) instead of across the supply; no more dangling leads from the battery',
+      '[Improved] Hovering a circuit element (meter / resistor / rheostat) shows a formula tooltip: formula, live substitution, and the physics behind it',
+    ],
+  },
   {
     version: '1.15.4',
     date: '2026-08',

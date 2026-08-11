@@ -14,7 +14,7 @@
  * 可视化：SVG 电路图（导线/灯泡/闸刀开关/电池/保险丝/变阻器/固定电表）
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -36,6 +36,7 @@ import {
   RETURN_Y,
   type CircuitStyleId,
 } from './circuitStyles';
+import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -82,6 +83,18 @@ const baseCopy = {
     tipsTitle: '考点速记',
     readoutI0: '干路电流 I',
     readoutU: '电源电压 U',
+    readoutSplit: 'I₀ = I₁ + I₂',
+    readoutParallelV: 'U₁ = U₂ = U（电源电压）',
+    // 电路元件公式浮层（SOP 教学增强）
+    tipResistor: { formula: 'I = U / R', principle: '定值电阻阻值不变，电流与两端电压成正比（欧姆定律）' },
+    tipBulb: { formula: 'R = U / I', principle: '灯丝电阻随温度升高而增大，是动态电阻（非线性元件）' },
+    tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: '滑动变阻器串联分压，改变元件两端电压（调压 + 保护电路）' },
+    tipAmmeter: { formula: 'I = U / R', principle: '电流表串联在电路中，测量通过元件的电流' },
+    tipVoltmeter: { formula: 'U = I × R', principle: '电压表并联在元件两端，测量元件两端的电压' },
+    tipParallelBranch: { formula: 'U₁ = U₂ = U', principle: '并联电路各支路电压相等，都等于电源电压' },
+    tipParallelSplit: { formula: 'I₀ = I₁ + I₂', principle: '干路电流等于各支路电流之和（并联分流）' },
+    tipSeriesCurrent: { formula: 'I = I₁ = I₂', principle: '串联电路电流处处相等' },
+    tipSeriesVoltage: { formula: 'U = U₁ + U₂', principle: '串联电路总电压等于各元件电压之和（分压）' },
     meterHint: '拖动电流表(A)到导线上测电流、电压表(V)到元件两端测电压',
     meterAmmeterErr: '电流表不能并联在元件两端——内阻极小会短路！应串在导线上。',
     meterVoltmeterErr: '电压表要并联在元件两端测电压，不能串在导线上。',
@@ -128,6 +141,17 @@ const baseCopy = {
     tipsTitle: 'Key Points',
     readoutI0: 'Main current I',
     readoutU: 'Supply voltage U',
+    readoutSplit: 'I₀ = I₁ + I₂',
+    readoutParallelV: 'U₁ = U₂ = U (supply voltage)',
+    tipResistor: { formula: 'I = U / R', principle: 'A fixed resistor keeps constant resistance; current is proportional to the voltage across it (Ohm\'s law)' },
+    tipBulb: { formula: 'R = U / I', principle: 'Filament resistance rises with temperature — a dynamic (non-linear) element' },
+    tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: 'A rheostat divides voltage in series, controlling the voltage across the element (voltage control + circuit protection)' },
+    tipAmmeter: { formula: 'I = U / R', principle: 'An ammeter connects in series and measures the current through the element' },
+    tipVoltmeter: { formula: 'U = I × R', principle: 'A voltmeter connects in parallel and measures the voltage across the element' },
+    tipParallelBranch: { formula: 'U₁ = U₂ = U', principle: 'In parallel, every branch shares the same voltage — equal to the supply voltage' },
+    tipParallelSplit: { formula: 'I₀ = I₁ + I₂', principle: 'The main-line current equals the sum of branch currents (parallel splitting)' },
+    tipSeriesCurrent: { formula: 'I = I₁ = I₂', principle: 'In series, the current is the same everywhere' },
+    tipSeriesVoltage: { formula: 'U = U₁ + U₂', principle: 'In series, the total voltage is the sum of the element voltages (division)' },
     meterHint: 'Drag ammeter (A) onto a wire for current, voltmeter (V) across a component for voltage',
     meterAmmeterErr: 'An ammeter cannot be connected in parallel across a component — its tiny internal resistance would short-circuit it! It must be in series on a wire.',
     meterVoltmeterErr: 'A voltmeter must be connected in parallel across a component, not in series on a wire.',
@@ -140,6 +164,12 @@ export default function Circuits() {
 
   const [stage, setStage] = useState<Stage>('predict');
   const [styleId, setStyleId] = useState<CircuitStyleId>('series2');
+  // 电路元件公式浮层（SOP 教学增强）：hover/focus 元件显示公式+代入+原理
+  const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
+  const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTip({ x: r.left + r.width / 2, y: r.top + r.height / 2, ...t });
+  };
   const [predIdx, setPredIdx] = useState<number | null>(null);
   const [u, setU] = useState(6);
   const [rValues, setRValues] = useState<number[]>(() => CIRCUIT_STYLES[0].elements.map((e) => e.r));
@@ -182,7 +212,7 @@ export default function Circuits() {
     setU(cfg.id === 'parallelHouse' ? 220 : 6);
     // 固定电表/保险丝样式：A 探针初始放干路左段，避免与符号重叠
     setMeterA({ id: cfg.fuse || cfg.fixedMeters ? 'dry-left' : 'dry-mid', x: cfg.fuse || cfg.fixedMeters ? 50 : 125, y: 60 });
-    setMeterV({ id: 'battery', x: 72, y: 100 });
+    setMeterV(cfg.kind === 'parallel' ? { id: 'bus', x: 290, y: 150 } : { id: 'e0', x: 200, y: 60 });
     setMeterErr(null);
   };
 
@@ -357,16 +387,16 @@ export default function Circuits() {
             {/* 表盘：电路图上方（A/V 表显）；家庭电路显示干路电流与 L-N 电压，其余跟随探针吸附测点 */}
             <div className="mb-2 flex items-start justify-center gap-6">
               <MeterGauge
-                value={isHouse ? i0 : gaugeValue('current', meterA)}
+                value={isHouse || style.fixedMeters ? i0 : gaugeValue('current', meterA)}
                 max={gaugeMax('current', meterA)}
                 unit="A"
-                label={isHouse ? t.readoutI0 : gaugeLabel('current')}
+                label={isHouse ? t.readoutI0 : style.fixedMeters ? t.readoutSplit : gaugeLabel('current')}
               />
               <MeterGauge
-                value={isHouse ? u : gaugeValue('voltage', meterV)}
+                value={isHouse || style.fixedMeters ? u : gaugeValue('voltage', meterV)}
                 max={gaugeMax('voltage', meterV)}
                 unit="V"
-                label={isHouse ? 'L–N' : gaugeLabel('voltage')}
+                label={isHouse ? 'L–N' : style.fixedMeters ? t.readoutParallelV : gaugeLabel('voltage')}
               />
             </div>
             <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
@@ -388,15 +418,20 @@ export default function Circuits() {
                 {/* 电池支路竖线：正极段(60→70) 与负极段(82→140)，电池符号填补 70-82 间隙 */}
                 <line x1={BATT_X} y1="60" x2={BATT_X} y2="70" />
                 <line x1={BATT_X} y1="82" x2={BATT_X} y2="140" />
-                {/* 电压表并联引线 */}
-                {topo.vLeads.map((l, i) => (
-                  <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
-                ))}
                 {/* 主回路导线 */}
                 {topo.wires.map((w) => (
                   <line key={w.id} x1={w.x1} y1={w.y1} x2={w.x2} y2={w.y2} />
                 ))}
               </g>
+
+              {/* 并联节点圆点：分流点 (NODE_X,60) 与汇合点 (RIGHT_X, 各支路 y) —— 教科书 T 形连接标记 */}
+              {!isSeries &&
+                topo.branchYs.map((y, i) => (
+                  <g key={`node${i}`} fill="var(--fg)">
+                    <circle cx={135} cy={60} r="2.6" />
+                    <circle cx={290} cy={y} r="2.6" />
+                  </g>
+                ))}
 
               {/* 保险丝（家庭电路：干路） */}
               {style.fuse && <Fuse x={122} y={60} />}
@@ -437,7 +472,15 @@ export default function Circuits() {
               {/* 元件：串联链 / 并联支路 */}
               {isSeries
                 ? style.elements.map((e, i) => (
-                    <g key={`elm${i}`}>
+                    <g
+                      key={`elm${i}`}
+                      tabIndex={0}
+                      onMouseEnter={(ev) => showTip(ev, { name: e.label, formula: t.tipSeriesCurrent.formula, substitution: `I = ${u}V ÷ ${totalR}Ω = ${i0.toFixed(2)}A`, principle: t.tipSeriesCurrent.principle })}
+                      onMouseLeave={() => setTip(null)}
+                      onFocus={(ev) => showTip(ev, { name: e.label, formula: t.tipSeriesCurrent.formula, substitution: `I = ${u}V ÷ ${totalR}Ω = ${i0.toFixed(2)}A`, principle: t.tipSeriesCurrent.principle })}
+                      onBlur={() => setTip(null)}
+                      className="outline-none"
+                    >
                       {e.kind === 'bulb' ? (
                         <Bulb cx={e.x} cy={60} glow={glowOf(i)} label={`${e.label}=${effR[i]}Ω`} labelY={80} />
                       ) : (
@@ -450,7 +493,15 @@ export default function Circuits() {
                     // 第三支路（y=160）下方被回流线(y=180)占据：标签放灯上方；其余放下方
                     const labelY = y >= 140 ? y - 20 : y + 22;
                     return (
-                      <g key={`elmp${i}`}>
+                      <g
+                        key={`elmp${i}`}
+                        tabIndex={0}
+                        onMouseEnter={(ev) => showTip(ev, { name: e.label, formula: t.tipParallelBranch.formula, substitution: `U₁ = U₂ = ${u}V`, principle: t.tipParallelBranch.principle })}
+                        onMouseLeave={() => setTip(null)}
+                        onFocus={(ev) => showTip(ev, { name: e.label, formula: t.tipParallelBranch.formula, substitution: `U₁ = U₂ = ${u}V`, principle: t.tipParallelBranch.principle })}
+                        onBlur={() => setTip(null)}
+                        className="outline-none"
+                      >
                         <Bulb
                           cx={200}
                           cy={y}
@@ -462,16 +513,9 @@ export default function Circuits() {
                     );
                   })}
 
-              {/* 固定电表（并-3 三电流表：干路 A₀ + 支路 A₁/A₂） */}
-              {style.fixedMeters && (
-                <>
-                  <FixedMeter x={125} y={60} glyph="A" reading={i0.toFixed(2)} unit="A" />
-                  <FixedMeter x={250} y={topo.branchYs[0]} glyph="A" reading={branchI[0].toFixed(2)} unit="A" />
-                  <FixedMeter x={250} y={topo.branchYs[1]} glyph="A" reading={branchI[1].toFixed(2)} unit="A" />
-                </>
-              )}
-
-              {/* 可拖动电表探针 */}
+              {/* 可拖动电表探针：三电流表样式（fixedMeters）隐藏——固定表 A₀/A₁/A₂ 已覆盖测量，避免与探针重复 */}
+              {!style.fixedMeters && (
+              <>
               <MeterProbe
                 kind="current"
                 glyph="A"
@@ -504,6 +548,8 @@ export default function Circuits() {
                 }}
                 initial={{ x: 72, y: 100 }}
               />
+              </>
+              )}
 
               {/* 电流小点：每条路径用自己的电流（串联 i0；并联各支路） */}
               {topo.flowPaths.map((p, pi) => {
@@ -531,6 +577,45 @@ export default function Circuits() {
               })}
               </>
               )}
+              {/* 固定电表（并-3 三电流表：干路 A₀ + 支路 A₁/A₂） */}
+              {style.fixedMeters && (
+                <>
+                  {/* A₀ 干路电流表：x=122 串联在干路导线上（开关右端 110 与分叉节点 135 之间，表身骑跨 y=60 导线）；读数朝上（y=40 上方无导线，零压线） */}
+                  <g
+                    tabIndex={0}
+                    onMouseEnter={(ev) => showTip(ev, { name: 'A₀', formula: t.tipParallelSplit.formula, substitution: `I₀ = ${branchI[0].toFixed(2)}A + ${branchI[1].toFixed(2)}A = ${i0.toFixed(2)}A`, principle: t.tipParallelSplit.principle })}
+                    onMouseLeave={() => setTip(null)}
+                    onFocus={(ev) => showTip(ev, { name: 'A₀', formula: t.tipParallelSplit.formula, substitution: `I₀ = ${branchI[0].toFixed(2)}A + ${branchI[1].toFixed(2)}A = ${i0.toFixed(2)}A`, principle: t.tipParallelSplit.principle })}
+                    onBlur={() => setTip(null)}
+                    className="outline-none"
+                  >
+                    <FixedMeter x={122} y={60} glyph="A" label="A₀" reading={i0.toFixed(2)} unit="A" readoutDir="up" />
+                  </g>
+                  {/* A₁/A₂ 支路电流表：读数方向避让相邻导线（A₁ 朝上避开第二条支路 y=140，A₂ 朝下距回流线 180 为 17px） */}
+                  <g
+                    tabIndex={0}
+                    onMouseEnter={(ev) => showTip(ev, { name: 'A₁', formula: 'I₁ = U ÷ R₁', substitution: `I₁ = ${u}V ÷ ${effR[0]}Ω = ${branchI[0].toFixed(2)}A`, principle: t.tipAmmeter.principle })}
+                    onMouseLeave={() => setTip(null)}
+                    onFocus={(ev) => showTip(ev, { name: 'A₁', formula: 'I₁ = U ÷ R₁', substitution: `I₁ = ${u}V ÷ ${effR[0]}Ω = ${branchI[0].toFixed(2)}A`, principle: t.tipAmmeter.principle })}
+                    onBlur={() => setTip(null)}
+                    className="outline-none"
+                  >
+                    <FixedMeter x={250} y={topo.branchYs[0]} glyph="A" label="A₁" reading={branchI[0].toFixed(2)} unit="A" readoutDir="up" />
+                  </g>
+                  <g
+                    tabIndex={0}
+                    onMouseEnter={(ev) => showTip(ev, { name: 'A₂', formula: 'I₂ = U ÷ R₂', substitution: `I₂ = ${u}V ÷ ${effR[1]}Ω = ${branchI[1].toFixed(2)}A`, principle: t.tipAmmeter.principle })}
+                    onMouseLeave={() => setTip(null)}
+                    onFocus={(ev) => showTip(ev, { name: 'A₂', formula: 'I₂ = U ÷ R₂', substitution: `I₂ = ${u}V ÷ ${effR[1]}Ω = ${branchI[1].toFixed(2)}A`, principle: t.tipAmmeter.principle })}
+                    onBlur={() => setTip(null)}
+                    className="outline-none"
+                  >
+                    <FixedMeter x={250} y={topo.branchYs[1]} glyph="A" label="A₂" reading={branchI[1].toFixed(2)} unit="A" />
+                  </g>
+                </>
+              )}
+
+              
             </svg>
             {!switchOn && <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>}
             <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
@@ -821,6 +906,7 @@ export default function Circuits() {
           )}
         </div>
       </div>
+      {tip && <CircuitTooltip x={tip.x} y={tip.y} formula={tip.formula} substitution={tip.substitution} principle={tip.principle} name={tip.name} />}
     </div>
   );
 }
