@@ -14,7 +14,7 @@ import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
 import DailyQuote from '../components/ui/DailyQuote';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
-import { labsForSubject, labs } from '../lib/labs';
+import { labsForSubject, labs, labCategories, type LabCategoryId } from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
@@ -22,6 +22,8 @@ export default function HomePage() {
   const { t, lang } = useApp();
   const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
+  // 学科展开的领域分类 tab（默认第一个分类；切换学科时重置）
+  const [activeCategory, setActiveCategory] = useState<LabCategoryId | null>(null);
 
   // 随机探索：从全部实验 + 工具（周期表/物理常量/数学公式）中随机选一个进入
   const randomExplore = () => {
@@ -71,9 +73,12 @@ export default function HomePage() {
               onClick={() => {
                 const next = activeSubject === subject.id ? null : subject.id;
                 setActiveSubject(next);
-                if (next) scrollToLabList();
+                if (next) {
+                  setActiveCategory(labCategories[next][0].id);
+                  scrollToLabList();
+                }
               }}
-              className={`group border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col text-left transition-all duration-300 ${
+              className={`group border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center sm:items-start sm:text-left transition-all duration-300 ${
                 isActive
                   ? 'border-[var(--fg)]'
                   : 'border-[var(--border)] hover:border-[var(--fg)] opacity-60 hover:opacity-100'
@@ -92,9 +97,9 @@ export default function HomePage() {
               <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] mono-font mb-1 sm:mb-3">
                 {lang === 'zh' ? subject.gradeZh : subject.gradeEn}
               </span>
-              {/* 状态与说明：桌面显示，移动端隐藏（三列窄卡精简） */}
-              <div className="hidden sm:flex flex-col space-y-1">
-                <span className="text-[11px] text-[var(--muted)] sans-font leading-relaxed">{meta.note}</span>
+              {/* 内容清单：桌面显示（移动端隐藏），最多两行超出省略；hover 可看完整清单；min-h 保证三科卡片等高 */}
+              <div className="hidden sm:flex flex-col space-y-1 min-h-[2.6rem]">
+                <span title={meta.note} className="text-[11px] text-[var(--muted)] sans-font leading-relaxed line-clamp-2">{meta.note}</span>
               </div>
             </button>
           );
@@ -106,9 +111,9 @@ export default function HomePage() {
         <button
           type="button"
           onClick={randomExplore}
-          className="inline-flex items-center justify-center gap-2.5 sm:gap-2 px-6 py-3 sm:px-5 sm:py-2 border border-[var(--border)] text-sm sm:text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
+          className="inline-flex items-center justify-center gap-2.5 sm:gap-2 px-5 py-2.5 sm:px-5 sm:py-2 border border-[var(--border)] text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
         >
-          <Shuffle className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+          <Shuffle className="w-3.5 h-3.5" />
           {t.randomExplore}
         </button>
       </div>
@@ -117,7 +122,10 @@ export default function HomePage() {
       <div id="lab-list" className={`relative ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
-          const labs = labsForSubject(subject.id);
+          const allLabs = labsForSubject(subject.id);
+          const cats = labCategories[subject.id];
+          // 领域过滤：按当前 tab；无 tab 时（防御）显示全部
+          const shownLabs = activeCategory ? allLabs.filter((lab) => lab.category === activeCategory) : allLabs;
           return (
             <div
               key={subject.id}
@@ -128,9 +136,28 @@ export default function HomePage() {
               }`}
               aria-hidden={!isActive}
             >
+              {/* 领域分类 tab（≥2 类才显示；样式沿用书本化小标签，与电路样式切换按钮一致） */}
+              {isActive && cats.length >= 2 && (
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {cats.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setActiveCategory(cat.id)}
+                      className={`text-xs mono-font px-2.5 py-1.5 sm:py-1 border transition-colors ${
+                        activeCategory === cat.id
+                          ? 'border-[var(--fg)] text-[var(--fg)]'
+                          : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+                      }`}
+                    >
+                      {lang === 'zh' ? cat.zh : cat.en}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* 实验网格 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {labs.map((lab) => {
+                {shownLabs.map((lab) => {
                   const Icon = lab.icon;
                   return (
                     <Link
