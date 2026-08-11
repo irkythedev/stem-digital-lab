@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.15.5';
+export const APP_VERSION = '1.16.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.16.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 首页学科实验按领域分类展示：物理分电学/力学/光学，数学分函数/几何，化学分物质变化/金属与酸碱，点击分类快速定位',
+      '[优化] 移动端适配：随机探索按钮更紧凑，学科卡片内容在窄屏下居中显示',
+      '[优化] 学科卡片内容清单最多显示两行，超出部分省略（悬停可看完整列表），三科卡片对齐更整齐',
+    ],
+    en: [
+      '[New] Homepage labs are grouped by domain tabs: Electricity / Mechanics / Optics (physics), Functions / Geometry (math), Matter & Change / Metals & Acids-Bases (chemistry) — tap to filter',
+      '[Improved] Mobile polish: a more compact random-explore button and centered subject-card content on narrow screens',
+      '[Improved] Subject-card listings clamp to two lines with an ellipsis (full list on hover) and the three cards align evenly',
+    ],
+  },
   {
     version: '1.15.5',
     date: '2026-08',

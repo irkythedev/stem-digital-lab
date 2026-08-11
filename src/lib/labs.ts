@@ -42,7 +42,36 @@ export interface LabMeta {
   /** 实验级图标（区分于科目图标） */
   icon: ComponentType<LabIconProps>;
   component: ComponentType;
+  /** 领域分类（首页学科展开 tab，按教材领域组织） */
+  category: LabCategoryId;
 }
+
+/** 领域分类 id：函数/几何（数学）、电学/力学/光学（物理）、物质变化/金属与酸碱（化学） */
+export type LabCategoryId =
+  | 'function'
+  | 'geometry'
+  | 'electric'
+  | 'mechanics'
+  | 'optics'
+  | 'matterChange'
+  | 'metalAcid';
+
+/** 各学科的分类顺序表（首页 tab 显示顺序；分类数 ≥2 时显示 tab 行） */
+export const labCategories: Record<SubjectId, { id: LabCategoryId; zh: string; en: string }[]> = {
+  math: [
+    { id: 'function', zh: '函数', en: 'Functions' },
+    { id: 'geometry', zh: '几何', en: 'Geometry' },
+  ],
+  physics: [
+    { id: 'electric', zh: '电学', en: 'Electricity' },
+    { id: 'mechanics', zh: '力学', en: 'Mechanics' },
+    { id: 'optics', zh: '光学', en: 'Optics' },
+  ],
+  chemistry: [
+    { id: 'matterChange', zh: '物质变化', en: 'Matter & Change' },
+    { id: 'metalAcid', zh: '金属与酸碱', en: 'Metals & Acids/Bases' },
+  ],
+};
 
 export const labs: LabMeta[] = [
   {
@@ -52,6 +81,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究 a、b、c 对抛物线开口与位置的影响', en: 'Explore how a, b, c shape the parabola' },
     icon: ParabolaIcon,
     component: Quadratic,
+    category: 'function',
   },
   {
     id: 'inverse',
@@ -60,6 +90,7 @@ export const labs: LabMeta[] = [
     description: { zh: '观察 k 值变化对双曲线形状与位置的影响', en: 'See how k changes the hyperbola' },
     icon: HyperbolaIcon,
     component: Inverse,
+    category: 'function',
   },
   {
     id: 'linear',
@@ -68,6 +99,7 @@ export const labs: LabMeta[] = [
     description: { zh: '理解 k 与 b 如何决定直线的走向与截距', en: 'Understand how k and b define a line' },
     icon: LinearIcon,
     component: Linear,
+    category: 'function',
   },
   {
     id: 'ohm',
@@ -76,6 +108,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究电流与电压、电阻的定量关系', en: 'Explore I = U/R through interactive circuits' },
     icon: OhmIcon,
     component: Ohm,
+    category: 'electric',
   },
   {
     id: 'circuits',
@@ -84,6 +117,7 @@ export const labs: LabMeta[] = [
     description: { zh: '对比串联与并联的电流、电压分配规律', en: 'Compare current and voltage in series vs parallel' },
     icon: CircuitsIcon,
     component: Circuits,
+    category: 'electric',
   },
   {
     id: 'lens',
@@ -92,6 +126,7 @@ export const labs: LabMeta[] = [
     description: { zh: '调节物距，观察倒立/正立、放大/缩小的像', en: 'Adjust object distance to see real and virtual images' },
     icon: LensIcon,
     component: Lens,
+    category: 'optics',
   },
   {
     id: 'circle',
@@ -100,6 +135,7 @@ export const labs: LabMeta[] = [
     description: { zh: '拖拽验证垂径定理、圆周角定理与直径对直角', en: 'Drag to verify chord and inscribed angle theorems' },
     icon: CircleIcon,
     component: Circle,
+    category: 'geometry',
   },
   {
     id: 'mass-conservation',
@@ -108,6 +144,7 @@ export const labs: LabMeta[] = [
     description: { zh: '三个方案对比验证化学反应前后质量不变', en: 'Three experiments proving mass is conserved' },
     icon: MassIcon,
     component: MassConservation,
+    category: 'matterChange',
   },
   {
     id: 'neutralization',
@@ -116,6 +153,7 @@ export const labs: LabMeta[] = [
     description: { zh: '滴定实验观察 pH 突跃与指示剂颜色变化', en: 'Titrate to see the pH jump and indicator color shift' },
     icon: NeutralizationIcon,
     component: Neutralization,
+    category: 'metalAcid',
   },
   {
     id: 'buoyancy',
@@ -124,6 +162,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究阿基米德原理：浮力与排开液体体积、液体密度的关系', en: 'Explore Archimedes\' principle: buoyancy vs displaced volume and liquid density' },
     icon: BuoyancyIcon,
     component: Buoyancy,
+    category: 'mechanics',
   },
   {
     id: 'lever',
@@ -132,6 +171,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究杠杆的平衡条件 F₁l₁=F₂l₂，认识省力/费力/等臂杠杆', en: 'Explore the lever balance condition F₁l₁=F₂l₂ and effort-saving/requiring levers' },
     icon: LeverIcon,
     component: Lever,
+    category: 'mechanics',
   },
   {
     id: 'pressure',
@@ -140,6 +180,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究压强 p=F/S 与压力、受力面积的关系', en: 'Explore pressure p=F/S vs force and contact area' },
     icon: PressureIcon,
     component: Pressure,
+    category: 'mechanics',
   },
   {
     id: 'pulley',
@@ -148,6 +189,7 @@ export const labs: LabMeta[] = [
     description: { zh: '探究定滑轮与动滑轮的特点', en: 'Explore fixed and movable pulleys' },
     icon: PulleyIcon,
     component: Pulley,
+    category: 'mechanics',
   },
   {
     id: 'electrolysis',
@@ -156,6 +198,7 @@ export const labs: LabMeta[] = [
     description: { zh: '电解水观察正氧负氢，体积比 2:1，探究水的组成', en: 'Electrolyze water to see O₂ and H₂ in a 2:1 ratio and explore water\'s composition' },
     icon: ElectrolysisIcon,
     component: Electrolysis,
+    category: 'matterChange',
   },
   {
     id: 'metal-activity',
@@ -164,6 +207,7 @@ export const labs: LabMeta[] = [
     description: { zh: '置换反应验证 Al > Cu > Ag 的金属活动性顺序', en: 'Use displacement reactions to verify the activity order Al > Cu > Ag' },
     icon: MetalIcon,
     component: MetalActivity,
+    category: 'metalAcid',
   },
 ];
 
