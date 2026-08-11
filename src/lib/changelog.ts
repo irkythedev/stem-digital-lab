@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.16.0';
+export const APP_VERSION = '1.16.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.16.1',
+    date: '2026-08',
+    zh: [
+      '[新增] 页脚作者旁新增邮箱入口：点击调起本地邮件客户端，可直接给作者发邮件',
+    ],
+    en: [
+      '[New] An email entry next to the author in the footer: one tap opens your mail app to email the author directly',
+    ],
+  },
   {
     version: '1.16.0',
     date: '2026-08',
