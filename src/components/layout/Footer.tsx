@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
-import { Share2, FolderKanban } from 'lucide-react';
+import { Share2, FolderKanban, Mail } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -37,6 +37,15 @@ export default function Footer() {
             className="flex-shrink-0"
           />
           <span className="font-bold text-[var(--fg)]">{t.author}</span>
+        </a>
+        {/* 邮箱：点击调起本地邮件客户端给作者发邮件 */}
+        <a
+          href="mailto:king4g@yeah.net"
+          aria-label={t.emailAuthor}
+          title={t.emailAuthor}
+          className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+        >
+          <Mail className="w-3.5 h-3.5" />
         </a>
         <span className="hidden sm:inline text-[var(--border)]" aria-hidden="true">
           /
