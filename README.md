@@ -112,7 +112,9 @@ src/
 ├── labs/              # 实验组件（math / physics / chemistry）
 ├── components/
 │   ├── lab/           # 共享实验原语（坐标平面/表盘/反馈面板等）
+│   │   └── circuit/   # 电路部件（电阻/灯泡/变阻器/电表等 SVG）
 │   ├── layout/        # 外壳（Header / Footer）
+│   ├── ai/            # AI 学习助手（面板/问 AI 按钮）
 │   ├── feedback/      # 反馈气泡与面板 / 分享对话框
 │   ├── share/         # 标题内嵌分享按钮
 │   └── ui/            # 通用 UI（科目/实验图标、公式、占位页）
@@ -122,7 +124,7 @@ src/
 
 ### 反馈
 
-右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信（Server酱推送）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
+右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
 
 ### 许可
 
@@ -230,7 +232,9 @@ src/
 ├── labs/              # Lab components (math / physics / chemistry)
 ├── components/
 │   ├── lab/           # Shared primitives (coord plane / gauges / feedback)
+│   │   └── circuit/   # Circuit parts (resistor / bulb / rheostat / meters)
 │   ├── layout/        # Shell (Header / Footer)
+│   ├── ai/            # AI assistant (panel / ask buttons)
 │   ├── feedback/      # Feedback FAB & panel / share dialog
 │   ├── share/         # Inline share button
 │   └── ui/            # Generic UI (subject/lab icons, formula, placeholders)
@@ -240,7 +244,7 @@ src/
 
 ### Feedback
 
-A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat via Server酱; while offline or on network errors it is queued locally and retried automatically. No account is required.
+A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat in real time; while offline or on network errors it is queued locally and retried automatically. No account is required.
 
 ### License
 
