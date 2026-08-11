@@ -291,11 +291,17 @@ export default function AiAssistant() {
 
   if (!open) return null;
 
+  // 面板位置：记忆的 pos 若超出当前视口（如桌面拖动保存后切到小屏/移动端），回退右上默认位置
+  const safePos =
+    pos && typeof window !== 'undefined' && pos.x >= 8 && pos.y >= 8 && pos.x < window.innerWidth - 120 && pos.y < window.innerHeight - 80
+      ? pos
+      : null;
+
   return (
     <div
       ref={panelRef}
       className="fixed z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col"
-      style={pos ? { left: pos.x, top: pos.y } : { top: '3.5rem', right: '1rem' }}
+      style={safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }}
       role="dialog"
       aria-label="AI assistant"
     >
