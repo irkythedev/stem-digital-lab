@@ -22,31 +22,34 @@ export default function Footer() {
   return (
     <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200">
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
-        <a
-          href="https://irky.dev/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center space-x-1.5 hover:opacity-80 transition-opacity"
-          title="irky.dev"
-        >
-          <img
-            src="https://irky.dev/img/icons/pubg-helmet.png"
-            alt="irky.dev favicon"
-            width="14"
-            height="14"
-            className="flex-shrink-0"
-          />
-          <span className="font-bold text-[var(--fg)]">{t.author}</span>
-        </a>
-        {/* 邮箱：点击调起本地邮件客户端给作者发邮件 */}
-        <a
-          href="mailto:king4g@yeah.net"
-          aria-label={t.emailAuthor}
-          title={t.emailAuthor}
-          className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-        >
-          <Mail className="w-3.5 h-3.5" />
-        </a>
+        {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
+        <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
+          <a
+            href="https://irky.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-1.5 hover:opacity-80 transition-opacity"
+            title="irky.dev"
+          >
+            <img
+              src="https://irky.dev/img/icons/pubg-helmet.png"
+              alt="irky.dev favicon"
+              width="14"
+              height="14"
+              className="flex-shrink-0"
+            />
+            <span className="font-bold text-[var(--fg)]">{t.author}</span>
+          </a>
+          {/* 邮箱：点击调起本地邮件客户端给作者发邮件 */}
+          <a
+            href="mailto:king4g@yeah.net"
+            aria-label={t.emailAuthor}
+            title={t.emailAuthor}
+            className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+          </a>
+        </span>
         <span className="hidden sm:inline text-[var(--border)]" aria-hidden="true">
           /
         </span>

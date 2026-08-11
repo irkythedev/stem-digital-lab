@@ -113,6 +113,7 @@ export default function GuidePage() {
             ))}
           </ul>
         </section>
+
       </div>
     </main>
   );
