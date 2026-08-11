@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.17.0';
+export const APP_VERSION = '1.17.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.17.1',
+    date: '2026-08',
+    zh: [
+      '[修复] 修复 AI 学习助手面板在移动端打开时可能出现在屏幕外的问题：面板位置自动适配当前屏幕',
+    ],
+    en: [
+      '[Fixed] The AI assistant panel no longer opens off-screen on mobile — its position now adapts to the current viewport',
+    ],
+  },
   {
     version: '1.17.0',
     date: '2026-08',
