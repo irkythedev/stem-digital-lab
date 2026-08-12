@@ -439,7 +439,7 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     quote: { zh: '天之生人也，与草木无异。若遗留一二有用事业，与草木同生，即不与草木同腐。', en: 'People are born like grass and trees; if we leave behind one or two useful deeds, we live on with the grass and trees and do not rot with them.' },
     story: { zh: '张謇是清末状元，却弃官回南通兴办实业与教育：创办大生纱厂、通州师范学校（中国第一所师范学校）、南通博物苑（中国第一座博物馆），提出“父教育而母实业”的主张。', en: 'Zhang Jian was a Number One Scholar of the late Qing who gave up office to build industry and education in Nantong: the Dasheng Cotton Mill, Tongzhou Normal School (China\'s first), and Nantong Museum (China\'s first) — guided by his belief that education is the father and industry the mother of a nation.' },
     isChinese: true,
-    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（一个人，影响一座城百年）', en: '100 Years Echo · Jianghai Tides (one man, a century, one city)' } },
   },
   {
     id: 'zhangjian2',
@@ -449,7 +449,7 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     quote: { zh: '愿成一分一毫有用之事，不愿居八命九命可耻之官。', en: 'I would rather accomplish the smallest useful deed than hold the most dishonourable office.' },
     story: { zh: '张謇中状元后毅然辞官，把心血倾注在“实业救国、教育救国”上。南通人至今仍感念他——江海平原上的学校、博物馆、水利工程，处处留有他的印记。', en: 'After winning the top imperial examination, Zhang resigned his post and devoted himself to saving the nation through industry and education. Nantong still remembers him — schools, museums and waterworks across the land bear his mark.' },
     isChinese: true,
-    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（一个人，影响一座城百年）', en: '100 Years Echo · Jianghai Tides (one man, a century, one city)' } },
   },
   {
     id: 'zhangjian3',
@@ -459,7 +459,7 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     quote: { zh: '一个人办一县事，要有一省的眼光；办一省事，要有一国的眼光；办一国事，要有世界的眼光。', en: 'To run one county, see the whole province; to run a province, see the whole nation; to run a nation, see the whole world.' },
     story: { zh: '张謇的目光从不局限在一家纱厂：他先后创办纺织、垦牧、航运、盐业等 20 多个企业，形成以大生纱厂为核心的近代民族工业集团，还把视野投向长江口垦牧与教育普及。', en: 'Zhang never limited his vision to one mill: he built more than 20 enterprises in textiles, reclamation, shipping and salt, forming the Dasheng industrial group — and looked far beyond, to coastal reclamation and universal education.' },
     isChinese: true,
-    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（一个人，影响一座城百年）', en: '100 Years Echo · Jianghai Tides (one man, a century, one city)' } },
   },
   {
     id: 'zhangjian4',
@@ -469,6 +469,6 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     quote: { zh: '实业与教育，迭相为用。', en: 'Industry and education serve each other in turn.' },
     story: { zh: '张謇把纱厂利润投入办学，一生创办 370 多所学校，从师范、小学到纺织专门学校——用实业的钱办教育，用教育的人办实业，是他“父教育而母实业”的完整实践。', en: 'Zhang poured mill profits into schooling and founded more than 370 schools, from normal schools and primary schools to a textile college — using industry to fund education and educated people to run industry.' },
     isChinese: true,
-    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（点击了解张謇与南通文脉）', en: '100 Years Echo · Jianghai Tides (Zhang Jian & Nantong heritage)' } },
+    link: { url: 'https://100ye.irky.dev/', icon: '/easter-100ye.svg', title: { zh: '百年回响 · 江海潮声（一个人，影响一座城百年）', en: '100 Years Echo · Jianghai Tides (one man, a century, one city)' } },
   },
 ];

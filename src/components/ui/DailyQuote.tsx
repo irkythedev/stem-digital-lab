@@ -196,7 +196,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
               {lang === 'zh' ? '前往外部网站' : 'Open external site'}
             </h3>
             <p className="text-xs serif-font leading-relaxed text-[var(--fg)] mb-4">
-              {lang === 'zh' ? '即将打开「百年回响 · 江海潮声」（100ye.irky.dev），了解张謇与南通文脉。继续？' : 'This opens "100 Years Echo · Jianghai Tides" (100ye.irky.dev) — Zhang Jian and the cultural heritage of Nantong. Continue?'}
+              {lang === 'zh' ? '即将打开「百年回响 · 江海潮声」（100ye.irky.dev）——一个人，何以让一座城百年铭记。继续？' : 'This opens "100 Years Echo · Jianghai Tides" (100ye.irky.dev) — how can one man be remembered by a city for a century? Continue?'}
             </p>
             <div className="flex items-center justify-end gap-2">
               <button
