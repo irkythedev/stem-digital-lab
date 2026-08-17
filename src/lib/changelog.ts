@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.17.3';
+export const APP_VERSION = '1.18.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.18.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 元素周期表跟读新增男声，可在中考跟读面板一键切换，默认女生',
+    ],
+    en: [
+      '[New] Period-table reciting gains a male voice — switch in the recite panel, female by default',
+    ],
+  },
   {
     version: '1.17.3',
     date: '2026-08',
