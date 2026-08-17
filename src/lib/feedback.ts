@@ -1,9 +1,9 @@
 /**
- * 反馈存储：Server酱微信推送（无后端，前端直连）+ 本地队列兜底。
+ * 反馈存储：钉钉群机器人推送（SCF 云函数转发，未配置时回退 Server酱微信）+ 本地队列兜底。
  * 推送成功 → 删除本地记录；失败（离线/未配置/网络异常）→ 留在本地，
- * 下次打开页面自动重试补传。教师微信实时收到反馈。
+ * 下次打开页面自动重试补传。教师手机（钉钉/微信）实时收到反馈。
  */
-import { isServerChanConfigured, SERVERCHAN_CONFIG } from './serverchan-config';
+import { isServerChanConfigured, isDingtalkProxyConfigured, SERVERCHAN_CONFIG, DINGTALK_PROXY } from './serverchan-config';
 
 export type FeedbackType = 'experiment' | 'project';
 export type FeedbackRating = 'helpful' | 'neutral' | 'not-helpful';
@@ -87,8 +87,14 @@ function formatPushContent(record: FeedbackRecord): string {
   return lines.join('\n');
 }
 
-/** 提交单条反馈到 Server酱微信推送。返回 true=推送成功 */
+/**
+ * 提交单条反馈：优先钉钉通道（SCF 云函数转发 → 钉钉群机器人），
+ * 未配置时回退 Server酱微信推送。返回 true=推送成功。
+ */
 export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean> {
+  if (isDingtalkProxyConfigured()) {
+    return submitViaDingtalk(record);
+  }
   if (!isServerChanConfigured()) return false;
   try {
     const res = await fetch(`${SERVERCHAN_CONFIG.apiBase}/${SERVERCHAN_CONFIG.sendKey}.send`, {
@@ -101,6 +107,26 @@ export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean
     });
     if (!res.ok) return false;
     // Server酱成功返回 { code: 0, message: 'ok', ... }
+    const json: unknown = await res.json();
+    const code = (json as { code?: number } | null)?.code;
+    return code === 0;
+  } catch {
+    return false;
+  }
+}
+
+/** 钉钉通道：POST {title, content} 到 SCF 云函数，云函数转发钉钉群机器人 */
+async function submitViaDingtalk(record: FeedbackRecord): Promise<boolean> {
+  try {
+    const res = await fetch(DINGTALK_PROXY.apiBase, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: DINGTALK_PROXY.title,
+        content: formatPushContent(record),
+      }),
+    });
+    if (!res.ok) return false;
     const json: unknown = await res.json();
     const code = (json as { code?: number } | null)?.code;
     return code === 0;
