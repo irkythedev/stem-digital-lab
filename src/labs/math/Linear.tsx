@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
-import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
+import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 
@@ -24,10 +24,10 @@ type Stage = 'predict' | 'explore' | 'conclude';
 type PredictSlope = 'up' | 'down' | 'flat' | null;
 type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
 
-/** 采样一次函数：x ∈ [-6, 6]，y = kx + b */
+/** 采样一次函数：x ∈ [-4, 4]，y = kx + b */
 function sampleLinear(k: number, b: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -6; x <= 6.0001; x += 0.05) {
+  for (let x = -4; x <= 4.0001; x += 0.05) {
     pts.push([x, k * x + b]);
   }
   return pts;
@@ -274,6 +274,14 @@ export default function Linear() {
 
   const curves = [currentCurve, ...pinnedCurves];
 
+  // Manim 式标注：与 y 轴交点（截距点，随 b 上下移动）
+  const markers = useMemo<CoordMarker[]>(
+    (): CoordMarker[] => [
+      { key: 'intercept', dot: { x: 0, y: b, label: `(0, ${Math.round(b * 10) / 10})`, color: 'var(--accent)' } },
+    ],
+    [b],
+  );
+
   const reset = () => {
     setK(TARGET_K);
     setB(TARGET_B);
@@ -419,7 +427,7 @@ export default function Linear() {
               <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
             </div>
           ) : (
-            <CoordPlane curves={curves} xMin={-6} xMax={6} ariaLabel={`y = kx + b graph`} xLabel="x" yLabel="y" />
+            <CoordPlane curves={curves} markers={markers} xMin={-4} xMax={4} ariaLabel={`y = kx + b graph`} xLabel="x" yLabel="y" />
           )}
 
           <div className="border border-[var(--border)] p-4">

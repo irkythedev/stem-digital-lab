@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.18.0';
+export const APP_VERSION = '1.19.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.19.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 圆的性质探究新增分步构造动画，可逐步演示辅助线作法并配合拖拽验证',
+      '[新增] 函数图像可实时标注对称轴、渐近线与顶点，二次函数新增顶点式平移演示',
+      '[优化] 调整函数图像坐标范围，数值更紧凑、图像更舒展',
+    ],
+    en: [
+      '[New] Circle inquiry adds step-by-step construction animation for its three theorems',
+      '[New] Function graphs now highlight axes, asymptotes and vertices live; quadratic adds a vertex-form translation demo',
+      '[Improved] Tighter coordinate ranges make function graphs more compact and comfortable',
+    ],
+  },
   {
     version: '1.18.0',
     date: '2026-08',
