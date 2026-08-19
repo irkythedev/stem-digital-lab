@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
-import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
+import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 
@@ -30,7 +30,7 @@ type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
 /** 采样一条二次函数曲线：x ∈ [-4, 4]，步长 0.05 */
 function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -6; x <= 6.0001; x += 0.05) {
+  for (let x = -4; x <= 4.0001; x += 0.05) {
     pts.push([x, a * x * x + b * x + c]);
   }
   return pts;
@@ -238,6 +238,14 @@ const TARGET_A = -2;
 const TARGET_B = 0;
 const TARGET_C = 3;
 
+/** 顶点式平移动画演示步骤：y=(x-h)²+k 展开为 y=ax²+bx+c（a=1, b=-2h, c=h²+k）。
+ *  按教材「配方法 → 顶点式」思路：先右移 h，再上移 k，曲线用已有插值动画平滑变形 + 顶点/对称轴实时跟随。 */
+const TRANSLATE_STEPS: { a: number; b: number; c: number; zh: string; en: string }[] = [
+  { a: 1, b: 0, c: 0, zh: 'y = x²（基准）', en: 'y = x² (base)' },
+  { a: 1, b: -2, c: 1, zh: 'y = (x−1)² 右移 1', en: 'y = (x−1)² right 1' },
+  { a: 1, b: -2, c: 3, zh: 'y = (x−1)²+2 再上移 2', en: 'y = (x−1)²+2 up 2' },
+];
+
 export default function Quadratic() {
   const { lang } = useApp();
   const t = copy[lang];
@@ -285,6 +293,18 @@ export default function Quadratic() {
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
+
+  // Manim 式标注：对称轴虚线 + 顶点（随 a/b/c 实时移动）；a = 0 退化为直线时不标
+  const markers = useMemo<CoordMarker[]>(() => {
+    if (Math.abs(a) < 1e-9) return [];
+    const r1 = (v: number) => Math.round(v * 10) / 10;
+    const h = -b / (2 * a);
+    const k = a * h * h + b * h + c;
+    return [
+      { key: 'axis', vline: { x: h, label: `x=${r1(h)}`, color: 'var(--accent)' } },
+      { key: 'vertex', dot: { x: h, y: k, label: `(${r1(h)}, ${r1(k)})`, color: 'var(--accent)' } },
+    ];
+  }, [a, b, c]);
 
   const reset = () => {
     setA(TARGET_A);
@@ -440,7 +460,7 @@ export default function Quadratic() {
               <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
             </div>
           ) : (
-            <CoordPlane curves={curves} xMin={-6} xMax={6} ariaLabel={`y = ax² + bx + c graph`} xLabel="x" yLabel="y" />
+            <CoordPlane curves={curves} markers={markers} xMin={-4} xMax={4} ariaLabel={`y = ax² + bx + c graph`} xLabel="x" yLabel="y" />
           )}
 
           <div className="border border-[var(--border)] p-4">
@@ -448,7 +468,39 @@ export default function Quadratic() {
               // {t.readout}
             </h3>
             <p className="text-sm mono-font text-[var(--fg)]">{exprOf(a, b, c)}</p>
-          </div>
+            </div>
+
+            {/* 顶点式平移动画（Manim 式：逐步平移，不自动播放；曲线平滑变形 + 顶点/对称轴实时跟随） */}
+            <div className="border border-[var(--border)] p-3">
+            <div className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)] mb-2">
+              {lang === 'zh' ? '// 顶点式平移' : '// Vertex translation'}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {TRANSLATE_STEPS.map((s, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    setA(s.a);
+                    setB(s.b);
+                    setC(s.c);
+                  }}
+                  className={`px-2.5 py-1.5 text-xs mono-font border transition-colors ${
+                    a === s.a && b === s.b && c === s.c
+                      ? 'border-[var(--fg)] text-[var(--fg)]'
+                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+                  }`}
+                >
+                  {lang === 'zh' ? s.zh : s.en}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] mono-font text-[var(--muted)]">
+              {lang === 'zh'
+                ? '依次点击，观察抛物线如何平移：对称轴 x=h、顶点 (h,k) 跟着走，这正是配方法→顶点式的直观过程'
+                : 'Click through to watch the parabola translate: the axis x=h and vertex (h,k) follow — the picture behind completing the square'}
+            </p>
+            </div>
         </div>
 
         {/* 右列：参数 + 三幕 */}

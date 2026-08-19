@@ -14,7 +14,7 @@ import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
-import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
+import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 
@@ -268,6 +268,15 @@ export default function Inverse() {
 
   const curves = [currentCurve, ...pinnedCurves];
 
+  // Manim 式标注：两条渐近线（x = 0、y = 0，虚线；曲线无限贴近但永不相交）
+  const markers = useMemo<CoordMarker[]>(
+    (): CoordMarker[] => [
+      { key: 'asx', vline: { x: 0, label: lang === 'zh' ? '渐近线' : 'asymptote', color: 'var(--muted)' } },
+      { key: 'asy', hline: { y: 0, color: 'var(--muted)' } },
+    ],
+    [lang],
+  );
+
   const reset = () => setK(TARGET_K);
 
   const redoAll = () => {
@@ -396,7 +405,7 @@ export default function Inverse() {
               <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
             </div>
           ) : (
-            <CoordPlane curves={curves} xMin={-4} xMax={4} ariaLabel={`y = k/x graph`} xLabel="x" yLabel="y" />
+            <CoordPlane curves={curves} markers={markers} xMin={-4} xMax={4} ariaLabel={`y = k/x graph`} xLabel="x" yLabel="y" />
           )}
 
           <div className="border border-[var(--border)] p-4">

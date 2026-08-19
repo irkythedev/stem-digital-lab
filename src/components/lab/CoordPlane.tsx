@@ -4,7 +4,8 @@
  *
  * 通用 SVG 坐标系：网格 + 坐标轴 + 刻度 + 多曲线叠加。
  * 数学坐标 y 向上，内部映射到 SVG（y 翻转）；y 范围未提供时自动适配曲线。
- * 视觉纪律：只用 --fg / --muted / --border，主曲线实线、叠加曲线虚线。
+ * 视觉纪律：只用 --fg / --muted / --border / --accent，主曲线实线、叠加曲线虚线、
+ * 标注层（对称轴/渐近线/顶点等）用 --accent 强调。
  *
  * 动画（#3 描画 + #4 平滑过渡，零依赖，JS rAF）：
  *  - 主曲线首次挂载时从左到右「画出来」（stroke-dashoffset 过渡）
@@ -24,8 +25,23 @@ export interface CoordCurve {
   label?: string;
 }
 
+/**
+ * 标注元素（数学坐标，随参数实时移动；淡入出现）——Manim 式辅助线/特征点：
+ *  - vline: 垂直虚线（如二次对称轴 x=-b/2a、反比例渐近线 x=0）
+ *  - hline: 水平虚线（如反比例渐近线 y=0）
+ *  - dot:   特征点 + 可选标签（如二次顶点、一次截距）
+ */
+export interface CoordMarker {
+  key: string;
+  vline?: { x: number; label?: string; color?: string };
+  hline?: { y: number; label?: string; color?: string };
+  dot?: { x: number; y: number; label?: string; color?: string };
+}
+
 interface CoordPlaneProps {
   curves: CoordCurve[];
+  /** 标注层（对称轴/渐近线/顶点等），随参数实时移动 */
+  markers?: CoordMarker[];
   xMin?: number;
   xMax?: number;
   yMin?: number;
@@ -55,7 +71,6 @@ function AnimatedPolyline({
   width,
   dash,
   drawOnMount,
-  clip,
 }: {
   /** React key（map 内使用） */
   key?: Key;
@@ -66,8 +81,6 @@ function AnimatedPolyline({
   width: number;
   dash?: string;
   drawOnMount?: boolean;
-  /** 绘图区边界 [xMin, xMax, yMin, yMax]（像素），曲线点出界时裁剪到边缘，避免穿出图框 */
-  clip?: [number, number, number, number];
 }) {
   const [display, setDisplay] = useState<[number, number][]>(mathPoints);
   const prevRef = useRef(mathPoints);
@@ -100,6 +113,8 @@ function AnimatedPolyline({
   }, [mathPoints]);
 
   // #3 描画：主曲线首次挂载时「画出来」
+  // 关键：动画结束后必须清除 stroke-dasharray，否则残留旧长度会让曲线
+  // 随路径变长而被「截尾」（只画 [0, 旧L] 段）——这是「曲线显示不全/像被裁剪」的根因
   useEffect(() => {
     if (!drawOnMount || !polyRef.current) return;
     const el = polyRef.current;
@@ -110,9 +125,18 @@ function AnimatedPolyline({
       el.style.transition = `stroke-dashoffset 0.8s ease-out`;
       el.style.strokeDashoffset = '0';
     });
+    // 动画结束后恢复实线全长（清空描边限制），并重置过渡
+    const clearTimer = setTimeout(() => {
+      el.style.strokeDasharray = '';
+      el.style.strokeDashoffset = '';
+      el.style.transition = '';
+    }, 1000);
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(clearTimer);
       el.style.transition = '';
+      el.style.strokeDasharray = '';
+      el.style.strokeDashoffset = '';
     };
   }, [drawOnMount]);
 
@@ -123,10 +147,6 @@ function AnimatedPolyline({
         .map(([x, y]) => {
           const px = sx(x);
           const py = sy(y);
-          if (clip) {
-            const [cx0, cx1, cy0, cy1] = clip;
-            return `${Math.min(Math.max(px, cx0), cx1)},${Math.min(Math.max(py, cy0), cy1)}`;
-          }
           return `${px},${py}`;
         })
         .join(' ')}
@@ -140,6 +160,7 @@ function AnimatedPolyline({
 
 export default function CoordPlane({
   curves,
+  markers = [],
   xMin = -5,
   xMax = 5,
   yMin,
@@ -148,6 +169,8 @@ export default function CoordPlane({
   xLabel,
   yLabel,
 }: CoordPlaneProps) {
+  // 记录上一次目标曲线的 y 范围（动画 from），用于动画期间联合适配防止越界
+  const prevAutoRange = useRef<{ min: number; max: number } | null>(null);
   // 自动 y 范围：覆盖所有曲线（points 或 segments）并留边（不强制对称）
   let autoYMin = Infinity;
   let autoYMax = -Infinity;
@@ -166,9 +189,21 @@ export default function CoordPlane({
   }
   if (!Number.isFinite(autoYMin)) autoYMin = -1;
   if (!Number.isFinite(autoYMax)) autoYMax = 1;
-  const padY = Math.max((autoYMax - autoYMin) * 0.1, 0.5);
-  const effYMin = yMin ?? Math.floor(autoYMin - padY);
-  const effYMax = yMax ?? Math.ceil(autoYMax + padY);
+
+  // 动画期间 y 范围联合「上一次目标曲线」：from∪to，保证曲线变形全程都不越界、不被裁
+  // （坐标只在用户下一次改参时重算，动画进行中保持稳定，不产生跳变）
+  const prevAuto = prevAutoRange.current;
+  const mergeMin = prevAuto ? Math.min(prevAuto.min, autoYMin) : autoYMin;
+  const mergeMax = prevAuto ? Math.max(prevAuto.max, autoYMax) : autoYMax;
+  // 适度 y 留边（12% + 下缘 0.5）：贴合曲线不过度撑大，让 y 刻度保持 1/2/5 nice 步长、数值不虚大；
+  // clip 已移除，靠 merge-union（动画 from∪to）保证不越界
+  const padY = Math.max((mergeMax - mergeMin) * 0.12, 0.6);
+  const effYMin = yMin ?? Math.floor(mergeMin - padY - 0.5);
+  const effYMax = yMax ?? Math.ceil(mergeMax + padY);
+  // commit 后把本次目标曲线范围记为下一次动画的 from
+  useEffect(() => {
+    prevAutoRange.current = { min: autoYMin, max: autoYMax };
+  });
 
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
@@ -203,6 +238,13 @@ export default function CoordPlane({
 
   const zeroX = sx(0);
   const zeroY = sy(0);
+
+  // 标注层首次挂载淡入
+  const [markersIn, setMarkersIn] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMarkersIn(true), 30);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <svg
@@ -294,12 +336,61 @@ export default function CoordPlane({
                 width={width}
                 dash={dash}
                 drawOnMount={i === 0 && si === 0}
-                clip={[PAD.left, W - PAD.right, PAD.top, H - PAD.bottom]}
               />
             ))}
           </g>
         );
       })}
+
+      {/* 标注层（对称轴/渐近线/顶点/截距：虚线 + 特征点，随参数实时移动，淡入出现） */}
+      {markers.length > 0 && (
+        <g style={{ opacity: markersIn ? 1 : 0, transition: 'opacity 400ms ease' }}>
+          {markers.map((m) => (
+            <g key={m.key}>
+              {m.vline != null && (
+                <>
+                  <line
+                    x1={sx(m.vline.x)} y1={PAD.top} x2={sx(m.vline.x)} y2={H - PAD.bottom}
+                    stroke={m.vline.color ?? 'var(--accent)'} strokeWidth="1" strokeDasharray="5 4"
+                  />
+                  {m.vline.label != null && (
+                    <text x={sx(m.vline.x) + 4} y={PAD.top + 4} fontSize="10"
+                      fill={m.vline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
+                      {m.vline.label}
+                    </text>
+                  )}
+                </>
+              )}
+              {m.hline != null && (
+                <>
+                  <line
+                    x1={PAD.left} y1={sy(m.hline.y)} x2={W - PAD.right} y2={sy(m.hline.y)}
+                    stroke={m.hline.color ?? 'var(--accent)'} strokeWidth="1" strokeDasharray="5 4"
+                  />
+                  {m.hline.label != null && (
+                    <text x={PAD.left + 4} y={sy(m.hline.y) + 14} fontSize="10"
+                      fill={m.hline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
+                      {m.hline.label}
+                    </text>
+                  )}
+                </>
+              )}
+              {m.dot != null && (
+                <>
+                  <circle cx={sx(m.dot.x)} cy={sy(m.dot.y)} r={3.5}
+                    fill={m.dot.color ?? 'var(--accent)'} stroke="var(--card-bg)" strokeWidth={1} />
+                  {m.dot.label != null && (
+                    <text x={sx(m.dot.x) + 8} y={sy(m.dot.y) - 8} fontSize="11"
+                      fill={m.dot.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
+                      {m.dot.label}
+                    </text>
+                  )}
+                </>
+              )}
+            </g>
+          ))}
+        </g>
+      )}
 
       {/* 图例（半透明背景矩形避免与曲线/网格重叠） */}
       {curves.length > 0 && (
