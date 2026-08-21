@@ -6,6 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Share2, FolderKanban, Mail } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
@@ -113,16 +114,14 @@ export default function Footer() {
           >
             {t.disclaimerLabel}
           </button>
-          <a
-            href="https://gitee.com/K4Ricky2Win/stem-digital-lab/blob/master/LICENSE"
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            to="/license"
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
             className="underline hover:text-[var(--fg)] transition-colors"
           >
             {t.licenseLabel}
-          </a>
+          </Link>
         </div>
         {showDisclaimer && (
           <span className="max-w-xs normal-case leading-snug">{t.disclaimer}</span>
