@@ -12,7 +12,8 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, FolderKanban, Mail, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calculator, FolderKanban, Mail, MessageSquare, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import SubjectIcon from './SubjectIcon';
 import { APP_VERSION } from '../../lib/changelog';
@@ -76,8 +77,31 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
               {t.brandName}
               <span className="ml-2 text-[10px] mono-font font-normal text-[var(--muted)] align-middle">v{APP_VERSION}</span>
             </h2>
-            <p className="mt-1 text-[10px] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5">
-              {t.welcomeTag}
+            <p className="mt-1 text-[10px] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
+              <span>{t.welcomeTag}</span>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() =>
+                  setPendingWork({
+                    name: 'irky.dev',
+                    url: 'https://irky.dev/',
+                    icon: 'https://irky.dev/img/icons/pubg-helmet.png',
+                    desc: t.authorHomeDesc,
+                  })
+                }
+                title={t.viewAuthor}
+                className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
+              >
+                <img
+                  src="https://irky.dev/img/icons/pubg-helmet.png"
+                  alt=""
+                  width="12"
+                  height="12"
+                  className="flex-shrink-0"
+                />
+                <span className="font-bold">{t.author}</span>
+              </button>
             </p>
           </div>
           <button
@@ -118,7 +142,19 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           </div>
 
           <p className="text-sm leading-relaxed serif-font">{t.welcomeAi}</p>
-          <p className="text-sm leading-relaxed serif-font">{t.welcomeMaintain}</p>
+          <p className="text-sm leading-relaxed serif-font">
+            {t.welcomeMaintainPrefix}
+            <Link
+              to="/license"
+              onClick={close}
+              title="AGPL-3.0"
+              aria-label="AGPL-3.0"
+              className="underline hover:opacity-70 mono-font"
+            >
+              AGPL-3.0
+            </Link>
+            {t.welcomeMaintainSuffix}
+          </p>
 
           {/* 反馈 + 项目主页 icon */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mono-font text-[var(--muted)]">
@@ -127,6 +163,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">
               king4g@yeah.net
             </a>
+            <span>{t.welcomeFeedbackBubble} <MessageSquare className="w-3.5 h-3.5 inline-block" aria-hidden="true" /></span>
             <span>{t.welcomeFeedbackIssue}</span>
             <a
               href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
@@ -154,7 +191,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             </a>
           </div>
 
-          {/* 其他作品（左起）+ 作者（右对齐，下一行）—— 参考页脚样式 */}
+          {/* 其他作品（左起，点击确认后跳转）—— 参考页脚样式 */}
           <div className="flex flex-col gap-1.5 border-t border-[var(--border)] pt-3">
             <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5 text-[var(--muted)]">
@@ -204,30 +241,6 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                 </div>
               </div>
             )}
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  setPendingWork({
-                    name: 'irky.dev',
-                    url: 'https://irky.dev/',
-                    icon: 'https://irky.dev/img/icons/pubg-helmet.png',
-                    desc: t.authorHomeDesc,
-                  })
-                }
-                title={t.viewAuthor}
-                className="flex items-center gap-1.5 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-              >
-                <img
-                  src="https://irky.dev/img/icons/pubg-helmet.png"
-                  alt=""
-                  width="14"
-                  height="14"
-                  className="flex-shrink-0"
-                />
-                <span className="font-bold text-[var(--fg)]">{t.author}</span>
-              </button>
-            </div>
           </div>
         </div>
 
