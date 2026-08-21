@@ -6,11 +6,13 @@
  * 从弹窗 / 页脚的「AGPL-3.0」站内跳转查看，不依赖外网仓库。
  */
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { House } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { AGPL_LICENSE_TEXT } from '../lib/license-text';
 
 export default function LicensePage() {
-  const { lang } = useApp();
+  const { t, lang } = useApp();
   // 动态标签页标题：协议名 - 品牌名（随语言切换），离开恢复默认
   useEffect(() => {
     document.title = `AGPL-3.0 - ${lang === 'zh' ? '数理化数字实验室' : 'Math · Physics · Chemistry Lab'}`;
@@ -19,6 +21,13 @@ export default function LicensePage() {
 
   return (
     <div className="space-y-4">
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+      >
+        <House className="w-4 h-4" />
+        {t.backHome}
+      </Link>
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-bold mono-font tracking-widest">AGPL-3.0</h1>
         <p className="text-[11px] mono-font text-[var(--muted)]">
