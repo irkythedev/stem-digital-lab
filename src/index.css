@@ -228,3 +228,13 @@ input[type="range"]::-moz-range-thumb {
   .animate-tri-spin, .animate-sq-spin, .animate-ci-spin,
   .update-dot, .update-dot-halo { animation: none; }
 }
+
+/* 首开欢迎弹窗：遮罩淡入 + 卡片轻上浮（组件内已按 prefers-reduced-motion 跳过动画） */
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes welcome-rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}

@@ -4,13 +4,14 @@
  *
  * 应用外壳：路由 + 全局 Provider。
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/app-context';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import FeedbackFab from './components/feedback/FeedbackFab';
 import AiAssistant from './components/ai/AiAssistant';
+import WelcomeDialog from './components/ui/WelcomeDialog';
 import { AiProvider } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
 import HomePage from './pages/HomePage';
@@ -42,9 +43,33 @@ export default function App() {
     void flushFeedbackQueue();
   }, []);
 
+  // 首开欢迎弹窗：localStorage 标记 'stem-welcome-seen' 不存在时显示
+  const [showWelcome, setShowWelcome] = useState(false);
+  useEffect(() => {
+    try {
+      if (!window.localStorage.getItem('stem-welcome-seen')) {
+        setShowWelcome(true);
+      }
+    } catch {
+      // 隐私模式等静默跳过
+    }
+  }, []);
+
+  const closeWelcome = (permanent: boolean) => {
+    if (permanent) {
+      try {
+        window.localStorage.setItem('stem-welcome-seen', '1');
+      } catch {
+        // 隐私模式等静默跳过
+      }
+    }
+    setShowWelcome(false);
+  };
+
   return (
     <AppProvider>
       <AiProvider>
+      {showWelcome && <WelcomeDialog onClose={closeWelcome} />}
       <div id="app-main" className="min-h-screen w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
         <SkipLink />
         <Header />
