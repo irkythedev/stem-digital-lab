@@ -3,8 +3,8 @@
 # 数理化数字实验室
 
 ![version](https://img.shields.io/badge/版本-v1.19.2-blue)
-![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![router](https://img.shields.io/badge/React_Router-7-ff4500) ![lucide](https://img.shields.io/badge/lucide--react-0.546-9ca3af)
-![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![vitest](https://img.shields.io/badge/Vitest-3.2-e5cf0a) ![tsx](https://img.shields.io/badge/tsx-4.21-5c6bc0)
+
+技术栈：React 19 · Vite 6 · Tailwind 4 · TypeScript 5.9 · KaTeX · React Router 7 · Vitest
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
 本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
@@ -29,7 +29,8 @@
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
 - 🤖 AI 学习助手（顶栏入口）：配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
-- 💬 首页「每日科学」：每天一位科学家的名言与小故事
+- 📦 可安装为应用离线使用（PWA）
+- 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
 
 ### 实验与工具清单
 
@@ -89,7 +90,7 @@ npm run test       # 运行测试
 
 - 118 个元素完整表格，支持检索（符号/中文/英文）
 - 点击元素查看详情：基础属性（IUPAC 标准原子量 + 不确定度）、百科故事、实物照片（可放大）
-- 中文读音（内置离线语音包，不依赖设备语音包）；**中考跟读**：前 20 号元素、金属活动性顺序、常见元素三清单连读，可调次数与间隔
+- 中文读音（内置离线语音包，支持男 / 女声切换）；**中考跟读**：前 20 号元素、金属活动性顺序、常见元素三清单连读，可调次数与间隔
 - 原子结构示意图：点击电子层查看该层电子数
 
 ### AI 学习助手
@@ -102,7 +103,7 @@ npm run test       # 运行测试
 
 ### 每日科学
 
-- 首页固定板块：每天展示一位科学家的名言与小故事，可一键换一条
+- 首页固定板块：每天展示一位科学家的名言、考点速记与小故事，可一键换一条
 - 中英双语，小故事可折叠展开
 
 ### 项目结构
@@ -124,11 +125,11 @@ src/
 
 ### 反馈
 
-右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者微信；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
+右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者（钉钉 / 微信）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
 
 ### 许可
 
-本项目基于 **GNU Affero General Public License v3 (AGPL-3.0)** 开源（见 `LICENSE` 文件）。你可以自由使用、修改与分发，**但任何衍生作品都必须以 AGPL-3.0 开源**（含通过网络提供的服务），并**保留原作者版权声明**，不允许闭源拿走。
+本项目基于 **GNU Affero General Public License v3 (AGPL-3.0)** 开源（见 `LICENSE` 文件，站内也可直接查看全文：`/license`）。你可以自由使用、修改与分发，**但任何衍生作品都必须以 AGPL-3.0 开源**（含通过网络提供的服务），并**保留原作者版权声明**，不允许闭源拿走。
 
 ### 免责条款
 
@@ -150,7 +151,8 @@ src/
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
 - 🤖 AI assistant (header entry): configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged; single-turn Q&A driven by page buttons (no free-text input), with 2–3 recommended follow-up questions at the end of each answer
-- 💬 Daily Science on the homepage: a scientist quote and short story each day
+- 📦 Installable as an app for offline use (PWA)
+- 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
 
 ### Labs & Tools
 
@@ -210,7 +212,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 
 - All 118 elements with search (symbol / Chinese / English)
 - Tap an element for details: properties (IUPAC standard atomic weights with uncertainty), mini-wiki story, and a real photo (tap to enlarge)
-- Chinese pronunciation with built-in offline audio; **Recite mode**: first 20 elements, activity series, and common elements, with adjustable repeats and gaps
+- Chinese pronunciation with built-in offline audio (male / female voice switch); **Recite mode**: first 20 elements, activity series, and common elements, with adjustable repeats and gaps
 - Bohr diagram: tap a shell to see its electron count
 
 ### AI Assistant
@@ -219,10 +221,11 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 - Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
+- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 2–3 follow-up questions to tap — no free-text input, and no conversation is stored
 
 ### Daily Science
 
-- Fixed block on the homepage: one scientist's quote and short story each day, shuffleable
+- Fixed block on the homepage: a scientist's quote, key-point tips and short story each day, shuffleable
 - Bilingual, with a collapsible story
 
 ### Project Structure
@@ -244,11 +247,11 @@ src/
 
 ### Feedback
 
-A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer’s WeChat in real time; while offline or on network errors it is queued locally and retried automatically. No account is required.
+A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer in real time (DingTalk / WeChat); while offline or on network errors it is queued locally and retried automatically. No account is required.
 
 ### License
 
-This project is open-sourced under the **GNU Affero General Public License v3 (AGPL-3.0)** (see `LICENSE`). You are free to use, modify, and distribute it, **but any derivative work must be open-sourced under AGPL-3.0** (including services offered over a network) and **must retain the original author's copyright notice** — no closed-source forks are allowed.
+This project is open-sourced under the **GNU Affero General Public License v3 (AGPL-3.0)** (see `LICENSE`; the full text is also available in-app at `/license`). You are free to use, modify, and distribute it, **but any derivative work must be open-sourced under AGPL-3.0** (including services offered over a network) and **must retain the original author's copyright notice** — no closed-source forks are allowed.
 
 ### Disclaimer
 
