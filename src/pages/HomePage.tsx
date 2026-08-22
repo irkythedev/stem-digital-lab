@@ -9,6 +9,7 @@
  * 大屏 3 列，中屏 2 列，小屏 1 列。
  */
 import { useState } from 'react';
+import { usePageMeta } from '../lib/use-page-meta';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
 import DailyQuote from '../components/ui/DailyQuote';
@@ -20,6 +21,11 @@ import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
 export default function HomePage() {
   const { t, lang } = useApp();
+  // 路由级 meta（首页默认标题/描述，L3 GEO）
+  usePageMeta({
+    title: `${t.brandName} | STEM Digital Lab`,
+    description: t.description + '。无需登录、中英双语、深浅主题，在线访问 https://stem.irky.dev',
+  });
   const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
   // 学科展开的领域分类 tab（默认第一个分类；切换学科时重置）

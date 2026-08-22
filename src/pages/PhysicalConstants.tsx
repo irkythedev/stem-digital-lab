@@ -8,7 +8,7 @@
  * 数据来自 src/lib/constants.ts（依据 physics_kb 提炼，数值对照教材附录）。
  */
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { House, Search    } from 'lucide-react';;;;
 import { useApp } from '../lib/app-context';
@@ -18,16 +18,24 @@ import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
 import ShareInline from '../components/share/ShareInline';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
 const CATEGORIES: ConstantCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
 
 export default function PhysicalConstants() {
   const { t, lang } = useApp();
-  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
-  useEffect(() => {
-    document.title = `${lang === 'zh' ? '物理常量速查' : 'Physics Constants'} - ${t.brandName}`;
-    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
-  }, [lang, t.brandName]);
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  const pageMeta = useMemo(() => ({
+    title: `${lang === 'zh' ? '物理常量速查' : 'Physics Constants'} - ${t.brandName}`,
+    description: lang === 'zh' ? '常用物理常量速查：光速、引力常数、阿伏伽德罗常数等，按力学/热学/光学/声学/电学分类。' : 'Common physics constants: speed of light, gravitational constant, Avogadro constant, grouped by mechanics/thermal/optics/sound/electricity.',
+    jsonLd: learningResourceLd({
+      name: lang === 'zh' ? '物理常量速查' : 'Physics Constants',
+      description: lang === 'zh' ? '常用物理常量速查：光速、引力常数、阿伏伽德罗常数等，按力学/热学/光学/声学/电学分类。' : 'Common physics constants: speed of light, gravitational constant, Avogadro constant, grouped by mechanics/thermal/optics/sound/electricity.',
+      url: 'https://stem.irky.dev/physics-constants',
+      resourceType: lang === 'zh' ? '速查工具' : 'Reference Tool',
+    }),
+  }), [lang, t.brandName]);
+  usePageMeta(pageMeta);
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicalConstant | null>(null);
   useLockBodyScroll(!!selected);

@@ -6,9 +6,11 @@
  */
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/app-context';
+import { usePageMeta } from '../lib/use-page-meta';
 
 export default function NotFoundPage() {
   const { t } = useApp();
+  usePageMeta({ title: `404 - ${t.brandName}` });
   return (
     <main className="flex-1 flex flex-col items-center justify-center my-16 px-2 sm:px-6 text-center">
       <h1 className="text-4xl serif-font text-[var(--fg)] mb-2">404</h1>

@@ -14,12 +14,17 @@ import { labsForSubject } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
 import SubjectHeading from '../components/layout/SubjectHeading';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
+import { usePageMeta } from '../lib/use-page-meta';
 
 export default function SubjectPage() {
   const { subjectId } = useParams<{ subjectId: string }>();
   const { t, lang } = useApp();
+  const subjectMeta = subjectId ? subjects[subjectId as SubjectId] : undefined;
+  usePageMeta(subjectMeta
+    ? { title: `${t.subjects[subjectMeta.id].title} - ${t.brandName}` }
+    : { title: `${t.pageNotFound} - ${t.brandName}` });
 
-  const subject = subjectId ? subjects[subjectId as SubjectId] : undefined;
+  const subject = subjectMeta;
 
   if (!subject) {
     return (

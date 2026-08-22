@@ -8,7 +8,7 @@
  */
 import { Link, useParams } from 'react-router-dom';
 import { House    } from 'lucide-react';;;;
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
@@ -16,6 +16,7 @@ import AskAiButton from '../components/ai/AskAiButton';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
 export default function LabPage() {
   const { labId } = useParams<{ labId: string }>();
@@ -23,13 +24,26 @@ export default function LabPage() {
 
   const lab = labId ? labMap[labId] : undefined;
   const { setAiCtx } = useAiContext();
-  // 动态标签页标题：实验名 - 品牌名（随语言切换），离开恢复默认
-  useEffect(() => {
-    if (lab) {
-      document.title = `${lab.name[lang]} - ${t.brandName}`;
-      return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
-    }
-  }, [lang, lab, t.brandName]);
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  const pageMeta = useMemo(() => {
+    if (!lab) return null;
+    const url = `https://stem.irky.dev/lab/${lab.id}`;
+    return {
+      title: `${lab.name[lang]} - ${t.brandName}`,
+      description: lang === 'zh'
+        ? `${lab.name.zh}实验：${lab.description.zh}。在线交互探究，无需登录，免费使用。`
+        : `${lab.name.en} lab: ${lab.description.en}. Interactive, no login, free to use.`,
+      jsonLd: learningResourceLd({
+        name: lang === 'zh' ? lab.name.zh : lab.name.en,
+        description: lang === 'zh' ? lab.description.zh : lab.description.en,
+        url,
+        educationalLevel: lang === 'zh'
+          ? `初中 ${subjects[lab.subjectId].gradeZh}`
+          : `Grades ${subjects[lab.subjectId].gradeEn}`,
+      }),
+    };
+  }, [lab, lang, t.brandName]);
+  usePageMeta(pageMeta);
   // AI 上下文：注入当前实验的名称/描述/章节
   useEffect(() => {
     if (lab) {

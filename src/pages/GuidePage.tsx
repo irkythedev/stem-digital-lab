@@ -1,6 +1,7 @@
 /** 使用说明：课堂与个人探究的简明操作指南。 */
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/app-context';
+import { usePageMeta } from '../lib/use-page-meta';
 
 const copy = {
   zh: {
@@ -63,6 +64,7 @@ const copy = {
 
 export default function GuidePage() {
   const { lang } = useApp();
+  usePageMeta({ title: `${lang === 'zh' ? '使用说明' : 'Guide'} - ${lang === 'zh' ? '数理化数字实验室' : 'STEM Digital Lab'}` });
   const c = copy[lang];
   return (
     <main className="flex-1 my-10 px-2 sm:px-6">

@@ -7,7 +7,7 @@
  * 复刻物理常量页交互模型：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
  * 数据来自 src/lib/formulas.ts（依据 math_kb 提炼），公式用 KaTeX 渲染。
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { House, Image as ImageIcon, Search    } from 'lucide-react';;;;
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
@@ -21,6 +21,7 @@ import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
 import FormulaDiagram from '../components/ui/FormulaDiagram';
 import FunctionDiagram from '../components/ui/FunctionDiagram';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
 const CATEGORIES: FormulaCategory[] = ['algebra', 'geometry', 'function', 'stats'];
 
@@ -38,11 +39,18 @@ function renderRich(text: string): ReactNode[] {
 
 export default function MathFormulas() {
   const { t, lang } = useApp();
-  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
-  useEffect(() => {
-    document.title = `${lang === 'zh' ? '数学公式速查' : 'Math Formulas'} - ${t.brandName}`;
-    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
-  }, [lang, t.brandName]);
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  const pageMeta = useMemo(() => ({
+    title: `${lang === 'zh' ? '数学公式速查' : 'Math Formulas'} - ${t.brandName}`,
+    description: lang === 'zh' ? '初中数学公式速查：代数、几何、函数、统计与概率，按人教版教材组织。' : 'Junior-high math formulas: algebra, geometry, functions, statistics & probability, organized by textbook chapters.',
+    jsonLd: learningResourceLd({
+      name: lang === 'zh' ? '数学公式速查' : 'Math Formulas',
+      description: lang === 'zh' ? '初中数学公式速查：代数、几何、函数、统计与概率，按人教版教材组织。' : 'Junior-high math formulas: algebra, geometry, functions, statistics & probability, organized by textbook chapters.',
+      url: 'https://stem.irky.dev/math-formulas',
+      resourceType: lang === 'zh' ? '速查工具' : 'Reference Tool',
+    }),
+  }), [lang, t.brandName]);
+  usePageMeta(pageMeta);
   const [selected, setSelected] = useState<MathFormula | null>(null);
   useLockBodyScroll(!!selected);
   const [query, setQuery] = useState('');

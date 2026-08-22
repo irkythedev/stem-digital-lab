@@ -12,7 +12,7 @@
  * 教材依据：ch03「元素周期表简介」——7 个横行 18 个纵列，金属/非金属/稀有气体
  * 用不同颜色区分，标出相对原子质量；元素周期表是学习和研究化学的重要工具。
  */
-import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { House, Loader2, Pause, Play, Square, Volume2    } from 'lucide-react';;;;
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
@@ -21,6 +21,7 @@ import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
 import ShareInline from '../components/share/ShareInline';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 
 /** 类别 → 配色（教科书三色区分；类金属用中间色）——浅色背景填充 + 同色系边框 */
@@ -69,11 +70,18 @@ const GAP_OPTIONS = [1000, 1800, 2600];
 
 export default function PeriodicTable() {
   const { t, lang } = useApp();
-  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
-  useEffect(() => {
-    document.title = `${lang === 'zh' ? '元素周期表' : 'Periodic Table'} - ${t.brandName}`;
-    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
-  }, [lang, t.brandName]);
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  const pageMeta = useMemo(() => ({
+    title: `${lang === 'zh' ? '元素周期表' : 'Periodic Table'} - ${t.brandName}`,
+    description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',
+    jsonLd: learningResourceLd({
+      name: lang === 'zh' ? '元素周期表' : 'Periodic Table',
+      description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',
+      url: 'https://stem.irky.dev/periodic-table',
+      resourceType: lang === 'zh' ? '速查工具' : 'Reference Tool',
+    }),
+  }), [lang, t.brandName]);
+  usePageMeta(pageMeta);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
   useLockBodyScroll(!!selected);
   const { setAiCtx } = useAiContext();
