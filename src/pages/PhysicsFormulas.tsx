@@ -10,7 +10,7 @@
  * （依据 physics_kb formula_sheet，苏科版章节对齐）。
  */
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { House, Search    } from 'lucide-react';;;;
 import { useApp } from '../lib/app-context';
@@ -19,6 +19,7 @@ import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY
 import { CONSTANTS } from '../lib/constants';
 import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
 import { Image as ImageIcon    } from 'lucide-react';;;;
@@ -28,11 +29,18 @@ const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'soun
 
 export default function PhysicsFormulas() {
   const { t, lang } = useApp();
-  // 动态标签页标题：工具名 - 品牌名（随语言切换），离开恢复默认
-  useEffect(() => {
-    document.title = `${lang === 'zh' ? '物理公式速查' : 'Physics Formulas'} - ${t.brandName}`;
-    return () => { document.title = `${t.brandName} | STEM Digital Lab`; };
-  }, [lang, t.brandName]);
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  const pageMeta = useMemo(() => ({
+    title: `${lang === 'zh' ? '物理公式速查' : 'Physics Formulas'} - ${t.brandName}`,
+    description: lang === 'zh' ? '初中物理公式速查：电学、力学、光学公式整理，配套单位与使用说明。' : 'Junior-high physics formulas: electricity, mechanics, optics, with units and usage notes.',
+    jsonLd: learningResourceLd({
+      name: lang === 'zh' ? '物理公式速查' : 'Physics Formulas',
+      description: lang === 'zh' ? '初中物理公式速查：电学、力学、光学公式整理，配套单位与使用说明。' : 'Junior-high physics formulas: electricity, mechanics, optics, with units and usage notes.',
+      url: 'https://stem.irky.dev/physics-formulas',
+      resourceType: lang === 'zh' ? '速查工具' : 'Reference Tool',
+    }),
+  }), [lang, t.brandName]);
+  usePageMeta(pageMeta);
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<PhysicsFormula | null>(null);
   useLockBodyScroll(!!selected);
