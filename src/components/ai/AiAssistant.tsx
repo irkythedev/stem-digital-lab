@@ -574,35 +574,39 @@ export default function AiAssistant() {
 
   if (!open) return null;
 
-  // 面板位置：记忆的 pos 若超出当前视口（如桌面拖动保存后切到小屏/移动端），回退右上默认位置
+  // 移动端（<640px，含窄屏）：面板改为顶部锚定的近全宽卡片——忽略桌面拖拽/缩放记忆、隐藏缩放手柄、限制最大高度不超可视区
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  // 面板位置：记忆的 pos 若超出当前视口（如桌面拖动保存后切到小屏/移动端），回退右上默认位置；移动端一律顶部锚定
   const safePos =
-    pos && typeof window !== 'undefined' && pos.x >= 8 && pos.y >= 8 && pos.x < window.innerWidth - 120 && pos.y < window.innerHeight - 80
+    !isMobile && pos && typeof window !== 'undefined' && pos.x >= 8 && pos.y >= 8 && pos.x < window.innerWidth - 120 && pos.y < window.innerHeight - 80
       ? pos
       : null;
 
   return (
     <div
       ref={panelRef}
-      className="fixed z-50 w-[calc(100vw-2rem)] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col"
+      className={`fixed z-50 w-[calc(100vw-2rem)] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden${isMobile ? ' max-h-[calc(100dvh-4.5rem)]' : ''}`}
       style={{
-        width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
-        ...(height > 0 ? { height } : {}),
-        ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
+        // 移动端：两侧各留 16px（内宽 innerWidth-32）；桌面：保留用户拖拽宽度
+        width: Math.min(width, typeof window !== 'undefined' ? (isMobile ? window.innerWidth - 32 : window.innerWidth - 16) : width),
+        ...(height > 0 && !isMobile ? { height } : {}),
+        ...(safePos ? { left: safePos.x, top: safePos.y } : isMobile ? { top: '3.5rem', left: '1rem', right: '1rem' } : { top: '3.5rem', right: '1rem' }),
       }}
       role="dialog"
       aria-label="AI assistant"
     >
-      {/* 宽度拖拽把手（右侧边缘） */}
+      {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
       <div
-        className="absolute right-0 top-0 bottom-3 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors"
+        className={`absolute right-0 top-0 bottom-3 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
         onPointerDown={onResizePointerDown}
         onPointerMove={onResizePointerMove}
         onPointerUp={onResizePointerUp}
         title={lang === 'zh' ? '拖拽调整宽度' : 'Drag to resize'}
       />
-      {/* 右下角斜拉把手（同时调宽高） */}
+      {/* 右下角斜拉把手（同时调宽高；移动端隐藏） */}
       <div
-        className="absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize touch-none z-20 flex items-end justify-end"
+        className={`absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize touch-none z-20 flex items-end justify-end${isMobile ? ' hidden' : ''}`}
         onPointerDown={onCornerPointerDown}
         onPointerMove={onCornerPointerMove}
         onPointerUp={onCornerPointerUp}
@@ -640,17 +644,17 @@ export default function AiAssistant() {
             <button type="button" onClick={() => setView(view === 'chat' ? 'settings' : 'chat')}
               aria-label={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
               title={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
-              className="text-[var(--muted)] hover:text-[var(--fg)]">
+              className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)]">
               <Settings className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
+          <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
         </div>
       </div>
 
       {view === 'terms' ? (
         /* ── 第一步：使用须知（先同意才能进入设置） ── */
-        <div className="flex flex-col max-h-[60vh]">
+        <div className="flex flex-col max-h-[60dvh]">
           {/* 条款区：内容超高时独立滚动 */}
           <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-3">
           <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
@@ -759,7 +763,7 @@ export default function AiAssistant() {
         </div>
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
-        <div className="p-4 space-y-3 text-sm serif-font overflow-y-auto max-h-[60vh]">
+        <div className="p-4 space-y-3 text-sm serif-font overflow-y-auto max-h-[60dvh]">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
               {lang === 'zh' ? 'AI 设置' : 'Settings'}
@@ -915,7 +919,7 @@ export default function AiAssistant() {
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
-          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[42vh] min-h-[150px] p-3 space-y-2.5 text-sm serif-font">
+          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[42dvh] min-h-[150px] p-3 space-y-2.5 text-sm serif-font">
             {history.length > 0 || answer || pending || busy ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
@@ -978,7 +982,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => void refreshRecs()}
-                        className="mt-1.5 text-[10px] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
+                        className="mt-1.5 py-1 text-[10px] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
                         disabled={refreshingRecs}
                       >
                         {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
@@ -1013,7 +1017,7 @@ export default function AiAssistant() {
             )}
             {busy && (
               <div className="pt-1 flex justify-end">
-                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
+                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="py-1 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>
