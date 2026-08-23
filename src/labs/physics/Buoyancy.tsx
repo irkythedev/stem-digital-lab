@@ -267,7 +267,7 @@ export default function Buoyancy() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解阿基米德原理：浮力与排开液体体积、液体密度有什么关系' : "Explain Archimedes' principle: how buoyancy depends on displaced volume and fluid density"} />
 
 
       {/* ── 实验示意 ── */}

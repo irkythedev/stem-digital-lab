@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.19.2';
+export const APP_VERSION = '1.20.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.0',
+    date: '2026-08',
+    zh: [
+      '[新增] AI 学习助手支持数学公式排版、多轮问答历史与用量统计，窗口尺寸可自由调整',
+      '[优化] AI 问答更贴合当前实验内容，预设服务商模型列表同步更新',
+      '[优化] 优化部分页面交互与文案描述',
+    ],
+    en: [
+      '[New] AI assistant renders math formulas, supports multi-turn chat and usage stats, with adjustable panel size',
+      '[Improved] AI answers better anchored to the current lab content; provider model lists updated',
+      '[Improved] Polished interactions and copy across pages',
+    ],
+  },
+
   {
     version: '1.19.2',
     date: '2026-08',

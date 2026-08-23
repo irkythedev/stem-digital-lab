@@ -65,6 +65,12 @@ export default function MathFormulas() {
         topic: `数学公式：${selected.name.zh}`,
         knowledge: `公式：${selected.formula}。说明：${selected.label.zh}。章节：${selected.chapter}。`,
       });
+    } else {
+      // 未选中任何项时注入页面级知识（工具涵盖范围 + 使用方法）
+      setAiCtx({
+        topic: lang === 'zh' ? '数学公式速查' : 'Math Formulas',
+        knowledge: lang === 'zh' ? '数学公式速查工具：按人教版初中数学教材组织，涵盖代数、几何、函数、统计与概率四类公式。使用方法：按分类筛选或搜索关键词定位公式，点击公式卡片查看公式、说明与章节；可配合配图理解几何公式。' : 'Math formulas reference: organized by PEP junior-high math textbook, covering algebra, geometry, functions, and statistics & probability. Use the category filter or search to find a formula, then tap the card for the formula, notes, and chapter.',
+      });
     }
     return () => setAiCtx({});
   }, [selected, setAiCtx]);

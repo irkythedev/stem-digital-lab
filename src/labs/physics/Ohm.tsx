@@ -579,7 +579,7 @@ export default function Ohm() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解欧姆定律 I=U/R 的定量关系，以及实验中的操作要点' : "Explain Ohm's law I=U/R and the key steps of this experiment"} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

@@ -422,7 +422,7 @@ export default function Circle() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解垂径定理、圆周角定理与直径所对圆周角是直角这三个圆的性质' : 'Explain the chord theorem, inscribed angle theorem and the angle in a semicircle'} />
 
 
       {/* ── 交互圆 ── */}

@@ -447,7 +447,7 @@ export default function Neutralization() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint'} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

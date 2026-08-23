@@ -96,6 +96,9 @@ export const translations = {
     welcomeClose: '关闭',
     viewAuthor: '查看作者最新动态',
     authorHomeDesc: '作者主页 · 最新作品与动态',
+    versionTitle: '版本 {version} · 点击查看更新记录',
+    versionAria: '版本信息',
+    updateAvailable: '有新版本，点击刷新',
   },
   en: {
     brandName: 'Math · Physics · Chemistry Lab',
@@ -185,6 +188,9 @@ export const translations = {
     welcomeClose: 'Close',
     viewAuthor: "View the author's latest updates",
     authorHomeDesc: 'Author home · latest works and updates',
+    versionTitle: 'Version {version} · click to view changelog',
+    versionAria: 'Version info',
+    updateAvailable: 'Update available — click to refresh',
   },
 };
 

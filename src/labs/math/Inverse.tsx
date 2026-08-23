@@ -388,7 +388,7 @@ export default function Inverse() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义，以及双曲线图像有什么特征' : 'Explain the meaning of k in y=k/x and the features of its hyperbola graph'} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

@@ -285,7 +285,7 @@ export default function MetalActivity() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag'} />
 
 
       {/* ── 反应卡切换 ── */}

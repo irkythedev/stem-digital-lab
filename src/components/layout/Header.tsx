@@ -109,8 +109,8 @@ export default function Header() {
                 e.stopPropagation();
                 handleRefresh();
               }}
-              title="有新版本，点击刷新"
-              aria-label="有新版本，点击刷新"
+              title={t.updateAvailable}
+              aria-label={t.updateAvailable}
               className="sm:hidden absolute -top-1 -right-1 group/dot"
             >
               <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />
@@ -131,8 +131,8 @@ export default function Header() {
             e.stopPropagation();
             setShowVersion((v) => !v);
           }}
-          title="v{APP_VERSION}"
-          aria-label="version"
+          title={t.versionTitle.replace('{version}', APP_VERSION)}
+          aria-label={t.versionAria}
           className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
@@ -144,8 +144,8 @@ export default function Header() {
                   e.stopPropagation();
                   handleRefresh();
                 }}
-                title="有新版本，点击刷新"
-                aria-label="有新版本，点击刷新"
+                title={t.updateAvailable}
+                aria-label={t.updateAvailable}
                 className="absolute -right-2.5 top-1/2 -translate-y-1/2 group/dot"
               >
                 <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />

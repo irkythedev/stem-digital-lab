@@ -237,7 +237,7 @@ export default function Pressure() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it'} />
 
 
       {/* ── 压强示意 ── */}
