@@ -117,9 +117,9 @@ export default function HomePage() {
         <button
           type="button"
           onClick={randomExplore}
-          className="inline-flex items-center justify-center gap-2.5 sm:gap-2 px-5 py-2.5 sm:px-5 sm:py-2 border border-[var(--border)] text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 border border-[var(--border)] text-[11px] sm:text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
         >
-          <Shuffle className="w-3.5 h-3.5" />
+          <Shuffle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           {t.randomExplore}
         </button>
       </div>
