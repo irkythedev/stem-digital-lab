@@ -27,7 +27,7 @@
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
-- 🤖 AI 学习助手（顶栏入口）：配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
+- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版与多轮问答历史，面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - 📦 可安装为应用离线使用（PWA）
 - 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
 
@@ -98,6 +98,7 @@ npm run test       # 运行测试
 - 使用您自己的 API Key：支持 DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包等预设及自定义端点，本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
+- 支持数学公式排版（行内 / 块级 LaTeX），问答历史同页内可回看，面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算
 - 问答为单轮形式：点击页面「问 AI」按钮提问，回答末尾会推荐 2~3 个可继续点击了解的问题，不提供自由输入框，也不保存任何对话记录
 
 ### 每日科学
@@ -149,7 +150,7 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged; single-turn Q&A driven by page buttons (no free-text input), with 2–3 recommended follow-up questions at the end of each answer
+- 🤖 AI assistant (header entry): renders math formulas and keeps multi-turn history on the page, panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - 📦 Installable as an app for offline use (PWA)
 - 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
 
@@ -220,6 +221,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 - Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
+- Math formulas are rendered properly (inline / block LaTeX); multi-turn history stays viewable on the same page; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage
 - Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 2–3 follow-up questions to tap — no free-text input, and no conversation is stored
 
 ### Daily Science
