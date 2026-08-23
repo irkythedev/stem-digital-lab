@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.1';
+export const APP_VERSION = '1.20.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.2',
+    date: '2026-08',
+    zh: [
+      '[优化] 暗色主题调整为暖色系，夜间阅读更柔和护眼',
+      '[优化] 首页布局精简，随机探索入口移至标题旁',
+      '[优化] 每日科学支持「翻一翻」随机切换内容',
+    ],
+    en: [
+      '[Improved] Warmer dark theme tones for more comfortable night reading',
+      '[Improved] Streamlined homepage — random-explore entry moved next to the title',
+      '[Improved] Daily Science "flip" interaction for random content',
+    ],
+  },
+
   {
     version: '1.20.1',
     date: '2026-08',

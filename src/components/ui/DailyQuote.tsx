@@ -73,7 +73,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
           className="inline-flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
-          {lang === 'zh' ? '换一条' : 'Shuffle'}
+          {lang === 'zh' ? '翻一翻' : 'Flip'}
         </button>
       </div>
 
