@@ -58,11 +58,22 @@ export default function HomePage() {
 
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
-      {/* Brand Main Title Header */}
+      {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
       <div className="mb-6 sm:mb-10 flex flex-col items-start max-w-2xl">
-        <h1 className="text-base font-bold tracking-widest uppercase mono-font mb-2 sm:mb-4 text-[var(--fg)]">
-          {t.brandName}
-        </h1>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">
+          <h1 className="text-base font-bold tracking-widest uppercase mono-font text-[var(--fg)]">
+            {t.brandName}
+          </h1>
+          <button
+            type="button"
+            onClick={randomExplore}
+            title={lang === 'zh' ? '随机进入一个实验或工具' : 'Jump to a random lab or tool'}
+            className="inline-flex items-center gap-1 py-1 -my-1 text-[10px] sm:text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          >
+            <Shuffle className="w-3 h-3" />
+            {t.randomExplore}
+          </button>
+        </div>
         <p className="text-sm sm:text-lg text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
         <p className="text-[11px] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
       </div>
@@ -110,18 +121,6 @@ export default function HomePage() {
             </button>
           );
         })}
-      </div>
-
-      {/* ── 随机探索：随机进入某个实验/工具 ── */}
-      <div className="flex justify-center w-full mb-8">
-        <button
-          type="button"
-          onClick={randomExplore}
-          className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 border border-[var(--border)] text-[11px] sm:text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
-        >
-          <Shuffle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          {t.randomExplore}
-        </button>
       </div>
 
       {/* ── 实验列表（淡入淡出）：紧跟学科卡片，点击后即时可见；未展开时无占位高度 ── */}
