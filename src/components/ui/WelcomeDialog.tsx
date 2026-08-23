@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Calculator, Library, Mail, MessageSquare, X } from 'lucide-react';
+import { Calculator, Library, Mail, MessageSquare, MonitorSmartphone, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
@@ -121,9 +121,10 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           <p className="text-sm leading-relaxed serif-font">{t.welcomeIntro}</p>
 
-          {/* 多端适配 */}
-          <p className="text-xs leading-relaxed mono-font text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">
-            {t.welcomeDevices}
+          {/* 多端适配（设备图标 + 左边框注记） */}
+          <p className="flex items-start gap-1.5 text-xs leading-relaxed mono-font text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">
+            <MonitorSmartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{t.welcomeDevices}</span>
           </p>
 
           {/* 板块（标题图标与全站统一：学科用 SubjectIcon，工具用 Calculator） */}
@@ -159,42 +160,51 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             {t.welcomeMaintainSuffix}
           </p>
 
-          {/* 反馈 + 项目主页 icon（icon 跟随各自所指对象：邮件/气泡/项目主页） */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mono-font text-[var(--muted)]">
-            <span>{t.welcomeFeedbackPrefix}</span>
-            <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-            <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">
-              king4g@yeah.net
-            </a>
-            <span>{t.welcomeFeedbackBubbleA}</span>
-            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>{t.welcomeFeedbackBubbleB}</span>
-            <span>{t.welcomeFeedbackIssueA}</span>
-            <a
-              href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Gitee"
-              aria-label="Gitee project"
-              className="text-[var(--muted)] hover:text-[#C71D23] transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d={GITEE_PATH} />
-              </svg>
-            </a>
-            <a
-              href="https://github.com/irkythedev/stem-digital-lab"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="GitHub"
-              aria-label="GitHub project"
-              className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d={GITHUB_PATH} />
-              </svg>
-            </a>
-            <span>{t.welcomeFeedbackIssueB}</span>
+          {/* 反馈渠道：三行分组清单（邮件 / 反馈气泡 / 项目主页，# 注释符风格前缀） */}
+          <div className="flex flex-col gap-y-1.5 text-xs mono-font text-[var(--muted)]">
+            <div className="flex flex-wrap items-center gap-x-1.5">
+              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
+              <span>{t.welcomeFeedbackPrefix}</span>
+              <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+              <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">
+                king4g@yeah.net
+              </a>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1.5">
+              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
+              <span>{t.welcomeFeedbackBubbleA}</span>
+              <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{t.welcomeFeedbackBubbleB}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1.5">
+              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
+              <span>{t.welcomeFeedbackIssueA}</span>
+              <a
+                href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Gitee"
+                aria-label="Gitee project"
+                className="text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d={GITEE_PATH} />
+                </svg>
+              </a>
+              <a
+                href="https://github.com/irkythedev/stem-digital-lab"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="GitHub"
+                aria-label="GitHub project"
+                className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d={GITHUB_PATH} />
+                </svg>
+              </a>
+              <span>{t.welcomeFeedbackIssueB}</span>
+            </div>
           </div>
 
           {/* 其他作品（左起，点击确认后跳转）—— 参考页脚样式 */}
