@@ -13,8 +13,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Calculator, FolderKanban, Mail, MessageSquare, X } from 'lucide-react';
+import { Calculator, Library, Mail, MessageSquare, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
 import { APP_VERSION } from '../../lib/changelog';
 
@@ -27,6 +28,8 @@ const GITHUB_PATH =
 export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolean) => void }) {
   const { t, lang } = useApp();
   const zh = lang !== 'en';
+  // 模态弹窗打开期间锁定背景滚动（防止滚动穿透，与工具页详情弹窗一致）
+  useLockBodyScroll(true);
   const [dontShow, setDontShow] = useState(false);
   // 其他作品：点击后先确认（简介 + 提示），用户决定是否跳转外部站点
   const [pendingWork, setPendingWork] = useState<{ name: string; url: string; icon: string; desc?: string } | null>(null);
@@ -156,15 +159,17 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             {t.welcomeMaintainSuffix}
           </p>
 
-          {/* 反馈 + 项目主页 icon */}
+          {/* 反馈 + 项目主页 icon（icon 跟随各自所指对象：邮件/气泡/项目主页） */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs mono-font text-[var(--muted)]">
-            <Mail className="w-3.5 h-3.5" />
             <span>{t.welcomeFeedbackPrefix}</span>
+            <Mail className="w-3.5 h-3.5" aria-hidden="true" />
             <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">
               king4g@yeah.net
             </a>
-            <span>{t.welcomeFeedbackBubble} <MessageSquare className="w-3.5 h-3.5 inline-block" aria-hidden="true" /></span>
-            <span>{t.welcomeFeedbackIssue}</span>
+            <span>{t.welcomeFeedbackBubbleA}</span>
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>{t.welcomeFeedbackBubbleB}</span>
+            <span>{t.welcomeFeedbackIssueA}</span>
             <a
               href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
               target="_blank"
@@ -189,13 +194,14 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                 <path d={GITHUB_PATH} />
               </svg>
             </a>
+            <span>{t.welcomeFeedbackIssueB}</span>
           </div>
 
           {/* 其他作品（左起，点击确认后跳转）—— 参考页脚样式 */}
           <div className="flex flex-col gap-1.5 border-t border-[var(--border)] pt-3">
             <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5 text-[var(--muted)]">
-                <FolderKanban className="w-3.5 h-3.5" />
+                <Library className="w-3.5 h-3.5" />
                 <span className="text-[10px] mono-font uppercase tracking-wider">{t.moreWorks}</span>
               </span>
               {t.works.map((w) => (

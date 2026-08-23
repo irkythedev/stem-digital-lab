@@ -79,7 +79,7 @@ export default function FunctionDiagram({ type, className = '' }: FunctionDiagra
     ];
     annotate = [
       { x: -4.8, y: 4.7, text: 'y = x² − 2x − 1', fill: ACC, italic: true },
-      { x: 1.4, y: -1.2, text: '顶点(1,−2)', fill: FG },
+      { x: 1.4, y: -1.2, text: lang === 'zh' ? '顶点(1,−2)' : 'Vertex (1,−2)', fill: FG },
     ];
   } else if (type === 'inverse') {
     // y = 4/x，两支（采样裁剪到视口 y∈[-5,5]，避免画出界）

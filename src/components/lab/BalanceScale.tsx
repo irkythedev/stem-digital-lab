@@ -7,6 +7,7 @@
  *
  * 视觉纪律：只用 --fg / --muted / --border / --accent / --error。
  */
+import { useApp } from '../../lib/app-context';
 
 interface BalanceScaleProps {
   beforeMass: number;
@@ -87,13 +88,14 @@ export default function BalanceScale({
   showAfter = false,
   unit = 'g',
 }: BalanceScaleProps) {
+  const { lang } = useApp();
   const equal = Math.abs(beforeMass - afterMass) < 0.01;
 
   return (
-    <svg viewBox="0 0 360 200" className="w-full max-h-[350px]" aria-label="天平">
+    <svg viewBox="0 0 360 200" className="w-full max-h-[350px]" aria-label={lang === 'zh' ? '天平' : 'Balance scale'}>
       {/* 反应前 */}
       <g transform={`translate(0, 0) scale(${SCALE})`}>
-        <SingleScale mass={beforeMass} label="反应前" accent="var(--fg)" />
+        <SingleScale mass={beforeMass} label={lang === 'zh' ? '反应前' : 'Before'} accent="var(--fg)" />
       </g>
 
       {/* 箭头 */}
@@ -105,7 +107,7 @@ export default function BalanceScale({
         style={{ opacity: showAfter ? 1 : 0.3, transition: 'opacity 0.5s' }}>
         <SingleScale
           mass={afterMass}
-          label="反应后"
+          label={lang === 'zh' ? '反应后' : 'After'}
           accent={equal ? 'var(--fg)' : 'var(--error)'}
         />
       </g>
@@ -122,8 +124,10 @@ export default function BalanceScale({
           fill={equal ? 'var(--fg)' : 'var(--error)'}
           fontSize={12} className="mono-font">
           {equal
-            ? '✓ 反应前后质量相等'
-            : `✗ 质量变化: ${(afterMass - beforeMass) > 0 ? '+' : ''}${(afterMass - beforeMass).toFixed(1)} ${unit}`}
+            ? (lang === 'zh' ? '✓ 反应前后质量相等' : '✓ Mass conserved')
+            : (lang === 'zh'
+              ? `✗ 质量变化: ${(afterMass - beforeMass) > 0 ? '+' : ''}${(afterMass - beforeMass).toFixed(1)} ${unit}`
+              : `✗ Change: ${(afterMass - beforeMass) > 0 ? '+' : ''}${(afterMass - beforeMass).toFixed(1)} ${unit}`)}
         </text>
       )}
     </svg>

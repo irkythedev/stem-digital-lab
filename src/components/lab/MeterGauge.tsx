@@ -3,11 +3,14 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 模拟表盘（老式学生电流表/电压表）：半圆刻度 + 指针。
- * 指针偏转 ∝ value/max，CSS transform 过渡平滑摆动，零依赖。
+ * 指针偏转 ∝ value/max，CSS transform 过渡平滑摆动。
+ * 语言来自 useApp（aria 标签），视觉零外部依赖。
  *
  * 用法：与 MeterProbe 联动——探针吸附测点后，把该测点数值传给 value；
  * value=null 表示表笔悬空（指针回零，读数显示 —）。
  */
+import { useApp } from '../../lib/app-context';
+
 interface MeterGaugeProps {
   /** 当前读数；null = 悬空 */
   value: number | null;
@@ -37,6 +40,7 @@ const polar = (r: number, deg: number): [number, number] => {
 const arcPath = `M ${CX - R_OUT} ${CY} A ${R_OUT} ${R_OUT} 0 0 1 ${CX + R_OUT} ${CY}`;
 
 export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps) {
+  const { lang } = useApp();
   const v = value ?? 0;
   const deg = 180 - (Math.min(v, max) / max) * 180; // 0 → 左端零位，max → 右端满偏
   const mid = max / 2;
@@ -49,7 +53,7 @@ export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps)
 
   return (
     <div className="flex w-[100px] flex-col items-center gap-0.5">
-      <svg width={100} height={88} viewBox="0 0 100 88" role="img" aria-label={`${unit} 表盘`} className="shrink-0">
+      <svg width={100} height={88} viewBox="0 0 100 88" role="img" aria-label={`${unit} ${lang === 'zh' ? '表盘' : 'gauge'}`} className="shrink-0">
         {/* 外弧 */}
         <path d={arcPath} fill="none" stroke="var(--border)" strokeWidth="1.2" />
         {/* 细分刻度 */}

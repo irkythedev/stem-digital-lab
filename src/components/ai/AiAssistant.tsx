@@ -590,7 +590,8 @@ export default function AiAssistant() {
       style={{
         // 移动端：两侧各留 16px（内宽 innerWidth-32）；桌面：保留用户拖拽宽度
         width: Math.min(width, typeof window !== 'undefined' ? (isMobile ? window.innerWidth - 32 : window.innerWidth - 16) : width),
-        ...(height > 0 && !isMobile ? { height } : {}),
+        // 固定高度仅用于对话视图（chat）；terms/设置视图内容自适应，避免保存的小高度裁掉条款
+        ...(height > 0 && !isMobile && view === 'chat' ? { height } : {}),
         ...(safePos ? { left: safePos.x, top: safePos.y } : isMobile ? { top: '3.5rem', left: '1rem', right: '1rem' } : { top: '3.5rem', right: '1rem' }),
       }}
       role="dialog"
@@ -800,7 +801,7 @@ export default function AiAssistant() {
                 type="text"
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="https://your-proxy.example.com/v1 或完整端点 /chat/completions"
+                placeholder={lang === 'zh' ? 'https://your-proxy.example.com/v1 或完整端点 /chat/completions' : 'https://your-proxy.example.com/v1 or full endpoint /chat/completions'}
                 className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
             </div>
@@ -1031,7 +1032,7 @@ export default function AiAssistant() {
               {/* 当前模型名 + 用量统计（消耗起即显示，流式中 token 滚动增长） */}
               <p className="shrink-0 text-[9px] mono-font text-[var(--fg)]/80 tabular-nums whitespace-nowrap">
                 {config?.model && <span className="mr-2">{config.model}</span>}
-                {usage && <span>≈{usage.tokens.toLocaleString()} tokens{busy ? ' · 生成中…' : ` · ${usage.speed} t/s`}</span>}
+                {usage && <span>≈{usage.tokens.toLocaleString()} tokens{busy ? (lang === 'zh' ? ' · 生成中…' : ' · Generating…') : ` · ${usage.speed} t/s`}</span>}
               </p>
             </div>
           </div>

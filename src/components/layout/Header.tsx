@@ -169,7 +169,7 @@ export default function Header() {
         <button
           type="button"
           onClick={() => setAiOpen(!aiOpen)}
-          aria-label="AI 学习助手"
+          aria-label={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
           title={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
           className="relative flex items-center justify-center px-2 py-2 text-[var(--fg)] transition-colors hover:opacity-70"
         >

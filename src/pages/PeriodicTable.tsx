@@ -39,6 +39,12 @@ const CAT_ZH: Record<ElementInfo['cat'], string> = {
   noble: '稀有气体',
   metalloid: '类金属',
 };
+const CAT_EN: Record<ElementInfo['cat'], string> = {
+  metal: 'Metal',
+  nonmetal: 'Non-metal',
+  noble: 'Noble gas',
+  metalloid: 'Metalloid',
+};
 
 /** 中考必背连读预设（人教版教材）：元素名称与符号是中考必背内容 */
 const RECITE_PRESETS: { id: string; zh: string; en: string; ns: number[] }[] = [
@@ -437,7 +443,7 @@ export default function PeriodicTable() {
           {(Object.keys(CAT_COLOR) as ElementInfo['cat'][]).map((c) => (
             <span key={c} className="flex items-center gap-1.5">
               <span className="w-3 h-3 border" style={{ borderColor: CAT_COLOR[c].border, backgroundColor: CAT_COLOR[c].bg }} />
-              {isZh ? CAT_ZH[c] : c}
+              {isZh ? CAT_ZH[c] : CAT_EN[c]}
             </span>
           ))}
         </div>
