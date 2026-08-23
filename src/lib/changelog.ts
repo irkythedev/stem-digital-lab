@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.0';
+export const APP_VERSION = '1.20.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.1',
+    date: '2026-08',
+    zh: [
+      '[优化] AI 助手追问支持「换一批」，问答过程中实时显示 token 用量',
+      '[修复] 修复停止生成后无法继续提问、切换页面后问答未跟随的问题',
+      '[优化] 电路实验图更清晰，电压表符号与并联电路布局更规整',
+    ],
+    en: [
+      '[Improved] AI follow-up questions support "refresh"; real-time token usage while answering',
+      '[Fixed] Fix inability to continue asking after stopping; answers now follow page switches',
+      '[Improved] Clearer circuit diagrams — refined voltmeter symbol and parallel-circuit layout',
+    ],
+  },
+
   {
     version: '1.20.0',
     date: '2026-08',

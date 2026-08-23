@@ -103,7 +103,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
     .split('\n')
     .map((l) => l.replace(/^\s*\d+[.、)\]]?\s*/, '').trim())
     .filter((l) => l && l.length > 2)
-    .slice(0, 3);
+    .slice(0, 6);
   return { body: text.slice(0, idx).trim(), recs };
 }
 
@@ -179,6 +179,15 @@ export default function AiAssistant() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // 同页内知识主题变化（如公式页切换选中项）时清空对话——pathname 不变但 aiCtx 更新
+  const prevTopicRef = useRef(aiCtx.topic);
+  useEffect(() => {
+    if (prevTopicRef.current !== aiCtx.topic) {
+      resetConversation();
+      prevTopicRef.current = aiCtx.topic;
+    }
+  }, [aiCtx.topic]);
   const answerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   // 面板位置（标题栏拖动，localStorage 记忆 UI 偏好——非对话内容）
@@ -207,13 +216,13 @@ export default function AiAssistant() {
   useEffect(() => { widthRef.current = width; }, [width]);
   const resizeRef = useRef<{ startX: number; startW: number } | null>(null);
 
-  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；220–640px）
+  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；200–720px）
   const [height, setHeight] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     try {
       const raw = window.localStorage.getItem('stem-ai-height');
       const h = raw ? parseInt(raw, 10) : 0;
-      return Number.isFinite(h) ? Math.min(640, Math.max(220, h)) : 0;
+      return Number.isFinite(h) ? Math.min(720, Math.max(200, h)) : 0;
     } catch {
       return 0;
     }
@@ -233,7 +242,7 @@ export default function AiAssistant() {
     const dx = e.clientX - cornerRef.current.startX;
     const dy = e.clientY - cornerRef.current.startY;
     const newW = Math.min(720, Math.max(280, cornerRef.current.startW + dx));
-    const newH = Math.min(640, Math.max(220, cornerRef.current.startH + dy));
+    const newH = Math.min(720, Math.max(200, cornerRef.current.startH + dy));
     setWidth(newW);
     setHeight(newH);
     setPos((prev) => {
@@ -475,25 +484,43 @@ export default function AiAssistant() {
     messages.push({ role: 'user', content: q });
     abortRef.current = new AbortController();
     const t0 = performance.now();
+    // 用量实时统计：会话基准（本轮之前的累计）固定，prompt 一次计入，输出随流式滚动增长
+    const baseTokens = usage?.tokens ?? 0;
+    const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+    let received = 0;
     try {
-      const full = await streamChat(config, messages, (delta) => setAnswer((a) => a + delta), abortRef.current.signal);
+      const full = await streamChat(
+        config,
+        messages,
+        (delta) => {
+          setAnswer((a) => a + delta);
+          received += delta.length;
+          const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
+          const outTokens = Math.round(received / 1.8);
+          setUsage({
+            tokens: baseTokens + promptTokens + outTokens,
+            speed: Math.round(outTokens / elapsedSec),
+          });
+        },
+        abortRef.current.signal,
+      );
       const { body, recs: parsedRecs } = parseRecQuestions(full);
       setAnswer(body);
       setRecs(parsedRecs);
       lastExchange.current = { user: q, assistant: full };
       // 入历史（上限 HISTORY_MAX，超出丢最旧）
       setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: full }]);
-      // 用量统计（估算）：会话累计 token = 之前累计 + 本轮 prompt + 回答；速度取本轮
+      // 最终定格（与实时滚动值对齐，避免浮点误差）
       const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-      const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       const outTokens = estimateTokens(full);
-      setUsage((prev) => ({
-        tokens: (prev?.tokens ?? 0) + promptTokens + outTokens,
+      setUsage({
+        tokens: baseTokens + promptTokens + outTokens,
         speed: Math.round(outTokens / elapsedSec),
-      }));
+      });
     } catch (e) {
-      const msg = (e as Error).message;
-      if (!msg.includes('abort')) {
+      // 使用 signal.aborted 判断（比字符串匹配可靠，兼容不同浏览器错误消息）
+      if (abortRef.current && !abortRef.current.signal.aborted) {
+        const msg = (e as Error).message;
         const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
         setError(
           isNetworkError(msg)
@@ -510,6 +537,39 @@ export default function AiAssistant() {
   // 点击 AI 推荐的问题：携带上下文继续追问
   const askRecommended = (q: string) => {
     void sendQuestion(q, true);
+  };
+
+  // 「换一批」兜底：请求 AI 再给一批追问，只更新 recs（不产生新轮次，不动 answer/history）
+  const [refreshingRecs, setRefreshingRecs] = useState(false);
+  const refreshRecs = async () => {
+    if (!config || busy || refreshingRecs) return;
+    setRefreshingRecs(true);
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+      { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
+      { role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的追问问题（每行一个，编号 1. 2. 3.，不要解释）' : 'Give 3 different follow-up questions on the topic just discussed (one per line, numbered 1. 2. 3., no explanation)' },
+    ];
+    try {
+      const t0 = performance.now();
+      const full = await streamChat(config, messages, () => {}, undefined);
+      // 宽松解析：优先 marker，无 marker 时整段按行拆
+      const { recs: parsed } = parseRecQuestions(full);
+      const lines = full.split('\n').map((l) => l.replace(/^\s*\d+[.、)]\s*/, '').trim()).filter((l) => l && l.length > 2);
+      const next = parsed.length > 0 ? parsed : lines;
+      if (next.length > 0) {
+        setRecs(next);
+      }
+      // 用量统计：refreshRecs 也是消耗 token 的请求，计入会话累计
+      const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
+      const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+      const outTokens = estimateTokens(full);
+      setUsage((prev) => ({
+        tokens: (prev?.tokens ?? 0) + promptTokens + outTokens,
+        speed: Math.round(outTokens / elapsedSec),
+      }));
+    } catch {
+      // 静默失败，保留现有追问
+    }
+    setRefreshingRecs(false);
   };
 
   if (!open) return null;
@@ -564,7 +624,17 @@ export default function AiAssistant() {
         onPointerMove={onTitlePointerMove}
         onPointerUp={onTitlePointerUp}
       >
-        <h2 className="text-xs font-bold tracking-widest mono-font uppercase">// {lang === 'zh' ? 'AI 学习助手' : 'AI Assistant'}</h2>
+        <h2 className="text-xs font-bold tracking-widest mono-font uppercase truncate max-w-[80%] inline-flex items-center gap-1.5">
+          <span className="truncate">// {view === 'settings'
+            ? (lang === 'zh' ? 'AI 设置' : 'Settings')
+            : view === 'terms'
+              ? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')
+              : (aiCtx.topic
+                ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
+                : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
+          </span>
+          <Sparkles className="w-3 h-3 shrink-0 text-[var(--fg)]" aria-hidden="true" />
+        </h2>
         <div className="flex items-center gap-2">
           {config && (
             <button type="button" onClick={() => setView(view === 'chat' ? 'settings' : 'chat')}
@@ -580,7 +650,9 @@ export default function AiAssistant() {
 
       {view === 'terms' ? (
         /* ── 第一步：使用须知（先同意才能进入设置） ── */
-        <div className="p-4 space-y-3 overflow-y-auto max-h-[60vh]">
+        <div className="flex flex-col max-h-[60vh]">
+          {/* 条款区：内容超高时独立滚动 */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-3">
           <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
             {lang === 'zh' ? '使用须知' : 'Terms'}
           </p>
@@ -673,13 +745,17 @@ export default function AiAssistant() {
               </>
             )}
           </div>
+          </div>
+          {/* 同意按钮固定在底部（始终可见，不与条款一起滚动） */}
+          <div className="shrink-0 px-4 pb-4 pt-2.5 border-t border-[var(--border)]">
           <button
             type="button"
             onClick={() => setView('settings')}
-            className="w-full mt-1 px-3 py-2 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
+            className="w-full px-3 py-2 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
           >
             {lang === 'zh' ? '我同意并继续 →' : 'I agree and continue →'}
           </button>
+          </div>
         </div>
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
@@ -879,14 +955,14 @@ export default function AiAssistant() {
                     )}
                   </div>
                 )}
-                {/* AI 推荐的追问（由 prompt 约束生成，内容可控） */}
+                {/* AI 推荐的追问（由 prompt 约束生成，内容可控；可翻页换一批） */}
                 {!busy && recs.length > 0 && (
                   <div className="pt-1">
                     <p className="text-[10px] mono-font text-[var(--muted)] mb-1.5">
                       {lang === 'zh' ? '可以继续了解：' : 'You can also explore:'}
                     </p>
                     <div className="flex flex-col gap-1.5">
-                      {recs.map((q, i) => (
+                      {recs.slice(0, 3).map((q, i) => (
                         <button
                           key={i}
                           type="button"
@@ -897,6 +973,17 @@ export default function AiAssistant() {
                         </button>
                       ))}
                     </div>
+                    {/* 换一批：每次请求 AI 重新生成 3 个不同追问（方案二，费 token 换质量） */}
+                    {recs.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => void refreshRecs()}
+                        className="mt-1.5 text-[10px] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
+                        disabled={refreshingRecs}
+                      >
+                        {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
+                      </button>
+                    )}
                   </div>
                 )}
               </>
@@ -926,7 +1013,7 @@ export default function AiAssistant() {
             )}
             {busy && (
               <div className="pt-1 flex justify-end">
-                <button type="button" onClick={() => abortRef.current?.abort()} className="text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
+                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>
@@ -935,12 +1022,12 @@ export default function AiAssistant() {
           <div className="border-t border-[var(--border)] px-3 py-1.5">
             <div className="flex items-baseline justify-between gap-2">
               <p className="text-[10px] text-[var(--muted)] leading-snug">
-                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答不保存' : 'AI output is for reference — trust the textbook · Answers are not saved'}
+                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答暂不支持保存' : 'AI output is for reference — trust the textbook · Answers cannot be saved yet'}
               </p>
-              {/* 当前模型名 + 用量统计（低调小字，不喧宾夺主） */}
+              {/* 当前模型名 + 用量统计（消耗起即显示，流式中 token 滚动增长） */}
               <p className="shrink-0 text-[9px] mono-font text-[var(--fg)]/80 tabular-nums whitespace-nowrap">
                 {config?.model && <span className="mr-2">{config.model}</span>}
-                {usage && !busy && <span>≈{usage.tokens.toLocaleString()} tokens · {usage.speed} t/s</span>}
+                {usage && <span>≈{usage.tokens.toLocaleString()} tokens{busy ? ' · 生成中…' : ` · ${usage.speed} t/s`}</span>}
               </p>
             </div>
           </div>
