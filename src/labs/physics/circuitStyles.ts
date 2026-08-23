@@ -75,9 +75,9 @@ export const NODE_X = 135; // 干路节点
 export const RIGHT_X = 290; // 右端汇合/回线 x
 export const RETURN_Y = 195; // 并联回流线 y（三支路底部留充足间距）
 export const LAMP_R = 12;
-/** 并联支路 y（2 支路 / 3 支路） */
+/** 并联支路 y（2 支路 / 3 支路：75px 间距，保证「下方标签」与「上方电压表」互不遮挡） */
 const BRANCH_YS_2 = [40, 140];
-const BRANCH_YS_3 = [50, 110, 170];
+const BRANCH_YS_3 = [45, 120, 195];
 
 /** 元件类型辅助 */
 const isZeroR = (e: StyleElement) => e.kind === 'fuse';
@@ -390,6 +390,8 @@ export interface GeneratedTopology {
   flowPaths: string[];
   /** 总开关位置 */
   masterSwitch: { x1: number; y1: number; x2: number; y2: number };
+  /** 电路图所需 SVG 高度（三支路并联需加高；缺省用默认 SVG_H） */
+  svgH?: number;
 }
 
 /** 串联链：元件 x 序列 → 导线/引线/wires/comps */
@@ -445,20 +447,23 @@ function genSeries(config: StyleConfig): GeneratedTopology {
 function genParallel(config: StyleConfig): GeneratedTopology {
   const n = config.elements.length;
   const ys = n === 2 ? BRANCH_YS_2 : BRANCH_YS_3;
+  // 三支路回流线下移至最下支路标签之下（标签 y=y+22，文字底≈+27）
+  const returnY = n === 3 ? ys[ys.length - 1] + 34 : RETURN_Y;
+  const svgH = n === 3 ? 260 : undefined;
   const r = LAMP_R;
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: BATT_X, y1: 60, x2: SW_X1, y2: 60, current: 'i0' },
     { id: 'dry-mid', x1: SW_X2, y1: 60, x2: NODE_X, y2: 60, current: 'i0' },
     { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 70, current: 'i0' },
     { id: 'dry-batt-bot', x1: BATT_X, y1: 82, x2: BATT_X, y2: 140, current: 'i0' },
-    { id: 'dry-right', x1: RIGHT_X, y1: ys[0], x2: RIGHT_X, y2: RETURN_Y, current: 'i0' },
-    { id: 'dry-bottom', x1: RIGHT_X, y1: RETURN_Y, x2: BATT_X, y2: RETURN_Y, current: 'i0' },
-    { id: 'p-neg-drop', x1: BATT_X, y1: RETURN_Y, x2: BATT_X, y2: 140, current: 'i0' },
+    { id: 'dry-right', x1: RIGHT_X, y1: ys[0], x2: RIGHT_X, y2: returnY, current: 'i0' },
+    { id: 'dry-bottom', x1: RIGHT_X, y1: returnY, x2: BATT_X, y2: returnY, current: 'i0' },
+    { id: 'p-neg-drop', x1: BATT_X, y1: returnY, x2: BATT_X, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
     { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'u' },
     // 右侧汇合母线两端 = 并联电路两端节点：电压表并联在此测电路两端电压（而非直接搭电源）
-    { id: 'bus', kind: 'bus', sense1: { x: RIGHT_X, y: ys[0] }, sense2: { x: RIGHT_X, y: RETURN_Y }, land: { x: RIGHT_X - 18, y: (ys[0] + RETURN_Y) / 2 }, voltage: 'u' },
+    { id: 'bus', kind: 'bus', sense1: { x: RIGHT_X, y: ys[0] }, sense2: { x: RIGHT_X, y: returnY }, land: { x: RIGHT_X - 18, y: (ys[0] + returnY) / 2 }, voltage: 'u' },
   ];
   ys.forEach((y, i) => {
     const cur = `i${i + 1}`;
@@ -470,7 +475,7 @@ function genParallel(config: StyleConfig): GeneratedTopology {
     );
     const e = config.elements[i];
     if (e.kind === 'bulb') {
-      const leadY = y - 16; // 引线横线在灯上方
+      const leadY = y - 34; // 引线横线在灯上方（留出清晰间距，避免仪表骑灯泡）
       comps.push({
         id: `e${i}`,
         kind: 'bulb',
@@ -482,13 +487,14 @@ function genParallel(config: StyleConfig): GeneratedTopology {
       });
     }
   });
-  const paths = ys.map((y) => `M40,60 H135 V${y} H290 V${RETURN_Y} H40 V60`);
+  const paths = ys.map((y) => `M40,60 H135 V${y} H290 V${returnY} H40 V60`);
   return {
     wires,
     comps,
     branchYs: ys,
     flowPaths: paths,
     masterSwitch: { x1: SW_X1, y1: 60, x2: SW_X2, y2: 60 },
+    svgH,
   };
 }
 

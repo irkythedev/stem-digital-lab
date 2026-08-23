@@ -110,7 +110,7 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
       `5. 语言适合未成年人，积极健康；不确定的内容直接承认，禁止编造数值或结论，并提示以教材和老师讲解为准；\n` +
       `6. 回答简明，先给结论再解释，可适当举例。\n` +
       `7. 数学公式必须用 LaTeX 书写：行内公式用 \\(...\\) 包裹（如 \\(y=ax^2+bx+c\\)），独立成行的公式用 \\[...\\] 包裹，便于渲染；\n` +
-      `8. 回答末尾另起一行，原样输出一行「可以继续了解：」（不得改写为其他措辞），随后给出 2~3 个与该知识点相关、适合初中生的追问问题（每行一个，编号 1. 2. 3.）。` +
+      `8. 回答末尾另起一行，原样输出一行「可以继续了解：」（不得改写为其他措辞），随后给出 5 个与该知识点相关、适合初中生的追问问题（每行一个，编号 1. 2. 3. 4. 5.）。` +
       ref
     );
   }
@@ -125,7 +125,7 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
     '5. Keep language kid-friendly and positive; admit uncertainty instead of making up numbers or conclusions; refer to the textbook and teacher.\n' +
     '6. Be concise: conclusion first, then explanation with examples.\n' +
     '7. Write math formulas in LaTeX: inline formulas wrapped in \\(...\\) (e.g. \\(y=ax^2+bx+c\\)), display formulas in \\[...\\] — this is required so they render properly.\n' +
-    '8. End with the exact line "You can also explore:" (do not rephrase it), followed by 2-3 follow-up questions suitable for middle-schoolers (one per line, numbered 1. 2. 3.).' +
+    '8. End with the exact line "You can also explore:" (do not rephrase it), followed by 5 follow-up questions suitable for middle-schoolers (one per line, numbered 1. 2. 3. 4. 5.).' +
     ref
   );
 }

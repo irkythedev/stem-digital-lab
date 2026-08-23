@@ -212,7 +212,8 @@ export default function Circuits() {
     setU(cfg.id === 'parallelHouse' ? 220 : 6);
     // 固定电表/保险丝样式：A 探针初始放干路左段，避免与符号重叠
     setMeterA({ id: cfg.fuse || cfg.fixedMeters ? 'dry-left' : 'dry-mid', x: cfg.fuse || cfg.fixedMeters ? 50 : 125, y: 60 });
-    setMeterV(cfg.kind === 'parallel' ? { id: 'bus', x: 290, y: 150 } : { id: 'e0', x: 200, y: 60 });
+    // 电压表默认跨接第一条支路元件（R₁ 两端），不从右侧干线上引出——引线从元件两端导线各引 T 节点，正交连到电压表
+    setMeterV({ id: 'e0', x: 200, y: 60 });
     setMeterErr(null);
   };
 
@@ -399,7 +400,7 @@ export default function Circuits() {
                 label={isHouse ? 'L–N' : style.fixedMeters ? t.readoutParallelV : gaugeLabel('voltage')}
               />
             </div>
-            <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox={`0 0 ${SVG_W} ${topo.svgH ?? SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
               {style.id === 'parallelHouse' ? (
                 /* ── 家庭电路：真实 L/N 双母线结构 ── */
                 <HouseholdCircuit
@@ -490,8 +491,8 @@ export default function Circuits() {
                   ))
                 : style.elements.map((e, i) => {
                     const y = topo.branchYs[i];
-                    // 第三支路（y=160）下方被回流线(y=180)占据：标签放灯上方；其余放下方
-                    const labelY = y >= 140 ? y - 20 : y + 22;
+                    // 三个灯泡标签统一在灯正下方（y+22）；75px 支路间距保证与上方电压表互不遮挡
+                    const labelY = y + 22;
                     return (
                       <g
                         key={`elmp${i}`}

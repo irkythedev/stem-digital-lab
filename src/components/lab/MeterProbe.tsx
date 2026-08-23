@@ -212,6 +212,17 @@ export default function MeterProbe({
   // 电压表吸附到元件两端：画两条实线连接（替代预画常显引线，体现"接上才显示"）
   const activeComp = kind === 'voltage' && active ? comps.find((c) => c.id === active.id) : null;
 
+  // 门字形并联引线：从元件两端节点垂直向上引出，再水平折向仪表左右边缘（±9，无外部接线孔）
+  const PORT_OFF = 9;
+  const leadFrom = (side: 'left' | 'right', my: number, sx: number, sy: number) => {
+    const mx = side === 'left' ? pos.x - PORT_OFF : pos.x + PORT_OFF;
+    const myOff = side === 'left' ? my + 2 : my - 2;
+    return `${sx},${sy} ${sx},${myOff} ${mx},${myOff}`;
+  };
+  const tNode = (cx: number, cy: number) => (
+    <circle cx={cx} cy={cy} r="2.5" fill="var(--fg)" stroke="none" />
+  );
+
   return (
     <>
       {/* 拖拽预览：虚线连接（viewBox 绝对坐标，在探针 g 之外） */}
@@ -231,26 +242,10 @@ export default function MeterProbe({
       )}
       {dragging && hover?.type === 'comp' && hoverComp && (
         <g stroke="var(--fg)" strokeWidth="1" strokeDasharray="3 3" opacity="0.7" pointerEvents="none">
-          <line x1={pos.x} y1={pos.y} x2={hoverComp.sense1.x} y2={hoverComp.sense1.y} />
-          <line x1={pos.x} y1={pos.y} x2={hoverComp.sense2.x} y2={hoverComp.sense2.y} />
-          <circle
-            cx={hoverComp.sense1.x}
-            cy={hoverComp.sense1.y}
-            r="2.5"
-            fill="var(--card-bg)"
-            stroke="var(--fg)"
-            strokeDasharray="none"
-            strokeWidth="1.2"
-          />
-          <circle
-            cx={hoverComp.sense2.x}
-            cy={hoverComp.sense2.y}
-            r="2.5"
-            fill="var(--card-bg)"
-            stroke="var(--fg)"
-            strokeDasharray="none"
-            strokeWidth="1.2"
-          />
+          <polyline points={leadFrom('left', pos.y, hoverComp.sense1.x, hoverComp.sense1.y)} fill="none" />
+          <polyline points={leadFrom('right', pos.y, hoverComp.sense2.x, hoverComp.sense2.y)} fill="none" />
+          {tNode(hoverComp.sense1.x, hoverComp.sense1.y)}
+          {tNode(hoverComp.sense2.x, hoverComp.sense2.y)}
         </g>
       )}
       {/* 拒绝预览：红色 X（非法接法，明确拒绝） */}
@@ -263,14 +258,16 @@ export default function MeterProbe({
       {/* 已吸附：电压表并联连接线（实线，替代预画常显引线） */}
       {activeComp && (
         <g stroke="var(--fg)" strokeWidth="1.2" pointerEvents="none">
-          <line x1={pos.x} y1={pos.y} x2={activeComp.sense1.x} y2={activeComp.sense1.y} />
-          <line x1={pos.x} y1={pos.y} x2={activeComp.sense2.x} y2={activeComp.sense2.y} />
+          <polyline points={leadFrom('left', pos.y, activeComp.sense1.x, activeComp.sense1.y)} fill="none" />
+          <polyline points={leadFrom('right', pos.y, activeComp.sense2.x, activeComp.sense2.y)} fill="none" />
+          {tNode(activeComp.sense1.x, activeComp.sense1.y)}
+          {tNode(activeComp.sense2.x, activeComp.sense2.y)}
         </g>
       )}
 
       <g
         ref={probeRef}
-        transform={`translate(${pos.x - 8}, ${pos.y - 8})`}
+        transform={`translate(${pos.x}, ${pos.y})`}
         className="cursor-grab"
         style={{ touchAction: 'none' }}
         onPointerDown={startDrag}
@@ -278,52 +275,19 @@ export default function MeterProbe({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        {/* 透明触控命中区 36×36（视觉仍 16×16，平板可达 44pt 标准） */}
-        <rect x="-10" y="-10" width="36" height="36" fill="transparent" />
-        {/* 高亮：合法目标（虚线连接时） */}
+        {/* 透明触控命中区 60×44（覆盖接线孔，平板触控合格） */}
+        <rect x="-30" y="-22" width="60" height="44" fill="transparent" />
+        {/* 高亮：合法目标 */}
         {(hover?.type === 'wire' || hover?.type === 'comp') && (
-          <circle
-            cx="8"
-            cy="8"
-            r="14"
-            fill="none"
-            stroke="var(--fg)"
-            strokeWidth="1"
-            strokeDasharray="3 2"
-          />
+          <rect x="-13" y="-13" width="26" height="26" rx="3" fill="none" stroke="var(--fg)" strokeWidth="1" strokeDasharray="3 2" />
         )}
-        {/* 高亮：非法目标（拒绝） */}
+        {/* 高亮：非法目标 */}
         {hover?.type === 'err' && (
-          <circle
-            cx="8"
-            cy="8"
-            r="14"
-            fill="none"
-            stroke="var(--error)"
-            strokeWidth="1.2"
-          />
+          <rect x="-13" y="-13" width="26" height="26" rx="3" fill="none" stroke="var(--error)" strokeWidth="1.2" strokeDasharray="3 2" />
         )}
-        {/* 方形仪表本体 */}
-        <rect
-          x="0"
-          y="0"
-          width="16"
-          height="16"
-          rx="2"
-          fill={isActive ? 'var(--accent-light)' : 'var(--card-bg)'}
-          stroke={hover?.type === 'err' ? 'var(--error)' : 'var(--fg)'}
-          strokeWidth="1.2"
-        />
-        <text
-          x="8"
-          y="12"
-          textAnchor="middle"
-          fontSize="11"
-          fill="var(--fg)"
-          fontFamily="var(--f-mono)"
-        >
-          {glyph}
-        </text>
+        {/* 中间矩形仪表符号：矩形内嵌 V/A（引线直接插进左右边缘 ±9，无外部接线孔） */}
+        <rect x="-9" y="-9" width="18" height="18" rx="2" fill={isActive ? 'var(--accent-light)' : 'var(--bg)'} stroke={hover?.type === 'err' ? 'var(--error)' : 'var(--fg)'} strokeWidth="1.4" />
+        <text x="0" y="4" textAnchor="middle" fontSize="12" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">{glyph}</text>
       </g>
     </>
   );
