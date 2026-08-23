@@ -441,7 +441,7 @@ export default function InteractiveCircle({
                 <text x={CX} y={CY + R + 48} textAnchor="middle"
                   fill={Math.abs(halfChord * 2 - chordLen) < 0.01 ? 'var(--fg)' : 'var(--muted)'}
                   fontSize={13} className="mono-font">
-                  AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? '✓ 垂径定理成立' : ''}
+                  AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? (zh ? '✓ 垂径定理成立' : '✓ Perpendicular bisector holds') : ''}
                 </text>
               )}
             </Fade>

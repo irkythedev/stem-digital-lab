@@ -24,7 +24,9 @@ export default function HomePage() {
   // 路由级 meta（首页默认标题/描述，L3 GEO）
   usePageMeta({
     title: `${t.brandName} | STEM Digital Lab`,
-    description: t.description + '。无需登录、中英双语、深浅主题，在线访问 https://stem.irky.dev',
+    description: lang === 'zh'
+      ? t.description + '。无需登录、中英双语、深浅主题，在线访问 https://stem.irky.dev'
+      : t.description + '. No login, bilingual zh/en, light & dark themes — visit https://stem.irky.dev',
   });
   const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);

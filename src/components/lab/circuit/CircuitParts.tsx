@@ -7,6 +7,7 @@
  * 8 例经典电路图样式共享这些零件，避免重复绘制。
  */
 import type { ReactNode } from 'react';
+import { useApp } from '../../../lib/app-context';
 
 /* ---------- 灯泡（灯丝发光 + 玻璃透亮 + 分层光晕，亮度随功率） ---------- */
 export function Bulb({
@@ -116,6 +117,7 @@ export function BladeSwitch({
   /** 下支路开关断开时向下翘（避免刀片穿入电路中间区域） */
   flipDown?: boolean;
 }) {
+  const { lang } = useApp();
   // 刀片用 transform rotate 实现平滑过渡（CSS transform 是 CSS 属性可过渡，SVG 几何属性不可）
   const len = Math.hypot(x2 - x1, y2 - y1);
   const ang = Math.atan2(y2 - y1, x2 - x1); // 闭合时刀片角度
@@ -123,7 +125,7 @@ export function BladeSwitch({
   return (
     <g
       role="button"
-      aria-label={`${label}: ${on ? '闭合' : '断开'}`}
+      aria-label={`${label}: ${on ? (lang === 'zh' ? '闭合' : 'closed') : (lang === 'zh' ? '断开' : 'open')}`}
       onClick={onToggle}
       className="cursor-pointer"
     >

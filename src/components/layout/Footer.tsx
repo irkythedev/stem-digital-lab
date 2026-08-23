@@ -7,7 +7,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Share2, FolderKanban, Mail } from 'lucide-react';
+import { Share2, Library, Mail } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -67,8 +67,8 @@ export default function Footer() {
               aria-label={t.moreWorks}
               className="relative flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
             >
-              <FolderKanban className="w-3.5 h-3.5" />
-              <span className="absolute -top-1.5 -right-2.5 min-w-[1.1rem] h-[1.05rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[9px] mono-font leading-none">
+              <Library className="w-4 h-4" />
+              <span className="absolute -top-2 -right-2 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[8px] mono-font leading-none">
                 {t.works.length}
               </span>
             </button>
