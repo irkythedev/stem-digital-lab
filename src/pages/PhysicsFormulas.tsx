@@ -62,6 +62,12 @@ export default function PhysicsFormulas() {
         topic: `物理公式：${selected.name.zh}`,
         knowledge: `公式：${selected.formula}。说明：${selected.label.zh}。单位：${selected.unit}。适用条件：${selected.condition.zh}。章节：${selected.chapter}。${consts ? `相关常量：${consts}。` : ''}`,
       });
+    } else {
+      // 未选中任何项时注入页面级知识（工具涵盖范围 + 使用方法）
+      setAiCtx({
+        topic: lang === 'zh' ? '物理公式速查' : 'Physics Formulas',
+        knowledge: lang === 'zh' ? '物理公式速查工具：按初中物理教材整理电学、力学、光学、声学、热学五类公式。使用方法：按分类筛选或搜索定位公式，点击公式卡片查看公式、单位、适用条件与相关常量。' : 'Physics formulas reference: junior-high physics formulas grouped by electricity, mechanics, optics, sound, and thermal. Use the category filter or search, then tap a card for the formula, units, conditions, and related constants.',
+      });
     }
     return () => setAiCtx({});
   }, [selected, setAiCtx]);

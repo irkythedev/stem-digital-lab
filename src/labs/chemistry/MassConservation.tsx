@@ -446,7 +446,7 @@ export default function MassConservation() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解质量守恒定律的实质，以及本实验三个方案为什么要分别设计' : 'Explain the essence of conservation of mass and why this lab uses three designs'} />
 
 
       {/* ── 天平 ── */}

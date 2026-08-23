@@ -227,7 +227,7 @@ export default function Pulley() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解定滑轮与动滑轮各有什么特点，滑轮组怎么判断省力情况' : 'Explain fixed vs movable pulleys and how to determine the effort saved by a pulley system'} />
 
 
       {/* ── 滑轮示意 ── */}

@@ -50,7 +50,7 @@ export default function LabPage() {
             const grade = subjects[lab.subject as keyof typeof subjects]?.gradeZh ?? '';
       setAiCtx({
         topic: `${lab.name.zh}实验（${grade}）`,
-        knowledge: `${lab.name.zh}实验（${lab.subject === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。`,
+        knowledge: `${lab.name.zh}实验（${lab.subject === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。${lab.aiKnowledge ? `\n${lab.aiKnowledge}` : ''}`,
       });
     }
     return () => setAiCtx({});

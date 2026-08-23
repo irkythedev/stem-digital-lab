@@ -61,6 +61,12 @@ export default function PhysicalConstants() {
         topic: `物理常量：${selected.name.zh}`,
         knowledge: `${selected.symbol} = ${selected.value} ${selected.unit}（${selected.name.zh}）。物理意义：${selected.meaning.zh}。应用：${selected.usage.zh}。章节：${selected.chapter}。`,
       });
+    } else {
+      // 未选中任何项时注入页面级知识（工具涵盖范围 + 使用方法）
+      setAiCtx({
+        topic: lang === 'zh' ? '物理常量速查' : 'Physics Constants',
+        knowledge: lang === 'zh' ? '物理常量速查工具：初中物理常用常量按力学、热学、光学、声学、电学分类，含数值、单位、物理意义与应用。使用方法：按分类筛选或搜索定位常量，点击查看详情。' : 'Physics constants reference: common junior-high constants grouped by mechanics, thermal, optics, sound, and electricity, with values, units, meaning, and usage. Filter by category or search, then tap for details.',
+      });
     }
     return () => setAiCtx({});
   }, [selected, setAiCtx]);

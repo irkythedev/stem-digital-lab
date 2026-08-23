@@ -22,28 +22,40 @@ export interface AiProvider {
 }
 
 export const AI_PROVIDERS: AiProvider[] = [
-  { id: 'deepseek', name: 'DeepSeek 深度求索', baseUrl: 'https://api.deepseek.com', models: ['deepseek-chat', 'deepseek-reasoner'] },
+  { id: 'deepseek', name: 'DeepSeek 深度求索', baseUrl: 'https://api.deepseek.com', models: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-pro'] },
   { id: 'dashscope', name: '通义千问（阿里云）', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-plus', 'qwen-turbo', 'qwen-long'] },
-  { id: 'moonshot', name: 'Kimi（月之暗面）', baseUrl: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'moonshot-v1-32k'] },
-  { id: 'zhipu', name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-flash', 'glm-4-plus'] },
+  { id: 'moonshot', name: 'Kimi（月之暗面）', baseUrl: 'https://api.moonshot.cn/v1', models: ['kimi-k3', 'kimi-k2.6', 'kimi-k2.7-code'] },
+  { id: 'zhipu', name: '智谱 GLM', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-flash', 'glm-4-plus', 'glm-4.5'] },
   {
     id: 'volcengine',
     name: '豆包（火山方舟）',
     baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-    models: ['doubao-pro-32k', 'doubao-lite-32k'],
+    models: ['doubao-seed-2-0-lite-260428', 'doubao-1-5-pro-32k-250115'],
     note: '浏览器直连可能受限；如无法连接，请改用自定义端点（自建代理）',
   },
   { id: 'custom', name: '自定义端点', baseUrl: '', models: [], note: '任意 OpenAI 兼容地址，一切权责由您自行承担' },
 ];
+
+/** 字符数估算 token（1 token ≈ 1.8 字符，适用于中英混合文本） */
+export function estimateTokens(text: string): number {
+  return Math.round(text.length / 1.8) || 0;
+}
 
 /** 网络类错误判断：浏览器 fetch 失败的常见消息（含跨域/网络不可达） */
 export function isNetworkError(msg: string): boolean {
   return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg);
 }
 
-/** 端点归一化：兼容 Base URL（…/v1）与完整端点（…/v1/chat/completions），用户无感 */
+/**
+ * 端点归一化：兼容 Base URL（…/v1）与完整端点（…/v1/chat/completions），用户无感。
+ * 安全：仅允许 http/https 协议（拒绝 javascript:/data: 等危险协议），并剥离 query 片段
+ * （防止 `?x=1` 拼接 /models 时产生错误 URL）。
+ */
 export function normalizeBaseUrl(url: string): string {
-  return url.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  // 先剥离 query，再归一（顺序不能反：query 在末尾会挡住 /chat/completions 的 $ 锚点）
+  const trimmed = url.trim().split('?')[0].replace(/\/+$/, '').replace(/\/chat\/completions$/, '');
+  if (!/^https?:\/\//i.test(trimmed)) return '';
+  return trimmed;
 }
 
 export interface AiConfig {
@@ -64,7 +76,8 @@ export function loadAiConfig(): AiConfig | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AiConfig;
     // 配置完整才算有效：key / 端点 / 模型 / 同意 缺一不可，否则视为未配置（面板停在须知）
-    if (parsed && parsed.apiKey && parsed.baseUrl && parsed.model && parsed.agreed) return parsed;
+    // 端点再做一次协议白名单校验（防历史脏数据：javascript: 等危险协议直接作废）
+    if (parsed && parsed.apiKey && parsed.model && parsed.agreed && /^https?:\/\//i.test(parsed.baseUrl)) return parsed;
     return null;
   } catch {
     return null;
@@ -96,7 +109,8 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
       `4. 不回答医疗、法律、金融等非学习问题；拒绝生成违法违规、不健康内容；\n` +
       `5. 语言适合未成年人，积极健康；不确定的内容直接承认，禁止编造数值或结论，并提示以教材和老师讲解为准；\n` +
       `6. 回答简明，先给结论再解释，可适当举例。\n` +
-      `7. 回答末尾另起一行，先输出一行「可以继续了解：」，随后给出 2~3 个与该知识点相关、适合初中生的追问问题（每行一个，编号 1. 2. 3.）。` +
+      `7. 数学公式必须用 LaTeX 书写：行内公式用 \\(...\\) 包裹（如 \\(y=ax^2+bx+c\\)），独立成行的公式用 \\[...\\] 包裹，便于渲染；\n` +
+      `8. 回答末尾另起一行，原样输出一行「可以继续了解：」（不得改写为其他措辞），随后给出 2~3 个与该知识点相关、适合初中生的追问问题（每行一个，编号 1. 2. 3.）。` +
       ref
     );
   }
@@ -110,7 +124,8 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
     '\n4. Decline non-study topics (medical, legal, financial) and any inappropriate content.\n' +
     '5. Keep language kid-friendly and positive; admit uncertainty instead of making up numbers or conclusions; refer to the textbook and teacher.\n' +
     '6. Be concise: conclusion first, then explanation with examples.\n' +
-    '7. End with a line "You can also explore:" followed by 2-3 follow-up questions suitable for middle-schoolers (one per line, numbered 1. 2. 3.).' +
+    '7. Write math formulas in LaTeX: inline formulas wrapped in \\(...\\) (e.g. \\(y=ax^2+bx+c\\)), display formulas in \\[...\\] — this is required so they render properly.\n' +
+    '8. End with the exact line "You can also explore:" (do not rephrase it), followed by 2-3 follow-up questions suitable for middle-schoolers (one per line, numbered 1. 2. 3.).' +
     ref
   );
 }

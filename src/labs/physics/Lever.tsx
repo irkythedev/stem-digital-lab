@@ -237,7 +237,7 @@ export default function Lever() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解杠杆平衡条件 F₁l₁=F₂l₂，以及省力、费力、等臂杠杆怎么区分' : 'Explain the lever balance F₁l₁=F₂l₂ and how to tell effort-saving, effort-costing and equal-arm levers'} />
 
 
       {/* ── 杠杆示意 ── */}

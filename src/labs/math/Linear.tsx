@@ -410,7 +410,7 @@ export default function Linear() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解一次函数 y=kx+b 中 k 与 b 的几何意义，如何决定直线的走向与截距' : 'Explain the geometric meaning of k and b in y=kx+b — how they set the line direction and intercept'} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

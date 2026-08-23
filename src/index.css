@@ -229,6 +229,11 @@ input[type="range"]::-moz-range-thumb {
   .update-dot, .update-dot-halo { animation: none; }
 }
 
+/* AI 学习助手面板 · 数学公式字号适配（面板 text-xs 12px，KaTeX 默认 1.21em 偏大） */
+.ai-answer .ai-answer-katex .katex { font-size: 1.08em; }
+.ai-answer .ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
+.ai-answer .ai-answer-katex-block .katex { font-size: 1.08em; }
+
 /* 首开欢迎弹窗：遮罩淡入 + 卡片轻上浮（组件内已按 prefers-reduced-motion 跳过动画） */
 @keyframes welcome-fade-in {
   from { opacity: 0; }

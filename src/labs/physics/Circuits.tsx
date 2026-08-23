@@ -374,7 +374,7 @@ export default function Circuits() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别' : 'Compare how current and voltage distribute in series vs parallel circuits'} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

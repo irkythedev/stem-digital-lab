@@ -434,7 +434,7 @@ export default function Lens() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解凸透镜成像的规律：物距与像的性质有什么关系' : 'Explain convex-lens imaging: how object distance determines the image properties'} />
 
 
       {/* ── 光具座 ── */}

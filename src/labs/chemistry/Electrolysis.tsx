@@ -259,7 +259,7 @@ export default function Electrolysis() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解电解水的实验现象：正负极各产生什么气体，体积比是多少' : 'Explain the electrolysis of water: which gas forms at each electrode and the 2:1 volume ratio'} />
 
 
       {/* ── 电解器示意 ── */}

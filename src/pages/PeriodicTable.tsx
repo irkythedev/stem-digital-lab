@@ -88,9 +88,20 @@ export default function PeriodicTable() {
   // AI 上下文：选中元素时注入
   useEffect(() => {
     if (selected) {
+      const catZh = selected.cat === 'metal' ? '金属元素' : selected.cat === 'nonmetal' ? '非金属元素' : selected.cat === 'metalloid' ? '类金属元素' : '稀有气体元素';
+      const shellsStr = selected.shells.join('、');
       setAiCtx({
         topic: `化学元素：${selected.zh}`,
-        knowledge: `元素 ${selected.symbol}（中文名 ${selected.zh}，英文 ${selected.en}）：${selected.zh}元素，符号 ${selected.symbol}。`,
+        knowledge:
+          `元素 ${selected.symbol}（中文名 ${selected.zh}，英文 ${selected.en}）：${catZh}，原子序数 ${selected.n}，` +
+          `相对原子质量 ${selected.massExact ?? selected.mass ?? '未知'}，位于第 ${selected.period} 周期、第 ${selected.group ?? '?'} 族，` +
+          `电子层排布为 ${shellsStr}。${selected.discovery?.zh ? `发现史：${selected.discovery.zh}` : ''}${selected.usage?.zh ? `常见用途：${selected.usage.zh}` : ''}`,
+      });
+    } else {
+      // 未选中任何项时注入页面级知识（工具涵盖范围 + 使用方法）
+      setAiCtx({
+        topic: lang === 'zh' ? '元素周期表' : 'Periodic Table',
+        knowledge: lang === 'zh' ? '元素周期表工具：118 个化学元素，支持按元素符号/中文名/英文名检索；点击元素查看原子序数、相对原子质量、电子层排布、发现史与常见用途；附中考跟读模式（男/女声读音）。' : 'Periodic table: all 118 elements, searchable by symbol / Chinese / English name; tap an element for atomic number, atomic mass, electron shells, discovery, and uses; includes a recite mode with male/female audio.',
       });
     }
     return () => setAiCtx({});

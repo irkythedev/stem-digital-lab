@@ -443,7 +443,7 @@ export default function Quadratic() {
         </span>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解本实验的原理与操作要点' : 'Explain this lab — its principle and key steps'} />
+      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解二次函数 y=ax²+bx+c 中 a、b、c 三个参数分别对抛物线有什么影响' : 'Explain how a, b, c in y=ax²+bx+c affect the parabola'} />
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
