@@ -1,7 +1,7 @@
 {
   "name": "stem-digital-lab",
   "private": true,
-  "version": "1.20.8",
+  "version": "1.20.9",
   "description": "\u57fa\u4e8e\u521d\u4e2d 7-9 \u5e74\u7ea7\u8bfe\u7a0b\u5927\u7eb2\u7684\u6570\u5b66\u3001\u7269\u7406\u3001\u5316\u5b66\u6570\u5b57\u5b9e\u9a8c\u4e0e\u63a2\u7a76\u5e73\u53f0",
   "license": "AGPL-3.0",
   "homepage": "https://stem.irky.dev",

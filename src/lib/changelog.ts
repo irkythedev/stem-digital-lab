@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.8';
+export const APP_VERSION = '1.20.9';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.9',
+    date: '2026-08',
+    zh: [
+      '[优化] 语言默认跟随系统，英文系统自动切到英文界面',
+      '[优化] 使用说明中反馈与 AI 助手条目改为图标标题，更易识别',
+      '[修复] 修复移动端首页底部多余留白，旧设备也生效',
+    ],
+    en: [
+      '[Improved] Language now follows the system preference — English devices start in English',
+      '[Improved] Guide page icons for feedback and AI assistant sections',
+      '[Fixed] Removed extra whitespace at the bottom of the homepage on mobile (works on older devices too)',
+    ],
+  },
+
   {
     version: '1.20.8',
     date: '2026-08',

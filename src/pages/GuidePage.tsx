@@ -5,6 +5,7 @@
  * 使用说明：课堂与个人探究的简明操作指南。
  */
 import { Link } from 'react-router-dom';
+import { MessageSquare, Sparkles } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { usePageMeta } from '../lib/use-page-meta';
 
@@ -101,11 +102,17 @@ export default function GuidePage() {
           <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.teachingText}</p>
         </section>
         <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
-          <h2 className="text-xs font-bold tracking-widest uppercase mono-font mb-4">// {c.privacy}</h2>
+          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-4">
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+            {c.privacy}
+          </h2>
           <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.privacyText}</p>
         </section>
         <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
-          <h2 className="text-xs font-bold tracking-widest uppercase mono-font mb-2">// {c.ai}</h2>
+          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-2">
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            {c.ai}
+          </h2>
           <p className="text-sm serif-font leading-relaxed text-[var(--muted)] mb-3">{c.aiIntro}</p>
           <p className="text-xs font-bold mono-font text-[var(--fg)] mb-1.5">{c.aiTermsTitle}</p>
           <ul className="space-y-1.5">

@@ -28,7 +28,27 @@ interface AppContextValue {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Language>('zh');
+  // 语言默认值：用户手动切换偏好优先（stem-lang）；无偏好时跟随系统语言（英文系统→英文，其余→中文）
+  const [lang, setLangState] = useState<Language>(() => {
+    try {
+      const saved = localStorage.getItem('stem-lang');
+      if (saved === 'en' || saved === 'zh') return saved;
+    } catch {
+      /* 隐私模式等场景下 localStorage 不可用时静默回退 */
+    }
+    if (typeof navigator !== 'undefined' && /^en/i.test(navigator.language || '')) return 'en';
+    return 'zh';
+  });
+
+  // 切换语言时持久化用户偏好，之后不再跟随系统语言
+  const setLang = (l: Language) => {
+    setLangState(l);
+    try {
+      localStorage.setItem('stem-lang', l);
+    } catch {
+      /* 忽略写入失败 */
+    }
+  };
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
   // 应用主题类到 <html>，并监听系统主题变化
