@@ -402,13 +402,13 @@ function genSeries(config: StyleConfig): GeneratedTopology {
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: BATT_X, y1: 60, x2: SW_X1, y2: 60, current: 'i0' },
     { id: 'dry-mid', x1: SW_X2, y1: 60, x2: NODE_X, y2: 60, current: 'i0' },
-    { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 70, current: 'i0' },
-    { id: 'dry-batt-bot', x1: BATT_X, y1: 82, x2: BATT_X, y2: 140, current: 'i0' },
+    { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 94, current: 'i0' },
+    { id: 'dry-batt-bot', x1: BATT_X, y1: 106, x2: BATT_X, y2: 140, current: 'i0' },
     { id: 'dry-right', x1: RIGHT_X, y1: 60, x2: RIGHT_X, y2: 140, current: 'i0' },
     { id: 'dry-bottom', x1: RIGHT_X, y1: 140, x2: BATT_X, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
-    { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'u' },
+    { id: 'battery', kind: 'battery', sense1: { x: 58, y: 94 }, sense2: { x: 48, y: 106 }, vertical: true, land: { x: 80, y: 100 }, voltage: 'u' }, // 端点=长线/短线右端（真实极板），仪表放电池右侧
   ];
   // 元件间导线 + 每元件 V 引线
   let prevX = NODE_X;
@@ -454,14 +454,14 @@ function genParallel(config: StyleConfig): GeneratedTopology {
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: BATT_X, y1: 60, x2: SW_X1, y2: 60, current: 'i0' },
     { id: 'dry-mid', x1: SW_X2, y1: 60, x2: NODE_X, y2: 60, current: 'i0' },
-    { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 70, current: 'i0' },
-    { id: 'dry-batt-bot', x1: BATT_X, y1: 82, x2: BATT_X, y2: 140, current: 'i0' },
+    { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 94, current: 'i0' },
+    { id: 'dry-batt-bot', x1: BATT_X, y1: 106, x2: BATT_X, y2: 140, current: 'i0' },
     { id: 'dry-right', x1: RIGHT_X, y1: ys[0], x2: RIGHT_X, y2: returnY, current: 'i0' },
     { id: 'dry-bottom', x1: RIGHT_X, y1: returnY, x2: BATT_X, y2: returnY, current: 'i0' },
     { id: 'p-neg-drop', x1: BATT_X, y1: returnY, x2: BATT_X, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
-    { id: 'battery', kind: 'battery', sense1: { x: 72, y: 92 }, sense2: { x: 72, y: 108 }, land: { x: 72, y: 100 }, voltage: 'u' },
+    { id: 'battery', kind: 'battery', sense1: { x: 58, y: 94 }, sense2: { x: 48, y: 106 }, vertical: true, land: { x: 80, y: 100 }, voltage: 'u' }, // 端点=长线/短线右端（真实极板），仪表放电池右侧
     // 右侧汇合母线两端 = 并联电路两端节点：电压表并联在此测电路两端电压（而非直接搭电源）
     { id: 'bus', kind: 'bus', sense1: { x: RIGHT_X, y: ys[0] }, sense2: { x: RIGHT_X, y: returnY }, land: { x: RIGHT_X - 18, y: (ys[0] + returnY) / 2 }, voltage: 'u' },
   ];

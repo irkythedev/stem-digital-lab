@@ -414,7 +414,14 @@ export default function PeriodicTable() {
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
-          <ShareInline />
+          <ShareInline
+            title={lang === 'zh' ? '元素周期表 · 数理化数字实验室' : 'Periodic Table · STEM Digital Lab'}
+            text={
+              lang === 'zh'
+                ? '118 个化学元素实物照片、中英读音与中考跟读模式，免费使用！'
+                : '118 elements with real photos, Chinese & English pronunciation, and exam recitation mode. Free to use!'
+            }
+          />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

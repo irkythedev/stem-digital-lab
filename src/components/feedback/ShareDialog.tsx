@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useApp } from '../../lib/app-context';
+import { isWechat } from '../../lib/is-wechat';
 
 interface ShareDialogProps {
   url: string;
@@ -22,8 +23,8 @@ export default function ShareDialog({ url, onClose, title, text }: ShareDialogPr
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
-  // 微信内置浏览器检测：点右上角「···」即可转发，无需/不能程序化调起
-  const isWechat = typeof navigator !== 'undefined' && /MicroMessenger/i.test(navigator.userAgent);
+  // 微信内置浏览器检测：点右上角「···」即可转发，无需/不能程序化调起（与转发引导覆层共用 lib）
+  const wechatBrowser = isWechat();
 
   const shareTitle = title || t.shareTitle;
   const shareText = text || t.shareText;
@@ -84,19 +85,21 @@ export default function ShareDialog({ url, onClose, title, text }: ShareDialogPr
             <QRCodeSVG value={url} size={160} level="M" marginSize={2} />
           </div>
           <p className="text-xs text-[var(--muted)]">
-            {isWechat ? t.wechatInnerHint : t.wechatOuterHint}
+            {wechatBrowser ? t.wechatInnerHint : t.wechatOuterHint}
           </p>
         </div>
 
-        {/* 按钮 */}
+        {/* 按钮：仅支持 Web Share API 的浏览器显示「分享」主按钮，其余直接用「复制链接」 */}
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleNativeShare}
-            className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)]"
-          >
-            {t.share}
-          </button>
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <button
+              type="button"
+              onClick={handleNativeShare}
+              className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)]"
+            >
+              {t.share}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleCopy}

@@ -66,10 +66,21 @@ body {
   color: var(--fg);
   font-family: var(--f-sans);
   min-height: 100vh;
+  /* 移动浏览器 URL 栏收展时跟随实际视口，避免滚动到底后底部留白（PWA 无 URL 栏所以不触发） */
+  min-height: 100dvh;
+  /* sticky footer：body → #root → #app-main flex 链路，内容不足一屏时 Footer 也被顶到视口底部 */
+  display: flex;
+  flex-direction: column;
   margin: 0;
   transition: background-color 0.25s ease, color 0.25s ease;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 /* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */

@@ -10,6 +10,7 @@ import { Link, useParams } from 'react-router-dom';
 import { House    } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
+import { translations } from '../lib/i18n';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
@@ -116,8 +117,8 @@ export default function LabPage() {
               <ShareInline
                 title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
                 text={lang === 'zh'
-                  ? t.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
-                  : t.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+                  ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                  : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
               />
 
             </h1>

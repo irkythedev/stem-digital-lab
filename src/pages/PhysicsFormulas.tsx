@@ -133,7 +133,14 @@ export default function PhysicsFormulas() {
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
-          <ShareInline />
+          <ShareInline
+            title={lang === 'zh' ? '物理公式速查 · 数理化数字实验室' : 'Physics Formulas · STEM Digital Lab'}
+            text={
+              lang === 'zh'
+                ? '初中物理核心公式速查，按力学/热学/光学/声学/电学分类，附单位、适用条件与易错点，免费使用！'
+                : 'Core middle-school physics formulas with units, conditions and pitfalls. Free to use!'
+            }
+          />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.7';
+export const APP_VERSION = '1.20.8';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.8',
+    date: '2026-08',
+    zh: [
+      '[新增] 微信内打开页面自动提示转发，分享给同学更顺手',
+      '[优化] 分享提示更清晰，工具页分享文案更贴合内容',
+      '[修复] 修复移动端页面底部多余留白，电路实验图走线更清晰',
+    ],
+    en: [
+      '[New] WeChat visitors get an automatic forward tip for sharing pages with classmates',
+      '[Improved] Clearer share hints and tailored share text on tool pages',
+      '[Fixed] Removed extra whitespace at the bottom on mobile; cleaner circuit wiring',
+    ],
+  },
+
   {
     version: '1.20.7',
     date: '2026-08',
