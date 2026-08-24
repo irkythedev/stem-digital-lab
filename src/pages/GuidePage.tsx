@@ -84,6 +84,19 @@ export default function GuidePage() {
         <h1 className="text-base font-bold tracking-widest uppercase mono-font text-[var(--fg)] mb-4">{c.title}</h1>
         <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.intro}</p>
       </div>
+
+      {/* 项目介绍视频：先看总览再读细节；preload="none" 不拖慢首屏 */}
+      <div className="mb-10 max-w-2xl">
+        <video
+          controls
+          preload="none"
+          playsInline
+          className="w-full border border-[var(--border)] bg-[var(--card-bg)]"
+        >
+          <source src="/videos/stem-intro.mp4" type="video/mp4" />
+        </video>
+      </div>
+
       <div className="grid gap-8 md:grid-cols-2">
         <section className="border-t border-[var(--border)] pt-4">
           <h2 className="text-xs font-bold tracking-widest uppercase mono-font mb-4">// {c.flow}</h2>
