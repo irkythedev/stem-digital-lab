@@ -29,6 +29,8 @@ export interface MeasurableWire {
 export interface MeasurableComp {
   id: string;
   kind: 'bulb' | 'battery' | 'bus';
+  /** 垂直元件标记（电池等 sense 上下分布的元件，引线走水平平行双线；缺省按 sense 几何判断） */
+  vertical?: boolean;
   /** 跨接判定端点（元件真实两端） */
   sense1: { x: number; y: number };
   sense2: { x: number; y: number };
@@ -212,10 +214,19 @@ export default function MeterProbe({
   // 电压表吸附到元件两端：画两条实线连接（替代预画常显引线，体现"接上才显示"）
   const activeComp = kind === 'voltage' && active ? comps.find((c) => c.id === active.id) : null;
 
-  // 门字形并联引线：从元件两端节点垂直向上引出，再水平折向仪表左右边缘（±9，无外部接线孔）
+  // 引线：按元件方向自适应——
+  // 水平元件（灯泡等，sense 左右分布）：垂直引出 → 门字形折入仪表左右边缘
+  // 垂直元件（电池，sense 上下分布）：水平引出直连仪表左右边缘（避免引线穿电池本体）
   const PORT_OFF = 9;
-  const leadFrom = (side: 'left' | 'right', my: number, sx: number, sy: number) => {
+  const isVerticalComp = (c: { sense1: { x: number; y: number }; sense2: { x: number; y: number }; vertical?: boolean }) =>
+    c.vertical === true || (Math.abs(c.sense1.x - c.sense2.x) < 1 && Math.abs(c.sense1.y - c.sense2.y) > 1);
+  const leadFrom = (side: 'left' | 'right', my: number, sx: number, sy: number, vertical: boolean) => {
     const mx = side === 'left' ? pos.x - PORT_OFF : pos.x + PORT_OFF;
+    if (vertical) {
+      // 垂直元件（电池）：正极接仪表左缘、负极接右缘，分接两侧避免仪表边框误视作短路线
+      const mx = side === 'left' ? pos.x - PORT_OFF : pos.x + PORT_OFF;
+      return `${sx},${sy} ${mx},${sy}`;
+    }
     const myOff = side === 'left' ? my + 2 : my - 2;
     return `${sx},${sy} ${sx},${myOff} ${mx},${myOff}`;
   };
@@ -242,8 +253,8 @@ export default function MeterProbe({
       )}
       {dragging && hover?.type === 'comp' && hoverComp && (
         <g stroke="var(--fg)" strokeWidth="1" strokeDasharray="3 3" opacity="0.7" pointerEvents="none">
-          <polyline points={leadFrom('left', pos.y, hoverComp.sense1.x, hoverComp.sense1.y)} fill="none" />
-          <polyline points={leadFrom('right', pos.y, hoverComp.sense2.x, hoverComp.sense2.y)} fill="none" />
+          <polyline points={leadFrom('left', pos.y, hoverComp.sense1.x, hoverComp.sense1.y, isVerticalComp(hoverComp))} fill="none" />
+          <polyline points={leadFrom('right', pos.y, hoverComp.sense2.x, hoverComp.sense2.y, isVerticalComp(hoverComp))} fill="none" />
           {tNode(hoverComp.sense1.x, hoverComp.sense1.y)}
           {tNode(hoverComp.sense2.x, hoverComp.sense2.y)}
         </g>
@@ -258,8 +269,8 @@ export default function MeterProbe({
       {/* 已吸附：电压表并联连接线（实线，替代预画常显引线） */}
       {activeComp && (
         <g stroke="var(--fg)" strokeWidth="1.2" pointerEvents="none">
-          <polyline points={leadFrom('left', pos.y, activeComp.sense1.x, activeComp.sense1.y)} fill="none" />
-          <polyline points={leadFrom('right', pos.y, activeComp.sense2.x, activeComp.sense2.y)} fill="none" />
+          <polyline points={leadFrom('left', pos.y, activeComp.sense1.x, activeComp.sense1.y, isVerticalComp(activeComp))} fill="none" />
+          <polyline points={leadFrom('right', pos.y, activeComp.sense2.x, activeComp.sense2.y, isVerticalComp(activeComp))} fill="none" />
           {tNode(activeComp.sense1.x, activeComp.sense1.y)}
           {tNode(activeComp.sense2.x, activeComp.sense2.y)}
         </g>

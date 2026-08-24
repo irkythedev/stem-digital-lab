@@ -449,7 +449,7 @@ export default function Circuits() {
               />
 
               {/* 电源：直流电池（家庭电路已在独立分支渲染交流电源） */}
-              <Battery cx={BATT_X} cy={110} />
+              <Battery cx={BATT_X} cy={134} />
 
               {/* 并联支路开关 S₁/S₂… */}
               {!isSeries &&
@@ -576,6 +576,8 @@ export default function Circuits() {
                   )
                 );
               })}
+              {/* 遮挡电池区域的回流电流小点：长横（正极）与短横（负极）之间保持空白（电池符号内无竖线） */}
+              <rect x={BATT_X - 6} y={95} width={12} height={10} fill="var(--bg)" />
               </>
               )}
               {/* 固定电表（并-3 三电流表：干路 A₀ + 支路 A₁/A₂） */}

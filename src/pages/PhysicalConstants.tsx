@@ -107,7 +107,14 @@ export default function PhysicalConstants() {
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
-          <ShareInline />
+          <ShareInline
+            title={lang === 'zh' ? '物理常量速查 · 数理化数字实验室' : 'Physics Constants · STEM Digital Lab'}
+            text={
+              lang === 'zh'
+                ? '初中物理常用常量速查，按力学/热学/光学/声学/电学分类，附物理意义与应用场景，免费使用！'
+                : 'Quick reference for middle-school physics constants by category, with meanings and usage. Free to use!'
+            }
+          />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

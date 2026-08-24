@@ -115,7 +115,14 @@ export default function MathFormulas() {
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
-          <ShareInline />
+          <ShareInline
+            title={lang === 'zh' ? '数学公式速查 · 数理化数字实验室' : 'Math Formulas · STEM Digital Lab'}
+            text={
+              lang === 'zh'
+                ? '初中数学核心公式速查，按代数/几何/函数/统计概率分类，附记忆口诀与易错点，免费使用！'
+                : 'Core middle-school math formulas with mnemonics and pitfalls. Free to use!'
+            }
+          />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

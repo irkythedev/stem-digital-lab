@@ -54,7 +54,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     () => ({
       lang,
       setLang,
-      t: translations[lang],
+      // 断言：en 字典允许缺少模板类键（分享文案模板单一来源在 zh 区块，见 i18n.ts）
+      t: translations[lang] as Translation,
       themeMode,
       setThemeMode,
     }),
