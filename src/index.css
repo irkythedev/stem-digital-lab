@@ -248,15 +248,18 @@ input[type="range"]::-moz-range-thumb {
 .ai-answer .ai-answer-katex .katex { font-size: 1.08em; }
 .ai-answer .ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
 
-/* TTS 朗读 · 合成中：原子轨道慢速旋转（2.5s/圈，沉稳从容的 AI 加载质感） */
-@keyframes speak-atom-spin {
-  to { transform: rotate(360deg); }
+/* TTS 朗读 · 合成中：品牌三角方圆循环移位（复用 Header 品牌动画 tri/sq/ci-spin）；
+   等待超 4s 时变暖色（琥珀），提示"等太久了" */
+.speak-brand {
+  transition: color 0.6s ease;
 }
-.speak-atom {
-  animation: speak-atom-spin 2.5s linear infinite;
-}
+.speak-brand .animate-tri-spin { animation: tri-spin 2.4s ease-in-out infinite; }
+.speak-brand .animate-sq-spin { animation: sq-spin 2.4s ease-in-out infinite; }
+.speak-brand .animate-ci-spin { animation: ci-spin 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .speak-atom { animation: none; }
+  .speak-brand .animate-tri-spin,
+  .speak-brand .animate-sq-spin,
+  .speak-brand .animate-ci-spin { animation: none; }
 }
 .ai-answer .ai-answer-katex-block .katex { font-size: 1.08em; }
 

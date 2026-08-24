@@ -349,7 +349,7 @@ export default function PhysicsFormulas() {
                 onClick={() => setZoomDiagram(false)}
                 className="text-xs mono-font text-white/80 hover:text-white underline"
               >
-                {lang === 'zh' ? '关闭' : 'Close'} ×
+                {lang === 'zh' ? '关闭' : 'Close'}
               </button>
             </div>
           </div>

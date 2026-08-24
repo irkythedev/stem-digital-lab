@@ -244,7 +244,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
                 className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             <p className="text-xs serif-font leading-relaxed text-[var(--fg)]">

@@ -13,6 +13,7 @@ interface VersionDialogProps {
 
 export default function VersionDialog({ onClose }: VersionDialogProps) {
   const { lang } = useApp();
+  const closeLabel = lang === 'zh' ? '关闭' : 'Close';
   return (
     <div
       className="fixed top-16 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
@@ -22,7 +23,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// v{APP_VERSION}</h2>
-          <button type="button" onClick={onClose} className="text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
         </div>
         <div className="space-y-4 max-h-[50vh] overflow-y-auto">
           {CHANGELOG.map((entry) => (

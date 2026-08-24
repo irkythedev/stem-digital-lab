@@ -26,7 +26,7 @@ export const SERVERCHAN_CONFIG = {
 
 /** 钉钉通道：SCF 云函数转发地址（部署 docs/dingtalk-feedback-function.js 后填写，形如 https://xxx.service.tcloudbase.com/ding-feedback） */
 export const DINGTALK_PROXY = {
-  apiBase: '',
+  apiBase: 'https://1307683613-c6djcnfpz2.ap-shanghai.tencentscf.com',
   /** 推送标题（钉钉 markdown 首行标题） */
   title: '数理化数字实验室 · 反馈',
 } as const;
