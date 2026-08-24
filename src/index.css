@@ -247,6 +247,17 @@ input[type="range"]::-moz-range-thumb {
 /* AI 学习助手面板 · 数学公式字号适配（面板 text-xs 12px，KaTeX 默认 1.21em 偏大） */
 .ai-answer .ai-answer-katex .katex { font-size: 1.08em; }
 .ai-answer .ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
+
+/* TTS 朗读 · 合成中：原子轨道慢速旋转（2.5s/圈，沉稳从容的 AI 加载质感） */
+@keyframes speak-atom-spin {
+  to { transform: rotate(360deg); }
+}
+.speak-atom {
+  animation: speak-atom-spin 2.5s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .speak-atom { animation: none; }
+}
 .ai-answer .ai-answer-katex-block .katex { font-size: 1.08em; }
 
 /* 首开欢迎弹窗：遮罩淡入 + 卡片轻上浮（组件内已按 prefers-reduced-motion 跳过动画） */
