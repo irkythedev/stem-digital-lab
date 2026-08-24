@@ -615,8 +615,13 @@ export default function AiAssistant() {
     setRefreshingRecs(true);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
       { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
-      { role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的追问问题（每行一个，编号 1. 2. 3.，不要解释）' : 'Give 3 different follow-up questions on the topic just discussed (one per line, numbered 1. 2. 3., no explanation)' },
     ];
+    // 携带上一轮问答作为「刚才讨论的主题」上下文（与追问同模式，避免换一批飘回页面主题）
+    if (lastExchange.current) {
+      messages.push({ role: 'user', content: lastExchange.current.user });
+      messages.push({ role: 'assistant', content: lastExchange.current.assistant });
+    }
+    messages.push({ role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的追问问题（每行一个，编号 1. 2. 3.，不要解释）' : 'Give 3 different follow-up questions on the topic just discussed (one per line, numbered 1. 2. 3., no explanation)' });
     try {
       const t0 = performance.now();
       const full = await streamChat(config, messages, () => {}, undefined);
