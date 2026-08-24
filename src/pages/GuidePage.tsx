@@ -1,4 +1,9 @@
-/** 使用说明：课堂与个人探究的简明操作指南。 */
+/**
+ * @license
+ * SPDX-License-Identifier: AGPL-3.0
+ *
+ * 使用说明：课堂与个人探究的简明操作指南。
+ */
 import { Link } from 'react-router-dom';
 import { useApp } from '../lib/app-context';
 import { usePageMeta } from '../lib/use-page-meta';

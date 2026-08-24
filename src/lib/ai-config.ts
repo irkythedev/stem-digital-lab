@@ -37,8 +37,8 @@ export const AI_PROVIDERS: AiProvider[] = [
 ];
 
 /** 字符数估算 token（1 token ≈ 1.8 字符，适用于中英混合文本） */
-export function estimateTokens(text: string): number {
-  return Math.round(text.length / 1.8) || 0;
+export function estimateTokens(text: string | number): number {
+  return Math.round(String(text).length / 1.8) || 0;
 }
 
 /** 网络类错误判断：浏览器 fetch 失败的常见消息（含跨域/网络不可达） */
