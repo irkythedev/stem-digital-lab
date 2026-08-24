@@ -93,17 +93,17 @@ export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps)
         {/* 中心轴 */}
         <circle cx={CX} cy={CY} r="2.6" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
       </svg>
-      <p className="mono-font text-[13px] leading-tight text-[var(--fg)]">
+      <p className="mono-font text-[0.8125rem] leading-tight text-[var(--fg)]">
         {value === null ? (
           '—'
         ) : (
           <>
             {value.toFixed(unit === 'A' ? 2 : 1)}
-            <span className="ml-1 text-[9px] leading-tight text-[var(--muted)]">{unit}</span>
+            <span className="ml-1 text-[0.5625rem] leading-tight text-[var(--muted)]">{unit}</span>
           </>
         )}
       </p>
-      <p className="text-[10px] mono-font leading-tight text-[var(--muted)]">{label}</p>
+      <p className="text-[0.625rem] mono-font leading-tight text-[var(--muted)]">{label}</p>
     </div>
   );
 }

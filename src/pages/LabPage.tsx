@@ -61,7 +61,7 @@ export default function LabPage() {
     return (
       <main className="flex-1 flex flex-col my-16 px-2 sm:px-6">
         <div className="mb-8">
-          <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] mono-font">
+          <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
             / lab / {labId ?? 'unknown'}
           </span>
           <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font mt-2 mb-2 text-[var(--fg)]">
@@ -111,7 +111,7 @@ export default function LabPage() {
           <div className="flex flex-col items-start leading-tight">
             <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
               {lab.name[lang]}
-              <span className="ml-3 text-[11px] uppercase tracking-widest text-[var(--muted)] mono-font align-middle">
+              <span className="ml-3 text-[0.6875rem] uppercase tracking-widest text-[var(--muted)] mono-font align-middle">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
               </span>
               <ShareInline

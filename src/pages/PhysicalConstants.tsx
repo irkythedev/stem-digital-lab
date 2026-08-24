@@ -126,7 +126,7 @@ export default function PhysicalConstants() {
       {/* 检索 + 分类筛选（灰色背景模块） */}
       <div className="mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-[11px] mono-font text-[var(--muted)]">
+          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '检索常量' : 'Search'}
           </div>
           <div className="relative w-full sm:max-w-xs">
@@ -174,7 +174,7 @@ export default function PhysicalConstants() {
           >
             <span className="text-lg font-bold mono-font text-[var(--fg)] leading-none">{c.symbol}</span>
             <span className="text-xs mono-font text-[var(--muted)] leading-none">{c.value} {c.unit}</span>
-            <span className="text-[10px] serif-font text-[var(--muted)] leading-none truncate w-full text-center">
+            <span className="text-[0.625rem] serif-font text-[var(--muted)] leading-none truncate w-full text-center">
               {lang === 'zh' ? c.name.zh : c.name.en}
             </span>
           </button>
@@ -206,7 +206,7 @@ export default function PhysicalConstants() {
             </button>
 
             <div className="pr-8">
-              <div className="text-[10px] mono-font text-[var(--muted)]">
+              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? CONSTANT_CATEGORY_ZH[selected.category] : CONSTANT_CATEGORY_EN[selected.category]}
               </div>
               <div className="mt-1">
@@ -220,13 +220,13 @@ export default function PhysicalConstants() {
 
             <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '物理意义' : 'Meaning'}
                 </div>
                 <p className="leading-relaxed">{lang === 'zh' ? selected.meaning.zh : selected.meaning.en}</p>
               </div>
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '应用场景' : 'Usage'}
                 </div>
                 <p className="leading-relaxed">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
@@ -251,7 +251,7 @@ export default function PhysicalConstants() {
               {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
               {formulasUsing(selected.symbol).length > 0 && (
                 <div className="border border-[var(--border)] p-2.5">
-                  <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                     // {lang === 'zh' ? '用于公式' : 'Used in formulas'}
                   </div>
                   <div className="flex flex-wrap gap-2">

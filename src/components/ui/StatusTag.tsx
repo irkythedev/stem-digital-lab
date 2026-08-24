@@ -13,7 +13,7 @@ interface StatusTagProps {
 
 export default function StatusTag({ children, className = '' }: StatusTagProps) {
   return (
-    <span className={`text-[11px] font-bold text-[var(--fg)] mono-font ${className}`}>
+    <span className={`text-[0.6875rem] font-bold text-[var(--fg)] mono-font ${className}`}>
       [{children}]
     </span>
   );

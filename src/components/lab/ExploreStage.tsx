@@ -66,7 +66,7 @@ export default function ExploreStage({
 
   return (
     <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+      <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
         // {title}
       </h3>
 
@@ -133,7 +133,7 @@ export default function ExploreStage({
           <div className="max-h-[240px] overflow-y-auto space-y-2">
             {observations.map((o) => (
               <div key={o.id} className="border border-[var(--border)] p-2 space-y-1">
-                <p className="text-[11px] mono-font text-[var(--muted)]">
+                <p className="text-[0.6875rem] mono-font text-[var(--muted)]">
                   {o.snapshot.map((s) => `${s.label}=${s.value}`).join(' · ')}
                 </p>
                 {o.note && <p className="text-xs text-[var(--fg)] serif-font">“{o.note}”</p>}

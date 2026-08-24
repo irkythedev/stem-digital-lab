@@ -30,7 +30,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
             <div key={entry.version} className="border-t border-[var(--border)] pt-3">
               <div className="flex items-baseline gap-2 mb-1.5">
                 <span className="text-xs font-bold mono-font text-[var(--fg)]">v{entry.version}</span>
-                <span className="text-[10px] mono-font text-[var(--muted)]">{entry.date}</span>
+                <span className="text-[0.625rem] mono-font text-[var(--muted)]">{entry.date}</span>
               </div>
               <ul className="space-y-1">
                 {(lang === 'zh' ? entry.zh : entry.en).map((line, i) => {

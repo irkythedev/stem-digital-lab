@@ -147,7 +147,7 @@ export default function SubjectPage() {
         ) : (
           <div className="border-t border-[var(--border)] pt-4 pb-6 flex flex-col space-y-1.5">
             <StatusTag>{t.underConstruction}</StatusTag>
-            <span className="text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+            <span className="text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
               {t.labUnderConstruction}
             </span>
           </div>

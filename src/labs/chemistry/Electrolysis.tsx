@@ -242,7 +242,7 @@ export default function Electrolysis() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
           const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
@@ -265,11 +265,11 @@ export default function Electrolysis() {
       {/* ── 电解器示意 ── */}
       <div className="border border-[var(--border)] p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.readout}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.readout}</h3>
           <button
             type="button"
             onClick={() => setPower((p) => !p)}
-            className={`px-3 py-1.5 text-[11px] border transition-colors ${
+            className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
               power ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
             }`}
           >
@@ -360,7 +360,7 @@ export default function Electrolysis() {
       {/* ── 幕内容 ── */}
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
           {renderConcludeQ('q1', c.predictQ1, [{ value: 'o2', label: c.predictQ1O2 }, { value: 'h2', label: c.predictQ1H2 }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {renderConcludeQ('q2', c.predictQ2, [{ value: 'ratio21', label: c.predictQ2Ratio21 }, { value: 'ratio11', label: c.predictQ2Ratio11 }, { value: 'ratio12', label: c.predictQ2Ratio12 }], predict2 as string, (v) => setPredict2(v as PredictQ2))}
@@ -388,7 +388,7 @@ export default function Electrolysis() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
           {renderConcludeQ('q1', c.concludeQ1, [{ value: 'o2', label: c.concludeQ1O2 }, { value: 'h2', label: c.concludeQ1H2 }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('q2', c.concludeQ2, [{ value: 'h2', label: c.concludeQ2H2 }, { value: 'o2', label: c.concludeQ2O2 }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
@@ -399,7 +399,7 @@ export default function Electrolysis() {
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">
               <p className="text-sm serif-font text-[var(--fg)] leading-relaxed">{c.feedbackText}</p>
-              <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
+              <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
               <ul className="space-y-1">{c.tips.map((tip, i) => <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2"><span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>{tip}</li>)}</ul>
 
               {/* 微观动画（可控播放） */}
@@ -407,7 +407,7 @@ export default function Electrolysis() {
                 <button
                   type="button"
                   onClick={() => setShowMicro((p) => !p)}
-                  className={`px-3 py-1.5 text-[11px] border transition-colors ${
+                  className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
                     showMicro
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'

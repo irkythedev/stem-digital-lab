@@ -152,7 +152,7 @@ export default function PhysicsFormulas() {
       {/* 检索 + 分类筛选 */}
       <div className="mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-[11px] mono-font text-[var(--muted)]">
+          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '检索公式' : 'Search'}
           </div>
           <div className="relative w-full sm:max-w-xs">
@@ -208,7 +208,7 @@ export default function PhysicsFormulas() {
             <span className="text-sm font-semibold serif-font text-[var(--fg)] leading-tight text-center">
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
-            <Formula tex={f.formula} className="text-[13px] text-[var(--fg)]" />
+            <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
           </button>
         ))}
       </div>
@@ -238,7 +238,7 @@ export default function PhysicsFormulas() {
             </button>
 
             <div className="pr-8">
-              <div className="text-[10px] mono-font text-[var(--muted)]">
+              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? PHYSICS_FORMULA_CATEGORY_ZH[selected.category] : PHYSICS_FORMULA_CATEGORY_EN[selected.category]}
               </div>
               <div className="mt-1 text-lg font-semibold serif-font text-[var(--fg)]">
@@ -251,7 +251,7 @@ export default function PhysicsFormulas() {
               <div className="text-xs serif-font italic text-[var(--muted)] mt-1.5">
                 {lang === 'zh' ? selected.label.zh : selected.label.en}
               </div>
-              <div className="mt-1 text-[11px] mono-font text-[var(--muted)]">
+              <div className="mt-1 text-[0.6875rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? '单位' : 'Unit'}: {selected.unit}
               </div>
 
@@ -265,19 +265,19 @@ export default function PhysicsFormulas() {
 
             <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '适用条件' : 'Conditions'}
                 </div>
                 <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.condition.zh : selected.condition.en}</p>
               </div>
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '常考易错' : 'Pitfalls'}
                 </div>
                 <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en}</p>
               </div>
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '应用场景' : 'Usage'}
                 </div>
                 <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
@@ -286,7 +286,7 @@ export default function PhysicsFormulas() {
               {/* 相关常量（双向关联：点击跳常量页并聚焦） */}
               {selected.relatedConstants && selected.relatedConstants.length > 0 && (
                 <div className="border border-[var(--border)] p-2.5">
-                  <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                     // {lang === 'zh' ? '相关常量' : 'Related constants'}
                   </div>
                   <div className="flex flex-wrap gap-2">

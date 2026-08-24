@@ -404,7 +404,7 @@ export default function MassConservation() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label =
             s === 'predict'
@@ -462,7 +462,7 @@ export default function MassConservation() {
 
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.predictTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -576,7 +576,7 @@ export default function MassConservation() {
                   key={idx}
                   type="button"
                   onClick={() => setActiveScheme(idx)}
-                  className={`px-3 py-1.5 text-[11px] border transition-colors ${
+                  className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
                     activeScheme === idx
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -723,7 +723,7 @@ export default function MassConservation() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.concludeTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -795,7 +795,7 @@ export default function MassConservation() {
                 <button
                   type="button"
                   onClick={() => setShowMicro((p) => !p)}
-                  className={`px-3 py-1.5 text-[11px] border transition-colors ${
+                  className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
                     showMicro
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -853,7 +853,7 @@ export default function MassConservation() {
               </div>
 
               <div>
-                <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+                <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
                   // {c.tipsTitle}
                 </h4>
                 <ul className="space-y-1">

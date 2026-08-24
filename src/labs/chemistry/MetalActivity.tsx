@@ -268,7 +268,7 @@ export default function MetalActivity() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
           const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
@@ -291,11 +291,11 @@ export default function MetalActivity() {
       {/* ── 反应卡切换 ── */}
       <div className="flex gap-2">
         <button type="button" onClick={() => { setReact('al-cuso4'); setDone(false); }}
-          className={`px-3 py-1.5 text-[11px] border transition-colors ${react === 'al-cuso4' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
+          className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${react === 'al-cuso4' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
           Al + CuSO₄
         </button>
         <button type="button" onClick={() => { setReact('cu-agno3'); setDone(false); }}
-          className={`px-3 py-1.5 text-[11px] border transition-colors ${react === 'cu-agno3' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
+          className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${react === 'cu-agno3' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
           Cu + AgNO₃
         </button>
       </div>
@@ -303,11 +303,11 @@ export default function MetalActivity() {
       {/* ── 实验示意 ── */}
       <div className="border border-[var(--border)] p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.readout}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.readout}</h3>
           <button
             type="button"
             onClick={() => setDone((p) => !p)}
-            className={`px-3 py-1.5 text-[11px] border transition-colors ${
+            className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
               done ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
             }`}
           >
@@ -348,7 +348,7 @@ export default function MetalActivity() {
       {/* ── 幕内容 ── */}
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
           {renderConcludeQ('q3', c.predictQ1, [{ value: 'alcuag', label: c.predictQ1AlCuAg }, { value: 'cualag', label: c.predictQ1CuAlAg }, { value: 'agcual', label: c.predictQ1AgCuAl }], predict1 as string, (v) => setPredict1(v as PredictQ))}
           {predComplete ? (
@@ -375,7 +375,7 @@ export default function MetalActivity() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
           {renderConcludeQ('q1', c.concludeQ1, [{ value: 'redcu', label: c.concludeQ1RedCu }, { value: 'nothing', label: c.concludeQ1Nothing }, { value: 'ag', label: c.concludeQ1Ag }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('q2', c.concludeQ2, [{ value: 'ag', label: c.concludeQ2Ag }, { value: 'nothing', label: c.concludeQ2Nothing }, { value: 'cu', label: c.concludeQ2Cu }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
@@ -386,7 +386,7 @@ export default function MetalActivity() {
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">
               <p className="text-sm serif-font text-[var(--fg)] leading-relaxed">{c.feedbackText}</p>
-              <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
+              <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
               <ul className="space-y-1">{c.tips.map((tip, i) => <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2"><span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>{tip}</li>)}</ul>
             </div>
           )}

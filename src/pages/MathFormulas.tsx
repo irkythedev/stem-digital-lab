@@ -29,7 +29,7 @@ function renderRich(text: string): ReactNode[] {
   const parts = text.split(/\$(.+?)\$/g);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <Formula key={i} tex={part} className="text-[13px] text-[var(--fg)]" />
+      <Formula key={i} tex={part} className="text-[0.8125rem] text-[var(--fg)]" />
     ) : (
       <span key={i}>{part}</span>
     ),
@@ -134,7 +134,7 @@ export default function MathFormulas() {
       {/* 检索 + 分类筛选（灰色背景模块） */}
       <div className="mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-[11px] mono-font text-[var(--muted)]">
+          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '检索公式' : 'Search'}
           </div>
           <div className="relative w-full sm:max-w-xs">
@@ -190,7 +190,7 @@ export default function MathFormulas() {
             <span className="text-sm font-semibold serif-font text-[var(--fg)] leading-tight text-center">
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
-            <Formula tex={f.formula} className="text-[13px] text-[var(--fg)]" />
+            <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
           </button>
         ))}
       </div>
@@ -220,7 +220,7 @@ export default function MathFormulas() {
             </button>
 
             <div className="pr-8">
-              <div className="text-[10px] mono-font text-[var(--muted)]">
+              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? FORMULA_CATEGORY_ZH[selected.category] : FORMULA_CATEGORY_EN[selected.category]}
               </div>
               <div className="mt-1 text-lg font-semibold serif-font text-[var(--fg)]">
@@ -248,19 +248,19 @@ export default function MathFormulas() {
 
             <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '记忆要点' : 'Tip'}
                 </div>
                 <p className="leading-relaxed">{renderRich(lang === 'zh' ? selected.tip.zh : selected.tip.en)}</p>
               </div>
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '易错点' : 'Pitfall'}
                 </div>
                 <p className="leading-relaxed">{renderRich(lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en)}</p>
               </div>
               <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-1">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
                   // {lang === 'zh' ? '典型应用' : 'Usage'}
                 </div>
                 <p className="leading-relaxed">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>

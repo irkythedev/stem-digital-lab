@@ -107,7 +107,7 @@ export default function Header() {
             </button>
           )}
         </span>
-        <span className="hidden sm:inline text-[10px] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
+        <span className="hidden sm:inline text-[0.625rem] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
           STEM DIGITAL LAB
         </span>
         {/* 版本号：点击弹出版本历史；有更新时显示绿色呼吸灯圆点，点击圆点刷新到新版本 */}
@@ -122,7 +122,7 @@ export default function Header() {
           }}
           title={t.versionTitle.replace('{version}', APP_VERSION)}
           aria-label={t.versionAria}
-          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
             v{APP_VERSION}
@@ -147,13 +147,13 @@ export default function Header() {
 
       {/* 刷新状态 toast：右上角 */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[11px] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
           {lang === 'zh' ? '正在刷新到最新版本…' : 'Refreshing to latest version…'}
         </div>
       )}
 
-      <div className="flex items-center gap-2 sm:gap-4 text-[11px] mono-font uppercase tracking-wider">
+      <div className="flex items-center gap-2 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
         {/* AI Assistant entry（版本号在左侧品牌区，此处无绿点遮挡） */}
         <button
           type="button"

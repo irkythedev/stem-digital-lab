@@ -41,11 +41,11 @@ export default function LicensePage() {
       </Link>
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-bold mono-font tracking-widest">AGPL-3.0</h1>
-        <p className="text-[11px] mono-font text-[var(--muted)]">
+        <p className="text-[0.6875rem] mono-font text-[var(--muted)]">
           GNU Affero General Public License, Version 3, 19 November 2007
         </p>
       </div>
-      <pre className="text-[11px] leading-relaxed whitespace-pre-wrap break-words font-mono border border-[var(--border)] bg-[var(--card-bg)] p-4 max-h-[70vh] overflow-y-auto">
+      <pre className="text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-words font-mono border border-[var(--border)] bg-[var(--card-bg)] p-4 max-h-[70vh] overflow-y-auto">
         {AGPL_LICENSE_TEXT}
       </pre>
     </div>

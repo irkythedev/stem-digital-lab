@@ -377,17 +377,17 @@ export default function PeriodicTable() {
         style={{ borderColor: color.border, backgroundColor: color.bg }}
       >
         {/* 核电荷数（左上角） */}
-        <span className="absolute top-0.5 left-1 text-[9px] mono-font text-[var(--muted)] leading-none">
+        <span className="absolute top-0.5 left-1 text-[0.5625rem] mono-font text-[var(--muted)] leading-none">
           {el.n}
         </span>
         {/* 符号（居中，醒目） */}
-        <span className="flex-1 flex items-center justify-center text-[16px] font-bold mono-font leading-none" style={{ color: color.text }}>
+        <span className="flex-1 flex items-center justify-center text-[1rem] font-bold mono-font leading-none" style={{ color: color.text }}>
           {el.symbol}
         </span>
         {/* 中文名 */}
-        <span className="text-center text-[12px] serif-font leading-none mb-0.5 font-medium">{el.zh}</span>
+        <span className="text-center text-[0.75rem] serif-font leading-none mb-0.5 font-medium">{el.zh}</span>
         {/* 相对原子质量（底部，调大调浅） */}
-        <span className="text-center text-[9px] mono-font text-[var(--muted)] leading-none mb-0.5 opacity-80">
+        <span className="text-center text-[0.5625rem] mono-font text-[var(--muted)] leading-none mb-0.5 opacity-80">
           {el.mass ?? ''}
         </span>
       </button>
@@ -433,7 +433,7 @@ export default function PeriodicTable() {
       {/* 检索 + 图例（灰色背景模块，与表格区视觉分离） */}
       <div className="mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-[11px] mono-font text-[var(--muted)]">
+          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '检索元素' : 'Search'}
           </div>
           <input
@@ -445,7 +445,7 @@ export default function PeriodicTable() {
           />
         </div>
         {/* 图例 */}
-        <div className="flex flex-wrap gap-4 text-[10px] mono-font text-[var(--muted)]">
+        <div className="flex flex-wrap gap-4 text-[0.625rem] mono-font text-[var(--muted)]">
           {(Object.keys(CAT_COLOR) as ElementInfo['cat'][]).map((c) => (
             <span key={c} className="flex items-center gap-1.5">
               <span className="w-3 h-3 border" style={{ borderColor: CAT_COLOR[c].border, backgroundColor: CAT_COLOR[c].bg }} />
@@ -458,13 +458,13 @@ export default function PeriodicTable() {
       {/* 中考跟读（播放器：选预设 → 设置次数/间隔 → 播放，右侧进度条 + 播放控制） */}
       <div className="recite-panel mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3">
         <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
-          <div className="text-[11px] mono-font text-[var(--muted)]">
+          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '// 中考跟读' : '// Recite'}
           </div>
           {/* 声音切换（女生/男生）+ 跟读进度 */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5" role="group" aria-label={lang === 'zh' ? '声音选择' : 'Voice'}>
-              <span className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '声音' : 'Voice'}</span>
+              <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '声音' : 'Voice'}</span>
               <button
                 type="button"
                 onClick={() => changeVoice('female')}
@@ -487,7 +487,7 @@ export default function PeriodicTable() {
               </button>
             </div>
             {recite && reciteEl && recitePreset && (
-              <div className="text-[11px] mono-font text-[var(--fg)]">
+              <div className="text-[0.6875rem] mono-font text-[var(--fg)]">
                 {reciteEl.zh} {reciteEl.symbol} · {recite.pos}/{recitePreset.ns.length}
               </div>
             )}
@@ -520,7 +520,7 @@ export default function PeriodicTable() {
           <div className="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-center gap-x-4 gap-y-2">
             {/* 朗读次数 */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '次数' : 'Times'}</span>
+              <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '次数' : 'Times'}</span>
               {[1, 2, 3].map((r) => (
                 <button
                   key={r}
@@ -536,7 +536,7 @@ export default function PeriodicTable() {
             </div>
             {/* 跟读间隔 */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '间隔' : 'Gap'}</span>
+              <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '间隔' : 'Gap'}</span>
               {GAP_OPTIONS.map((g, i) => (
                 <button
                   key={g}
@@ -609,7 +609,7 @@ export default function PeriodicTable() {
                     />
                   </div>
                 </div>
-                <div className="text-[10px] mono-font text-[var(--muted)]">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)]">
                   {recite.pos} / {recitePreset.ns.length} · {lang === 'zh' ? `每元素读 ${repeat} 遍` : `${repeat}x each`} · {GAP_OPTIONS[gapIdx] / 1000}s{' '}
                   {lang === 'zh' ? '间隔' : 'gap'}
                 </div>
@@ -620,7 +620,7 @@ export default function PeriodicTable() {
       </div>
 
       {/* 主表 */}
-      <div className="mb-1 text-[10px] mono-font text-[var(--muted)] sm:hidden">
+      <div className="mb-1 text-[0.625rem] mono-font text-[var(--muted)] sm:hidden">
         {lang === 'zh' ? '← 左右滑动查看完整周期表 →' : '← Swipe to see the full table →'}
       </div>
       {/* pt-3 给第一行（氢/氦）hover 上浮留出空间，避免被上方模块遮挡 */}
@@ -630,7 +630,7 @@ export default function PeriodicTable() {
           {[1, 2, 3, 4, 5, 6, 7].map((period) => (
             <div key={period} className="flex gap-1 mb-1">
               {/* 周期号 */}
-              <span className="w-6 shrink-0 flex items-center justify-center text-[9px] mono-font text-[var(--muted)]">
+              <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
                 {period}
               </span>
               {Array.from({ length: 18 }, (_, i) => {
@@ -641,16 +641,16 @@ export default function PeriodicTable() {
                 if (col === 3 && period === 6) {
                   return (
                     <div key={col} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
-                      <span className="text-[10px] serif-font text-[var(--fg)]">{lang === 'zh' ? '镧系' : 'La'}</span>
-                      <span className="text-[9px] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
+                      <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '镧系' : 'La'}</span>
+                      <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
                     </div>
                   );
                 }
                 if (col === 3 && period === 7) {
                   return (
                     <div key={col} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
-                      <span className="text-[10px] serif-font text-[var(--fg)]">{lang === 'zh' ? '锕系' : 'Ac'}</span>
-                      <span className="text-[9px] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
+                      <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '锕系' : 'Ac'}</span>
+                      <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
                     </div>
                   );
                 }
@@ -664,14 +664,14 @@ export default function PeriodicTable() {
 
           {/* 镧系 */}
           <div className="flex gap-1 mb-1">
-            <span className="w-6 shrink-0 flex items-center justify-center text-[9px] mono-font text-[var(--muted)]">
+            <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
               {lang === 'zh' ? '镧系' : 'La'}
             </span>
             {lanthanides.map((el) => renderCell(el))}
           </div>
           {/* 锕系 */}
           <div className="flex gap-1 mb-1">
-            <span className="w-6 shrink-0 flex items-center justify-center text-[9px] mono-font text-[var(--muted)]">
+            <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
               {lang === 'zh' ? '锕系' : 'Ac'}
             </span>
             {actinides.map((el) => renderCell(el))}
@@ -680,7 +680,7 @@ export default function PeriodicTable() {
       </div>
 
       {/* 底部说明 */}
-      <p className="mt-5 text-[11px] serif-font text-[var(--muted)] leading-relaxed">
+      <p className="mt-5 text-[0.6875rem] serif-font text-[var(--muted)] leading-relaxed">
         {lang === 'zh'
           ? '注：周期表按原子序数（核电荷数）递增排列；第 8、9、10 三个纵列共同组成一个族。相对原子质量为近似值。'
           : 'Note: ordered by atomic number (nuclear charge); columns 8-10 together form one group. Atomic masses are approximate.'}
@@ -707,7 +707,7 @@ export default function PeriodicTable() {
 
             <div className="flex items-start justify-between pr-8">
               <div>
-                <div className="text-[10px] mono-font text-[var(--muted)]">#{selected.n}</div>
+                <div className="text-[0.625rem] mono-font text-[var(--muted)]">#{selected.n}</div>
                 <div className="flex items-center gap-2">
                   <span className="text-3xl font-bold serif-font text-[var(--fg)]">{selected.zh}</span>
                   {/* 读音按钮：三态反馈（空闲/加载中/播放中），让用户明确知道状态 */}
@@ -740,7 +740,7 @@ export default function PeriodicTable() {
                 </div>
                 <div className="text-sm mono-font text-[var(--muted)]">{selected.symbol}</div>
                 {/* 读音状态提示（加载中/播放中/空闲） */}
-                <div className="mt-0.5 h-3 text-[10px] mono-font">
+                <div className="mt-0.5 h-3 text-[0.625rem] mono-font">
                   {speakState === 'loading' && (
                     <span className="text-[var(--muted)]">{lang === 'zh' ? '读音加载中…' : 'Loading audio…'}</span>
                   )}
@@ -756,7 +756,7 @@ export default function PeriodicTable() {
 
             <div className="mt-3 text-sm serif-font text-[var(--fg)]">
               {/* Tab 切换：基础属性 / 百科故事 */}
-              <div className="dialog-tabs flex border border-[var(--border)] mb-3 text-[11px] mono-font">
+              <div className="dialog-tabs flex border border-[var(--border)] mb-3 text-[0.6875rem] mono-font">
                 <button
                   type="button"
                   onClick={() => setTab('props')}
@@ -778,7 +778,7 @@ export default function PeriodicTable() {
                 <>
               {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数） */}
               <div className="relative border border-[var(--border)] px-2 py-1 mb-1.5">
-                <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-0">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
                   // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
                 </div>
                 <svg viewBox="0 0 180 150" className="w-full max-h-[170px]" aria-label={`${selected.zh} 原子结构`}>
@@ -858,7 +858,7 @@ export default function PeriodicTable() {
                 </svg>
                 {/* 当前层电子数提示条（悬停/点击时显示；绝对定位不占布局，避免卡片高度变化引起晃动） */}
                 {hoveredLayer !== null && selected.shells[hoveredLayer] != null && (
-                  <div className="absolute bottom-1 left-2 text-[11px] mono-font text-[var(--fg)] pointer-events-none">
+                  <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
                     {lang === 'zh'
                       ? `第 ${hoveredLayer + 1} 层：${selected.shells[hoveredLayer]} 个电子`
                       : `Shell ${hoveredLayer + 1}: ${selected.shells[hoveredLayer]} electron${selected.shells[hoveredLayer] > 1 ? 's' : ''}`}
@@ -893,10 +893,10 @@ export default function PeriodicTable() {
                                   : String(selected.mass ?? '—')}
                             </span>
                             {!selected.radioactive && selected.massUnc && (
-                              <span className="text-[10px] mono-font text-[var(--muted)]">±{selected.massUnc}</span>
+                              <span className="text-[0.625rem] mono-font text-[var(--muted)]">±{selected.massUnc}</span>
                             )}
                             {selected.radioactive && (
-                              <span className="text-[10px] mono-font text-[var(--muted)]">
+                              <span className="text-[0.625rem] mono-font text-[var(--muted)]">
                                 {lang === 'zh' ? '质量数·无稳定同位素' : 'mass no.·no stable'}
                               </span>
                             )}
@@ -921,7 +921,7 @@ export default function PeriodicTable() {
                   );
                 })}
               </dl>
-              <p className="mt-1.5 px-2 text-[10px] serif-font italic text-[var(--muted)] leading-relaxed">
+              <p className="mt-1.5 px-2 text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
                 {lang === 'zh'
                   ? '相对原子质量为 IUPAC 标准原子量（2021 年修订）；无稳定同位素的元素显示其最稳定同位素的质量数。'
                   : 'Atomic masses are IUPAC standard atomic weights (2021); elements with no stable isotopes show the mass number of their longest-lived isotope.'}
@@ -960,12 +960,12 @@ export default function PeriodicTable() {
                         data-photo-fallback
                       >
                         <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
-                        <span className="text-[10px] serif-font italic text-[var(--muted)]">
+                        <span className="text-[0.625rem] serif-font italic text-[var(--muted)]">
                           {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
                         </span>
                       </div>
                     </div>
-                    <p className="mt-0.5 text-[9px] serif-font italic text-[var(--muted)]">
+                    <p className="mt-0.5 text-[0.5625rem] serif-font italic text-[var(--muted)]">
                       {selected.n >= 105
                         ? lang === 'zh'
                           ? '人工合成元素，暂无实物照片'
@@ -980,7 +980,7 @@ export default function PeriodicTable() {
                     </p>
                   </div>
                   <div>
-                    <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-0">
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
                       // {lang === 'zh' ? '发现史' : 'Discovery'}
                     </div>
                     <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -988,14 +988,14 @@ export default function PeriodicTable() {
                     </p>
                   </div>
                   <div>
-                    <div className="text-[10px] mono-font text-[var(--muted)] tracking-widest mb-0">
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
                       // {lang === 'zh' ? '生活与常见用途' : 'Where you find it'}
                     </div>
                     <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
                       {lang === 'zh' ? selected.usage.zh : selected.usage.en}
                     </p>
                   </div>
-                  <p className="text-[10px] serif-font italic text-[var(--muted)] leading-relaxed">
+                  <p className="text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
                     {lang === 'zh'
                       ? '发现史与用途为简要科普，具体年代与细节以权威化学史资料为准。'
                       : 'Discovery and uses are brief; exact dates and details defer to authoritative chemistry history sources.'}

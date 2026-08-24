@@ -32,17 +32,17 @@ export default function CircuitTooltip({ x, y, formula, substitution, principle,
       }}
     >
       {name && (
-        <div className="text-[10px] mono-font uppercase tracking-widest text-[var(--muted)] mb-1">
+        <div className="text-[0.625rem] mono-font uppercase tracking-widest text-[var(--muted)] mb-1">
           {name}
         </div>
       )}
       <div className="text-xs serif-font font-bold text-[var(--fg)] mb-0.5 whitespace-nowrap">
         {formula}
       </div>
-      <div className="text-[11px] serif-font text-[var(--fg)] mb-0.5 whitespace-nowrap">
+      <div className="text-[0.6875rem] serif-font text-[var(--fg)] mb-0.5 whitespace-nowrap">
         {substitution}
       </div>
-      <div className="text-[10px] sans-font text-[var(--muted)] leading-snug">
+      <div className="text-[0.625rem] sans-font text-[var(--muted)] leading-snug">
         {principle}
       </div>
     </div>

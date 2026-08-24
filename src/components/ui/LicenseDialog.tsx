@@ -27,7 +27,7 @@ export default function LicenseDialog({ onClose }: LicenseDialogProps) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
             <h1 className="text-xs font-bold mono-font tracking-widest">AGPL-3.0</h1>
-            <p className="text-[10px] mono-font text-[var(--muted)]">
+            <p className="text-[0.625rem] mono-font text-[var(--muted)]">
               GNU Affero General Public License, Version 3, 19 November 2007
             </p>
           </div>
@@ -39,7 +39,7 @@ export default function LicenseDialog({ onClose }: LicenseDialogProps) {
           >×</button>
         </div>
         {/* 协议全文（滚动） */}
-        <pre className="flex-1 overflow-y-auto text-[11px] leading-relaxed whitespace-pre-wrap break-words font-mono p-4">
+        <pre className="flex-1 overflow-y-auto text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-words font-mono p-4">
           {AGPL_LICENSE_TEXT}
         </pre>
       </div>
