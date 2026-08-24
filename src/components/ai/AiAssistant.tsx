@@ -573,9 +573,10 @@ export default function AiAssistant() {
       const { body, recs: parsedRecs } = parseRecQuestions(full);
       setAnswer(body);
       setRecs(parsedRecs);
-      lastExchange.current = { user: q, assistant: full };
+      // 历史与追问上下文只存干净的 body（剥离「可以继续了解」追问段，避免回答内重复显示）
+      lastExchange.current = { user: q, assistant: body };
       // 入历史（上限 HISTORY_MAX，超出丢最旧）
-      setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: full }]);
+      setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: body }]);
       // 回答已入历史，清空当前轮（避免同一内容在历史区和当前轮重复显示）
       setAnswer('');
       // 最终定格（与实时滚动值对齐，避免浮点误差）
