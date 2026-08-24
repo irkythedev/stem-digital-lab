@@ -11,6 +11,7 @@ import { Sun, Moon, Monitor , Sparkles } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
 import { APP_VERSION } from '../../lib/changelog';
+import { useVersionCheck } from '../../lib/use-version-check';
 import VersionDialog from '../feedback/VersionDialog';
 import type { ThemeMode } from '../../lib/app-context';
 
@@ -18,7 +19,6 @@ export default function Header() {
   const { t, lang, setLang, themeMode, setThemeMode } = useApp();
   const { open: aiOpen, setOpen: setAiOpen, configured: aiConfigured } = useAiContext();
   const [showVersion, setShowVersion] = useState(false);
-  const [hasUpdate, setHasUpdate] = useState(false);
   const [toast, setToast] = useState(false);
 
   // 显示"正在刷新"toast 2 秒
@@ -57,19 +57,8 @@ export default function Header() {
     }
   };
 
-  // 检测是否有新版本：对比远端 version.json 与本版本号（fetch 失败则静默忽略）
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/version.json', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (!cancelled && d && typeof d.version === 'string' && d.version !== APP_VERSION) {
-          setHasUpdate(true);
-        }
-      })
-      .catch(() => { /* 网络/离线：忽略，不打扰 */ });
-    return () => { cancelled = true; };
-  }, []);
+  // 检测是否有新版本：对比远端 version.json 与本版本号（hook 内 fetch 失败则静默忽略）
+  const { hasUpdate } = useVersionCheck();
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];

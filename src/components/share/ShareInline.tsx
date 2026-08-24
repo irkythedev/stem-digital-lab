@@ -33,7 +33,7 @@ export default function ShareInline({ url, title, text }: ShareInlineProps) {
         onClick={() => setOpen(true)}
         title={t.share}
         aria-label={t.share}
-        className="ml-3 inline-flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors align-middle"
+        className="ml-3 inline-flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors align-middle p-1.5 -m-1.5"
       >
         <Share2 className="w-4 h-4" />
       </button>

@@ -17,7 +17,9 @@ import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
 import LicenseDialog from './LicenseDialog';
+import VersionDialog from '../feedback/VersionDialog';
 import { APP_VERSION } from '../../lib/changelog';
+import { useVersionCheck } from '../../lib/use-version-check';
 
 /* 项目主页 icon（与 Footer 同一套 SVG） */
 const GITEE_PATH =
@@ -32,6 +34,9 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
   useLockBodyScroll(true);
   // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
   const [showLicense, setShowLicense] = useState(false);
+  // 版本历史弹窗 + 更新检测（与 Header 共用 hook）
+  const [showVersion, setShowVersion] = useState(false);
+  const { hasUpdate } = useVersionCheck();
   const [dontShow, setDontShow] = useState(false);
   // 其他作品：点击后先确认（简介 + 提示），用户决定是否跳转外部站点
   const [pendingWork, setPendingWork] = useState<{ name: string; url: string; icon: string; desc?: string } | null>(null);
@@ -71,7 +76,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
       />
       {/* 卡片：flex 纵向布局，内容区独立滚动，底部操作栏固定可见（移动端友好） */}
       <div
-        className="relative w-full max-w-lg max-h-[85vh] flex flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
+        className="relative w-full max-w-lg max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
         style={reduceMotion ? undefined : { animation: 'welcome-rise-in 0.35s ease' }}
       >
         {/* 顶部条 */}
@@ -79,7 +84,19 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           <div className="min-w-0">
             <h2 className="text-base font-bold mono-font tracking-widest">
               {t.brandName}
-              <span className="ml-2 text-[10px] mono-font font-normal text-[var(--muted)] align-middle">v{APP_VERSION}</span>
+              {/* 版本号 + 更新提示（点击查看版本历史，与 Header 一致） */}
+              <button
+                type="button"
+                onClick={() => setShowVersion(true)}
+                title={t.versionTitle.replace('{version}', APP_VERSION)}
+                aria-label={t.versionAria}
+                className="ml-2 inline-flex items-center gap-1 text-[10px] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
+              >
+                v{APP_VERSION}
+                {hasUpdate && (
+                  <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
+                )}
+              </button>
             </h2>
             <p className="mt-1 text-[10px] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
               <span>{t.welcomeTag}</span>
@@ -283,6 +300,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
         </div>
       </div>
       {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
+      {showVersion && <VersionDialog onClose={() => setShowVersion(false)} />}
     </div>,
     document.body,
   );
