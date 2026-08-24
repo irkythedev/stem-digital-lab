@@ -122,7 +122,7 @@ export default function MicroAnimation({ reactants, products, duration = 2000 }:
     <div className="border border-[var(--border)] p-3 space-y-3">
       {/* 阶段指示 + 标题 */}
       <div className="flex items-center justify-between">
-        <div className="text-[11px] mono-font text-[var(--muted)] tracking-widest">
+        <div className="text-[0.6875rem] mono-font text-[var(--muted)] tracking-widest">
           // {label}
         </div>
         {/* 阶段进度点 */}
@@ -224,7 +224,7 @@ export default function MicroAnimation({ reactants, products, duration = 2000 }:
         <button
           type="button"
           onClick={() => (playing ? setPlaying(false) : setPlaying(true))}
-          className="px-3 py-1 text-[11px] border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--card-bg)] transition-colors"
+          className="px-3 py-1 text-[0.6875rem] border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--card-bg)] transition-colors"
         >
           {btnPlay}
         </button>
@@ -232,7 +232,7 @@ export default function MicroAnimation({ reactants, products, duration = 2000 }:
           type="button"
           onClick={() => goTo(phaseIdx - 1)}
           disabled={phaseIdx === 0}
-          className="px-2.5 py-1 text-[11px] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors disabled:opacity-40"
+          className="px-2.5 py-1 text-[0.6875rem] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors disabled:opacity-40"
         >
           ←
         </button>
@@ -240,14 +240,14 @@ export default function MicroAnimation({ reactants, products, duration = 2000 }:
           type="button"
           onClick={() => goTo(phaseIdx + 1)}
           disabled={isLast}
-          className="px-2.5 py-1 text-[11px] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors disabled:opacity-40"
+          className="px-2.5 py-1 text-[0.6875rem] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors disabled:opacity-40"
         >
           →
         </button>
         <button
           type="button"
           onClick={() => goTo(0)}
-          className="px-2.5 py-1 text-[11px] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+          className="px-2.5 py-1 text-[0.6875rem] border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
         >
           {btnReplay}
         </button>

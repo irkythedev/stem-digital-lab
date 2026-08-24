@@ -54,7 +54,7 @@ export default function ConclusionStage({
 
   return (
     <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+      <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
         // {labels.title}
       </h3>
       <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>
@@ -83,7 +83,7 @@ export default function ConclusionStage({
         <div className="border-l-2 border-[var(--fg)] pl-3 space-y-3">
           {/* 对照：学生的猜想 */}
           <div>
-            <p className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.predictionTitle}
             </p>
             <p className="text-xs text-[var(--fg)] serif-font">
@@ -97,7 +97,7 @@ export default function ConclusionStage({
 
           {/* 对照：学生的观察记录（证据） */}
           <div>
-            <p className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.evidenceTitle}
             </p>
             {observations.length === 0 ? (
@@ -120,7 +120,7 @@ export default function ConclusionStage({
 
           {/* 反馈 */}
           <div>
-            <p className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.feedbackTitle}
             </p>
             <p className="text-xs text-[var(--fg)] serif-font leading-relaxed">{labels.feedbackText}</p>

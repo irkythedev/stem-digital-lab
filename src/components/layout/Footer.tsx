@@ -23,7 +23,7 @@ export default function Footer() {
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
 
   return (
-    <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
         {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
         <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
@@ -70,7 +70,7 @@ export default function Footer() {
               className="relative flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
             >
               <Library className="w-4 h-4" />
-              <span className="absolute -top-2 -right-2 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[8px] mono-font leading-none">
+              <span className="absolute -top-2 -right-2 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
                 {t.works.length}
               </span>
             </button>

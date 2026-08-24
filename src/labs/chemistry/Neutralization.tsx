@@ -411,7 +411,7 @@ export default function Neutralization() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
         {stageOrder.map((s, i) => (
           <span key={s} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden="true">/</span>}
@@ -455,7 +455,7 @@ export default function Neutralization() {
         <div className="flex flex-col space-y-6">
           {/* 烧杯 SVG：液面颜色随 pH 渐变 */}
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.flaskLabel}
             </h3>
             <svg viewBox="0 0 220 200" className="w-full h-auto max-h-[320px]" role="img" aria-label={t.flaskLabel} strokeLinecap="round" strokeLinejoin="round">
@@ -511,7 +511,7 @@ export default function Neutralization() {
           {/* pH-滴入体积曲线（预测幕未揭示时隐藏） */}
           {stage === 'predict' && !revealed ? (
             <div className="border border-[var(--border)] p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
-              <p className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
                 {t.predictTitle}
               </p>
               <p className="text-sm serif-font text-[var(--fg)]">{t.predictQuestion}</p>
@@ -532,24 +532,24 @@ export default function Neutralization() {
 
           {/* 读数 */}
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.readout}
             </h3>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">V(NaOH)</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">V(NaOH)</p>
                 <p className="text-sm mono-font text-[var(--fg)]">{volume.toFixed(1)} mL</p>
               </div>
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">c(HCl)</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">c(HCl)</p>
                 <p className="text-sm mono-font text-[var(--fg)]">{acidM.toFixed(1)} M</p>
               </div>
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">pH</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">pH</p>
                 <p className="text-sm mono-font text-[var(--fg)]">{ph.toFixed(2)}</p>
               </div>
             </div>
-            <p className="text-[11px] text-[var(--muted)] mono-font mt-2">
+            <p className="text-[0.6875rem] text-[var(--muted)] mono-font mt-2">
               {t.readout} · 中和点 {eqV.toFixed(1)} mL
             </p>
           </div>
@@ -558,7 +558,7 @@ export default function Neutralization() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
             <ParamSlider
@@ -591,7 +591,7 @@ export default function Neutralization() {
           {/* 幕1 预测 */}
           {stage === 'predict' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.predictTitle}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.predictQuestion}</p>
@@ -652,7 +652,7 @@ export default function Neutralization() {
 
               {/* 钉住曲线对比 */}
               <div className="border border-[var(--border)] p-4 space-y-3">
-                <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                   // {t.pinnedTitle}
                 </h3>
                 <button
@@ -677,7 +677,7 @@ export default function Neutralization() {
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {pinned.map((p) => (
-                      <span key={p.id} className="text-[11px] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
+                      <span key={p.id} className="text-[0.6875rem] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
                         酸 {(p.acidM / 0.1).toFixed(1)}×
                       </span>
                     ))}
@@ -690,7 +690,7 @@ export default function Neutralization() {
           {/* 幕3 结论（四组选择） */}
           {stage === 'conclude' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.concludeTitle}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.concludeQuestion}</p>
@@ -878,7 +878,7 @@ export default function Neutralization() {
           {/* 考点速记（深化记忆，言简意赅） */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--border)] p-4 space-y-2">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.tipsTitle}
               </h3>
               <ul className="space-y-1.5">

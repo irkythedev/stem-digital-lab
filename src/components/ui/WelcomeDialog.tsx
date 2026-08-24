@@ -90,7 +90,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                 onClick={() => setShowVersion(true)}
                 title={t.versionTitle.replace('{version}', APP_VERSION)}
                 aria-label={t.versionAria}
-                className="ml-2 inline-flex items-center gap-1 text-[10px] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
+                className="ml-2 inline-flex items-center gap-1 text-[0.625rem] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
               >
                 v{APP_VERSION}
                 {hasUpdate && (
@@ -98,7 +98,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                 )}
               </button>
             </h2>
-            <p className="mt-1 text-[10px] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
+            <p className="mt-1 text-[0.625rem] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
               <span>{t.welcomeTag}</span>
               <span aria-hidden="true">·</span>
               <button
@@ -148,13 +148,13 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           {/* 板块（标题图标与全站统一：学科用 SubjectIcon，工具用 Calculator） */}
           <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
             {[
-              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-[13px] leading-none" /> },
+              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-[0.8125rem] leading-none" /> },
               { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-3.5 h-3.5" /> },
               { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-3.5 h-3.5" /> },
               { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-3.5 h-3.5" /> },
             ].map((s, i) => (
               <div key={i}>
-                <div className="flex items-center gap-1.5 text-[11px] mono-font font-bold tracking-widest text-[var(--fg)]">
+                <div className="flex items-center gap-1.5 text-[0.6875rem] mono-font font-bold tracking-widest text-[var(--fg)]">
                   {s.icon}
                   <span>{s.title}</span>
                 </div>
@@ -230,7 +230,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5 text-[var(--muted)]">
                 <Library className="w-3.5 h-3.5" />
-                <span className="text-[10px] mono-font uppercase tracking-wider">{t.moreWorks}</span>
+                <span className="text-[0.625rem] mono-font uppercase tracking-wider">{t.moreWorks}</span>
               </span>
               {t.works.map((w) => (
                 <button
@@ -252,8 +252,8 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                   <img src={pendingWork.icon} alt="" width="16" height="16" className="flex-shrink-0" />
                   <span className="text-xs font-bold mono-font">{pendingWork.name}</span>
                 </div>
-                {pendingWork.desc && <p className="text-[11px] leading-relaxed text-[var(--muted)]">{pendingWork.desc}</p>}
-                <p className="text-[10px] mono-font text-[var(--muted)] break-all">{pendingWork.url}</p>
+                {pendingWork.desc && <p className="text-[0.6875rem] leading-relaxed text-[var(--muted)]">{pendingWork.desc}</p>}
+                <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all">{pendingWork.url}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -261,14 +261,14 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                       window.open(pendingWork.url, '_blank', 'noopener,noreferrer');
                       setPendingWork(null);
                     }}
-                    className="px-2.5 py-1 text-[11px] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--card-bg)] transition-colors"
+                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--card-bg)] transition-colors"
                   >
                     {zh ? '前往' : 'Open'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setPendingWork(null)}
-                    className="px-2.5 py-1 text-[11px] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
                   >
                     {zh ? '取消' : 'Cancel'}
                   </button>

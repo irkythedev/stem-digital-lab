@@ -220,7 +220,7 @@ export default function Pressure() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
           const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
@@ -260,7 +260,7 @@ export default function Pressure() {
 
       {/* ── 参数 ── */}
       <div className="border border-[var(--border)] p-4 space-y-3">
-        <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
+        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
         <ParamSlider label="F (N)" value={F} min={5} max={40} step={1} onChange={setF} format={(v) => `${v.toFixed(0)}N`} />
         <ParamSlider label="S (cm²)" value={S} min={1} max={10} step={1} onChange={setS} format={(v) => `${v.toFixed(0)}cm²`} />
       </div>
@@ -268,7 +268,7 @@ export default function Pressure() {
       {/* ── 幕内容 ── */}
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
           {renderConcludeQ('q1', c.predictQ1, [{ value: 'pres', label: c.predictQ1Pres }, { value: 'area', label: c.predictQ1Area }, { value: 'mass', label: c.predictQ1Mass }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {predComplete ? (
@@ -295,7 +295,7 @@ export default function Pressure() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
           {renderConcludeQ('q1', c.concludeQ1, [{ value: 'big', label: c.concludeQ1Big }, { value: 'small', label: c.concludeQ1Small }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('q2', c.concludeQ2, [{ value: 'big', label: c.concludeQ2Big }, { value: 'small', label: c.concludeQ2Small }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
@@ -306,7 +306,7 @@ export default function Pressure() {
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">
               <p className="text-sm serif-font text-[var(--fg)] leading-relaxed">{c.feedbackText}</p>
-              <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
+              <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
               <ul className="space-y-1">{c.tips.map((tip, i) => <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2"><span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>{tip}</li>)}</ul>
             </div>
           )}

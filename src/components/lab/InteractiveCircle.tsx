@@ -319,7 +319,7 @@ export default function InteractiveCircle({
     <div>
       {/* 构造动画控制条 */}
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <span className="text-[10px] mono-font uppercase tracking-widest text-[var(--muted)]">
+        <span className="text-[0.625rem] mono-font uppercase tracking-widest text-[var(--muted)]">
           {ctl.label}
         </span>
         <div className="flex items-center gap-1.5">
@@ -327,7 +327,7 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepBack}
             disabled={step <= 0}
-            className="px-2 py-1 text-[11px] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             {ctl.back}
           </button>
@@ -335,21 +335,21 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepNext}
             disabled={step >= MAX}
-            className="px-2 py-1 text-[11px] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
           >
             {ctl.next}
           </button>
           <button
             type="button"
             onClick={togglePlay}
-            className="px-2 py-1 text-[11px] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
           >
             {playing ? ctl.pause : ctl.play}
           </button>
           <button
             type="button"
             onClick={replay}
-            className="px-2 py-1 text-[11px] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
           >
             {ctl.replay}
           </button>

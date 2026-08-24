@@ -30,7 +30,7 @@ export default function ParamSlider({
   const value = step >= 1 ? Math.round(rawValue) : step >= 0.1 ? Math.round(rawValue * 10) / 10 : Math.round(rawValue * 100) / 100;
   return (
     <label className={`flex flex-col space-y-1.5 ${disabled ? 'opacity-50' : ''}`}>
-      <span className="flex items-baseline justify-between text-[11px] mono-font">
+      <span className="flex items-baseline justify-between text-[0.6875rem] mono-font">
         <span className="text-[var(--fg)] tracking-widest">{label}</span>
         <span className="text-[var(--muted)]">{format ? format(value) : value}</span>
       </span>

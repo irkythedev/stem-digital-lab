@@ -543,7 +543,7 @@ export default function Ohm() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
         {stageOrder.map((s, i) => (
           <span key={s} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden="true">/</span>}
@@ -587,7 +587,7 @@ export default function Ohm() {
         <div className="flex flex-col space-y-6">
           {/* 电路图（SVG，极简线描） */}
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.circuitLabel}
             </h3>
             {/* 表盘：电路图上方（A/V 表显），指针跟随探针吸附测点 */}
@@ -784,7 +784,7 @@ export default function Ohm() {
               <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>
             )}
             {/* 拖拽测量提示 + 错误反馈 */}
-            <p className="mt-1 flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)]">
+            <p className="mt-1 flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
               <GrabIcon className="h-3.5 w-3.5 shrink-0" />
               {t.meterHint}
             </p>
@@ -794,7 +794,7 @@ export default function Ohm() {
               </p>
             )}
             {/* 电流方向标注 */}
-            <p className="text-[11px] mono-font text-[var(--muted)] mt-1">
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mt-1">
               {t.currentDirLabel}
               <span className="text-[var(--border)]"> · </span>
               {t.currentDirNote}
@@ -804,7 +804,7 @@ export default function Ohm() {
           {/* I-U 图像（预测幕未揭示时隐藏） */}
           {stage === 'predict' && !revealed ? (
             <div className="border border-[var(--border)] p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
-              <p className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
                 {t.predictTitle}
               </p>
               <p className="text-sm serif-font text-[var(--fg)]">{t.predictQuestion}</p>
@@ -825,16 +825,16 @@ export default function Ohm() {
 
           {/* 读数 */}
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.readout}
             </h3>
-            <p className="text-[10px] mono-font text-[var(--muted)] mb-2">
+            <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-2">
               {lang === 'zh' ? 'U 为电源电压，V 为元件两端电压（电压表读数）' : 'U is the supply voltage; V is across the element (voltmeter)'}
             </p>
             {/* 零电阻 / 短路警告（电流热效应与安全教学） */}
             {element === 'resistor' && r === 0 && (
               <p
-                className={`text-[11px] mono-font mb-2 ${shortCircuit ? 'text-[var(--error)] font-bold' : 'text-[var(--error)]'}`}
+                className={`text-[0.6875rem] mono-font mb-2 ${shortCircuit ? 'text-[var(--error)] font-bold' : 'text-[var(--error)]'}`}
                 role="alert"
               >
                 {shortCircuit
@@ -849,7 +849,7 @@ export default function Ohm() {
             {/* 控制电压提示（探究二：换电阻后调变阻器使电压回到设定值） */}
             {targetV !== null && (
               <p
-                className={`text-[11px] mono-font mb-2 ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}
+                className={`text-[0.6875rem] mono-font mb-2 ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}
                 role={Math.abs(elemVoltage - targetV) > 0.05 ? 'alert' : undefined}
               >
                 {Math.abs(elemVoltage - targetV) > 0.05
@@ -863,43 +863,43 @@ export default function Ohm() {
             )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">U</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">U</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {u.toFixed(1)}
-                  <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
+                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">V</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">V</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {elemVoltage.toFixed(2)}
-                  <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
+                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">R</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">R</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {measureMode && !rRevealed ? (
                     t.measureHidden
                   ) : (
                     <>
                       {r.toFixed(0)}
-                      <span className="ml-1 text-[10px] text-[var(--muted)]">Ω</span>
+                      <span className="ml-1 text-[0.625rem] text-[var(--muted)]">Ω</span>
                     </>
                   )}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">I</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">I</p>
                 <p className={`text-sm mono-font ${shortCircuit ? 'text-[var(--error)]' : 'text-[var(--fg)]'}`}>
                   {shortCircuit ? '∞' : effectiveI.toFixed(2)}
-                  <span className="ml-1 text-[10px] text-[var(--muted)]">A</span>
+                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">A</span>
                 </p>
               </div>
             </div>
             {/* 测未知电阻：用元件两端电压 V（电压表读数）÷ I 算平均 R——伏安法口径，变阻器分压不影响 */}
             {measureMode && observations.length > 0 && (
-              <p className="text-[11px] mono-font text-[var(--muted)] mt-2">
+              <p className="text-[0.6875rem] mono-font text-[var(--muted)] mt-2">
                 {t.measureResult}:{' '}
                 {(
                   observations.reduce((acc, o) => {
@@ -917,13 +917,13 @@ export default function Ohm() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
 
             {/* 元件切换 */}
             <div className="flex items-center gap-2">
-              <span className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+              <span className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
                 {t.elementLabel}
               </span>
               {(
@@ -955,7 +955,7 @@ export default function Ohm() {
             {/* 测未知电阻模式提示 */}
             {measureMode && (
               <div className="border border-[var(--border)] p-2 space-y-1">
-                <p className="text-[11px] font-bold tracking-widest text-[var(--fg)] mono-font uppercase">
+                <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--fg)] mono-font uppercase">
                   // {t.measureTitle}
                 </p>
                 <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.measureIntro}</p>
@@ -1000,7 +1000,7 @@ export default function Ohm() {
           {/* 幕1 预测 */}
           {stage === 'predict' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.predictTitle}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.predictQuestion}</p>
@@ -1063,7 +1063,7 @@ export default function Ohm() {
 
               {/* 钉住曲线对比 */}
               <div className="border border-[var(--border)] p-4 space-y-3">
-                <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                   // {t.pinnedTitle}
                 </h3>
                 <button
@@ -1088,7 +1088,7 @@ export default function Ohm() {
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {pinned.map((p) => (
-                      <span key={p.id} className="text-[11px] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
+                      <span key={p.id} className="text-[0.6875rem] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
                         R = {p.r}Ω
                       </span>
                     ))}
@@ -1101,7 +1101,7 @@ export default function Ohm() {
           {/* 幕3 结论（四组选择） */}
           {stage === 'conclude' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.concludeTitle}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.concludeQuestion}</p>
@@ -1291,7 +1291,7 @@ export default function Ohm() {
           {/* 考点速记（深化记忆，言简意赅） */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--border)] p-4 space-y-2">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.tipsTitle}
               </h3>
               <ul className="space-y-1.5">

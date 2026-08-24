@@ -113,7 +113,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
               <label className="block text-xs text-[var(--muted)]">{l.name}<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={l.namePlaceholder} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
             </div>
-            <p className="text-[10px] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
+            <p className="text-[0.625rem] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
             <button type="button" onClick={submit} disabled={sending} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
           </>
         )}

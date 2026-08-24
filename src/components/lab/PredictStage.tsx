@@ -32,7 +32,7 @@ export default function PredictStage({ prediction, onPredict, labels }: PredictS
 
   return (
     <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+      <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
         // {labels.title}
       </h3>
       <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>

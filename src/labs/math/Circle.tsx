@@ -380,7 +380,7 @@ export default function Circle() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label =
             s === 'predict'
@@ -436,7 +436,7 @@ export default function Circle() {
 
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.predictTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -507,7 +507,7 @@ export default function Circle() {
                     setCircleMode(mode);
                     setActiveCard(mode === 'chord' ? 0 : mode === 'inscribed' ? 1 : 2);
                   }}
-                  className={`px-3 py-1.5 text-[11px] border transition-colors ${
+                  className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
                     circleMode === mode
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -535,7 +535,7 @@ export default function Circle() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.concludeTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -602,7 +602,7 @@ export default function Circle() {
                 {c.feedbackText}
               </p>
               <div>
-                <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+                <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
                   // {c.tipsTitle}
                 </h4>
                 <ul className="space-y-1">
@@ -617,7 +617,7 @@ export default function Circle() {
               {/* 证明推理引导：按正确逻辑顺序排列步骤 */}
               {circleMode && (
                 <div className="border border-[var(--border)] p-3 space-y-2">
-                  <h4 className="text-[11px] font-bold tracking-widest text-[var(--fg)] mono-font uppercase">
+                  <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--fg)] mono-font uppercase">
                     // {c.proofTitle}
                   </h4>
                   <p className="text-xs text-[var(--muted)] serif-font italic">{c.proofHint}</p>

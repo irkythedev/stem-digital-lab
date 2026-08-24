@@ -70,14 +70,14 @@ export default function HomePage() {
             type="button"
             onClick={randomExplore}
             title={lang === 'zh' ? '随机进入一个实验或工具' : 'Jump to a random lab or tool'}
-            className="inline-flex items-center gap-1 py-1 -my-1 text-[10px] sm:text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            className="inline-flex items-center gap-1 py-1 -my-1 text-[0.625rem] sm:text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
           >
             <Shuffle className="w-3 h-3" />
             {t.randomExplore}
           </button>
         </div>
         <p className="text-sm sm:text-lg text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
-        <p className="text-[11px] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
+        <p className="text-[0.6875rem] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
       </div>
 
       {/* ── 学科切换卡片 ── */}
@@ -113,12 +113,12 @@ export default function HomePage() {
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">
                 {meta.title}
               </span>
-              <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] mono-font mb-1 sm:mb-3">
+              <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font mb-1 sm:mb-3">
                 {lang === 'zh' ? subject.gradeZh : subject.gradeEn}
               </span>
               {/* 内容清单：桌面显示（移动端隐藏），最多两行超出省略；hover 可看完整清单；min-h 保证三科卡片等高 */}
               <div className="hidden sm:flex flex-col space-y-1 min-h-[2.6rem]">
-                <span title={meta.note} className="text-[11px] text-[var(--muted)] sans-font leading-relaxed line-clamp-2">{meta.note}</span>
+                <span title={meta.note} className="text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed line-clamp-2">{meta.note}</span>
               </div>
             </button>
           );
@@ -179,7 +179,7 @@ export default function HomePage() {
                         <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
                           {lab.name[lang as 'zh' | 'en']}
                         </span>
-                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                        <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                           {lab.description[lang as 'zh' | 'en']}
                         </span>
                       </div>
@@ -191,7 +191,7 @@ export default function HomePage() {
               {/* 工具区：数学 → 公式速查；物理 → 常量速查；化学 → 周期表（独立于实验） */}
               {(subject.id === 'math' || subject.id === 'physics' || subject.id === 'chemistry') && (
                 <div className="mt-6">
-                  <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
+                  <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
                     // {lang === 'zh' ? '工具' : 'Tools'}
                   </h3>
                   {subject.id === 'math' && (
@@ -206,7 +206,7 @@ export default function HomePage() {
                         <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
                           {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
                         </span>
-                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                        <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                           {lang === 'zh' ? '核心公式一表全览，附口诀、易错点与应用' : 'Core formulas with mnemonics, pitfalls, and usage'}
                         </span>
                       </div>
@@ -224,7 +224,7 @@ export default function HomePage() {
                         <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
                           {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
                         </span>
-                        <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                        <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                           {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
                         </span>
                       </div>
@@ -243,7 +243,7 @@ export default function HomePage() {
                           <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
                             {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
                           </span>
-                          <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                             {lang === 'zh' ? '常用常量与典型数值一表全览，附物理意义与应用' : 'Common constants at a glance, with meaning and usage'}
                           </span>
                         </div>
@@ -259,7 +259,7 @@ export default function HomePage() {
                           <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
                             {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
                           </span>
-                          <span className="block text-[11px] text-[var(--muted)] sans-font leading-relaxed">
+                          <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                             {lang === 'zh' ? '核心公式分类速览，相关常量一键跳转' : 'Core formulas at a glance, with related constants linked'}
                           </span>
                         </div>

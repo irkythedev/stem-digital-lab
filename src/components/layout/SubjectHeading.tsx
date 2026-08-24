@@ -26,7 +26,7 @@ export default function SubjectHeading({ subjectId, name, caption }: SubjectHead
           {name}
         </h1>
         {caption && (
-          <span className="text-[11px] mt-1 uppercase tracking-widest text-[var(--muted)] mono-font">
+          <span className="text-[0.6875rem] mt-1 uppercase tracking-widest text-[var(--muted)] mono-font">
             {caption}
           </span>
         )}

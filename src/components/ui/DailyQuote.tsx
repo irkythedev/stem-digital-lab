@@ -64,13 +64,13 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
   return (
     <div className="mb-8 w-full max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+        <span className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
           // {lang === 'zh' ? '每日科学' : 'Daily Science'}
         </span>
         <button
           type="button"
           onClick={shuffle}
-          className="inline-flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <RefreshCw className="w-3 h-3" />
           {lang === 'zh' ? '翻一翻' : 'Flip'}
@@ -83,7 +83,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
           <p className="text-xs sm:text-base serif-font text-[var(--fg)] leading-relaxed">
             {lang === 'zh' ? tip.zh : tip.en}
           </p>
-          <footer className="mt-2.5 flex items-center gap-2 text-[11px] mono-font text-[var(--muted)]">
+          <footer className="mt-2.5 flex items-center gap-2 text-[0.6875rem] mono-font text-[var(--muted)]">
             <span className="font-bold text-[var(--fg)]">
               {lang === 'zh'
                 ? tip.subject === 'math' ? '数学' : tip.subject === 'physics' ? '物理' : '化学'
@@ -105,7 +105,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
               {lang === 'zh' ? q?.achievement?.zh : q?.achievement?.en}
             </p>
           )}
-          <footer className="mt-2.5 flex items-center gap-2 text-[11px] mono-font text-[var(--muted)]">
+          <footer className="mt-2.5 flex items-center gap-2 text-[0.6875rem] mono-font text-[var(--muted)]">
             <span className="font-bold text-[var(--fg)]">— {lang === 'zh' ? q?.person.zh : q?.person.en}</span>
             <span aria-hidden="true">·</span>
             <span>{lang === 'zh' ? q?.field.zh : q?.field.en}</span>
@@ -143,7 +143,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setStoryModal(true)}
-                  className="mt-1 inline-block text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                  className="mt-1 inline-block text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
                 >
                   {lang === 'zh' ? '阅读完整故事 →' : 'Read full story →'}
                 </button>
@@ -160,7 +160,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                   <button
                     type="button"
                     onClick={() => setShowStory(false)}
-                    className="mt-1.5 text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                    className="mt-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
                   >
                     {lang === 'zh' ? '收起' : 'Collapse'}
                   </button>
@@ -169,7 +169,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setShowStory(true)}
-                  className="text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                  className="text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
                 >
                   {lang === 'zh' ? '▸ 人物小故事' : '▸ Story'}
                 </button>
@@ -250,7 +250,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
             <p className="text-xs serif-font leading-relaxed text-[var(--fg)]">
               {storyText}
             </p>
-            <p className="mt-2.5 text-[11px] mono-font text-[var(--muted)]">
+            <p className="mt-2.5 text-[0.6875rem] mono-font text-[var(--muted)]">
               — {lang === 'zh' ? q.person.zh : q.person.en}
             </p>
           </div>

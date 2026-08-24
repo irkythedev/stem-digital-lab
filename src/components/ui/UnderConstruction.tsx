@@ -19,7 +19,7 @@ export default function UnderConstruction({ label, message }: UnderConstructionP
         <span className="tracking-widest">{label ?? t.statusTag}</span>
         <span className="inline-block w-2 h-3.5 bg-[var(--fg)] ml-1 animate-pulse" />
       </div>
-      <p className="text-[11px] text-[var(--muted)] mono-font max-w-md">{message ?? t.curriculumNotice}</p>
+      <p className="text-[0.6875rem] text-[var(--muted)] mono-font max-w-md">{message ?? t.curriculumNotice}</p>
     </div>
   );
 }

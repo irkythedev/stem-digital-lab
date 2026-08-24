@@ -250,7 +250,7 @@ export default function Buoyancy() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
           const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
@@ -296,10 +296,10 @@ export default function Buoyancy() {
 
       {/* ── 参数 ── */}
       <div className="border border-[var(--border)] p-4 space-y-3">
-        <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
+        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
         <ParamSlider label="浸入体积" value={vSub} min={0.1} max={1} step={0.1} onChange={setVSub} format={(v) => `${(v * 100).toFixed(0)}%`} />
         <div className="flex items-center gap-2">
-          <span className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">{lang === 'zh' ? '液体' : 'Liquid'}</span>
+          <span className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">{lang === 'zh' ? '液体' : 'Liquid'}</span>
           {LIQUIDS.map((l) => (
             <button key={l.id} type="button" onClick={() => setLiquidId(l.id)}
               className={`text-xs mono-font px-2 py-1 border transition-colors ${liquidId === l.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
@@ -312,7 +312,7 @@ export default function Buoyancy() {
       {/* ── 幕内容 ── */}
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
           {renderConcludeQ('q1', c.predictQ1, [{ value: 'yes', label: c.predictQ1Yes }, { value: 'no', label: c.predictQ1No }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {renderConcludeQ('q2', c.predictQ2, [{ value: 'vol', label: c.predictQ2Vol }, { value: 'den', label: c.predictQ2Den }, { value: 'mass', label: c.predictQ2Mass }], predict2 as string, (v) => setPredict2(v as PredictQ2))}
@@ -340,7 +340,7 @@ export default function Buoyancy() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
           {renderConcludeQ('q1', c.concludeQ1, [{ value: 'yes', label: c.concludeQ1Yes }, { value: 'no', label: c.concludeQ1No }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('q2', c.concludeQ2, [{ value: 'prop', label: c.concludeQ2Prop }, { value: 'inv', label: c.concludeQ2Inv }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
@@ -351,7 +351,7 @@ export default function Buoyancy() {
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">
               <p className="text-sm serif-font text-[var(--fg)] leading-relaxed">{c.feedbackText}</p>
-              <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
+              <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.tipsTitle}</h4>
               <ul className="space-y-1">{c.tips.map((tip, i) => <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2"><span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>{tip}</li>)}</ul>
             </div>
           )}

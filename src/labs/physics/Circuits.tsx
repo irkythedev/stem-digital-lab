@@ -339,7 +339,7 @@ export default function Circuits() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">
+      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
         {stageOrder.map((s, i) => (
           <span key={s} className="flex items-center gap-2">
             {i > 0 && <span aria-hidden="true">/</span>}
@@ -382,7 +382,7 @@ export default function Circuits() {
         {/* 左列：电路图 + 读数 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.circuitLabel} · {sc.title}
             </h3>
             {/* 表盘：电路图上方（A/V 表显）；家庭电路显示干路电流与 L-N 电压，其余跟随探针吸附测点 */}
@@ -621,10 +621,10 @@ export default function Circuits() {
               
             </svg>
             {!switchOn && <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>}
-            <p className="text-[11px] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mt-1">{style.id === 'parallelHouse' ? t.currentDirLabelHouse : t.currentDirLabel}</p>
             {/* 拖拽测量提示（家庭电路无探针交互，不显示） */}
             {!isHouse && (
-              <p className="mt-1 flex items-center gap-1.5 text-[11px] mono-font text-[var(--muted)]">
+              <p className="mt-1 flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
                 <GrabIcon className="h-3.5 w-3.5 shrink-0" />
                 {t.meterHint}
               </p>
@@ -638,44 +638,44 @@ export default function Circuits() {
 
           {/* 读数 */}
           <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.readout}
             </h3>
             <div className="grid grid-cols-2 gap-2 text-center">
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">{t.readoutI0}</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">{t.readoutI0}</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {i0.toFixed(2)}
-                  <span className="ml-1 text-[10px] text-[var(--muted)]">A</span>
+                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">A</span>
                 </p>
               </div>
               {branchI.map((v, i) => (
                 <div key={i}>
-                  <p className="text-[11px] text-[var(--muted)] mono-font">
+                  <p className="text-[0.6875rem] text-[var(--muted)] mono-font">
                     {`${style.elements[i]?.label ?? 'R'} 中电流 I${i + 1}`}
                   </p>
                   <p className="text-sm mono-font text-[var(--fg)]">
                     {v.toFixed(2)}
-                    <span className="ml-1 text-[10px] text-[var(--muted)]">A</span>
+                    <span className="ml-1 text-[0.625rem] text-[var(--muted)]">A</span>
                   </p>
                 </div>
               ))}
               {vPerElem.map((v, i) => (
                 <div key={`v${i}`}>
-                  <p className="text-[11px] text-[var(--muted)] mono-font">
+                  <p className="text-[0.6875rem] text-[var(--muted)] mono-font">
                     {`${style.elements[i]?.label ?? 'R'} 两端电压`}
                   </p>
                   <p className="text-sm mono-font text-[var(--fg)]">
                     {v.toFixed(1)}
-                    <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
+                    <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
                   </p>
                 </div>
               ))}
               <div>
-                <p className="text-[11px] text-[var(--muted)] mono-font">{t.readoutU}</p>
+                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">{t.readoutU}</p>
                 <p className="text-sm mono-font text-[var(--fg)]">
                   {u.toFixed(1)}
-                  <span className="ml-1 text-[10px] text-[var(--muted)]">V</span>
+                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
                 </p>
               </div>
             </div>
@@ -685,11 +685,11 @@ export default function Circuits() {
         {/* 右列：样式 + 参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.styleLabel}
             </h3>
             <div className="space-y-2">
-              <p className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)]">{t.modeSeries}</p>
+              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">{t.modeSeries}</p>
               <div className="flex flex-wrap gap-1.5">
                 {CIRCUIT_STYLES.filter((s) => s.kind === 'series').map((s) => (
                   <button
@@ -706,7 +706,7 @@ export default function Circuits() {
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] mono-font uppercase tracking-widest text-[var(--muted)] pt-1">{t.modeParallel}</p>
+              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)] pt-1">{t.modeParallel}</p>
               <div className="flex flex-wrap gap-1.5">
                 {CIRCUIT_STYLES.filter((s) => s.kind === 'parallel').map((s) => (
                   <button
@@ -727,7 +727,7 @@ export default function Circuits() {
           </div>
 
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
             </h3>
             <ParamSlider
@@ -771,7 +771,7 @@ export default function Circuits() {
           {/* 幕1 预测 */}
           {stage === 'predict' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.predictTitle} · {sc.title}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{sc.predict.question}</p>
@@ -823,7 +823,7 @@ export default function Circuits() {
           {/* 幕3 结论 */}
           {stage === 'conclude' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.concludeTitle}
               </h3>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.concludeQuestion}</p>
@@ -894,7 +894,7 @@ export default function Circuits() {
           {/* 考点速记 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--border)] p-4 space-y-2">
-              <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.tipsTitle}
               </h3>
               <ul className="space-y-1.5">

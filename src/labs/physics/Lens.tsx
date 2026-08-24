@@ -392,7 +392,7 @@ export default function Lens() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[11px] mono-font tracking-widest">
+      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label =
             s === 'predict'
@@ -444,7 +444,7 @@ export default function Lens() {
 
       {/* ── 参数 ── */}
       <div className="border border-[var(--border)] p-4 space-y-3">
-        <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
           // {c.params}
         </h3>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -475,7 +475,7 @@ export default function Lens() {
           <button
             type="button"
             onClick={() => setShowRays((p) => !p)}
-            className={`px-3 py-1.5 text-[11px] border transition-colors ${
+            className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
               showRays
                 ? 'border-[var(--fg)] text-[var(--fg)]'
                 : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -490,7 +490,7 @@ export default function Lens() {
 
       {stage === 'predict' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.predictTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -612,7 +612,7 @@ export default function Lens() {
 
       {stage === 'conclude' && (
         <div className="border border-[var(--border)] p-4 space-y-4">
-          <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.concludeTitle}
           </h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -695,7 +695,7 @@ export default function Lens() {
                 {c.feedbackText}
               </p>
               <div>
-                <h4 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
+                <h4 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
                   // {c.tipsTitle}
                 </h4>
                 <ul className="space-y-1">

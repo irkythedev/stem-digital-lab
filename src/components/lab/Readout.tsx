@@ -20,16 +20,16 @@ export default function Readout({ title, metrics }: ReadoutProps) {
   return (
     <div className="border border-[var(--border)] p-4">
       {title && (
-        <h3 className="text-[11px] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
+        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
           // {title}
         </h3>
       )}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
         {metrics.map((m) => (
           <div key={m.label} className="flex items-baseline justify-between gap-2">
-            <dt className="text-[11px] text-[var(--muted)] mono-font">{m.label}</dt>
+            <dt className="text-[0.6875rem] text-[var(--muted)] mono-font">{m.label}</dt>
             <dd
-              className={`text-[13px] mono-font ${
+              className={`text-[0.8125rem] mono-font ${
                 m.highlight ? 'font-bold text-[var(--fg)]' : 'text-[var(--fg)]'
               }`}
             >

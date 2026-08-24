@@ -172,7 +172,7 @@ export default function AiAssistant() {
         </button>
       )}
       {speakState === 'error' && errorMsg && (
-        <span className="text-[9px] text-[var(--error)] mono-font ml-1" role="alert">
+        <span className="text-[0.5625rem] text-[var(--error)] mono-font ml-1" role="alert">
           {errorMsg}
         </span>
       )}
@@ -691,7 +691,7 @@ export default function AiAssistant() {
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[11px] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
           {lang === 'zh' ? '已保存 ✓' : 'Saved ✓'}
         </div>
@@ -732,19 +732,19 @@ export default function AiAssistant() {
         <div className="flex flex-col max-h-[60dvh]">
           {/* 条款区：内容超高时独立滚动 */}
           <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-3">
-          <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
+          <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
             {lang === 'zh' ? '使用须知' : 'Terms'}
           </p>
-          <p className="flex items-start gap-1.5 border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--error)] serif-font leading-relaxed">
+          <p className="flex items-start gap-1.5 border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[0.6875rem] text-[var(--error)] serif-font leading-relaxed">
             <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
             <span>{lang === 'zh' ? '配置/使用 AI 助手前，请阅读并同意以下条款：' : 'Before configuring or using the AI assistant, please read and accept the terms below:'}</span>
           </p>
           {pending && (
-            <p className="text-[11px] text-[var(--fg)] serif-font leading-relaxed">
+            <p className="text-[0.6875rem] text-[var(--fg)] serif-font leading-relaxed">
               {lang === 'zh' ? '您点击的问题将在配置完成后自动发送。' : 'Your question will be sent automatically once you finish the setup.'}
             </p>
           )}
-          <div className="space-y-2 text-[11px] text-[var(--muted)] leading-relaxed">
+          <div className="space-y-2 text-[0.6875rem] text-[var(--muted)] leading-relaxed">
             {lang === 'zh' ? (
               <>
                 <div>
@@ -841,36 +841,36 @@ export default function AiAssistant() {
         /* ── 第二步：配置表单（已同意） ── */
         <div className="p-4 space-y-3 text-sm serif-font overflow-y-auto max-h-[60dvh]">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
+            <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
               {lang === 'zh' ? 'AI 设置' : 'Settings'}
             </p>
-            <button type="button" onClick={() => setView('terms')} className="text-[10px] mono-font text-[var(--muted)] underline hover:text-[var(--fg)]">
+            <button type="button" onClick={() => setView('terms')} className="text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)]">
               {lang === 'zh' ? '查看须知' : 'View terms'}
             </button>
           </div>
 
           {/* 服务商预设 */}
           <div>
-            <p className="text-[11px] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
             <div className="flex flex-wrap gap-1.5">
               {AI_PROVIDERS.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => selectProvider(p.id)}
-                  className={`px-2 py-1 text-[11px] mono-font border transition-colors ${providerId === p.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                  className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${providerId === p.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
                 >
                   {p.name}
                 </button>
               ))}
             </div>
-            {provider.note && <p className="text-[10px] text-[var(--muted)] mt-1">{provider.note}</p>}
+            {provider.note && <p className="text-[0.625rem] text-[var(--muted)] mt-1">{provider.note}</p>}
           </div>
 
           {/* 端点（自定义时显示） */}
           {providerId === 'custom' && (
             <div>
-              <p className="text-[11px] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? 'Base URL（OpenAI 兼容）' : 'Base URL (OpenAI-compatible)'}</p>
+              <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? 'Base URL（OpenAI 兼容）' : 'Base URL (OpenAI-compatible)'}</p>
               <input
                 id="ai-custom-url"
                 type="text"
@@ -884,7 +884,7 @@ export default function AiAssistant() {
 
           {/* API Key */}
           <div>
-            <p className="text-[11px] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? `API Key（${provider.name}）` : `API Key (${provider.name})`}</p>
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? `API Key（${provider.name}）` : `API Key (${provider.name})`}</p>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -906,9 +906,9 @@ export default function AiAssistant() {
 
           {/* 模型：仅显示测试连接后实际获取的模型 */}
           <div>
-            <p className="text-[11px] mono-font text-[var(--muted)] mb-1">
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
               {lang === 'zh' ? '模型' : 'Model'}
-              {modelNote && <span className="ml-1.5 text-[10px] text-[var(--fg)]">({modelNote})</span>}
+              {modelNote && <span className="ml-1.5 text-[0.625rem] text-[var(--fg)]">({modelNote})</span>}
             </p>
             {liveModels.length > 0 ? (
               <>
@@ -958,7 +958,7 @@ export default function AiAssistant() {
                   className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
                 />
                 {!modelNote && (
-                  <p className="text-[10px] text-[var(--muted)] mt-1">
+                  <p className="text-[0.625rem] text-[var(--muted)] mt-1">
                     {lang === 'zh' ? '提示：点击「获取模型」，自动拉取该服务商实际可用的模型并填入' : 'Tip: click "Fetch models" to pull the provider\'s actual model list automatically'}
                   </p>
                 )}
@@ -983,13 +983,13 @@ export default function AiAssistant() {
             <button type="button" onClick={save} className="px-3 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors">
               {lang === 'zh' ? '保存' : 'Save'}
             </button>
-            <button type="button" onClick={clearAll} className="ml-auto inline-flex items-center gap-1 text-[11px] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
+            <button type="button" onClick={clearAll} className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
               <Trash2 className="w-3 h-3" />
               {lang === 'zh' ? '清除全部' : 'Clear all'}
             </button>
           </div>
           {testResult && (
-            <p className={`text-[11px] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
+            <p className={`text-[0.6875rem] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
           )}
         </div>
       ) : (
@@ -1001,7 +1001,7 @@ export default function AiAssistant() {
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
                 {history.map((h, i) => (
                   <div key={i} className="space-y-1.5">
-                    <p className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={h.user} /></p>
+                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={h.user} /></p>
                     <div className="text-left">
                       <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         <AnswerRich text={h.assistant} />
@@ -1013,7 +1013,7 @@ export default function AiAssistant() {
                 {/* 当前轮（流式显示中） */}
                 {(answer || pending || busy) && (
                   <>
-                    <p className="text-[10px] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
+                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
                     <div className="text-left">
                       <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         {answer ? <AnswerRich text={answer} /> : (lang === 'zh' ? '思考中…' : 'Thinking…')}
@@ -1025,13 +1025,13 @@ export default function AiAssistant() {
                 )}
                 {error && (
                   <div className="mt-1 flex items-center gap-2">
-                    <p className="text-[11px] text-[var(--error)] mono-font">{error}</p>
+                    <p className="text-[0.6875rem] text-[var(--error)] mono-font">{error}</p>
                     {/* 认证类错误：一键回设置修改配置 */}
                     {/authentication|invalid.*api|api key|401|403/i.test(error) && (
                       <button
                         type="button"
                         onClick={() => { setView('settings'); setError(null); }}
-                        className="text-[11px] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] shrink-0"
+                        className="text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] shrink-0"
                       >
                         {lang === 'zh' ? '修改配置' : 'Fix config'}
                       </button>
@@ -1041,7 +1041,7 @@ export default function AiAssistant() {
                 {/* AI 推荐的追问（由 prompt 约束生成，内容可控；可翻页换一批） */}
                 {!busy && recs.length > 0 && (
                   <div className="pt-1">
-                    <p className="text-[10px] mono-font text-[var(--muted)] mb-1.5">
+                    <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">
                       {lang === 'zh' ? '可以继续了解：' : 'You can also explore:'}
                     </p>
                     <div className="flex flex-col gap-1.5">
@@ -1050,7 +1050,7 @@ export default function AiAssistant() {
                           key={i}
                           type="button"
                           onClick={() => askRecommended(q)}
-                          className="text-left text-[11px] serif-font px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                          className="text-left text-[0.6875rem] serif-font px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
                         >
                           <InlineAnswer text={q} />
                         </button>
@@ -1061,7 +1061,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => void refreshRecs()}
-                        className="mt-1.5 py-1 text-[10px] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
+                        className="mt-1.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
                         disabled={refreshingRecs}
                       >
                         {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
@@ -1085,7 +1085,7 @@ export default function AiAssistant() {
                     <button
                       type="button"
                       onClick={() => void sendQuestion(quick.q)}
-                      className="inline-flex items-center gap-1.5 text-[11px] mono-font border border-[var(--border)] px-3 py-1.5 hover:border-[var(--fg)] transition-colors"
+                      className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font border border-[var(--border)] px-3 py-1.5 hover:border-[var(--fg)] transition-colors"
                     >
                       <Sparkles className="w-3 h-3" />
                       {quick.label}
@@ -1096,7 +1096,7 @@ export default function AiAssistant() {
             )}
             {busy && (
               <div className="pt-1 flex justify-end">
-                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="py-1 text-[10px] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
+                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>
@@ -1104,11 +1104,11 @@ export default function AiAssistant() {
           </div>
           <div className="border-t border-[var(--border)] px-3 py-1.5">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[10px] text-[var(--muted)] leading-snug">
+              <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
                 {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答暂不支持保存' : 'AI output is for reference — trust the textbook · Answers cannot be saved yet'}
               </p>
               {/* 当前模型名 + 用量统计（消耗起即显示，流式中 token 滚动增长） */}
-              <p className="shrink-0 text-[9px] mono-font text-[var(--fg)]/80 tabular-nums whitespace-nowrap">
+              <p className="shrink-0 text-[0.5625rem] mono-font text-[var(--fg)]/80 tabular-nums whitespace-nowrap">
                 {config?.model && <span className="mr-2">{config.model}</span>}
                 {usage && <span>≈{usage.tokens.toLocaleString()} tokens{busy ? (lang === 'zh' ? ' · 生成中…' : ' · Generating…') : ` · ${usage.speed} t/s`}</span>}
               </p>

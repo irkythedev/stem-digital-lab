@@ -244,6 +244,13 @@ input[type="range"]::-moz-range-thumb {
   .update-dot, .update-dot-halo { animation: none; }
 }
 
+/* 大屏（希沃类教学一体机）演示模式：逻辑视口 ≥1800px 时根字号放大，
+   rem 体系（正文/标题/间距/容器）整体等比放大，便于教室后排观看；
+   硬像素字号（text-[Npx]）与 SVG 坐标体系不受影响（设计如此） */
+@media (min-width: 1800px) {
+  html { font-size: 19px; }
+}
+
 /* AI 学习助手面板 · 数学公式字号适配（面板 text-xs 12px，KaTeX 默认 1.21em 偏大） */
 .ai-answer .ai-answer-katex .katex { font-size: 1.08em; }
 .ai-answer .ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
