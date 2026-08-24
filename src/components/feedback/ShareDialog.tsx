@@ -76,7 +76,7 @@ export default function ShareDialog({ url, onClose, title, text }: ShareDialogPr
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {t.share}</h2>
-          <button type="button" onClick={onClose} className="text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+          <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
         </div>
 
         {/* 二维码 */}

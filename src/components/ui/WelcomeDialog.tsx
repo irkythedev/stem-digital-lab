@@ -132,7 +132,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             title={t.welcomeClose}
             className="flex-shrink-0 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 

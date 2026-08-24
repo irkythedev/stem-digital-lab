@@ -51,6 +51,9 @@ export function splitForTTS(text: string, maxSeg = 800): string[] {
 export function useSpeak() {
   const [state, setState] = useState<SpeakState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  /** 合成等待秒数（内部计时，仅用于"等待太久"的视觉提示，不显示数字） */
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
@@ -141,15 +144,32 @@ export function useSpeak() {
     audioBufferRef.current = null;
     segsRef.current = [];
     idxRef.current = 0;
+    clearTimer();
     setState('idle');
   }, [stopSource]);
 
   useEffect(() => () => stop(), [stop]);
 
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    setElapsedSec(0);
+  }, []);
+
+  const startTimer = useCallback(() => {
+    setElapsedSec(0);
+    timerRef.current = setInterval(() => setElapsedSec((s) => s + 0.5), 500);
+  }, []);
+
+  const waitingLong = elapsedSec > 4;
+
   /** 合成一段文本并播放；播完自动接下一段 */
   const playSegment = useCallback(
     async (seg: string) => {
       setState('synthesizing');
+      startTimer();
       try {
         const url = getTtsUrl();
         // 冷启动容错：失败自动重试一次
@@ -192,13 +212,15 @@ export function useSpeak() {
         if (!ctx) throw new Error('no audio context');
         audioBufferRef.current = await ctx.decodeAudioData(audioBytes);
         elapsedRef.current = 0;
+        clearTimer();
         startSource(0);
       } catch (e) {
+        clearTimer();
         setErrorMsg(e instanceof Error ? e.message : String(e));
         setState('error');
       }
     },
-    [startSource],
+    [startSource, startTimer, clearTimer],
   );
 
   /** 当前段自然播完：接下一段或结束 */
@@ -235,5 +257,5 @@ export function useSpeak() {
     [unlockAudio, stop, playSegment],
   );
 
-  return { state, errorMsg, speak, pause, resume, stop };
+  return { state, errorMsg, speak, pause, resume, stop, waitingLong };
 }

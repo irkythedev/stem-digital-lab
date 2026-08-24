@@ -21,6 +21,12 @@ export interface FeedbackRecord {
   message: string;
   language: 'zh' | 'en';
   createdAt: string;
+  /** 可选：学校/年级/班级（仅用于回访，用户自主填写） */
+  grade?: string;
+  /** 可选：如何称呼（昵称/称呼，仅用于回访） */
+  name?: string;
+  /** 可选：联系方式（手机号/微信/邮箱，仅用于回访） */
+  contact?: string;
 }
 
 const STORAGE_KEY = 'stem-lab-feedback';
@@ -84,6 +90,15 @@ function formatPushContent(record: FeedbackRecord): string {
     `- **语言**：${record.language === 'zh' ? '中文' : 'English'}`,
     `- **时间**：${new Date(record.createdAt).toLocaleString('zh-CN', { hour12: false })}`,
   ];
+  if (record.grade?.trim()) {
+    lines.push(`- **学校/年级/班级**：${record.grade.trim()}`);
+  }
+  if (record.name?.trim()) {
+    lines.push(`- **称呼**：${record.name.trim()}`);
+  }
+  if (record.contact?.trim()) {
+    lines.push(`- **联系方式**：${record.contact.trim()}`);
+  }
   if (record.message.trim()) {
     lines.push(`\n${record.message.trim()}`);
   }

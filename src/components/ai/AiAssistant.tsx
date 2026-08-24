@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Atom, BookOpen, ChevronDown, Coins, Eye, EyeOff, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { BookOpen, ChevronDown, Coins, Eye, EyeOff, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
 import { labMap } from '../../lib/labs';
@@ -110,7 +110,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
 
 export default function AiAssistant() {
   const { lang } = useApp();
-  const { state: speakState, errorMsg, speak, pause, resume, stop: stopSpeak } = useSpeak();
+  const { state: speakState, errorMsg, speak, pause, resume, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk } = useAiContext();
@@ -136,12 +136,26 @@ export default function AiAssistant() {
             : speakState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
             : (lang === 'zh' ? '朗读回答' : 'Read aloud')
         }
-        className={`inline-flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5 ${
-          speakState === 'synthesizing' ? 'speak-atom' : ''
+        className={`inline-flex items-center justify-center transition-colors p-1.5 -m-1.5 ${
+          speakState === 'synthesizing'
+            ? (waitingLong ? 'text-[#d97706]' : 'text-[var(--muted)]')
+            : 'text-[var(--muted)] hover:text-[var(--fg)]'
         }`}
       >
-        {speakState === 'synthesizing' ? <Atom className="w-4 h-4" />
-          : speakState === 'playing' ? <Pause className="w-4 h-4" />
+        {speakState === 'synthesizing' ? (
+          /* 品牌三角方圆：合成中沿三角形路径循环移位（复用 Header 品牌动画）；等待超 4s 变暖色提示 */
+          <span className="relative block w-5 h-5 speak-brand" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="absolute w-2 h-2 animate-tri-spin speak-tri" style={{ top: 0, left: 6 }}>
+              <path d="M3 20 L12 4 L21 20 Z" />
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="absolute w-2 h-2 animate-sq-spin speak-sq" style={{ top: 12, left: 0 }}>
+              <rect x="4" y="4" width="16" height="16" />
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="absolute w-2 h-2 animate-ci-spin speak-ci" style={{ top: 12, left: 12 }}>
+              <circle cx="12" cy="12" r="8" />
+            </svg>
+          </span>
+        ) : speakState === 'playing' ? <Pause className="w-4 h-4" />
           : speakState === 'paused' ? <Play className="w-4 h-4" />
           : <Volume2 className="w-4 h-4" />
         }
