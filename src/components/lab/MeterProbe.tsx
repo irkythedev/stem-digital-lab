@@ -28,7 +28,7 @@ export interface MeasurableWire {
 /** 可跨接元件：两端感应点 + 吸附落点 + 电压归属 */
 export interface MeasurableComp {
   id: string;
-  kind: 'bulb' | 'battery';
+  kind: 'bulb' | 'battery' | 'bus';
   /** 跨接判定端点（元件真实两端） */
   sense1: { x: number; y: number };
   sense2: { x: number; y: number };

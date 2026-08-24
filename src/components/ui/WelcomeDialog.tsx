@@ -90,7 +90,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                   setPendingWork({
                     name: 'irky.dev',
                     url: 'https://irky.dev/',
-                    icon: 'https://irky.dev/img/icons/pubg-helmet.png',
+                    icon: '/icons/pubg-helmet.png',
                     desc: t.authorHomeDesc,
                   })
                 }
@@ -98,7 +98,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                 className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
               >
                 <img
-                  src="https://irky.dev/img/icons/pubg-helmet.png"
+                  src="/icons/pubg-helmet.png"
                   alt=""
                   width="12"
                   height="12"

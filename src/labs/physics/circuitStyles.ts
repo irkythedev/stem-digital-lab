@@ -75,7 +75,7 @@ export const NODE_X = 135; // 干路节点
 export const RIGHT_X = 290; // 右端汇合/回线 x
 export const RETURN_Y = 195; // 并联回流线 y（三支路底部留充足间距）
 export const LAMP_R = 12;
-/** 并联支路 y（2 支路 / 3 支路：75px 间距，保证「下方标签」与「上方电压表」互不遮挡） */
+/** 并联支路 y（两支路间距 100px、三支路 75px，均 ≥75px 保证「下方标签」与「上方电压表」互不遮挡） */
 const BRANCH_YS_2 = [40, 140];
 const BRANCH_YS_3 = [45, 120, 195];
 

@@ -14,7 +14,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { BookOpen, ChevronDown, Coins, Eye, EyeOff, Scale, Settings, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { BookOpen, ChevronDown, Coins, Eye, EyeOff, Scale, Settings, ShieldCheck, Sparkles, Trash2, TriangleAlert } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
@@ -495,7 +495,7 @@ export default function AiAssistant() {
           setAnswer((a) => a + delta);
           received += delta.length;
           const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-          const outTokens = Math.round(received / 1.8);
+          const outTokens = estimateTokens(received);
           setUsage({
             tokens: baseTokens + promptTokens + outTokens,
             speed: Math.round(outTokens / elapsedSec),
@@ -660,8 +660,9 @@ export default function AiAssistant() {
           <p className="text-[11px] font-bold mono-font text-[var(--fg)] tracking-widest">
             {lang === 'zh' ? '使用须知' : 'Terms'}
           </p>
-          <p className="border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--error)] serif-font leading-relaxed">
-            {lang === 'zh' ? '⚠ 使用 AI 助手前，请务必阅读并同意以下条款，再进行配置：' : '⚠ Please read and accept the terms below before configuring your AI service:'}
+          <p className="flex items-start gap-1.5 border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[11px] text-[var(--error)] serif-font leading-relaxed">
+            <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{lang === 'zh' ? '配置/使用 AI 助手前，请阅读并同意以下条款：' : 'Before configuring or using the AI assistant, please read and accept the terms below:'}</span>
           </p>
           {pending && (
             <p className="text-[11px] text-[var(--fg)] serif-font leading-relaxed">

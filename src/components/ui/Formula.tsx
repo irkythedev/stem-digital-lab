@@ -17,6 +17,8 @@ interface FormulaProps {
   /** 独立成行（display mode，居中）还是行内 */
   block?: boolean;
   className?: string;
+  /** 列表渲染 key（声明以放行 JSX key，不参与组件逻辑） */
+  key?: string | number;
 }
 
 export default function Formula({ tex, block = false, className = '' }: FormulaProps) {

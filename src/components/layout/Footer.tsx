@@ -35,7 +35,7 @@ export default function Footer() {
             title="irky.dev"
           >
             <img
-              src="https://irky.dev/img/icons/pubg-helmet.png"
+              src="/icons/pubg-helmet.png"
               alt="irky.dev favicon"
               width="14"
               height="14"

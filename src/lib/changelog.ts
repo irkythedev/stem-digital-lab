@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.5';
+export const APP_VERSION = '1.20.6';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,19 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.6',
+    date: '2026-08',
+    zh: [
+      '[优化] 优化 AI 助手使用须知的提示样式与文案',
+      '[优化] 优化部分页面图标与资源加载',
+    ],
+    en: [
+      '[Improved] Polished the AI assistant terms notice style and copy',
+      '[Improved] Refined page icons and asset loading',
+    ],
+  },
+
   {
     version: '1.20.5',
     date: '2026-08',
