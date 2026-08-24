@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.20.4-blue)
+![version](https://img.shields.io/badge/版本-v1.20.5-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
@@ -98,8 +98,8 @@ npm run test       # 运行测试
 - 使用您自己的 API Key：支持 DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包等预设及自定义端点，本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
-- 支持数学公式排版（行内 / 块级 LaTeX），问答历史同页内可回看，面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算
-- 问答为单轮形式：点击页面「问 AI」按钮提问，回答末尾会推荐 2~3 个可继续点击了解的问题，不提供自由输入框，也不保存任何对话记录
+- 支持数学公式排版（行内 / 块级 LaTeX），支持多轮问答历史（同页内可回看），面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算
+- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；不提供自由输入框，问答历史关页即清，不持久保存
 
 ### 每日科学
 

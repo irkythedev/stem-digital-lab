@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.20.4';
+export const APP_VERSION = '1.20.5';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,19 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.20.5',
+    date: '2026-08',
+    zh: [
+      '[优化] 开源协议改为弹窗查看，无需跳转页面',
+      '[修复] 修复 AI 助手个别实验信息标注不准确的问题',
+    ],
+    en: [
+      '[Improved] License now opens in a dialog without page navigation',
+      '[Fixed] Fix inaccurate info labeling for some labs in the AI assistant',
+    ],
+  },
+
   {
     version: '1.20.4',
     date: '2026-08',

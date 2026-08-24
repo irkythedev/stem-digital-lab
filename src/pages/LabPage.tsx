@@ -7,7 +7,7 @@
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
 import { Link, useParams } from 'react-router-dom';
-import { House    } from 'lucide-react';;;;
+import { House    } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
 import { labMap } from '../lib/labs';
@@ -47,10 +47,10 @@ export default function LabPage() {
   // AI 上下文：注入当前实验的名称/描述/章节
   useEffect(() => {
     if (lab) {
-            const grade = subjects[lab.subject as keyof typeof subjects]?.gradeZh ?? '';
+      const grade = subjects[lab.subjectId]?.gradeZh ?? '';
       setAiCtx({
         topic: `${lab.name.zh}实验（${grade}）`,
-        knowledge: `${lab.name.zh}实验（${lab.subject === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。${lab.aiKnowledge ? `\n${lab.aiKnowledge}` : ''}`,
+        knowledge: `${lab.name.zh}实验（${lab.subjectId === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。${lab.aiKnowledge ? `\n${lab.aiKnowledge}` : ''}`,
       });
     }
     return () => setAiCtx({});

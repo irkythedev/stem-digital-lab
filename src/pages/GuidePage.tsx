@@ -23,7 +23,7 @@ const copy = {
     privacy: '反馈与隐私',
     privacyText: '实验反馈和项目反馈会发送给开发者；离线或网络异常时自动暂存在当前浏览器，联网后补发。无需登录账号。',
     ai: 'AI 学习助手',
-    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。问答为单轮形式：点击页面「问 AI」按钮提问，回答末尾可继续点击推荐的问题深入了解；不提供自由输入框，也不保存任何对话记录。',
+    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。支持多轮问答历史（同页内可回看），回答末尾会推荐 3 个追问并支持「换一批」；不提供自由输入框，关页即清，不持久保存。',
     aiTermsTitle: '使用须知与免责',
     aiTerms: [
       { title: '服务性质与费用', body: '本站为纯前端静态页面，仅提供对话界面，不提供任何 AI 大模型服务，也不收取任何费用。您需自行注册并管理所选 AI 服务商的 API，相关费用由您与服务商结算。' },
@@ -51,7 +51,7 @@ const copy = {
     privacy: 'Feedback and privacy',
     privacyText: 'Experiment and project feedback is sent to the developer; while offline or on network errors it is queued in this browser and sent automatically when back online. No account is required.',
     ai: 'AI Assistant',
-    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing. Q&A is single-turn: click an "Ask AI" button on any page to ask; each answer ends with recommended follow-up questions you can click to explore further — there is no free-text input, and no conversation history is stored.',
+    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing. Supports multi-turn history (reviewable within the page); each answer recommends 3 follow-up questions with a "refresh" option — there is no free-text input, and history is cleared when the page is closed.',
     aiTermsTitle: 'Terms & disclaimer',
     aiTerms: [
       { title: 'Service nature and fees', body: 'This site is a pure front-end static page that only provides the chat UI — no AI model service, no fees. You register and manage the API of your chosen provider yourself; fees are settled with that provider.' },

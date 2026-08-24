@@ -150,7 +150,6 @@ export default function InteractiveCircle({
   useEffect(() => {
     setStep(0);
     setPlaying(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
   // 自动播放：逐步到全部后停止

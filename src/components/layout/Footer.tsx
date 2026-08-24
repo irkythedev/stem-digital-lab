@@ -6,17 +6,19 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Share2, Library, Mail } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
+import LicenseDialog from '../ui/LicenseDialog';
 
 export default function Footer() {
   const { t } = useApp();
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showWorks, setShowWorks] = useState(false);
+  // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
+  const [showLicense, setShowLicense] = useState(false);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
 
@@ -114,14 +116,15 @@ export default function Footer() {
           >
             {t.disclaimerLabel}
           </button>
-          <Link
-            to="/license"
+          <button
+            type="button"
+            onClick={() => setShowLicense(true)}
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
             className="underline hover:text-[var(--fg)] transition-colors"
           >
             {t.licenseLabel}
-          </Link>
+          </button>
         </div>
         {showDisclaimer && (
           <span className="max-w-xs normal-case leading-snug">{t.disclaimer}</span>
@@ -168,6 +171,7 @@ export default function Footer() {
           </svg>
         </a>
       </div>
+      {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
     </footer>
   );
 }

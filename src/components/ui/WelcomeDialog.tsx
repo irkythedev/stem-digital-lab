@@ -12,11 +12,11 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link } from 'react-router-dom';
 import { Calculator, Library, Mail, MessageSquare, MonitorSmartphone, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
+import LicenseDialog from './LicenseDialog';
 import { APP_VERSION } from '../../lib/changelog';
 
 /* 项目主页 icon（与 Footer 同一套 SVG） */
@@ -30,6 +30,8 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
   const zh = lang !== 'en';
   // 模态弹窗打开期间锁定背景滚动（防止滚动穿透，与工具页详情弹窗一致）
   useLockBodyScroll(true);
+  // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
+  const [showLicense, setShowLicense] = useState(false);
   const [dontShow, setDontShow] = useState(false);
   // 其他作品：点击后先确认（简介 + 提示），用户决定是否跳转外部站点
   const [pendingWork, setPendingWork] = useState<{ name: string; url: string; icon: string; desc?: string } | null>(null);
@@ -46,7 +48,6 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dontShow]);
 
   // 确认条展开后确保在可视范围内（移动端内容区滚动场景；block:'nearest' 仅不可见时才滚动）
@@ -148,15 +149,15 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           <p className="text-sm leading-relaxed serif-font">{t.welcomeAi}</p>
           <p className="text-sm leading-relaxed serif-font">
             {t.welcomeMaintainPrefix}
-            <Link
-              to="/license"
-              onClick={close}
+            <button
+              type="button"
+              onClick={() => setShowLicense(true)}
               title="AGPL-3.0"
               aria-label="AGPL-3.0"
               className="underline hover:opacity-70 mono-font"
             >
               AGPL-3.0
-            </Link>
+            </button>
             {t.welcomeMaintainSuffix}
           </p>
 
@@ -281,6 +282,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           </button>
         </div>
       </div>
+      {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
     </div>,
     document.body,
   );

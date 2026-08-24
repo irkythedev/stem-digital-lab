@@ -14,9 +14,8 @@
  */
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2    } from 'lucide-react';;;;
+import { House, Loader2, Pause, Play, Square, Volume2    } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
-import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';

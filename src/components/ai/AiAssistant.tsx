@@ -177,7 +177,6 @@ export default function AiAssistant() {
     if (prev !== location.pathname) {
       resetConversation();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
   // 同页内知识主题变化（如公式页切换选中项）时清空对话——pathname 不变但 aiCtx 更新
@@ -327,7 +326,7 @@ export default function AiAssistant() {
       setModel(config.model);
       setTestResult(null);
     }
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view]);
 
   // 页面「问 AI」触发：携带预填问题
   useEffect(() => {
@@ -343,7 +342,7 @@ export default function AiAssistant() {
       void sendQuestion(pending, false);
       setPending(null);
     }
-  }, [pending, config]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pending, config]);
 
   // 回答区自动滚底（流式增量 + 新轮入历史时都滚到底部）
   useEffect(() => {
