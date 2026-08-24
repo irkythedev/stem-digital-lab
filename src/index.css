@@ -68,6 +68,8 @@ body {
   min-height: 100vh;
   /* 移动浏览器 URL 栏收展时跟随实际视口，避免滚动到底后底部留白（PWA 无 URL 栏所以不触发） */
   min-height: 100dvh;
+  /* 旧浏览器兜底：JS 实时视口（main.tsx 维护 --vh），不依赖 dvh 支持 */
+  min-height: calc(var(--vh, 1vh) * 100);
   /* sticky footer：body → #root → #app-main flex 链路，内容不足一屏时 Footer 也被顶到视口底部 */
   display: flex;
   flex-direction: column;
