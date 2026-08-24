@@ -84,11 +84,11 @@ export default function LabPage() {
 
   return (
     <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
-      {/* 面包屑导航：返回学科（主）+ 首页（图标） */}
-      <nav className="flex items-center gap-3 text-xs mono-font">
+      {/* 面包屑导航：返回学科（主）+ 首页（图标）——py-2 扩大触控热区（移动端 ≥24px） */}
+      <nav className="flex items-center gap-1 text-xs mono-font">
         <Link
           to={subjects[lab.subjectId].path}
-          className="text-[var(--muted)] underline hover:text-[var(--fg)]"
+          className="py-2 -my-2 text-[var(--muted)] underline hover:text-[var(--fg)]"
         >
           ← {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
         </Link>
@@ -96,7 +96,7 @@ export default function LabPage() {
           to="/"
           aria-label={t.homeIcon}
           title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+          className="py-2 -my-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
         >
           <House className="w-3.5 h-3.5" />
         </Link>
