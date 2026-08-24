@@ -9,9 +9,8 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Image as ImageIcon, Search    } from 'lucide-react';;;;
+import { House, Image as ImageIcon, Search    } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
-import { useEffect } from 'react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { FORMULAS, FORMULA_CATEGORY_ZH, FORMULA_CATEGORY_EN, type FormulaCategory, type MathFormula } from '../lib/formulas';

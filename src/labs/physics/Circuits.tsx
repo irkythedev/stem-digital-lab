@@ -185,7 +185,7 @@ export default function Circuits() {
   const style = CIRCUIT_STYLES.find((s) => s.id === styleId)!;
   const isSeries = style.kind === 'series';
   const isHouse = style.id === 'parallelHouse';
-  const topo = useMemo(() => genTopology(style), [styleId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const topo = useMemo(() => genTopology(style), [styleId]);
   // 展开当前语言的样式文案（copy 每字段是 {zh,en} 字典）
   const sc = useMemo(
     () => ({
@@ -199,7 +199,7 @@ export default function Circuits() {
       conclude: style.copy.conclude.map((q) => ({ question: q.question[lang], options: q.options.map((o) => o[lang]), correctIndex: q.correctIndex })),
       tips: style.copy.tips.map((x) => x[lang]),
     }),
-    [styleId, lang] // eslint-disable-line react-hooks/exhaustive-deps
+    [styleId, lang]
   );
 
   // 恢复样式默认参数（切样式 & 重置共用；不走 switchStyle 守卫）

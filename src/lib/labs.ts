@@ -9,6 +9,10 @@
  *   2) 在此 import 并在 labs 数组登记（id、所属学科、中英文名、图标、组件）。
  * 系统会自动接入 /lab/:labId 路由与对应科目页的实验列表。
  *
+ * ⚠️ 结构警示：vite.config.ts 的 parseLabs() 用正则解析本文件的字段生成
+ * llms.txt / sitemap.xml（GEO 产物）。修改本文件的字段名/结构时，
+ * 必须同步检查并更新 vite.config.ts 中的对应正则，否则 GEO 产物会静默劣化。
+ *
  * 隐藏实验：从 labs 数组移除即可（文件保留在 src/labs/ 下）。
  * 当前隐藏：pythagorean（勾股定理）——实验流程已转向函数类三幕式探究。
  */

@@ -12,7 +12,7 @@
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search    } from 'lucide-react';;;;
+import { House, Search, Image as ImageIcon } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
@@ -22,7 +22,6 @@ import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
-import { Image as ImageIcon    } from 'lucide-react';;;;
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
 
 const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
