@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.2';
+export const APP_VERSION = '1.21.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,17 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.3',
+    date: '2026-08',
+    zh: [
+      '[修复] 修复「换一批」追问未跟随对话主题的问题',
+    ],
+    en: [
+      '[Fixed] Fixed "refresh" follow-ups not following the conversation topic',
+    ],
+  },
+
   {
     version: '1.21.2',
     date: '2026-08',
