@@ -413,7 +413,7 @@ export default function PeriodicTable() {
   };
 
   return (
-    <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
       {/* 面包屑导航：返回化学（主）+ 首页（图标） */}
       <nav className="flex items-center gap-3 text-xs mono-font">
         <Link to="/subject/chemistry" className="text-[var(--muted)] underline hover:text-[var(--fg)]">

@@ -73,7 +73,7 @@ export default function GuidePage() {
   usePageMeta({ title: `${lang === 'zh' ? '使用说明' : 'Guide'} - ${lang === 'zh' ? '数理化数字实验室' : 'STEM Digital Lab'}` });
   const c = copy[lang];
   return (
-    <main className="flex-1 my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 my-10 px-2 sm:px-6">
       <Link
         to="/"
         className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"

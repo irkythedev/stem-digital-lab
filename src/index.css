@@ -82,7 +82,17 @@ body {
 #root {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  /* flex: 1 0 auto：拉伸到视口高，但内容超出时允许扩展（shrink:0 防止压缩导致内容溢出） */
+  flex: 1 0 auto;
+}
+
+/* #app-main 视口高度：用 JS 实时视口（--vh，main.tsx 维护）覆盖 Tailwind 的 min-h-screen/dvh，
+   避免 100vh 大视口（URL 栏收起高度）把页面撑高，导致滚动到底后页脚下方露出可滚动空白 */
+#app-main {
+  /* 同 #root：可拉伸、不可压缩（内容超出时随内容扩展，Footer 正常贴内容后） */
+  flex: 1 0 auto;
+  min-height: 100vh;
+  min-height: calc(var(--vh, 1vh) * 100);
 }
 
 /* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */

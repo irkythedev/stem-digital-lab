@@ -72,7 +72,7 @@ export default function App() {
     <AppProvider>
       <AiProvider>
       {showWelcome && <WelcomeDialog onClose={closeWelcome} />}
-      <div id="app-main" className="min-h-screen min-h-dvh w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
+      <div id="app-main" className="min-h-dvh w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
         <SkipLink />
         <Header />
         <Routes>
