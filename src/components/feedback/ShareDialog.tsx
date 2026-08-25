@@ -17,9 +17,11 @@ interface ShareDialogProps {
   title?: string;
   /** 自定义分享正文；缺省用站点通用文案 */
   text?: string;
+  /** 锚定模式：二维码从触发按钮位置弹出（popover），默认 false 为底部 sheet/卡片 */
+  anchored?: boolean;
 }
 
-export default function ShareDialog({ url, onClose, title, text }: ShareDialogProps) {
+export default function ShareDialog({ url, onClose, title, text, anchored = false }: ShareDialogProps) {
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -67,50 +69,84 @@ export default function ShareDialog({ url, onClose, title, text }: ShareDialogPr
     }
   };
 
-  return (
-    <div
-      className="fixed bottom-20 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-      role="dialog"
-      aria-label={t.share}
-    >
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {t.share}</h2>
-          <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
-        </div>
+  // 弹层内容（两种模式共用）
+  const body = (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {t.share}</h2>
+        <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+      </div>
 
-        {/* 二维码 */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="bg-white p-2 rounded">
-            <QRCodeSVG value={url} size={160} level="M" marginSize={2} />
-          </div>
-          <p className="text-xs text-[var(--muted)]">
-            {wechatBrowser ? t.wechatInnerHint : t.wechatOuterHint}
-          </p>
+      {/* 二维码 */}
+      <div className="flex flex-col items-center gap-2">
+        <div className="bg-white p-2 rounded">
+          <QRCodeSVG value={url} size={160} level="M" marginSize={2} />
         </div>
+        <p className="text-xs text-[var(--muted)]">
+          {wechatBrowser ? t.wechatInnerHint : t.wechatOuterHint}
+        </p>
+      </div>
 
-        {/* 按钮：仅支持 Web Share API 的浏览器显示「分享」主按钮，其余直接用「复制链接」 */}
-        <div className="flex flex-col gap-2">
-          {typeof navigator !== 'undefined' && navigator.share && (
-            <button
-              type="button"
-              onClick={handleNativeShare}
-              className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)]"
-            >
-              {t.share}
-            </button>
-          )}
+      {/* 按钮：仅支持 Web Share API 的浏览器显示「分享」主按钮，其余直接用「复制链接」 */}
+      <div className="flex flex-col gap-2">
+        {typeof navigator !== 'undefined' && navigator.share && (
           <button
             type="button"
-            onClick={handleCopy}
-            className="border border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"
+            onClick={handleNativeShare}
+            className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] min-h-[40px] touch-manipulation"
           >
-            {copied ? `✓ ${t.copied}` : t.copyLink}
+            {t.share}
           </button>
-          {copyFailed && (
-            <p className="text-xs text-[var(--error)] serif-font" role="alert">⚠ {t.copyFailed}</p>
-          )}
+        )}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="border border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] min-h-[40px] touch-manipulation"
+        >
+          {copied ? `✓ ${t.copied}` : t.copyLink}
+        </button>
+        {copyFailed && (
+          <p className="text-xs text-[var(--error)] serif-font" role="alert">⚠ {t.copyFailed}</p>
+        )}
+      </div>
+    </div>
+  );
+
+  // 锚定模式（anchored）：二维码从触发按钮位置向上弹出（popover，带指向箭头），
+  // 需调用方用 relative 容器包裹；移动端与 PC 行为一致，均从按钮处弹出。
+  if (anchored) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50" onClick={onClose} aria-hidden="true" />
+        <div
+          className="absolute bottom-full mb-2.5 left-0 sm:left-1/2 sm:-translate-x-1/2 z-[51] w-[min(18rem,calc(100vw-2rem))] max-h-[70dvh] overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-lg"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-label={t.share}
+        >
+          <span
+            className="hidden sm:block absolute left-1/2 -translate-x-1/2 top-full -mt-[5px] w-2.5 h-2.5 rotate-45 border-r border-b border-[var(--border)] bg-[var(--bg)]"
+            aria-hidden="true"
+          />
+          {body}
         </div>
+      </>
+    );
+  }
+
+  // 默认模式：移动端底部 sheet / 桌面右下角卡片
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/40 sm:bg-transparent backdrop-blur-[1px] sm:backdrop-blur-none"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-none pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={t.share}
+      >
+        {body}
       </div>
     </div>
   );

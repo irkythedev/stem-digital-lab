@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.7';
+export const APP_VERSION = '1.21.8';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,19 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.8',
+    date: '2026-08',
+    zh: [
+      '[新增] 安装应用提供分设备图文引导',
+      '[优化] 分享二维码从按钮处弹出',
+    ],
+    en: [
+      '[New] Step-by-step install guide for each device',
+      '[Improved] Share QR code pops up from the button',
+    ],
+  },
+
   {
     version: '1.21.7',
     date: '2026-08',

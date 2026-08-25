@@ -100,16 +100,19 @@ export default function Footer() {
 
       <div className="flex flex-col items-center gap-1.5 text-center">
         <div className="flex items-center gap-4">
-          {/* 分享：icon + hover 显示「分享」 */}
-          <button
-            type="button"
-            onClick={() => setShowShare(true)}
-            title={t.share}
-            aria-label={t.share}
-            className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-          >
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
+          {/* 分享：icon + hover 显示「分享」；二维码从按钮位置向上弹出（anchored popover，移动端/PC 一致） */}
+          <span className="relative">
+            <button
+              type="button"
+              onClick={() => setShowShare(true)}
+              title={t.share}
+              aria-label={t.share}
+              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+            </button>
+            {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} anchored />}
+          </span>
           <InstallAppButton />
           <button
             type="button"
@@ -134,7 +137,6 @@ export default function Footer() {
         )}
       </div>
 
-      {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} />}
       <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <a
