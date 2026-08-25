@@ -36,7 +36,7 @@ export default function FeedbackFab() {
         aria-label={label}
         title={label}
         aria-expanded={open}
-        className="fixed bottom-5 right-4 sm:right-6 z-50 flex items-center justify-center w-12 h-12 rounded-full border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] transition-colors hover:bg-[var(--accent-light)]"
+        className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] right-4 sm:right-6 z-50 flex items-center justify-center w-12 h-12 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/85 backdrop-blur-md text-[var(--fg)] shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] transition-all duration-150 active:scale-95 touch-manipulation hover:bg-[var(--accent-light)] select-none"
       >
         <MessageSquare className="w-5 h-5" />
       </button>

@@ -69,8 +69,8 @@ export default function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center w-full py-4 border-b border-[var(--border)] transition-colors duration-200">
-      <Link to="/" className="flex items-center gap-2 group" aria-label={t.brandName}>
+    <header className="flex justify-between items-center w-full py-3 sm:py-3.5 border-b border-[var(--border)]/70 transition-colors duration-200">
+      <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
@@ -147,20 +147,20 @@ export default function Header() {
 
       {/* 刷新状态 toast：右上角 */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)]/80 bg-[var(--card-bg)] px-3.5 py-2 rounded-xl text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
           {lang === 'zh' ? '正在刷新到最新版本…' : 'Refreshing to latest version…'}
         </div>
       )}
 
-      <div className="flex items-center gap-2 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
-        {/* AI Assistant entry（版本号在左侧品牌区，此处无绿点遮挡） */}
+      <div className="flex items-center gap-1.5 sm:gap-3 text-[0.6875rem] mono-font uppercase tracking-wider">
+        {/* AI Assistant entry */}
         <button
           type="button"
           onClick={() => setAiOpen(!aiOpen)}
           aria-label={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
           title={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
-          className="relative flex items-center justify-center px-2 py-2 text-[var(--fg)] transition-colors hover:opacity-70"
+          className="relative flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
         >
           <Sparkles className="w-3.5 h-3.5" />
           {!aiConfigured && (
@@ -173,29 +173,29 @@ export default function Header() {
           onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           aria-label="Switch language"
           title={lang === 'zh' ? 'EN' : '中文'}
-          className="px-2 py-2 transition-colors text-[var(--fg)] hover:opacity-70"
+          className="px-2.5 py-1.5 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
         >
           {lang === 'zh' ? '中文' : 'EN'}
         </button>
 
-        <div className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
+        <div className="w-px h-3 bg-[var(--border)]/70" aria-hidden="true" />
 
         {/* Theme Mode Switcher (single cycle button) */}
         <button
           onClick={cycleTheme}
           title={t[themeMode]}
           aria-label={t[themeMode]}
-          className="flex items-center justify-center px-2 py-2 text-[var(--fg)] transition-colors hover:opacity-70"
+          className="flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
         >
           <ThemeIcon className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
+        <div className="w-px h-3 bg-[var(--border)]/70" aria-hidden="true" />
 
         {/* Guide link */}
         <Link
           to="/guide"
-          className="px-1 py-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
         >
           {t.guide}
         </Link>

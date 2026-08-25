@@ -16,6 +16,7 @@ import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -165,7 +166,7 @@ export default function Buoyancy() {
   const [showFeedback, setShowFeedback] = useState(false);
 
   const predComplete = predict1 !== null && predict2 !== null;
-  const concludeComplete = concl.q1 && concl.q2 && concl.q3;
+  const concludeComplete = Boolean(concl.q1 && concl.q2 && concl.q3);
 
   const G = 2; // 石块重 2N
   const liquid = LIQUIDS.find((l) => l.id === liquidId)!;
@@ -250,22 +251,22 @@ export default function Buoyancy() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
-          const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
-          return (
-            <button key={s} type="button" onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${stage === s ? 'border-[var(--fg)] text-[var(--fg)]' : isDone ? 'border-[var(--border)] text-[var(--muted)]' : 'border-[var(--border)] text-[var(--muted)] opacity-50'}`}>
-              {isDone && stage !== s ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
-)] transition-colors">{c.redoLabel}</button>
-        </div>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{
+          predict: c.stagePredict,
+          explore: c.stageExplore,
+          conclude: c.stageConclude,
+          redo: c.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: concludeComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解阿基米德原理：浮力与排开液体体积、液体密度有什么关系' : "Explain Archimedes' principle: how buoyancy depends on displaced volume and fluid density"} />
 
@@ -273,24 +274,88 @@ export default function Buoyancy() {
       {/* ── 实验示意 ── */}
       <div className="border border-[var(--border)] p-3">
         <svg viewBox="0 0 520 320" className="w-full" aria-label="浮力实验" strokeLinecap="round" strokeLinejoin="round">
-          {/* 弹簧测力计外壳 */}
-          <rect x="180" y="20" width="40" height="60" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-          <text x="200" y="58" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">{FReading.toFixed(1)}N</text>
-          {/* 弹簧（拉伸随浮力：示数越小弹簧越长） */}
-          <line x1="200" y1="80" x2="200" y2={80 + 40 * (1 - Fb / G)} stroke="var(--fg)" strokeWidth="1.5" />
-          {/* 吊线 */}
-          <line x1="200" y1={80 + 40 * (1 - Fb / G)} x2="200" y2="130" stroke="var(--fg)" strokeWidth="1" />
-          {/* 石块 */}
-          <rect x="188" y="130" width="24" height="22" fill="var(--muted)" opacity="0.7" stroke="var(--fg)" strokeWidth="1.2" />
-          <text x="200" y="143" textAnchor="middle" fontSize="9" fill="var(--fg)" fontFamily="var(--f-mono)">G={G}N</text>
-          {/* 液体容器 */}
-          <path d="M100 200 H420 L420 300 H100 Z" fill="rgba(70,150,220,0.18)" stroke="var(--fg)" strokeWidth="1.2" />
+          <defs>
+            {/* 水下区域裁剪路径 */}
+            <clipPath id="waterClip">
+              <rect x="120" y="200" width="280" height="100" />
+            </clipPath>
+          </defs>
+
+          {/* 液体烧杯容器 (x: 120 ~ 400, y: 195 ~ 300) */}
+          <path d="M120 195 V300 H400 V195" fill="rgba(70,150,220,0.18)" stroke="var(--fg)" strokeWidth="1.5" />
           {/* 液面线 */}
-          <line x1="100" y1="200" x2="420" y2="200" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="4 2" />
-          {/* 石块浸入部分（随浸入比例，水位上升） */}
-          <rect x="188" y={200 + (130 - 200) * vSub} width="24" height="22" fill="rgba(70,150,220,0.4)" stroke="var(--fg)" strokeWidth="1" />
-          {/* 液体标注 */}
-          <text x="110" y="285" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">{liquid[lang as Lang]}</text>
+          <line x1="120" y1="200" x2="400" y2="200" stroke="var(--fg)" strokeWidth="1.2" strokeDasharray="5 3" />
+          <text x="130" y="220" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '液面' : 'Surface'}</text>
+
+          {/* 弹簧测力计外壳 (固定在顶部 x: 235~285, y: 15~75) */}
+          <rect x="235" y="15" width="50" height="65" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
+          <text x="260" y="32" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '测力计' : 'Dynamometer'}</text>
+          <text x="260" y="58" textAnchor="middle" fontSize="14" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+            {FReading.toFixed(1)} N
+          </text>
+
+          {/* 动态计算石块坐标：石块高度 40px，浸入比例 vSub (0.1 ~ 1.0) 决定其底边深入液面 y=200 的深度 */}
+          {/* 当 vSub=1 时，石块刚好完全浸没 (y: 195~235)；当 vSub=0.1 时，石块底深入液面 4px (y: 164~204) */}
+          {(() => {
+            const stoneH = 40;
+            const stoneW = 44;
+            const stoneX = 260 - stoneW / 2;
+            const stoneY = 200 - stoneH * (1 - vSub); // 石块顶部 Y 坐标
+            const springBottomY = 80 + 25 * (FReading / G); // 测力计挂钩随拉力伸长
+
+            return (
+              <g>
+                {/* 测力计弹簧挂钩 */}
+                <line x1="260" y1="80" x2="260" y2={springBottomY} stroke="var(--fg)" strokeWidth="2" />
+                {/* 细吊线 */}
+                <line x1="260" y1={springBottomY} x2="260" y2={stoneY} stroke="var(--fg)" strokeWidth="1.2" strokeDasharray="3 2" />
+
+                {/* 石块主体 (完整实物) */}
+                <rect x={stoneX} y={stoneY} width={stoneW} height={stoneH} rx="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.8" />
+
+                {/* 石块水下浸没部分的高亮遮罩 */}
+                <rect
+                  x={stoneX}
+                  y={stoneY}
+                  width={stoneW}
+                  height={stoneH}
+                  rx="2"
+                  fill="rgba(70,150,220,0.4)"
+                  clipPath="url(#waterClip)"
+                />
+
+                {/* 石块标签 */}
+                <text x="260" y={stoneY + 24} textAnchor="middle" fontSize="10" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+                  G={G}N
+                </text>
+
+                {/* 浮力与重力受力示意箭头 (石块右侧) */}
+                <g transform={`translate(${stoneX + stoneW + 15}, ${stoneY + 20})`}>
+                  {/* 重力向下箭头 */}
+                  <line x1="0" y1="0" x2="0" y2="22" stroke="var(--fg)" strokeWidth="1.5" />
+                  <polygon points="-3,22 3,22 0,28" fill="var(--fg)" />
+                  <text x="6" y="20" fontSize="9" fill="var(--fg)" fontFamily="var(--f-mono)">G</text>
+
+                  {/* 浮力向上箭头 */}
+                  {Fb > 0 && (
+                    <>
+                      <line x1="16" y1="0" x2="16" y2={-Math.min(22, Fb * 18)} stroke="var(--accent)" strokeWidth="1.5" />
+                      <polygon points={`13,${-Math.min(22, Fb * 18)} 19,${-Math.min(22, Fb * 18)} 16,${-Math.min(22, Fb * 18) - 6}`} fill="var(--accent)" />
+                      <text x="22" y="-5" fontSize="9" fill="var(--accent)" fontFamily="var(--f-mono)">F浮={Fb.toFixed(1)}N</text>
+                    </>
+                  )}
+                </g>
+              </g>
+            );
+          })()}
+
+          {/* 液体信息与读数标注 */}
+          <text x="130" y="285" fontSize="12" fontWeight="500" fill="var(--fg)" fontFamily="var(--f-mono)">
+            {liquid[lang as Lang]} (ρ = {liquid.rho} kg/m³)
+          </text>
+          <text x="400" y="285" textAnchor="end" fontSize="12" fill="var(--muted)" fontFamily="var(--f-mono)">
+            F浮 = {Fb.toFixed(1)} N
+          </text>
         </svg>
       </div>
 

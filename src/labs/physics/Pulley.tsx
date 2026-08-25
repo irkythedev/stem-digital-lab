@@ -11,11 +11,13 @@
  * 教材依据：ch11「活动 11.2 探究定滑轮和动滑轮的特点」
  */
 import { useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -131,7 +133,7 @@ export default function Pulley() {
   const [showFeedback, setShowFeedback] = useState(false);
 
   const predComplete = predict1 !== null;
-  const concludeComplete = concl.q1 && concl.q2;
+  const concludeComplete = Boolean(concl.q1 && concl.q2);
 
   // 拉力：定滑轮 F=G，动滑轮 F=G/2（理想，不计滑轮重力）
   const F = type === 'fixed' ? G : G / 2;
@@ -181,18 +183,18 @@ export default function Pulley() {
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
           {options.map((opt) => {
             const isSel = selected === opt.value;
             const isCorrect = correctKeys.includes(opt.value);
-            let cls = 'text-left text-sm px-3 py-2 border transition-colors ';
+            let cls = 'text-left text-xs sm:text-sm px-3 py-2.5 border rounded-lg transition-colors ';
             if (showFeedback) {
-              if (isSel && isCorrect) cls += 'border-[var(--fg)] text-[var(--fg)]';
+              if (isSel && isCorrect) cls += 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold';
               else if (isSel && !isCorrect) cls += 'border-[var(--error)] text-[var(--error)]';
               else if (!isSel && isCorrect) cls += 'border-[var(--border)] text-[var(--muted)]';
               else cls += 'border-[var(--border)] text-[var(--muted)] opacity-50';
             } else {
-              cls += isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
+              cls += isSel ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
             const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
             return (
@@ -210,22 +212,23 @@ export default function Pulley() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
-          const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
-          return (
-            <button key={s} type="button" onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${stage === s ? 'border-[var(--fg)] text-[var(--fg)]' : isDone ? 'border-[var(--border)] text-[var(--muted)]' : 'border-[var(--border)] text-[var(--muted)] opacity-50'}`}>
-              {isDone && stage !== s ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
-)] transition-colors">{c.redoLabel}</button>
-        </div>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{
+          predict: c.stagePredict,
+          explore: c.stageExplore,
+          conclude: c.stageConclude,
+          next: c.nextStage,
+          redo: c.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: concludeComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解定滑轮与动滑轮各有什么特点，滑轮组怎么判断省力情况' : 'Explain fixed vs movable pulleys and how to determine the effort saved by a pulley system'} />
 
@@ -233,42 +236,86 @@ export default function Pulley() {
       {/* ── 滑轮示意 ── */}
       <div className="border border-[var(--border)] p-3">
         <svg viewBox="0 0 520 320" className="w-full" aria-label="滑轮" strokeLinecap="round" strokeLinejoin="round">
-          {/* 定滑轮：轮固定在上，绳绕轮，向下拉 */}
+          {/* 定滑轮：轮轴固定在天花板上，绳绕轮顶，左切线挂重物，右切线向下拉（改变力的方向） */}
           {type === 'fixed' ? (
-            <>
-              {/* 定滑轮 */}
-              <circle cx="200" cy="80" r="30" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
-              <circle cx="200" cy="80" r="8" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
-              {/* 支架 */}
-              <line x1="200" y1="50" x2="200" y2="30" stroke="var(--fg)" strokeWidth="1.5" />
-              <line x1="160" y1="30" x2="240" y2="30" stroke="var(--fg)" strokeWidth="1.5" />
-              {/* 绳：绕过滑轮，一端挂重物，另一端下拉 */}
-              <path d="M200 110 V200" stroke="var(--fg)" strokeWidth="1.5" />
-              <path d="M200 110 V200" stroke="var(--fg)" strokeWidth="1.5" />
-              {/* 重物 */}
-              <rect x="190" y="200" width="20" height="25" fill="var(--muted)" opacity="0.7" stroke="var(--fg)" strokeWidth="1" />
-              <text x="200" y="216" textAnchor="middle" fontSize="9" fill="var(--fg)" fontFamily="var(--f-mono)">{G}N</text>
-              {/* 拉力方向 */}
-              <path d="M260 140 V90" stroke="var(--fg)" strokeWidth="1.5" markerEnd="url(#arrow)" />
-              <text x="275" y="105" fontSize="12" fill="var(--fg)" fontFamily="var(--f-mono)">F={F}N</text>
-            </>
+            <g transform="translate(60, 10)">
+              {/* 天花板与固定支架 */}
+              <line x1="120" y1="30" x2="280" y2="30" stroke="var(--fg)" strokeWidth="2" />
+              {/* 支架斜纹装饰 */}
+              {[140, 170, 200, 230, 260].map((x) => (
+                <line key={x} x1={x} y1="30" x2={x + 10} y2="20" stroke="var(--muted)" strokeWidth="1" />
+              ))}
+              <line x1="200" y1="30" x2="200" y2="90" stroke="var(--fg)" strokeWidth="2" />
+
+              {/* 定滑轮轮体 (中心 200, 90, 半径 30) */}
+              <circle cx="200" cy="90" r="30" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.8" />
+              <circle cx="200" cy="90" r="6" fill="var(--fg)" />
+
+              {/* 绳索：左切线 x=170 从 y=90 到 y=200；顶部半圆弧 A 30 30 0 0 1 230 90；右切线 x=230 向下拉到 y=170 */}
+              <path
+                d="M 170 200 V 90 A 30 30 0 0 1 230 90 V 170"
+                fill="none"
+                stroke="var(--fg)"
+                strokeWidth="2"
+              />
+
+              {/* 左侧悬挂重物 (x: 155~185, y: 200~240) */}
+              <rect x="155" y="200" width="30" height="35" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
+              <text x="170" y="222" textAnchor="middle" fontSize="11" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+                G={G}N
+              </text>
+
+              {/* 右侧手拉力向下箭头 (自 y=170 向下拉至 y=210) */}
+              <line x1="230" y1="170" x2="230" y2="210" stroke="var(--accent)" strokeWidth="2" />
+              <polygon points="225,210 235,210 230,220" fill="var(--accent)" />
+              <text x="245" y="195" fontSize="12" fontWeight="bold" fill="var(--accent)" fontFamily="var(--f-mono)">
+                F = {F} N
+              </text>
+              <text x="245" y="212" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
+                {lang === 'zh' ? '（向下用力，方向改变）' : '(Downward pull)'}
+              </text>
+            </g>
           ) : (
-            <>
-              {/* 动滑轮：轮挂重物，向上拉 */}
-              <circle cx="240" cy="110" r="30" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
-              <circle cx="240" cy="110" r="8" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
-              {/* 重物挂轮下 */}
-              <line x1="240" y1="140" x2="240" y2="175" stroke="var(--fg)" strokeWidth="1.5" />
-              <rect x="230" y="175" width="20" height="25" fill="var(--muted)" opacity="0.7" stroke="var(--fg)" strokeWidth="1" />
-              <text x="240" y="191" textAnchor="middle" fontSize="9" fill="var(--fg)" fontFamily="var(--f-mono)">{G}N</text>
-              {/* 绳：一端固定上端，另一端向上拉（两段绳承重） */}
-              <path d="M210 110 V40 H140 V110" stroke="var(--fg)" strokeWidth="1.5" />
-              <path d="M270 110 V40" stroke="var(--fg)" strokeWidth="1.5" />
-              <line x1="140" y1="40" x2="300" y2="40" stroke="var(--fg)" strokeWidth="1.5" />
-              {/* 拉力方向 */}
-              <path d="M270 30 V-10" stroke="var(--fg)" strokeWidth="1.5" />
-              <text x="285" y="15" fontSize="12" fill="var(--fg)" fontFamily="var(--f-mono)">F={F}N</text>
-            </>
+            /* 动滑轮：左侧绳固定在天花板 (x=170, y=40)，绕过轮底 (中心 200, 140, 半径 30)，右侧绳 (x=230) 向上拉 (F = G/2) */
+            <g transform="translate(60, 10)">
+              {/* 天花板横梁 */}
+              <line x1="120" y1="40" x2="280" y2="40" stroke="var(--fg)" strokeWidth="2" />
+              {[140, 170, 200, 230, 260].map((x) => (
+                <line key={x} x1={x} y1="40" x2={x + 10} y2="30" stroke="var(--muted)" strokeWidth="1" />
+              ))}
+
+              {/* 左绳固定端锚点 */}
+              <circle cx="170" cy="40" r="3" fill="var(--fg)" />
+
+              {/* 绳索：从左天花板 x=170, y=40 下行至 y=140，沿轮底半圆弧绕至右侧 x=230, y=140，再向上引出至 y=60 */}
+              <path
+                d="M 170 40 V 140 A 30 30 0 0 0 230 140 V 60"
+                fill="none"
+                stroke="var(--fg)"
+                strokeWidth="2"
+              />
+
+              {/* 动滑轮轮体 (中心 200, 140, 半径 30) */}
+              <circle cx="200" cy="140" r="30" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.8" />
+              <circle cx="200" cy="140" r="6" fill="var(--fg)" />
+
+              {/* 滑轮轴下挂钩与重物 (中心 x=200) */}
+              <line x1="200" y1="146" x2="200" y2="195" stroke="var(--fg)" strokeWidth="2" />
+              <rect x="185" y="195" width="30" height="35" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
+              <text x="200" y="217" textAnchor="middle" fontSize="11" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+                G={G}N
+              </text>
+
+              {/* 右绳端向上拉力箭头 (自 y=60 向上拉至 y=20，完全在视口内) */}
+              <line x1="230" y1="60" x2="230" y2="20" stroke="var(--accent)" strokeWidth="2" />
+              <polygon points="225,20 235,20 230,10" fill="var(--accent)" />
+              <text x="245" y="30" fontSize="12" fontWeight="bold" fill="var(--accent)" fontFamily="var(--f-mono)">
+                F = {F} N
+              </text>
+              <text x="245" y="46" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
+                {lang === 'zh' ? '（省一半力，两段绳承重）' : '(Saves 1/2 effort)'}
+              </text>
+            </g>
           )}
         </svg>
       </div>

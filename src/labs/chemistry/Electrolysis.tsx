@@ -11,11 +11,13 @@
  * 教材依据：ch04「水的组成及变化（电解水）」+ 微观动画
  */
 import { useEffect, useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MicroAnimation from '../../components/lab/MicroAnimation';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -153,7 +155,7 @@ export default function Electrolysis() {
   const [showMicro, setShowMicro] = useState(false);
 
   const predComplete = predict1 !== null && predict2 !== null;
-  const concludeComplete = concl.q1 && concl.q2 && concl.q3;
+  const concludeComplete = Boolean(concl.q1 && concl.q2 && concl.q3);
 
   // 通电时间进度（模拟气泡积累，2:1 体积比）
   const [elapsed, setElapsed] = useState(0);
@@ -213,18 +215,18 @@ export default function Electrolysis() {
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
           {options.map((opt) => {
             const isSel = selected === opt.value;
             const isCorrect = correctKeys.includes(opt.value);
-            let cls = 'text-left text-sm px-3 py-2 border transition-colors ';
+            let cls = 'text-left text-xs sm:text-sm px-3 py-2.5 border rounded-lg transition-colors ';
             if (showFeedback) {
-              if (isSel && isCorrect) cls += 'border-[var(--fg)] text-[var(--fg)]';
+              if (isSel && isCorrect) cls += 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold';
               else if (isSel && !isCorrect) cls += 'border-[var(--error)] text-[var(--error)]';
               else if (!isSel && isCorrect) cls += 'border-[var(--border)] text-[var(--muted)]';
               else cls += 'border-[var(--border)] text-[var(--muted)] opacity-50';
             } else {
-              cls += isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
+              cls += isSel ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
             const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
             return (
@@ -242,22 +244,23 @@ export default function Electrolysis() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
-          const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
-          return (
-            <button key={s} type="button" onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${stage === s ? 'border-[var(--fg)] text-[var(--fg)]' : isDone ? 'border-[var(--border)] text-[var(--muted)]' : 'border-[var(--border)] text-[var(--muted)] opacity-50'}`}>
-              {isDone && stage !== s ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
-)] transition-colors">{c.redoLabel}</button>
-        </div>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{
+          predict: c.stagePredict,
+          explore: c.stageExplore,
+          conclude: c.stageConclude,
+          next: c.nextStage,
+          redo: c.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: concludeComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解电解水的实验现象：正负极各产生什么气体，体积比是多少' : 'Explain the electrolysis of water: which gas forms at each electrode and the 2:1 volume ratio'} />
 
@@ -288,32 +291,51 @@ export default function Electrolysis() {
           <line x1="105" y1="50" x2="117" y2="50" stroke="var(--fg)" strokeWidth="1.5" />
           <line x1="283" y1="50" x2="295" y2="50" stroke="var(--fg)" strokeWidth="1.5" />
 
-          {/* 水（两支管 + 底部连通管，液面在 y=72） */}
-          <path
-            d="M113 72 H145 V104 H255 V72 H287 V104 H113 Z"
-            fill="rgba(70,150,220,0.2)"
-            stroke="none"
-          />
-          {/* 液面线 */}
-          <line x1="111" y1="72" x2="289" y2="72" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="4 3" />
+          {/* ── 动态液面计算（气体收集在管顶部，随产气量增加向下排开液体，负极液面下降速度是正极的 2 倍） ── */}
+          {(() => {
+            // 初始液面 y=54（充满水）；随 elapsed 增加，左管降至 y=86，右管降至 y=70
+            const leftLevel = 54 + elapsed * 32;  // H₂ 侧液面（下降较深）
+            const rightLevel = 54 + elapsed * 16; // O₂ 侧液面（下降较浅，约为 H₂ 的一半）
 
-          {/* 收集的气体（管上部，无色留空，虚线标记体积；H₂ 侧高，O₂ 侧矮 = 2:1） */}
-          {power && (
-            <>
-              {/* 负极 H₂：气体体积高 */}
-              <path d="M113 72 V55 H143 V72" fill="none" stroke="rgba(120,220,160,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
-              <text x="128" y="66" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">H₂ {hVol.toFixed(0)}</text>
-              {/* 正极 O₂：气体体积矮（约一半） */}
-              <path d="M257 72 V60 H287 V72" fill="none" stroke="rgba(120,180,240,0.5)" strokeWidth="1.2" strokeDasharray="3 2" />
-              <text x="272" y="68" textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">O₂ {oVol.toFixed(0)}</text>
-            </>
-          )}
-          {!power && (
-            <>
-              <text x="128" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">H₂</text>
-              <text x="272" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">O₂</text>
-            </>
-          )}
+            return (
+              <g>
+                {/* 水（左支管 + 底部连通管 + 右支管） */}
+                <path
+                  d={`M 112 ${leftLevel} H 144 V 104 H 256 V ${rightLevel} H 288 V 104 H 112 Z`}
+                  fill="rgba(70,150,220,0.22)"
+                  stroke="none"
+                />
+
+                {/* 左管液面线 */}
+                <line x1="112" y1={leftLevel} x2="144" y2={leftLevel} stroke="var(--fg)" strokeWidth="1.2" />
+                {/* 右管液面线 */}
+                <line x1="256" y1={rightLevel} x2="288" y2={rightLevel} stroke="var(--fg)" strokeWidth="1.2" />
+
+                {/* 收集的气体（管上部无色留空区域）：H₂ 侧与 O₂ 侧 */}
+                {power && (
+                  <>
+                    {/* 负极 H₂ 气室 */}
+                    <rect x="113" y="50" width="30" height={Math.max(2, leftLevel - 50)} fill="rgba(120,220,160,0.15)" stroke="none" />
+                    <text x="128" y={Math.max(48, leftLevel - 6)} textAnchor="middle" fontSize="10" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+                      H₂ {hVol.toFixed(0)}
+                    </text>
+
+                    {/* 正极 O₂ 气室 */}
+                    <rect x="257" y="50" width="30" height={Math.max(2, rightLevel - 50)} fill="rgba(120,180,240,0.15)" stroke="none" />
+                    <text x="272" y={Math.max(48, rightLevel - 6)} textAnchor="middle" fontSize="10" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
+                      O₂ {oVol.toFixed(0)}
+                    </text>
+                  </>
+                )}
+                {!power && (
+                  <>
+                    <text x="128" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">H₂</text>
+                    <text x="272" y="66" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">O₂</text>
+                  </>
+                )}
+              </g>
+            );
+          })()}
 
           {/* 电极（碳棒从管顶插入水中）：极性符号与正负极文字都标在管顶部电极上端（导线连接处），贴合"电极从顶部插入、导线在顶部接电源"的原理 */}
           {/* 左电极：负极(−)，产 H₂ 多 */}

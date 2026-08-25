@@ -12,7 +12,7 @@
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search, Image as ImageIcon } from 'lucide-react';
+import { House, Search, Image as ImageIcon, X } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
@@ -208,7 +208,9 @@ export default function PhysicsFormulas() {
             <span className="text-sm font-semibold serif-font text-[var(--fg)] leading-tight text-center">
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
-            <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+            <div className="w-full flex items-center justify-center overflow-x-auto min-h-0">
+              <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+            </div>
           </button>
         ))}
       </div>
@@ -221,112 +223,118 @@ export default function PhysicsFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-md border border-[var(--border)] bg-[var(--bg)] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.name.zh} ${selected.name.en}`}
           >
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              aria-label={lang === 'zh' ? '关闭' : 'Close'}
-              className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center text-lg text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-            >
-              ×
-            </button>
+            {/* 固定顶部条：无论横屏还是竖屏，关闭按钮和标题始终可见 */}
+            <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+              <div className="min-w-0">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)]">
+                  {lang === 'zh' ? PHYSICS_FORMULA_CATEGORY_ZH[selected.category] : PHYSICS_FORMULA_CATEGORY_EN[selected.category]}
+                </div>
+                <div className="mt-0.5 text-base sm:text-lg font-semibold serif-font text-[var(--fg)] truncate">
+                  {lang === 'zh' ? selected.name.zh : selected.name.en}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={lang === 'zh' ? '关闭' : 'Close'}
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-            <div className="pr-8">
-              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
-                {lang === 'zh' ? PHYSICS_FORMULA_CATEGORY_ZH[selected.category] : PHYSICS_FORMULA_CATEGORY_EN[selected.category]}
-              </div>
-              <div className="mt-1 text-lg font-semibold serif-font text-[var(--fg)]">
-                {lang === 'zh' ? selected.name.zh : selected.name.en}
-              </div>
+            {/* 独立内部滚动区：移动端流畅上下滑动 */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3">
               {/* 公式（KaTeX；超长公式可横向滚动兜底） */}
-              <div className="mt-3 border border-[var(--border)] p-3 flex items-center justify-center bg-[var(--card-bg)] overflow-x-auto">
+              <div className="border border-[var(--border)] p-3 flex items-center justify-center bg-[var(--card-bg)] overflow-x-auto rounded-lg">
                 <Formula tex={selected.formula} block className="text-base text-[var(--fg)]" />
               </div>
-              <div className="text-xs serif-font italic text-[var(--muted)] mt-1.5">
+              <div className="text-xs serif-font italic text-[var(--muted)]">
                 {lang === 'zh' ? selected.label.zh : selected.label.en}
               </div>
-              <div className="mt-1 text-[0.6875rem] mono-font text-[var(--muted)]">
+              <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? '单位' : 'Unit'}: {selected.unit}
               </div>
 
               {/* 配图（教科书示意图，点击可放大查看） */}
               {selected.diagram && (
-                <div className="mt-2 border border-[var(--border)] p-2 bg-[var(--card-bg)] flex items-center justify-center cursor-zoom-in" onClick={() => setZoomDiagram(true)} role="button" aria-label={lang === 'zh' ? '放大示意图' : 'Zoom diagram'}>
-                  <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[320px]" />
+                <div className="border border-[var(--border)] p-2 bg-[var(--card-bg)] flex items-center justify-center cursor-zoom-in rounded-lg" onClick={() => setZoomDiagram(true)} role="button" aria-label={lang === 'zh' ? '放大示意图' : 'Zoom diagram'}>
+                  <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[320px] max-h-[160px]" />
                 </div>
               )}
-            </div>
 
-            <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '适用条件' : 'Conditions'}
-                </div>
-                <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.condition.zh : selected.condition.en}</p>
-              </div>
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '常考易错' : 'Pitfalls'}
-                </div>
-                <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en}</p>
-              </div>
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '应用场景' : 'Usage'}
-                </div>
-                <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
-              </div>
-
-              {/* 相关常量（双向关联：点击跳常量页并聚焦） */}
-              {selected.relatedConstants && selected.relatedConstants.length > 0 && (
-                <div className="border border-[var(--border)] p-2.5">
+              <div className="space-y-2 text-sm serif-font text-[var(--fg)]">
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
                   <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                    // {lang === 'zh' ? '相关常量' : 'Related constants'}
+                    // {lang === 'zh' ? '适用条件' : 'Conditions'}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selected.relatedConstants.map((sym) => {
-                      const cs = constantsOf(sym);
-                      return (
-                        <Link
-                          key={sym}
-                          to={`/physics-constants?focus=${encodeURIComponent(sym)}`}
-                          className="text-xs mono-font underline hover:text-[var(--fg)]"
-                        >
-                          {sym}
-                          {cs.length > 0 && <span className="text-[var(--muted)]"> = {cs[0].value} {cs[0].unit}</span>}
-                          {cs.length > 1 && <span className="text-[var(--muted)]"> ×{cs.length}</span>}
-                        </Link>
-                      );
-                    })}
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.condition.zh : selected.condition.en}</p>
+                </div>
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '常考易错' : 'Pitfalls'}
                   </div>
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en}</p>
                 </div>
-              )}
-
-              <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
-                <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
-              </div>
-
-              {/* 关联实验 */}
-              {selected.labId && labMap[selected.labId] && (
-                <div className="px-0.5 text-xs">
-                  <Link
-                    to={`/lab/${selected.labId}`}
-                    className="underline hover:text-[var(--fg)]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {lang === 'zh' ? `关联实验：${labMap[selected.labId].name.zh}` : `Lab: ${labMap[selected.labId].name.en}`}
-                  </Link>
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '应用场景' : 'Usage'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
                 </div>
-              )}
-              {/* 问 AI：看完内容后可一键讲解当前公式 */}
-              <div className="px-0.5 pt-2">
-                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
+
+                {/* 相关常量（双向关联：点击跳常量页并聚焦） */}
+                {selected.relatedConstants && selected.relatedConstants.length > 0 && (
+                  <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                      // {lang === 'zh' ? '相关常量' : 'Related constants'}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selected.relatedConstants.map((sym) => {
+                        const cs = constantsOf(sym);
+                        return (
+                          <Link
+                            key={sym}
+                            to={`/physics-constants?focus=${encodeURIComponent(sym)}`}
+                            className="text-xs mono-font underline hover:text-[var(--fg)]"
+                          >
+                            {sym}
+                            {cs.length > 0 && <span className="text-[var(--muted)]"> = {cs[0].value} {cs[0].unit}</span>}
+                            {cs.length > 1 && <span className="text-[var(--muted)]"> ×{cs.length}</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
+                  <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
+                </div>
+
+                {/* 关联实验 */}
+                {selected.labId && labMap[selected.labId] && (
+                  <div className="px-0.5 text-xs">
+                    <Link
+                      to={`/lab/${selected.labId}`}
+                      className="underline hover:text-[var(--fg)]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {lang === 'zh' ? `关联实验：${labMap[selected.labId].name.zh}` : `Lab: ${labMap[selected.labId].name.en}`}
+                    </Link>
+                  </div>
+                )}
+                {/* 问 AI：看完内容后可一键讲解当前公式 */}
+                <div className="px-0.5 pt-1">
+                  <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
+                </div>
               </div>
             </div>
           </div>
@@ -335,19 +343,19 @@ export default function PhysicsFormulas() {
 
       {/* 配图放大层（点击遮罩只关放大层，不关详情卡） */}
       {zoomDiagram && selected?.diagram && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4" onClick={() => setZoomDiagram(false)} role="presentation">
-          <div className="relative max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="border border-[var(--border)] bg-white p-4 flex items-center justify-center">
-              <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[460px]" />
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-xs" onClick={() => setZoomDiagram(false)} role="presentation">
+          <div className="relative max-w-xl w-full max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="border border-[var(--border)] bg-white p-3 sm:p-4 flex items-center justify-center flex-1 overflow-hidden rounded-lg">
+              <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[460px] max-h-[60dvh] object-contain" />
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-xs mono-font text-white/80">
+            <div className="mt-3 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-xs mono-font text-[var(--fg)] font-medium truncate">
                 {lang === 'zh' ? selected.name.zh : selected.name.en}
               </span>
               <button
                 type="button"
                 onClick={() => setZoomDiagram(false)}
-                className="text-xs mono-font text-white/80 hover:text-white underline"
+                className="text-xs mono-font px-3 py-1.5 border border-[var(--border)] text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95 shrink-0"
               >
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>

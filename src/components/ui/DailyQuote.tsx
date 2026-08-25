@@ -182,14 +182,14 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
       {/* 彩蛋外链确认弹窗：确认后再跳转 100ye.irky.dev */}
       {pendingLink && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '前往外部网站' : 'Open external site'}
           onClick={() => setPendingLink(null)}
         >
           <div
-            className="w-full max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_16px_36px_rgba(0,0,0,0.2)] rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xs font-bold tracking-widest mono-font uppercase text-[var(--fg)] mb-2">
@@ -202,7 +202,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
               <button
                 type="button"
                 onClick={() => setPendingLink(null)}
-                className="text-xs mono-font px-2.5 py-1 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                className="text-xs mono-font px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] rounded-lg transition-colors touch-manipulation active:scale-95"
               >
                 {lang === 'zh' ? '取消' : 'Cancel'}
               </button>
@@ -212,7 +212,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                   window.open(pendingLink.url, '_blank', 'noopener');
                   setPendingLink(null);
                 }}
-                className="text-xs mono-font px-2.5 py-1 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] transition-colors"
+                className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--fg)] hover:text-[var(--bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
               >
                 {lang === 'zh' ? '前往 →' : 'Go →'}
               </button>
@@ -224,14 +224,14 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
       {/* 移动端完整故事浮窗（仅故事被截断时才可达） */}
       {storyModal && q && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '人物小故事' : 'Story'}
           onClick={() => setStoryModal(false)}
         >
           <div
-            className="w-full max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_16px_36px_rgba(0,0,0,0.2)] rounded-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-2.5">
@@ -242,7 +242,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 type="button"
                 onClick={() => setStoryModal(false)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                className="w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] rounded-md transition-colors touch-manipulation active:scale-95"
               >
                 <X className="w-5 h-5" />
               </button>
