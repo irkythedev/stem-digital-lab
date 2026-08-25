@@ -59,7 +59,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
       {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
       <div className="mb-6 sm:mb-10 flex flex-col items-start max-w-2xl">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">
@@ -126,7 +126,9 @@ export default function HomePage() {
       </div>
 
       {/* ── 实验列表（淡入淡出）：紧跟学科卡片，点击后即时可见；未展开时无占位高度 ── */}
-      <div id="lab-list" className={`relative ${activeSubject ? 'min-h-[200px]' : ''}`}>
+      {/* overflow-hidden：未选中/非激活学科的实验卡片以 absolute inset-0 渲染，
+         内容会溢出容器并撑高文档滚动区域（移动端页脚下方空白根因），裁剪隐藏内容 */}
+      <div id="lab-list" className={`relative overflow-hidden ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
           const allLabs = labsForSubject(subject.id);

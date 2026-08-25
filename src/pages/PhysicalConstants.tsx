@@ -88,7 +88,7 @@ export default function PhysicalConstants() {
   });
 
   return (
-    <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
       {/* 面包屑导航：返回物理 + 首页 */}
       <nav className="flex items-center gap-3 text-xs mono-font">
         <Link to="/subject/physics" className="text-[var(--muted)] underline hover:text-[var(--fg)]">

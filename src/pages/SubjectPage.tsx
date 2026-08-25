@@ -28,7 +28,7 @@ export default function SubjectPage() {
 
   if (!subject) {
     return (
-      <main className="flex-1 flex flex-col items-center justify-center my-16 px-2 sm:px-6 text-center">
+      <main className="grow shrink-0 flex flex-col items-center justify-center my-16 px-2 sm:px-6 text-center">
         <h1 className="text-2xl serif-font text-[var(--fg)] mb-4">{t.pageNotFound}</h1>
         <Link to="/" className="text-xs mono-font text-[var(--muted)] underline">
           {t.backToHome}
@@ -41,7 +41,7 @@ export default function SubjectPage() {
   const labList = labsForSubject(subject.id);
 
   return (
-    <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
       <Link to="/" className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]">
         ← {t.backHome}
       </Link>

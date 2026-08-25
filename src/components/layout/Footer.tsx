@@ -67,11 +67,14 @@ export default function Footer() {
               aria-expanded={showWorks}
               title={t.moreWorks}
               aria-label={t.moreWorks}
-              className="relative flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
+              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
             >
-              <Library className="w-4 h-4" />
-              <span className="absolute -top-2 -right-2 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
-                {t.works.length}
+              {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
+              <span className="relative inline-flex">
+                <Library className="w-4 h-4" />
+                <span className="absolute -top-1.5 -right-1.5 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
+                  {t.works.length}
+                </span>
               </span>
             </button>
             {showWorks && (

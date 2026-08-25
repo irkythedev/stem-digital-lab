@@ -59,7 +59,7 @@ export default function LabPage() {
 
   if (!lab) {
     return (
-      <main className="flex-1 flex flex-col my-16 px-2 sm:px-6">
+      <main className="grow shrink-0 flex flex-col my-16 px-2 sm:px-6">
         <div className="mb-8">
           <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
             / lab / {labId ?? 'unknown'}
@@ -84,7 +84,7 @@ export default function LabPage() {
   const Lab = lab.component;
 
   return (
-    <main className="flex-1 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
       {/* 面包屑导航：返回学科（主）+ 首页（图标）——py-2 扩大触控热区（移动端 ≥24px） */}
       <nav className="flex items-center gap-1 text-xs mono-font">
         <Link
