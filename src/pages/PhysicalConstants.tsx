@@ -10,7 +10,7 @@
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search    } from 'lucide-react';
+import { House, Search, X } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
@@ -189,84 +189,89 @@ export default function PhysicalConstants() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-xs border border-[var(--border)] bg-[var(--bg)] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+            className="relative w-full max-w-sm max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.symbol} ${selected.value}`}
           >
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              aria-label={lang === 'zh' ? '关闭' : 'Close'}
-              className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center text-lg text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-            >
-              ×
-            </button>
-
-            <div className="pr-8">
-              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
-                {lang === 'zh' ? CONSTANT_CATEGORY_ZH[selected.category] : CONSTANT_CATEGORY_EN[selected.category]}
+            {/* 固定顶部条 */}
+            <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+              <div className="min-w-0">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)]">
+                  {lang === 'zh' ? CONSTANT_CATEGORY_ZH[selected.category] : CONSTANT_CATEGORY_EN[selected.category]}
+                </div>
+                <div className="mt-0.5 flex items-baseline gap-2 truncate">
+                  <span className="text-2xl font-bold mono-font text-[var(--fg)]">{selected.symbol}</span>
+                  <span className="text-xs mono-font text-[var(--muted)]">{selected.value} {selected.unit}</span>
+                </div>
+                <div className="text-xs serif-font text-[var(--fg)] mt-0.5 truncate">
+                  {lang === 'zh' ? selected.name.zh : selected.name.en}
+                </div>
               </div>
-              <div className="mt-1">
-                <span className="text-3xl font-bold mono-font text-[var(--fg)]">{selected.symbol}</span>
-                <span className="ml-2 text-sm mono-font text-[var(--muted)]">{selected.value} {selected.unit}</span>
-              </div>
-              <div className="text-sm serif-font text-[var(--fg)] mt-1">
-                {lang === 'zh' ? selected.name.zh : selected.name.en}
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={lang === 'zh' ? '关闭' : 'Close'}
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '物理意义' : 'Meaning'}
+            {/* 独立内部滚动区 */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3">
+              <div className="space-y-2 text-sm serif-font text-[var(--fg)]">
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '物理意义' : 'Meaning'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.meaning.zh : selected.meaning.en}</p>
                 </div>
-                <p className="leading-relaxed">{lang === 'zh' ? selected.meaning.zh : selected.meaning.en}</p>
-              </div>
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '应用场景' : 'Usage'}
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '应用场景' : 'Usage'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
                 </div>
-                <p className="leading-relaxed">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
-              </div>
-              <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
-                <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
-                {selected.labId && labMap[selected.labId] && (
-                  <Link
-                    to={`/lab/${selected.labId}`}
-                    className="underline hover:text-[var(--fg)]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {lang === 'zh' ? `关联实验：${labMap[selected.labId].name.zh}` : `Lab: ${labMap[selected.labId].name.en}`}
-                  </Link>
+                <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
+                  <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
+                  {selected.labId && labMap[selected.labId] && (
+                    <Link
+                      to={`/lab/${selected.labId}`}
+                      className="underline hover:text-[var(--fg)]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {lang === 'zh' ? `关联实验：${labMap[selected.labId].name.zh}` : `Lab: ${labMap[selected.labId].name.en}`}
+                    </Link>
+                  )}
+                </div>
+
+                {/* 问 AI：看完内容后可一键讲解当前常量 */}
+                <div className="px-0.5 pt-1">
+                  <AskAiButton question={lang === 'zh' ? `请讲解常量「${selected.name.zh}」的物理意义与应用` : `Explain the constant "${selected.name.en}" — its physical meaning and usage`} />
+                </div>
+                {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
+                {formulasUsing(selected.symbol).length > 0 && (
+                  <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                      // {lang === 'zh' ? '用于公式' : 'Used in formulas'}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {formulasUsing(selected.symbol).map((f) => (
+                        <Link
+                          key={f.id}
+                          to={`/physics-formulas?focus=${f.id}`}
+                          className="text-xs mono-font underline hover:text-[var(--fg)]"
+                        >
+                          {lang === 'zh' ? f.name.zh : f.name.en}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* 问 AI：看完内容后可一键讲解当前常量 */}
-              <div className="px-0.5 pt-2">
-                <AskAiButton question={lang === 'zh' ? `请讲解常量「${selected.name.zh}」的物理意义与应用` : `Explain the constant "${selected.name.en}" — its physical meaning and usage`} />
-              </div>
-              {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
-              {formulasUsing(selected.symbol).length > 0 && (
-                <div className="border border-[var(--border)] p-2.5">
-                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                    // {lang === 'zh' ? '用于公式' : 'Used in formulas'}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formulasUsing(selected.symbol).map((f) => (
-                      <Link
-                        key={f.id}
-                        to={`/physics-formulas?focus=${f.id}`}
-                        className="text-xs mono-font underline hover:text-[var(--fg)]"
-                      >
-                        {lang === 'zh' ? f.name.zh : f.name.en}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

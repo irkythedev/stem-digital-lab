@@ -11,12 +11,14 @@
  * 复用组件：CoordPlane（坐标系）、ExploreStage（任务卡+笔记）、ConclusionStage（结论）。
  */
 import { useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -128,9 +130,9 @@ const copy = {
     concludeQ2Narrow: '开口越窄',
     concludeQ2Wide: '开口越宽',
     concludeQ2None: '无影响',
-    concludeQ3: 'b 变化使图像：',
-    concludeQ3Shift: '左右平移（对称轴移动）',
-    concludeQ3Stretch: '上下伸缩',
+    concludeQ3: 'b 变化：',
+    concludeQ3Shift: '使对称轴左右移动（x=-b/2a）',
+    concludeQ3Stretch: '使图像上下伸缩',
     concludeQ3None: '无影响',
     concludeQ4: 'c 决定：',
     concludeQ4Intercept: '与 y 轴交点位置',
@@ -407,41 +409,24 @@ export default function Quadratic() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-        {stageOrder.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            <button
-              type="button"
-              onClick={() => setStage(s)}
-              className={`transition-colors ${stage === s ? 'font-bold text-[var(--fg)]' : 'hover:text-[var(--fg)]'}`}
-            >
-              {s === 'predict' && t.stagePredict}
-              {s === 'explore' && t.stageExplore}
-              {s === 'conclude' && t.stageConclude}
-            </button>
-          </span>
-        ))}
-        <span className="ml-auto">
-          {stageIdx < 2 ? (
-            <button
-              type="button"
-              onClick={() => setStage(stageOrder[stageIdx + 1])}
-              className="underline text-[var(--fg)] hover:opacity-70"
-            >
-              {t.nextStage}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={redoAll}
-              className="underline text-[var(--muted)] hover:text-[var(--fg)]"
-            >
-              {t.redoLabel} ↻
-        </button>
-          )}
-        </span>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        stageOrder={stageOrder}
+        labels={{
+          predict: t.stagePredict,
+          explore: t.stageExplore,
+          conclude: t.stageConclude,
+          next: t.nextStage,
+          redo: t.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: conclusionComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解二次函数 y=ax²+bx+c 中 a、b、c 三个参数分别对抛物线有什么影响' : 'Explain how a, b, c in y=ax²+bx+c affect the parabola'} />
 
@@ -534,7 +519,7 @@ export default function Quadratic() {
               {/* 开口方向 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ1}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(
                     [
                       ['up', t.predictUp],
@@ -545,8 +530,8 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredOpen(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predOpen === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predOpen === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -558,7 +543,7 @@ export default function Quadratic() {
               {/* 顶点 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ2}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(
                     [
                       ['max', t.predictMax],
@@ -569,8 +554,8 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredVertex(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predVertex === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predVertex === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -582,7 +567,7 @@ export default function Quadratic() {
               {/* 与 y 轴交点 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ3}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['pos', t.predictPos],
@@ -594,8 +579,8 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredIntercept(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predIntercept === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predIntercept === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -686,7 +671,7 @@ export default function Quadratic() {
               )}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ1}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['up', t.concludeQ1Up],
@@ -702,10 +687,10 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -724,7 +709,7 @@ export default function Quadratic() {
               {/* Q2: |a| */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ2}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['narrow', t.concludeQ2Narrow],
@@ -740,10 +725,10 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -762,7 +747,7 @@ export default function Quadratic() {
               {/* Q3: b */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ3}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['shift', t.concludeQ3Shift],
@@ -778,10 +763,10 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -800,7 +785,7 @@ export default function Quadratic() {
               {/* Q4: c */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ4}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['intercept', t.concludeQ4Intercept],
@@ -816,10 +801,10 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -851,9 +836,10 @@ export default function Quadratic() {
               <button
                 type="button"
                 onClick={redoAll}
-                className="text-xs mono-font uppercase underline text-[var(--fg)] hover:opacity-70"
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                {t.redoLabel} ↻
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <span>{t.redoLabel}</span>
               </button>
             </div>
           )}

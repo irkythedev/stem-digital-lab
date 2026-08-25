@@ -88,34 +88,101 @@ body {
 /* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */
 main button {
   min-height: 40px;
+  touch-action: manipulation;
 }
 /* 中考跟读面板内按钮为紧凑小按钮，不受全局 40px 最小高度影响 */
 .recite-panel button {
   min-height: 0;
+  touch-action: manipulation;
 }
 /* 元素详情卡 tab 切换栏按钮为紧凑小按钮，不受全局 40px 最小高度影响 */
 .dialog-tabs button {
   min-height: 0;
+  touch-action: manipulation;
 }
+
+/* ── 交互元素全局按压触感反馈（Apple HIG 风格微缩放与平滑阻尼） ── */
+button,
+.btn,
+[role="button"] {
+  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), background-color 150ms ease, border-color 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.98);
+}
+
 /* 开关 SVG 点击态反馈（按下时微高亮） */
 svg g[role="button"]:active circle[fill="transparent"] {
   opacity: 0.4;
 }
-/* 通用按钮点击态 */
-main button:active {
-  filter: brightness(0.95);
-}
-/* 参数滑块滑块头放大（触屏更易拖） */
+
+/* ── 参数滑块触控升级（更大轨道与触控手柄，带阻尼按压反馈） ── */
 input[type="range"] {
-  height: 28px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 36px;
+  touch-action: manipulation;
 }
+
+/* WebKit 滑块轨道与拇指 */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background-color: var(--accent-light);
+  border: 1px solid var(--border);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
 input[type="range"]::-webkit-slider-thumb {
-  width: 22px;
-  height: 22px;
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -8px; /* (8px track - 24px thumb) / 2 = -8px */
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background-color: var(--card-bg);
+  border: 2px solid var(--fg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease;
 }
+
+input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.12);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Firefox 滑块轨道与拇指 */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background-color: var(--accent-light);
+  border: 1px solid var(--border);
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
 input[type="range"]::-moz-range-thumb {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background-color: var(--card-bg);
+  border: 2px solid var(--fg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  cursor: grab;
+  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease;
+}
+
+input[type="range"]::-moz-range-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.12);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
 }
 
 .serif-font {
@@ -128,6 +195,52 @@ input[type="range"]::-moz-range-thumb {
 
 .mono-font {
   font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 等宽表格数字特性（消除数值跳动引起的布局位移） */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 三幕式步骤条 Segmented 胶囊化 ── */
+.stage-segmented-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.75rem; /* rounded-xl (12px) */
+  background-color: var(--accent-light);
+  border: 1px solid var(--border);
+}
+
+.stage-segmented-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.25rem 0.875rem;
+  border-radius: 0.5rem; /* rounded-lg (8px) */
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  transition: all 150ms cubic-bezier(0.33, 1, 0.68, 1);
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.stage-segmented-pill:hover:not(.active) {
+  color: var(--fg);
+}
+
+.stage-segmented-pill.active {
+  color: var(--fg);
+  background-color: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-weight: 600;
 }
 
 /* KaTeX 公式跟随主题文字颜色（浅/深色自适应），并重置其独占行距 */
@@ -279,3 +392,21 @@ input[type="range"]::-moz-range-thumb {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
+
+/* KaTeX 公式防横向溢出保护（320-360px 窄屏保护） */
+.katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 触控设备防止 :hover 状态残留：在仅支持触摸的设备上消除 transform 悬停残留，保留 active 触感反馈 */
+@media (hover: none) {
+  button:hover,
+  a:hover,
+  [role="button"]:hover {
+    transform: none !important;
+  }
+}
+

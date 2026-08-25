@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2    } from 'lucide-react';
+import { House, Loader2, Pause, Play, Square, Volume2, X } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -149,6 +149,24 @@ export default function PeriodicTable() {
   const reciteAudio = useRef<HTMLAudioElement | null>(null); // 跟读音频（复用元素，微信 X5 需手势解锁后复用）
   const speakAudio = useRef<HTMLAudioElement | null>(null); // 单点朗读音频（独立元素，避免互相打断）
   const speakTimeout = useRef<number | null>(null); // 朗读状态复位兜底定时器
+
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+
+  const checkTableScroll = () => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 12);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 12);
+  };
+
+  useEffect(() => {
+    checkTableScroll();
+    const handleResize = () => checkTableScroll();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const isZh = lang === 'zh';
 
@@ -366,7 +384,7 @@ export default function PeriodicTable() {
     const reciting = !!recite && !!recitePreset && recitePreset.ns[recite.pos - 1] === el.n;
     return (
       <button
-        key={el.n}
+        key={`el-${el.n}`}
         type="button"
         onClick={() => { setSelected(el); setTab('props'); setHoveredLayer(null); }}
         title={`${el.zh} ${el.symbol}`}
@@ -620,61 +638,88 @@ export default function PeriodicTable() {
       </div>
 
       {/* 主表 */}
-      <div className="mb-1 text-[0.625rem] mono-font text-[var(--muted)] sm:hidden">
-        {lang === 'zh' ? '← 左右滑动查看完整周期表 →' : '← Swipe to see the full table →'}
+      <div className="mb-1.5 flex items-center justify-between text-xs mono-font text-[var(--muted)] sm:hidden px-1">
+        <span className="flex items-center gap-1">
+          <span>←</span>
+          <span>{lang === 'zh' ? '左右滑动画布浏览完整 118 元素' : 'Swipe horizontally for all 118 elements'}</span>
+          <span>→</span>
+        </span>
       </div>
-      {/* pt-3 给第一行（氢/氦）hover 上浮留出空间，避免被上方模块遮挡 */}
-      <div className="overflow-x-auto pt-3 -mt-1">
-        <div className="min-w-[720px] xl:min-w-[880px]">
-          {/* 周期行 */}
-          {[1, 2, 3, 4, 5, 6, 7].map((period) => (
-            <div key={period} className="flex gap-1 mb-1">
-              {/* 周期号 */}
+      <div className="relative">
+        {/* 移动端左侧滚动渐变阴影指示器 */}
+        <div
+          className={`pointer-events-none absolute left-0 top-0 bottom-2 w-8 sm:hidden z-10 bg-gradient-to-r from-[var(--bg)] to-transparent transition-opacity duration-300 ${
+            canScrollLeft ? 'opacity-100' : 'opacity-0'
+          }`}
+          aria-hidden="true"
+        />
+        {/* 移动端右侧滚动渐变阴影与提示指示器 */}
+        <div
+          className={`pointer-events-none absolute right-0 top-0 bottom-2 w-10 sm:hidden z-10 bg-gradient-to-l from-[var(--bg)] via-[var(--bg)]/80 to-transparent flex items-center justify-end pr-1 transition-opacity duration-300 ${
+            canScrollRight ? 'opacity-100' : 'opacity-0'
+          }`}
+          aria-hidden="true"
+        >
+          <span className="text-[0.6875rem] mono-font text-[var(--muted)] animate-pulse">›</span>
+        </div>
+
+        {/* pt-3 给第一行（氢/氦）hover 上浮留出空间，避免被上方模块遮挡 */}
+        <div
+          ref={tableScrollRef}
+          onScroll={checkTableScroll}
+          className="overflow-x-auto pt-3 -mt-1 touch-pan-x overscroll-x-contain pb-2 scrollbar-thin"
+        >
+          <div className="min-w-[720px] xl:min-w-[880px]">
+            {/* 周期行 */}
+            {[1, 2, 3, 4, 5, 6, 7].map((period) => (
+              <div key={period} className="flex gap-1 mb-1">
+                {/* 周期号 */}
+                <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+                  {period}
+                </span>
+                {Array.from({ length: 18 }, (_, i) => {
+                  const col = i + 1;
+                  const el = mainRows.find((e) => e.x === col && e.y === period);
+                  if (el) return renderCell(el);
+                  // 镧系/锕系占位格（主表第 6/7 周期 IIIB 族位置，对应下方独立两行）
+                  if (col === 3 && period === 6) {
+                    return (
+                      <div key={`ph-${period}-${col}`} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
+                        <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '镧系' : 'La'}</span>
+                        <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
+                      </div>
+                    );
+                  }
+                  if (col === 3 && period === 7) {
+                    return (
+                      <div key={`ph-${period}-${col}`} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
+                        <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '锕系' : 'Ac'}</span>
+                        <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
+                      </div>
+                    );
+                  }
+                  return <div key={`empty-${period}-${col}`} className="flex-1 h-[58px]" />;
+                })}
+              </div>
+            ))}
+
+            {/* 空行（分隔） */}
+            <div className="h-4" />
+
+            {/* 镧系 */}
+            <div className="flex gap-1 mb-1">
               <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
-                {period}
+                {lang === 'zh' ? '镧系' : 'La'}
               </span>
-              {Array.from({ length: 18 }, (_, i) => {
-                const col = i + 1;
-                const el = mainRows.find((e) => e.x === col && e.y === period);
-                if (el) return renderCell(el);
-                // 镧系/锕系占位格（主表第 6/7 周期 IIIB 族位置，对应下方独立两行）
-                if (col === 3 && period === 6) {
-                  return (
-                    <div key={col} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
-                      <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '镧系' : 'La'}</span>
-                      <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
-                    </div>
-                  );
-                }
-                if (col === 3 && period === 7) {
-                  return (
-                    <div key={col} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
-                      <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '锕系' : 'Ac'}</span>
-                      <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
-                    </div>
-                  );
-                }
-                return <div key={col} className="flex-1 h-[58px]" />;
-              })}
+              {lanthanides.map((el) => renderCell(el))}
             </div>
-          ))}
-
-          {/* 空行（分隔） */}
-          <div className="h-4" />
-
-          {/* 镧系 */}
-          <div className="flex gap-1 mb-1">
-            <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
-              {lang === 'zh' ? '镧系' : 'La'}
-            </span>
-            {lanthanides.map((el) => renderCell(el))}
-          </div>
-          {/* 锕系 */}
-          <div className="flex gap-1 mb-1">
-            <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
-              {lang === 'zh' ? '锕系' : 'Ac'}
-            </span>
-            {actinides.map((el) => renderCell(el))}
+            {/* 锕系 */}
+            <div className="flex gap-1 mb-1">
+              <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+                {lang === 'zh' ? '锕系' : 'Ac'}
+              </span>
+              {actinides.map((el) => renderCell(el))}
+            </div>
           </div>
         </div>
       </div>
@@ -688,254 +733,257 @@ export default function PeriodicTable() {
 
       {/* 元素详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelected(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]"
+          onClick={() => setSelected(null)}
+        >
           <div
-            className="relative w-full max-w-xs border border-[var(--border)] bg-[var(--bg)] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+            className="relative w-full max-w-sm sm:max-w-md max-h-[92dvh] sm:max-h-[88dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.zh} ${selected.symbol}`}
           >
-            {/* 关闭按钮：独立右上角（无边框，仅 ×） */}
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              aria-label={lang === 'zh' ? '关闭' : 'Close'}
-              className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center text-lg text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-            >
-              ×
-            </button>
+            {/* 顶部固定标题与导航区 */}
+            <div className="relative px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+              {/* 关闭按钮：独立右上角 */}
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={lang === 'zh' ? '关闭' : 'Close'}
+                className="absolute top-2.5 right-3 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-            <div className="flex items-start justify-between pr-8">
-              <div>
-                <div className="text-[0.625rem] mono-font text-[var(--muted)]">#{selected.n}</div>
-                <div className="flex items-center gap-2">
-                  <span className="text-3xl font-bold serif-font text-[var(--fg)]">{selected.zh}</span>
-                  {/* 读音按钮：三态反馈（空闲/加载中/播放中），让用户明确知道状态 */}
-                  <button
-                    type="button"
-                    onClick={() => speak(selected)}
-                    disabled={speakState === 'loading'}
-                    title={
-                      lang === 'zh'
-                        ? speakState === 'loading' ? '加载中…' : speakState === 'playing' ? '播放中' : '朗读'
-                        : speakState === 'loading' ? 'Loading…' : speakState === 'playing' ? 'Playing' : 'Listen'
-                    }
-                    aria-label={
-                      lang === 'zh'
-                        ? speakState === 'loading' ? '加载中' : speakState === 'playing' ? '播放中' : '朗读'
-                        : speakState === 'loading' ? 'Loading' : speakState === 'playing' ? 'Playing' : 'Listen'
-                    }
-                    className={`flex items-center justify-center w-8 h-8 transition-colors ${
-                      speakState === 'playing'
-                        ? 'text-[var(--fg)]'
-                        : 'text-[var(--muted)] hover:text-[var(--fg)] disabled:opacity-60'
-                    }`}
-                  >
-                    {speakState === 'loading' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Volume2 className={`w-4 h-4 ${speakState === 'playing' ? 'animate-pulse' : ''}`} />
+              <div className="flex items-start justify-between pr-8">
+                <div>
+                  <div className="text-[0.6875rem] mono-font text-[var(--muted)] font-medium">#{selected.n}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl sm:text-3xl font-bold serif-font text-[var(--fg)] leading-tight">{selected.zh}</span>
+                    {/* 读音按钮：三态反馈（空闲/加载中/播放中） */}
+                    <button
+                      type="button"
+                      onClick={() => speak(selected)}
+                      disabled={speakState === 'loading'}
+                      title={
+                        lang === 'zh'
+                          ? speakState === 'loading' ? '加载中…' : speakState === 'playing' ? '播放中' : '朗读'
+                          : speakState === 'loading' ? 'Loading…' : speakState === 'playing' ? 'Playing' : 'Listen'
+                      }
+                      aria-label={
+                        lang === 'zh'
+                          ? speakState === 'loading' ? '加载中' : speakState === 'playing' ? '播放中' : '朗读'
+                          : speakState === 'loading' ? 'Loading' : speakState === 'playing' ? 'Playing' : 'Listen'
+                      }
+                      className={`flex items-center justify-center w-8 h-8 rounded-sm hover:bg-[var(--card-bg)] transition-colors ${
+                        speakState === 'playing'
+                          ? 'text-[var(--fg)]'
+                          : 'text-[var(--muted)] hover:text-[var(--fg)] disabled:opacity-60'
+                      }`}
+                    >
+                      {speakState === 'loading' ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Volume2 className={`w-4 h-4 ${speakState === 'playing' ? 'animate-pulse' : ''}`} />
+                      )}
+                    </button>
+                    {speakState === 'loading' && (
+                      <span className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '加载中…' : 'Loading…'}</span>
                     )}
-                  </button>
-                </div>
-                <div className="text-sm mono-font text-[var(--muted)]">{selected.symbol}</div>
-                {/* 读音状态提示（加载中/播放中/空闲） */}
-                <div className="mt-0.5 h-3 text-[0.625rem] mono-font">
-                  {speakState === 'loading' && (
-                    <span className="text-[var(--muted)]">{lang === 'zh' ? '读音加载中…' : 'Loading audio…'}</span>
-                  )}
-                  {speakState === 'playing' && (
-                    <span className="inline-flex items-center gap-1 text-[var(--fg)]">
-                      <Volume2 className="w-3 h-3" />
-                      {lang === 'zh' ? '播放中' : 'Playing'}
-                    </span>
-                  )}
+                    {speakState === 'playing' && (
+                      <span className="inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--fg)]">
+                        {lang === 'zh' ? '播放中' : 'Playing'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs sm:text-sm mono-font text-[var(--muted)] mt-0.5">{selected.symbol}</div>
                 </div>
               </div>
-            </div>
 
-            <div className="mt-3 text-sm serif-font text-[var(--fg)]">
               {/* Tab 切换：基础属性 / 百科故事 */}
-              <div className="dialog-tabs flex border border-[var(--border)] mb-3 text-[0.6875rem] mono-font">
+              <div className="dialog-tabs flex border border-[var(--border)] mt-2.5 text-xs mono-font rounded-xs overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setTab('props')}
-                  className={`flex-1 py-1 transition-colors ${tab === 'props' ? 'bg-[var(--fg)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                  className={`flex-1 py-1.5 transition-colors font-medium ${tab === 'props' ? 'bg-[var(--fg)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--fg)] bg-[var(--bg)]'}`}
                 >
                   {lang === 'zh' ? '基础属性' : 'Properties'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setTab('story')}
-                  className={`flex-1 py-1 transition-colors ${tab === 'story' ? 'bg-[var(--fg)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                  className={`flex-1 py-1.5 transition-colors font-medium ${tab === 'story' ? 'bg-[var(--fg)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--fg)] bg-[var(--bg)]'}`}
                 >
                   {lang === 'zh' ? '百科故事' : 'Story'}
                 </button>
               </div>
+            </div>
 
+            {/* 可滚动内容主体 */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 pt-3 overscroll-contain scrollbar-thin space-y-3 text-sm serif-font text-[var(--fg)]">
               {/* 基础属性面板 */}
               {tab === 'props' && (
                 <>
-              {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数） */}
-              <div className="relative border border-[var(--border)] px-2 py-1 mb-1.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
-                  // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
-                </div>
-                <svg viewBox="0 0 180 150" className="w-full max-h-[170px]" aria-label={`${selected.zh} 原子结构`}>
-                  {/* 动态轨道半径：按层数分配，任何元素（1~7 层）都清晰不溢出 */}
-                  {(() => {
-                    const layers = selected.shells.length;
-                    const cx = 90, cy = 75;
-                    // 核半径随位数自适应：1-2 位 +111 三位数时核加大、字号缩小，避免文字出格
-                    const digits = String(selected.n).length;
-                    const coreR = digits >= 3 ? 16 : 13;
-                    const coreFont = digits >= 3 ? 10 : 13;
-                    // 最大可用半径：略放大（允许最外层轻微裁切，核居中即可），多层元素仍清晰
-                    const maxR = Math.min(64, coreR + 51);
-                    // 核与第一层轨道之间留空隙（否则第一层与核重合，感应区被核盖住难触发）
-                    const innerGap = 8;
-                    const step = layers > 1 ? (maxR - coreR - innerGap) / (layers - 1) : 0;
-                    const rOf = (i: number) => coreR + innerGap + (layers > 1 ? i * step : 0);
-                    return (
-                      <>
-                        {/* 电子层轨道 + 隐形感应区：悬停/点击整层都可触发，避免细线难点 */}
-                        {selected.shells.map((_, i) => {
-                          const r = rOf(i);
-                          const active = hoveredLayer === i;
-                          return (
-                            <g
-                              key={i}
-                              className="cursor-pointer"
-                              onClick={() => setHoveredLayer(active ? null : i)}
-                              onMouseEnter={() => setHoveredLayer(i)}
-                              onMouseLeave={() => setHoveredLayer(null)}
-                            >
-                              {/* 隐形感应区：透明粗描边，方便手指/鼠标命中整层 */}
-                              <circle cx={cx} cy={cy} r={r} fill="none" stroke="transparent" strokeWidth="16" />
-                              {/* 可见轨道：悬停/选中时加粗高亮 */}
-                              <circle
-                                cx={cx} cy={cy} r={r} fill="none"
-                                stroke={active ? 'var(--fg)' : 'var(--muted)'}
-                                strokeWidth={active ? 2 : 0.9}
-                                opacity={active ? 0.9 : 0.45}
-                                style={{ transition: 'stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease' }}
-                              />
-                            </g>
-                          );
-                        })}
-                        {/* 原子核（核电荷数）：不拦截鼠标，穿透到第一层感应区便于触发 */}
-                        <circle cx={cx} cy={cy} r={coreR} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" style={{ pointerEvents: 'none' }} />
-                        <text x={cx} y={cy + (coreFont >= 13 ? 4 : 3.5)} textAnchor="middle" fontSize={coreFont} fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold" style={{ pointerEvents: 'none' }}>
-                          +{selected.n}
-                        </text>
-                        {/* 各层电子：绕核旋转（内快外慢、交替反向）；每层最多 8 个示意点 */}
-                        {selected.shells.map((count, i) => {
-                          const r = rOf(i);
-                          const dots: { x: number; y: number }[] = [];
-                          const show = Math.min(count, 8);
-                          for (let k = 0; k < show; k++) {
-                            const a = (k / show) * 2 * Math.PI - Math.PI / 2;
-                            dots.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
-                          }
-                          // 内层快(3s)、外层慢(9s)；相邻层反向
-                          const dur = (3 + i * 2).toFixed(1);
-                          const reverse = i % 2 === 1;
-                          return (
-                            <g
-                              key={i}
-                              className="electron-layer"
-                              style={{ animationDuration: `${dur}s`, animationDirection: reverse ? 'reverse' : 'normal' }}
-                            >
-                              {dots.map((d, k) => (
-                                <circle key={k} cx={d.x} cy={d.y} r="2.6" fill="var(--fg)" />
-                              ))}
-                            </g>
-                          );
-                        })}
-                      </>
-                    );
-                  })()}
-                </svg>
-                {/* 当前层电子数提示条（悬停/点击时显示；绝对定位不占布局，避免卡片高度变化引起晃动） */}
-                {hoveredLayer !== null && selected.shells[hoveredLayer] != null && (
-                  <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
-                    {lang === 'zh'
-                      ? `第 ${hoveredLayer + 1} 层：${selected.shells[hoveredLayer]} 个电子`
-                      : `Shell ${hoveredLayer + 1}: ${selected.shells[hoveredLayer]} electron${selected.shells[hoveredLayer] > 1 ? 's' : ''}`}
-                  </div>
-                )}
-              </div>
-
-              {/* 属性列表：斑马线行距 */}
-              <dl className="divide-y divide-[var(--border)]">
-                {[
-                  { k: lang === 'zh' ? '英文名' : 'English', v: selected.en },
-                  { k: lang === 'zh' ? '核电荷数（原子序数）' : 'Nuclear charge (atomic number)', v: String(selected.n) },
-                  { k: lang === 'zh' ? '电子层排布' : 'Electron shells', v: selected.shells.join(', ') },
-                  { k: lang === 'zh' ? '相对原子质量' : 'Atomic mass', v: selected.radioactive ? String(selected.mass) : (selected.massExact != null ? String(selected.massExact) : String(selected.mass ?? '—')) },
-                  { k: lang === 'zh' ? '位置' : 'Position', v: lang === 'zh' ? `第 ${selected.period} 周期，第 ${selected.group ?? '?'} 族` : `Period ${selected.period}, Group ${selected.group ?? '?'}` },
-                  { k: lang === 'zh' ? '类别' : 'Category', v: isZh ? CAT_ZH[selected.cat as ElementInfo['cat']] : selected.cat },
-                ].map((row, i) => {
-                  const isCat = row.k === (lang === 'zh' ? '类别' : 'Category');
-                  const isMass = row.k === (lang === 'zh' ? '相对原子质量' : 'Atomic mass');
-                  return (
-                    <div key={row.k} className={`flex items-baseline justify-between gap-3 py-2 px-2 text-sm ${i % 2 === 1 ? 'bg-[var(--card-bg)]' : ''}`}>
-                      <dt className="text-[var(--muted)] serif-font shrink-0">{row.k}</dt>
-                      <dd className="text-right serif-font text-[var(--fg)]">
-                        {isMass ? (
-                          // 相对原子质量：标准原子量 + 不确定度；放射性元素显示质量数并注明
-                          <span className="inline-flex items-baseline gap-1.5">
-                            <span>
-                              {selected.radioactive
-                                ? String(selected.mass)
-                                : selected.massExact != null
-                                  ? String(selected.massExact)
-                                  : String(selected.mass ?? '—')}
-                            </span>
-                            {!selected.radioactive && selected.massUnc && (
-                              <span className="text-[0.625rem] mono-font text-[var(--muted)]">±{selected.massUnc}</span>
-                            )}
-                            {selected.radioactive && (
-                              <span className="text-[0.625rem] mono-font text-[var(--muted)]">
-                                {lang === 'zh' ? '质量数·无稳定同位素' : 'mass no.·no stable'}
-                              </span>
-                            )}
-                          </span>
-                        ) : isCat ? (
-                          // 类别：彩色标签（配色与检索图例一致：金属红/非金属绿/稀有气体蓝/类金属黄褐）
-                          <span
-                            className="inline-block px-2 py-0.5 border text-xs mono-font"
-                            style={{
-                              borderColor: CAT_COLOR[selected.cat as ElementInfo['cat']].border,
-                              color: CAT_COLOR[selected.cat as ElementInfo['cat']].border,
-                              backgroundColor: CAT_COLOR[selected.cat as ElementInfo['cat']].bg,
-                            }}
-                          >
-                            {row.v}
-                          </span>
-                        ) : (
-                          row.v
-                        )}
-                      </dd>
+                  {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数） */}
+                  <div className="relative border border-[var(--border)] px-2 py-1 mb-1.5 bg-[var(--card-bg)]/30 rounded-xs">
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
+                      // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
                     </div>
-                  );
-                })}
-              </dl>
-              <p className="mt-1.5 px-2 text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
-                {lang === 'zh'
-                  ? '相对原子质量为 IUPAC 标准原子量（2021 年修订）；无稳定同位素的元素显示其最稳定同位素的质量数。'
-                  : 'Atomic masses are IUPAC standard atomic weights (2021); elements with no stable isotopes show the mass number of their longest-lived isotope.'}
-              </p>
+                    <svg viewBox="0 0 180 150" className="w-full max-h-[160px]" aria-label={`${selected.zh} 原子结构`}>
+                      {/* 动态轨道半径：按层数分配，任何元素（1~7 层）都清晰不溢出 */}
+                      {(() => {
+                        const layers = selected.shells.length;
+                        const cx = 90, cy = 75;
+                        // 核半径随位数自适应：1-2 位 +111 三位数时核加大、字号缩小，避免文字出格
+                        const digits = String(selected.n).length;
+                        const coreR = digits >= 3 ? 16 : 13;
+                        const coreFont = digits >= 3 ? 10 : 13;
+                        // 最大可用半径：略放大（允许最外层轻微裁切，核居中即可），多层元素仍清晰
+                        const maxR = Math.min(64, coreR + 51);
+                        // 核与第一层轨道之间留空隙（否则第一层与核重合，感应区被核盖住难触发）
+                        const innerGap = 8;
+                        const step = layers > 1 ? (maxR - coreR - innerGap) / (layers - 1) : 0;
+                        const rOf = (i: number) => coreR + innerGap + (layers > 1 ? i * step : 0);
+                        return (
+                          <>
+                            {/* 电子层轨道 + 隐形感应区：悬停/点击整层都可触发，避免细线难点 */}
+                            {selected.shells.map((_, i) => {
+                              const r = rOf(i);
+                              const active = hoveredLayer === i;
+                              return (
+                                <g
+                                  key={i}
+                                  className="cursor-pointer"
+                                  onClick={() => setHoveredLayer(active ? null : i)}
+                                  onMouseEnter={() => setHoveredLayer(i)}
+                                  onMouseLeave={() => setHoveredLayer(null)}
+                                >
+                                  {/* 隐形感应区：透明粗描边，方便手指/鼠标命中整层 */}
+                                  <circle cx={cx} cy={cy} r={r} fill="none" stroke="transparent" strokeWidth="16" />
+                                  {/* 可见轨道：悬停/选中时加粗高亮 */}
+                                  <circle
+                                    cx={cx} cy={cy} r={r} fill="none"
+                                    stroke={active ? 'var(--fg)' : 'var(--muted)'}
+                                    strokeWidth={active ? 2 : 0.9}
+                                    opacity={active ? 0.9 : 0.45}
+                                    style={{ transition: 'stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease' }}
+                                  />
+                                </g>
+                              );
+                            })}
+                            {/* 原子核（核电荷数）：不拦截鼠标，穿透到第一层感应区便于触发 */}
+                            <circle cx={cx} cy={cy} r={coreR} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" style={{ pointerEvents: 'none' }} />
+                            <text x={cx} y={cy + (coreFont >= 13 ? 4 : 3.5)} textAnchor="middle" fontSize={coreFont} fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                              +{selected.n}
+                            </text>
+                            {/* 各层电子：绕核旋转（内快外慢、交替反向）；每层最多 8 个示意点 */}
+                            {selected.shells.map((count, i) => {
+                              const r = rOf(i);
+                              const dots: { x: number; y: number }[] = [];
+                              const show = Math.min(count, 8);
+                              for (let k = 0; k < show; k++) {
+                                const a = (k / show) * 2 * Math.PI - Math.PI / 2;
+                                dots.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+                              }
+                              // 内层快(3s)、外层慢(9s)；相邻层反向
+                              const dur = (3 + i * 2).toFixed(1);
+                              const reverse = i % 2 === 1;
+                              return (
+                                <g
+                                  key={i}
+                                  className="electron-layer"
+                                  style={{ animationDuration: `${dur}s`, animationDirection: reverse ? 'reverse' : 'normal' }}
+                                >
+                                  {dots.map((d, k) => (
+                                    <circle key={k} cx={d.x} cy={d.y} r="2.6" fill="var(--fg)" />
+                                  ))}
+                                </g>
+                              );
+                            })}
+                          </>
+                        );
+                      })()}
+                    </svg>
+                    {/* 当前层电子数提示条（悬停/点击时显示；绝对定位不占布局，避免卡片高度变化引起晃动） */}
+                    {hoveredLayer !== null && selected.shells[hoveredLayer] != null && (
+                      <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
+                        {lang === 'zh'
+                          ? `第 ${hoveredLayer + 1} 层：${selected.shells[hoveredLayer]} 个电子`
+                          : `Shell ${hoveredLayer + 1}: ${selected.shells[hoveredLayer]} electron${selected.shells[hoveredLayer] > 1 ? 's' : ''}`}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 属性列表：斑马线行距 */}
+                  <dl className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
+                    {[
+                      { k: lang === 'zh' ? '英文名' : 'English', v: selected.en },
+                      { k: lang === 'zh' ? '核电荷数（原子序数）' : 'Nuclear charge (atomic number)', v: String(selected.n) },
+                      { k: lang === 'zh' ? '电子层排布' : 'Electron shells', v: selected.shells.join(', ') },
+                      { k: lang === 'zh' ? '相对原子质量' : 'Atomic mass', v: selected.radioactive ? String(selected.mass) : (selected.massExact != null ? String(selected.massExact) : String(selected.mass ?? '—')) },
+                      { k: lang === 'zh' ? '位置' : 'Position', v: lang === 'zh' ? `第 ${selected.period} 周期，第 ${selected.group ?? '?'} 族` : `Period ${selected.period}, Group ${selected.group ?? '?'}` },
+                      { k: lang === 'zh' ? '类别' : 'Category', v: isZh ? CAT_ZH[selected.cat as ElementInfo['cat']] : selected.cat },
+                    ].map((row, i) => {
+                      const isCat = row.k === (lang === 'zh' ? '类别' : 'Category');
+                      const isMass = row.k === (lang === 'zh' ? '相对原子质量' : 'Atomic mass');
+                      return (
+                        <div key={row.k} className={`flex items-baseline justify-between gap-3 py-2 px-2 text-sm ${i % 2 === 1 ? 'bg-[var(--card-bg)]/40' : ''}`}>
+                          <dt className="text-[var(--muted)] serif-font shrink-0">{row.k}</dt>
+                          <dd className="text-right serif-font text-[var(--fg)]">
+                            {isMass ? (
+                              // 相对原子质量：标准原子量 + 不确定度；放射性元素显示质量数并注明
+                              <span className="inline-flex items-baseline gap-1.5">
+                                <span>
+                                  {selected.radioactive
+                                    ? String(selected.mass)
+                                    : selected.massExact != null
+                                      ? String(selected.massExact)
+                                      : String(selected.mass ?? '—')}
+                                </span>
+                                {!selected.radioactive && selected.massUnc && (
+                                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">±{selected.massUnc}</span>
+                                )}
+                                {selected.radioactive && (
+                                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">
+                                    {lang === 'zh' ? '质量数·无稳定同位素' : 'mass no.·no stable'}
+                                  </span>
+                                )}
+                              </span>
+                            ) : isCat ? (
+                              // 类别：彩色标签（配色与检索图例一致：金属红/非金属绿/稀有气体蓝/类金属黄褐）
+                              <span
+                                className="inline-block px-2 py-0.5 border text-xs mono-font rounded-xs font-medium"
+                                style={{
+                                  borderColor: CAT_COLOR[selected.cat as ElementInfo['cat']].border,
+                                  color: CAT_COLOR[selected.cat as ElementInfo['cat']].border,
+                                  backgroundColor: CAT_COLOR[selected.cat as ElementInfo['cat']].bg,
+                                }}
+                              >
+                                {row.v}
+                              </span>
+                            ) : (
+                              row.v
+                            )}
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                  <p className="px-1 text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
+                    {lang === 'zh'
+                      ? '相对原子质量为 IUPAC 标准原子量（2021 年修订）；无稳定同位素的元素显示其最稳定同位素的质量数。'
+                      : 'Atomic masses are IUPAC standard atomic weights (2021); elements with no stable isotopes show the mass number of their longest-lived isotope.'}
+                  </p>
                 </>
               )}
 
               {/* 百科故事面板 */}
               {tab === 'story' && (
-                <div className="border border-[var(--border)] px-2.5 py-1.5 space-y-1.5">
+                <div className="border border-[var(--border)] px-3 py-2.5 space-y-3 rounded-xs bg-[var(--card-bg)]/20">
                   {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
                   <div>
                     <div
-                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
+                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden rounded-xs ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
                       onClick={() => selected.n <= 103 && setPhotoZoom(true)}
                       role={selected.n <= 103 ? 'button' : undefined}
                       aria-label={selected.n <= 103 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
@@ -955,7 +1003,7 @@ export default function PeriodicTable() {
                       />
                       {/* 加载失败占位（超铀元素无实物照片） */}
                       <div
-                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none"
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none bg-[var(--card-bg)]"
                         style={{ display: 'none' }}
                         data-photo-fallback
                       >
@@ -965,7 +1013,7 @@ export default function PeriodicTable() {
                         </span>
                       </div>
                     </div>
-                    <p className="mt-0.5 text-[0.5625rem] serif-font italic text-[var(--muted)]">
+                    <p className="mt-1 text-[0.625rem] serif-font italic text-[var(--muted)]">
                       {selected.n >= 105
                         ? lang === 'zh'
                           ? '人工合成元素，暂无实物照片'
@@ -980,7 +1028,7 @@ export default function PeriodicTable() {
                     </p>
                   </div>
                   <div>
-                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
+                    <div className="text-[0.6875rem] mono-font text-[var(--muted)] tracking-wider mb-1 font-medium">
                       // {lang === 'zh' ? '发现史' : 'Discovery'}
                     </div>
                     <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -988,7 +1036,7 @@ export default function PeriodicTable() {
                     </p>
                   </div>
                   <div>
-                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
+                    <div className="text-[0.6875rem] mono-font text-[var(--muted)] tracking-wider mb-1 font-medium">
                       // {lang === 'zh' ? '生活与常见用途' : 'Where you find it'}
                     </div>
                     <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
@@ -1002,11 +1050,11 @@ export default function PeriodicTable() {
                   </p>
                 </div>
               )}
-            </div>
 
-            {/* 问 AI：看完元素详情后可一键提问 */}
-            <div className="px-1 pt-2">
-              <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
+              {/* 问 AI：看完元素详情后可一键提问 */}
+              <div className="pt-2 pb-1">
+                <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
+              </div>
             </div>
           </div>
         </div>
@@ -1015,26 +1063,26 @@ export default function PeriodicTable() {
       {/* 实物照片放大预览（全屏） */}
       {photoZoom && selected && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs"
           onClick={() => setPhotoZoom(false)}
           role="dialog"
           aria-label={`${selected.zh} ${selected.symbol}`}
         >
-          <div className="relative max-w-lg w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-lg max-h-[92dvh] w-full flex flex-col" onClick={(e) => e.stopPropagation()}>
             <img
               src={`/element-images/${selected.n}.jpg`}
               alt={`${selected.zh} ${selected.symbol}`}
-              className="w-full border border-[var(--border)] bg-white"
+              className="w-full max-h-[78dvh] object-contain border border-[var(--border)] bg-white rounded-xs"
               draggable={false}
             />
-            <div className="mt-2 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-between px-1 shrink-0">
               <span className="text-xs mono-font text-white/80">
                 {selected.zh} {selected.symbol} · {selected.en}
               </span>
               <button
                 type="button"
                 onClick={() => setPhotoZoom(false)}
-                className="text-xs mono-font text-white/80 hover:text-white underline"
+                className="text-xs mono-font text-white/80 hover:text-white underline min-h-[36px] px-2 flex items-center touch-manipulation"
               >
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>

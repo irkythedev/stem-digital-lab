@@ -11,12 +11,14 @@
  * 复用组件：CoordPlane（坐标系，segments 绘制双曲线两支）、ExploreStage、LabIcon。
  */
 import { useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -352,41 +354,24 @@ export default function Inverse() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-        {stageOrder.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            <button
-              type="button"
-              onClick={() => setStage(s)}
-              className={`transition-colors ${stage === s ? 'font-bold text-[var(--fg)]' : 'hover:text-[var(--fg)]'}`}
-            >
-              {s === 'predict' && t.stagePredict}
-              {s === 'explore' && t.stageExplore}
-              {s === 'conclude' && t.stageConclude}
-            </button>
-          </span>
-        ))}
-        <span className="ml-auto">
-          {stageIdx < 2 ? (
-            <button
-              type="button"
-              onClick={() => setStage(stageOrder[stageIdx + 1])}
-              className="underline text-[var(--fg)] hover:opacity-70"
-            >
-              {t.nextStage}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={redoAll}
-              className="underline text-[var(--muted)] hover:text-[var(--fg)]"
-            >
-              {t.redoLabel} ↻
-        </button>
-          )}
-        </span>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        stageOrder={stageOrder}
+        labels={{
+          predict: t.stagePredict,
+          explore: t.stageExplore,
+          conclude: t.stageConclude,
+          next: t.nextStage,
+          redo: t.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: conclusionComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义，以及双曲线图像有什么特征' : 'Explain the meaning of k in y=k/x and the features of its hyperbola graph'} />
 
@@ -452,7 +437,7 @@ export default function Inverse() {
 
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ1}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(
                     [
                       ['i-iii', t.predictQ1Iiii],
@@ -465,8 +450,8 @@ export default function Inverse() {
                       key={v}
                       type="button"
                       onClick={() => setPredQuadrant(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predQuadrant === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predQuadrant === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -477,7 +462,7 @@ export default function Inverse() {
 
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ2}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {(
                     [
                       ['ii-iv-neg', t.predictQ2Iiiv],
@@ -490,8 +475,8 @@ export default function Inverse() {
                       key={v}
                       type="button"
                       onClick={() => setPredQuadrantNeg(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predQuadrantNeg === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predQuadrantNeg === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -582,7 +567,7 @@ export default function Inverse() {
               )}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ1}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['quad', t.concludeQ1Quad],
@@ -598,10 +583,10 @@ export default function Inverse() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -620,7 +605,7 @@ export default function Inverse() {
               {/* Q2: |k| */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ2}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['near', t.concludeQ2Near],
@@ -636,10 +621,10 @@ export default function Inverse() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -658,7 +643,7 @@ export default function Inverse() {
               {/* Q3: 形状 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ3}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['same', t.concludeQ3Same],
@@ -674,10 +659,10 @@ export default function Inverse() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -696,7 +681,7 @@ export default function Inverse() {
               {/* Q4: 与坐标轴 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ4}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['nocross', t.concludeQ4NoCross],
@@ -712,10 +697,10 @@ export default function Inverse() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -747,9 +732,10 @@ export default function Inverse() {
               <button
                 type="button"
                 onClick={redoAll}
-                className="text-xs mono-font uppercase underline text-[var(--fg)] hover:opacity-70"
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                {t.redoLabel} ↻
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <span>{t.redoLabel}</span>
               </button>
             </div>
           )}

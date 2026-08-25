@@ -11,6 +11,7 @@
  * 复用组件：CoordPlane（I-U 图像）、ExploreStage（任务卡+笔记）、LabIcon。
  */
 import { useMemo, useState, type MouseEvent } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -22,6 +23,7 @@ import { Bulb, Rheostat } from '../../components/lab/circuit/CircuitParts';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -543,41 +545,24 @@ export default function Ohm() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-        {stageOrder.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            <button
-              type="button"
-              onClick={() => setStage(s)}
-              className={`transition-colors ${stage === s ? 'font-bold text-[var(--fg)]' : 'hover:text-[var(--fg)]'}`}
-            >
-              {s === 'predict' && t.stagePredict}
-              {s === 'explore' && t.stageExplore}
-              {s === 'conclude' && t.stageConclude}
-            </button>
-          </span>
-        ))}
-        <span className="ml-auto">
-          {stageIdx < 2 ? (
-            <button
-              type="button"
-              onClick={() => setStage(stageOrder[stageIdx + 1])}
-              className="underline text-[var(--fg)] hover:opacity-70"
-            >
-              {t.nextStage}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={redoAll}
-              className="underline text-[var(--muted)] hover:text-[var(--fg)]"
-            >
-              {t.redoLabel} ↻
-        </button>
-          )}
-        </span>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        stageOrder={stageOrder}
+        labels={{
+          predict: t.stagePredict,
+          explore: t.stageExplore,
+          conclude: t.stageConclude,
+          next: t.nextStage,
+          redo: t.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predShape !== null,
+          explore: observations.length > 0,
+          conclude: Object.values(conclusion).every((v) => v !== null),
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解欧姆定律 I=U/R 的定量关系，以及实验中的操作要点' : "Explain Ohm's law I=U/R and the key steps of this experiment"} />
 
@@ -1281,9 +1266,10 @@ export default function Ohm() {
               <button
                 type="button"
                 onClick={redoAll}
-                className="text-xs mono-font uppercase underline text-[var(--fg)] hover:opacity-70"
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                {t.redoLabel} ↻
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <span>{t.redoLabel}</span>
               </button>
             </div>
           )}

@@ -11,12 +11,14 @@
  * 复用组件：CoordPlane、ExploreStage、LabIcon（一次函数用直线图标）。
  */
 import { useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -119,9 +121,9 @@ const copy = {
     concludeQ3Steep: '直线越陡',
     concludeQ3Flat: '直线越平缓',
     concludeQ3None: '无影响',
-    concludeQ4: 'k > 0 时图像：',
-    concludeQ4Up: '从左到右上升（增函数）',
-    concludeQ4Down: '从左到右下降（减函数）',
+    concludeQ4: 'k > 0 时：',
+    concludeQ4Up: 'y 随 x 的增大而增大（从左到右上升）',
+    concludeQ4Down: 'y 随 x 的增大而减小（从左到右下降）',
     concludeQ4None: '无规律',
     concludeHint: '选完四个，看看结论和你的观察是否一致',
     feedbackText:
@@ -374,41 +376,24 @@ export default function Linear() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-        {stageOrder.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            <button
-              type="button"
-              onClick={() => setStage(s)}
-              className={`transition-colors ${stage === s ? 'font-bold text-[var(--fg)]' : 'hover:text-[var(--fg)]'}`}
-            >
-              {s === 'predict' && t.stagePredict}
-              {s === 'explore' && t.stageExplore}
-              {s === 'conclude' && t.stageConclude}
-            </button>
-          </span>
-        ))}
-        <span className="ml-auto">
-          {stageIdx < 2 ? (
-            <button
-              type="button"
-              onClick={() => setStage(stageOrder[stageIdx + 1])}
-              className="underline text-[var(--fg)] hover:opacity-70"
-            >
-              {t.nextStage}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={redoAll}
-              className="underline text-[var(--muted)] hover:text-[var(--fg)]"
-            >
-              {t.redoLabel} ↻
-        </button>
-          )}
-        </span>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        stageOrder={stageOrder}
+        labels={{
+          predict: t.stagePredict,
+          explore: t.stageExplore,
+          conclude: t.stageConclude,
+          next: t.nextStage,
+          redo: t.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predSlope !== null && predIntercept !== null,
+          explore: observations.length > 0,
+          conclude: Object.values(conclusion).every((v) => v !== null),
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解一次函数 y=kx+b 中 k 与 b 的几何意义，如何决定直线的走向与截距' : 'Explain the geometric meaning of k and b in y=kx+b — how they set the line direction and intercept'} />
 
@@ -470,7 +455,7 @@ export default function Linear() {
 
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ1}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['up', t.predictUp],
@@ -482,8 +467,8 @@ export default function Linear() {
                       key={v}
                       type="button"
                       onClick={() => setPredSlope(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predSlope === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predSlope === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -494,7 +479,7 @@ export default function Linear() {
 
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.predictQ2}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['pos', t.predictInterceptPos],
@@ -506,8 +491,8 @@ export default function Linear() {
                       key={v}
                       type="button"
                       onClick={() => setPredIntercept(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
-                        predIntercept === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        predIntercept === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
                       {label}
@@ -599,7 +584,7 @@ export default function Linear() {
               {/* Q1: k */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ1}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['slope', t.concludeQ1Slope],
@@ -615,10 +600,10 @@ export default function Linear() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -637,7 +622,7 @@ export default function Linear() {
               {/* Q2: b */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ2}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['intercept', t.concludeQ2Intercept],
@@ -653,10 +638,10 @@ export default function Linear() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -675,7 +660,7 @@ export default function Linear() {
               {/* Q3: |k| */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ3}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['steep', t.concludeQ3Steep],
@@ -691,10 +676,10 @@ export default function Linear() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -713,7 +698,7 @@ export default function Linear() {
               {/* Q4: k>0 */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ4}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
                       ['up', t.concludeQ4Up],
@@ -729,10 +714,10 @@ export default function Linear() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                               : 'border-[var(--error)] text-[var(--error)]'
                             : showFeedback && correct
                               ? 'border-[var(--muted)] text-[var(--muted)]'
@@ -764,9 +749,10 @@ export default function Linear() {
               <button
                 type="button"
                 onClick={redoAll}
-                className="text-xs mono-font uppercase underline text-[var(--fg)] hover:opacity-70"
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                {t.redoLabel} ↻
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <span>{t.redoLabel}</span>
               </button>
             </div>
           )}

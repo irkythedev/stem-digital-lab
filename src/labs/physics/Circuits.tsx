@@ -15,6 +15,7 @@
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
 import { useMemo, useState, type MouseEvent } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -37,6 +38,7 @@ import {
   type CircuitStyleId,
 } from './circuitStyles';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -339,41 +341,24 @@ export default function Circuits() {
       </div>
 
       {/* 幕导航 */}
-      <div className="flex items-center gap-2 text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-        {stageOrder.map((s, i) => (
-          <span key={s} className="flex items-center gap-2">
-            {i > 0 && <span aria-hidden="true">/</span>}
-            <button
-              type="button"
-              onClick={() => setStage(s)}
-              className={`transition-colors ${stage === s ? 'font-bold text-[var(--fg)]' : 'hover:text-[var(--fg)]'}`}
-            >
-              {s === 'predict' && t.stagePredict}
-              {s === 'explore' && t.stageExplore}
-              {s === 'conclude' && t.stageConclude}
-            </button>
-          </span>
-        ))}
-        <span className="ml-auto">
-          {stageIdx < 2 ? (
-            <button
-              type="button"
-              onClick={() => setStage(stageOrder[stageIdx + 1])}
-              className="underline text-[var(--fg)] hover:opacity-70"
-            >
-              {t.nextStage}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={redoAll}
-              className="underline text-[var(--muted)] hover:text-[var(--fg)]"
-            >
-              {t.redoLabel} ↻
-        </button>
-          )}
-        </span>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        stageOrder={stageOrder}
+        labels={{
+          predict: t.stagePredict,
+          explore: t.stageExplore,
+          conclude: t.stageConclude,
+          next: t.nextStage,
+          redo: t.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: conclusionComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别' : 'Compare how current and voltage distribute in series vs parallel circuits'} />
 
@@ -884,9 +869,10 @@ export default function Circuits() {
               <button
                 type="button"
                 onClick={redoAll}
-                className="text-xs mono-font uppercase underline text-[var(--fg)] hover:opacity-70"
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                {t.redoLabel} ↻
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <span>{t.redoLabel}</span>
               </button>
             </div>
           )}

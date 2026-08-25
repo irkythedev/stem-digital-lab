@@ -9,7 +9,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Image as ImageIcon, Search    } from 'lucide-react';
+import { House, Image as ImageIcon, Search, X } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -190,7 +190,9 @@ export default function MathFormulas() {
             <span className="text-sm font-semibold serif-font text-[var(--fg)] leading-tight text-center">
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
-            <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+            <div className="w-full flex items-center justify-center overflow-x-auto min-h-0">
+              <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+            </div>
           </button>
         ))}
       </div>
@@ -203,84 +205,90 @@ export default function MathFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-md border border-[var(--border)] bg-[var(--bg)] p-5 shadow-[0_8px_24px_rgba(0,0,0,0.15)]"
+            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.name.zh} ${selected.name.en}`}
           >
-            <button
-              type="button"
-              onClick={() => setSelected(null)}
-              aria-label={lang === 'zh' ? '关闭' : 'Close'}
-              className="absolute top-2 right-3 w-7 h-7 flex items-center justify-center text-lg text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-            >
-              ×
-            </button>
+            {/* 固定顶部条：无论横屏还是竖屏，关闭按钮和标题始终可见 */}
+            <div className="flex items-start justify-between gap-3 px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+              <div className="min-w-0">
+                <div className="text-[0.625rem] mono-font text-[var(--muted)]">
+                  {lang === 'zh' ? FORMULA_CATEGORY_ZH[selected.category] : FORMULA_CATEGORY_EN[selected.category]}
+                </div>
+                <div className="mt-0.5 text-base sm:text-lg font-semibold serif-font text-[var(--fg)] truncate">
+                  {lang === 'zh' ? selected.name.zh : selected.name.en}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label={lang === 'zh' ? '关闭' : 'Close'}
+                className="shrink-0 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-            <div className="pr-8">
-              <div className="text-[0.625rem] mono-font text-[var(--muted)]">
-                {lang === 'zh' ? FORMULA_CATEGORY_ZH[selected.category] : FORMULA_CATEGORY_EN[selected.category]}
-              </div>
-              <div className="mt-1 text-lg font-semibold serif-font text-[var(--fg)]">
-                {lang === 'zh' ? selected.name.zh : selected.name.en}
-              </div>
+            {/* 独立内部滚动区：移动端流畅上下滑动 */}
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-3">
               {/* 公式（KaTeX 独立成行；超长公式可横向滚动兜底） */}
-              <div className="mt-3 border border-[var(--border)] p-3 flex items-center justify-center bg-[var(--card-bg)] overflow-x-auto">
+              <div className="border border-[var(--border)] p-3 flex items-center justify-center bg-[var(--card-bg)] overflow-x-auto rounded-lg">
                 <Formula tex={selected.formula} block className="text-base text-[var(--fg)]" />
               </div>
-              <div className="text-xs serif-font italic text-[var(--muted)] mt-1.5">
+              <div className="text-xs serif-font italic text-[var(--muted)]">
                 {lang === 'zh' ? selected.label.zh : selected.label.en}
               </div>
 
               {/* 配图（几何/函数示意图，点击可放大查看） */}
               {selected.diagram && (
-                <div className="mt-2 border border-[var(--border)] p-2 bg-[var(--card-bg)] flex items-center justify-center cursor-zoom-in" onClick={() => setZoomDiagram(true)} role="button" aria-label={lang === 'zh' ? '放大示意图' : 'Zoom diagram'}>
+                <div className="border border-[var(--border)] p-2 bg-[var(--card-bg)] flex items-center justify-center cursor-zoom-in rounded-lg" onClick={() => setZoomDiagram(true)} role="button" aria-label={lang === 'zh' ? '放大示意图' : 'Zoom diagram'}>
                   {selected.diagram.kind === 'pythagorean' || selected.diagram.kind === 'chord' || selected.diagram.kind === 'inscribed' || selected.diagram.kind === 'sector' ? (
-                    <FormulaDiagram type={selected.diagram.kind} className="w-full max-w-[300px]" />
+                    <FormulaDiagram type={selected.diagram.kind} className="w-full max-w-[300px] max-h-[160px]" />
                   ) : (
-                    <FunctionDiagram type={selected.diagram.kind} className="w-full max-w-[320px]" />
+                    <FunctionDiagram type={selected.diagram.kind} className="w-full max-w-[320px] max-h-[160px]" />
                   )}
                 </div>
               )}
-            </div>
 
-            <div className="mt-3 space-y-2 text-sm serif-font text-[var(--fg)]">
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '记忆要点' : 'Tip'}
+              <div className="space-y-2 text-sm serif-font text-[var(--fg)]">
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '记忆要点' : 'Tip'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{renderRich(lang === 'zh' ? selected.tip.zh : selected.tip.en)}</p>
                 </div>
-                <p className="leading-relaxed">{renderRich(lang === 'zh' ? selected.tip.zh : selected.tip.en)}</p>
-              </div>
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '易错点' : 'Pitfall'}
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '易错点' : 'Pitfall'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{renderRich(lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en)}</p>
                 </div>
-                <p className="leading-relaxed">{renderRich(lang === 'zh' ? selected.pitfall.zh : selected.pitfall.en)}</p>
-              </div>
-              <div className="border border-[var(--border)] p-2.5">
-                <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
-                  // {lang === 'zh' ? '典型应用' : 'Usage'}
+                <div className="border border-[var(--border)] p-2.5 rounded-lg">
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-1">
+                    // {lang === 'zh' ? '典型应用' : 'Usage'}
+                  </div>
+                  <p className="leading-relaxed text-xs">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
                 </div>
-                <p className="leading-relaxed">{lang === 'zh' ? selected.usage.zh : selected.usage.en}</p>
-              </div>
-              <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
-                <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
-                {selected.labId && labMap[selected.labId] && (
-                  <Link
-                    to={`/lab/${selected.labId}`}
-                    className="underline hover:text-[var(--fg)]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {lang === 'zh' ? `关联探究：${labMap[selected.labId].name.zh}` : `Related: ${labMap[selected.labId].name.en}`}
-                  </Link>
-                )}
-              </div>
+                <div className="flex items-center justify-between px-0.5 text-xs mono-font text-[var(--muted)]">
+                  <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
+                  {selected.labId && labMap[selected.labId] && (
+                    <Link
+                      to={`/lab/${selected.labId}`}
+                      className="underline hover:text-[var(--fg)]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {lang === 'zh' ? `关联探究：${labMap[selected.labId].name.zh}` : `Related: ${labMap[selected.labId].name.en}`}
+                    </Link>
+                  )}
+                </div>
 
-              {/* 问 AI：看完内容后可一键讲解当前公式 */}
-              <div className="px-0.5 pt-2">
-                <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理与易错点` : `Explain the formula "${selected.name.en}" — its principle and common pitfalls`} />
+                {/* 问 AI：看完内容后可一键讲解当前公式 */}
+                <div className="px-0.5 pt-1">
+                  <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理与易错点` : `Explain the formula "${selected.name.en}" — its principle and common pitfalls`} />
+                </div>
               </div>
             </div>
           </div>
@@ -290,27 +298,27 @@ export default function MathFormulas() {
       {/* 配图放大预览（全屏） */}
       {zoomDiagram && selected?.diagram && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-xs"
           onClick={() => setZoomDiagram(false)}
           role="dialog"
           aria-label={`${selected.name.zh} ${selected.name.en}`}
         >
-          <div className="relative max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="border border-[var(--border)] bg-white p-4 flex items-center justify-center">
+          <div className="relative max-w-xl w-full max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="border border-[var(--border)] bg-white p-3 sm:p-4 flex items-center justify-center flex-1 overflow-hidden rounded-lg">
               {selected.diagram.kind === 'pythagorean' || selected.diagram.kind === 'chord' || selected.diagram.kind === 'inscribed' || selected.diagram.kind === 'sector' ? (
-                <FormulaDiagram type={selected.diagram.kind} className="w-full max-w-[440px]" />
+                <FormulaDiagram type={selected.diagram.kind} className="w-full max-w-[440px] max-h-[60dvh] object-contain" />
               ) : (
-                <FunctionDiagram type={selected.diagram.kind} className="w-full max-w-[460px]" />
+                <FunctionDiagram type={selected.diagram.kind} className="w-full max-w-[460px] max-h-[60dvh] object-contain" />
               )}
             </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="text-xs mono-font text-white/80">
+            <div className="mt-3 flex items-center justify-between gap-2 shrink-0">
+              <span className="text-xs mono-font text-[var(--fg)] font-medium truncate">
                 {lang === 'zh' ? selected.name.zh : selected.name.en}
               </span>
               <button
                 type="button"
                 onClick={() => setZoomDiagram(false)}
-                className="text-xs mono-font text-white/80 hover:text-white underline"
+                className="text-xs mono-font px-3 py-1.5 border border-[var(--border)] text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95 shrink-0"
               >
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>

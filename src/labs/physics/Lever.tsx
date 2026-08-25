@@ -11,11 +11,13 @@
  * 教材依据：ch11「学生实验 探究杠杆的平衡条件」+ 杠杆原理（阿基米德）
  */
 import { useMemo, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import StageNav from '../../components/lab/StageNav';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -116,9 +118,8 @@ const copy = {
 type Lang = 'zh' | 'en';
 
 const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['prop'],
-  q2: ['save'],
-  q3: ['opener'],
+  q1: ['save'],
+  q2: ['opener'],
 };
 
 export default function Lever() {
@@ -134,22 +135,27 @@ export default function Lever() {
   const [predict1, setPredict1] = useState<PredictQ1>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsId, setObsId] = useState(0);
-  const [concl, setConcl] = useState<{ q1: string | null; q2: string | null; q3: string | null }>({ q1: null, q2: null, q3: null });
+  const [concl, setConcl] = useState<{ q1: string | null; q2: string | null }>({ q1: null, q2: null });
   const [showFeedback, setShowFeedback] = useState(false);
 
   const predComplete = predict1 !== null;
-  const concludeComplete = concl.q1 && concl.q2 && concl.q3;
+  const concludeComplete = !!(concl.q1 && concl.q2);
 
   // 力矩计算：每格钩码产生 F = m × 0.5N，力矩 = F × d
   const torque1 = m1 * 0.5 * d1;
   const torque2 = m2 * 0.5 * d2;
   const isBalanced = Math.abs(torque1 - torque2) < 0.05;
 
+  // 倾角计算（力矩不平衡时小幅倾斜，顺时针为正，限制在 [-8, 8] 度）
+  const tiltAngle = isBalanced
+    ? 0
+    : Math.max(-8, Math.min(8, (torque2 - torque1) * 3.5));
+
   function redoAll() {
     setStage('predict');
     setM1(2); setD1(3); setM2(3); setD2(2);
     setPredict1(null); setObservations([]); setObsId(0);
-    setConcl({ q1: null, q2: null, q3: null }); setShowFeedback(false);
+    setConcl({ q1: null, q2: null }); setShowFeedback(false);
   }
 
   function addObservation(note: string) {
@@ -191,18 +197,18 @@ export default function Lever() {
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
-        <div className="grid gap-1.5 sm:grid-cols-2">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
           {options.map((opt) => {
             const isSel = selected === opt.value;
             const isCorrect = correctKeys.includes(opt.value);
-            let cls = 'text-left text-sm px-3 py-2 border transition-colors ';
+            let cls = 'text-left text-xs sm:text-sm px-3 py-2.5 border rounded-lg transition-colors ';
             if (showFeedback) {
-              if (isSel && isCorrect) cls += 'border-[var(--fg)] text-[var(--fg)]';
+              if (isSel && isCorrect) cls += 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold';
               else if (isSel && !isCorrect) cls += 'border-[var(--error)] text-[var(--error)]';
               else if (!isSel && isCorrect) cls += 'border-[var(--border)] text-[var(--muted)]';
               else cls += 'border-[var(--border)] text-[var(--muted)] opacity-50';
             } else {
-              cls += isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
+              cls += isSel ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
             const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
             return (
@@ -220,22 +226,23 @@ export default function Lever() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
-          const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
-          return (
-            <button key={s} type="button" onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${stage === s ? 'border-[var(--fg)] text-[var(--fg)]' : isDone ? 'border-[var(--border)] text-[var(--muted)]' : 'border-[var(--border)] text-[var(--muted)] opacity-50'}`}>
-              {isDone && stage !== s ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
-)] transition-colors">{c.redoLabel}</button>
-        </div>
-      </div>
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{
+          predict: c.stagePredict,
+          explore: c.stageExplore,
+          conclude: c.stageConclude,
+          next: c.nextStage,
+          redo: c.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: concludeComplete,
+        }}
+      />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
       <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解杠杆平衡条件 F₁l₁=F₂l₂，以及省力、费力、等臂杠杆怎么区分' : 'Explain the lever balance F₁l₁=F₂l₂ and how to tell effort-saving, effort-costing and equal-arm levers'} />
 
@@ -243,28 +250,85 @@ export default function Lever() {
       {/* ── 杠杆示意 ── */}
       <div className="border border-[var(--border)] p-3">
         <svg viewBox="0 0 520 260" className="w-full" aria-label="杠杆" strokeLinecap="round" strokeLinejoin="round">
-          {/* 杠杆（倾斜角由力矩差决定） */}
-          <line x1="120" y1="180" x2="400" y2="180" stroke="var(--fg)" strokeWidth="1.5" />
-          {/* 支点 */}
-          <polygon points="260,180 250,200 270,200" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-          {/* 左钩码 */}
-          <g transform={`translate(${200 - d1 * 15}, 180)`}>
-            <line x1="0" y1="0" x2="0" y2="30" stroke="var(--fg)" strokeWidth="1.5" />
-            {Array.from({ length: m1 }).map((_, i) => <circle key={i} cx="0" cy={34 + i * 10} r="5" fill="var(--fg)" />)}
-            <text x="0" y={34 + m1 * 10 + 12} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">m1={m1}</text>
+          {/* 支点 (固定在底部, 顶尖对准 260, 180) */}
+          <polygon points="260,180 248,205 272,205" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
+          <line x1="240" y1="205" x2="280" y2="205" stroke="var(--fg)" strokeWidth="1.5" />
+
+          {/* 旋转杠杆本体组（以支点 260, 180 为中心旋转） */}
+          <g transform={`rotate(${tiltAngle}, 260, 180)`} style={{ transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+            {/* 杠杆横梁 */}
+            <line x1="80" y1="180" x2="440" y2="180" stroke="var(--fg)" strokeWidth="3" />
+
+            {/* 等距刻度线：每格 35px，左右各 4 格 */}
+            {[-4, -3, -2, -1, 1, 2, 3, 4].map((step) => {
+              const tickX = 260 + step * 35;
+              const isMarked = Math.abs(step) === (step < 0 ? d1 : d2);
+              return (
+                <g key={step}>
+                  <line
+                    x1={tickX}
+                    y1={174}
+                    x2={tickX}
+                    y2={186}
+                    stroke={isMarked ? 'var(--fg)' : 'var(--muted)'}
+                    strokeWidth={isMarked ? '1.8' : '1'}
+                  />
+                  <text
+                    x={tickX}
+                    y={168}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={isMarked ? 'var(--fg)' : 'var(--muted)'}
+                    fontFamily="var(--f-mono)"
+                  >
+                    {Math.abs(step)}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* 支点中心标记 */}
+            <circle cx="260" cy="180" r="3" fill="var(--fg)" />
+
+            {/* 左挂钩与钩码 (严格正比于 d1: 260 - d1 * 35) */}
+            <g transform={`translate(${260 - d1 * 35}, 180)`}>
+              {/* 挂钩垂线（挂钩随重力自然下垂，反向补偿旋转角） */}
+              <g transform={`rotate(${-tiltAngle})`} style={{ transition: 'transform 0.4s ease' }}>
+                <line x1="0" y1="0" x2="0" y2="25" stroke="var(--fg)" strokeWidth="1.5" />
+                {Array.from({ length: m1 }).map((_, i) => (
+                  <circle key={i} cx="0" cy={30 + i * 11} r="5" fill="var(--fg)" />
+                ))}
+                <text x="0" y={30 + m1 * 11 + 14} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
+                  m1={m1}
+                </text>
+              </g>
+            </g>
+
+            {/* 右挂钩与钩码 (严格正比于 d2: 260 + d2 * 35) */}
+            <g transform={`translate(${260 + d2 * 35}, 180)`}>
+              <g transform={`rotate(${-tiltAngle})`} style={{ transition: 'transform 0.4s ease' }}>
+                <line x1="0" y1="0" x2="0" y2="25" stroke="var(--fg)" strokeWidth="1.5" />
+                {Array.from({ length: m2 }).map((_, i) => (
+                  <circle key={i} cx="0" cy={30 + i * 11} r="5" fill="var(--fg)" />
+                ))}
+                <text x="0" y={30 + m2 * 11 + 14} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
+                  m2={m2}
+                </text>
+              </g>
+            </g>
           </g>
-          {/* 右钩码 */}
-          <g transform={`translate(${320 + d2 * 15}, 180)`}>
-            <line x1="0" y1="0" x2="0" y2="30" stroke="var(--fg)" strokeWidth="1.5" />
-            {Array.from({ length: m2 }).map((_, i) => <circle key={i} cx="0" cy={34 + i * 10} r="5" fill="var(--fg)" />)}
-            <text x="0" y={34 + m2 * 10 + 12} textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">m2={m2}</text>
-          </g>
-          {/* 力臂标注 */}
-          <text x="160" y="150" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">l₁={d1}</text>
-          <text x="360" y="150" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">l₂={d2}</text>
-          {/* 平衡状态 */}
-          <text x="260" y="60" textAnchor="middle" fontSize="12" fill={isBalanced ? 'var(--fg)' : 'var(--error)'} fontFamily="var(--f-mono)">
-            {isBalanced ? (lang === 'zh' ? '✓ 平衡' : '✓ Balanced') : (lang === 'zh' ? '不平衡' : 'Unbalanced')}
+
+          {/* 力臂数值与状态标注 (静态不旋转，保持界面稳定可读) */}
+          <text x="140" y="115" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">
+            l₁ = {d1} 格
+          </text>
+          <text x="380" y="115" textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">
+            l₂ = {d2} 格
+          </text>
+
+          {/* 平衡状态徽标 */}
+          <text x="260" y="55" textAnchor="middle" fontSize="13" fontWeight="bold" fill={isBalanced ? 'var(--fg)' : 'var(--error)'} fontFamily="var(--f-mono)">
+            {isBalanced ? (lang === 'zh' ? '✓ 杠杆水平平衡' : '✓ Lever Balanced') : (lang === 'zh' ? '× 力矩不平衡（发生偏转）' : '× Unbalanced (Tilted)')}
           </text>
         </svg>
       </div>
