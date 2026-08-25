@@ -77,22 +77,22 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
         const x = LENS_X + n * f * SCALE;
         const isF = Math.abs(n) === 1;
         const label = n === -2 ? '2F' : n === -1 ? 'F' : n === 1 ? "F'" : "2F'";
-        const tickH = isF ? 8 : 5;
+        const tickH = isF ? 10 : 7;
         return (
           <g key={n}>
             <line x1={x} y1={AXIS_Y - tickH} x2={x} y2={AXIS_Y + tickH}
-              stroke={isF ? 'var(--accent)' : 'var(--muted)'} strokeWidth={1} />
-            <text x={x} y={AXIS_Y + (isF ? 20 : 16)}
-              textAnchor="middle" fill={isF ? 'var(--accent)' : 'var(--muted)'}
-              fontSize={isF ? 10 : 9} className="mono-font">{label}</text>
+              stroke={isF ? 'var(--fg)' : 'var(--muted)'} strokeWidth={isF ? 1.5 : 1} />
+            <text x={x} y={AXIS_Y + (isF ? 24 : 20)}
+              textAnchor="middle" fill={isF ? 'var(--fg)' : 'var(--muted)'}
+              fontSize={isF ? 13 : 11} fontWeight={isF ? '600' : 'normal'} className="mono-font">{label}</text>
           </g>
         );
       })}
 
       {/* 光心 O */}
-      <circle cx={LENS_X} cy={AXIS_Y} r={2} fill="var(--fg)" />
-      <text x={LENS_X} y={AXIS_Y + 20} textAnchor="middle"
-        fill="var(--fg)" fontSize={10} className="mono-font">O</text>
+      <circle cx={LENS_X} cy={AXIS_Y} r={3} fill="var(--fg)" />
+      <text x={LENS_X} y={AXIS_Y + 24} textAnchor="middle"
+        fill="var(--fg)" fontSize={13} fontWeight="600" className="mono-font">O</text>
 
       {/* 凸透镜（双弧线） */}
       <path d={`M ${LENS_X} ${AXIS_Y - 60} Q ${LENS_X + 15} ${AXIS_Y} ${LENS_X} ${AXIS_Y + 60}`}
@@ -151,7 +151,7 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
       {/* ── 不成像提示 ── */}
       {isNoImage && (
         <text x={LENS_X + 60} y={AXIS_Y - 50}
-          fill="var(--accent)" fontSize={12} className="mono-font">
+          fill="var(--fg)" fontSize={15} fontWeight="600" className="mono-font">
           不成像（平行光）
         </text>
       )}
@@ -184,9 +184,10 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
               stroke="var(--accent)" strokeWidth={1.2} />
           ) : (
             <>
+              {/* 右侧折射光线沿入射方向直线向右下延伸 */}
               <line x1={LENS_X} y1={AXIS_Y}
-                x2={LENS_X + f * SCALE * 2}
-                y2={AXIS_Y}
+                x2={LENS_X + (LENS_X - ctX) * 2}
+                y2={AXIS_Y + (AXIS_Y - ctY) * 2}
                 stroke="var(--accent)" strokeWidth={1.2} />
               <line x1={LENS_X} y1={AXIS_Y} x2={virtualX!} y2={itY}
                 stroke="var(--accent)" strokeWidth={1} strokeDasharray="3 3" />
@@ -196,19 +197,19 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
       )}
 
       {/* ── 物距 / 像距 标注 ── */}
-      <text x={candleX + (LENS_X - candleX) / 2} y={AXIS_Y + 40}
-        textAnchor="middle" fill="var(--muted)" fontSize={10} className="mono-font">
+      <text x={candleX + (LENS_X - candleX) / 2} y={AXIS_Y + 45}
+        textAnchor="middle" fill="var(--fg)" fontSize={13} fontWeight="500" className="mono-font">
         u = {u.toFixed(1)} cm
       </text>
       {v !== null && v > 0 && (
-        <text x={LENS_X + (screenX! - LENS_X) / 2} y={AXIS_Y + 40}
-          textAnchor="middle" fill="var(--muted)" fontSize={10} className="mono-font">
+        <text x={LENS_X + (screenX! - LENS_X) / 2} y={AXIS_Y + 45}
+          textAnchor="middle" fill="var(--fg)" fontSize={13} fontWeight="500" className="mono-font">
           v = {v.toFixed(1)} cm
         </text>
       )}
       {isVirtual && (
-        <text x={LENS_X + (virtualX! - LENS_X) / 2} y={AXIS_Y + 40}
-          textAnchor="middle" fill="var(--muted)" fontSize={10} className="mono-font">
+        <text x={LENS_X + (virtualX! - LENS_X) / 2} y={AXIS_Y + 45}
+          textAnchor="middle" fill="var(--fg)" fontSize={13} fontWeight="500" className="mono-font">
           |v| = {Math.abs(v!).toFixed(1)} cm
         </text>
       )}
