@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.21.8-blue)
+![version](https://img.shields.io/badge/版本-v1.21.9-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
