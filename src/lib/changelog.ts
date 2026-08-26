@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.9';
+export const APP_VERSION = '1.21.10';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,19 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.10',
+    date: '2026-08',
+    zh: [
+      '[优化] 优化周期表朗读体验，支持英文发音',
+      '[优化] 提升多语言切换时的朗读体验',
+    ],
+    en: [
+      '[Improved] Enhanced periodic-table reading with English pronunciation',
+      '[Improved] Smoother reading experience when switching languages',
+    ],
+  },
+
   {
     version: '1.21.9',
     date: '2026-08',

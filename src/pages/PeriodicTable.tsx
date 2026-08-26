@@ -125,16 +125,24 @@ export default function PeriodicTable() {
   const [recite, setRecite] = useState<{ presetId: string; pos: number; paused: boolean } | null>(null);
   const [repeat, setRepeat] = useState(2); // 朗读次数
   const [gapIdx, setGapIdx] = useState(1); // 跟读间隔选项索引
-  // 朗读音色：女生（默认）/ 男生（云希）；localStorage 记忆选择
+  // 朗读音色：女声（默认）/ 男声；语言跟随界面（中文界面读中文、英文界面读英文）；localStorage 记忆选择
   const [voice, setVoice] = useState<'female' | 'male'>(() => {
     try {
-      return window.localStorage.getItem('stem-pt-voice') === 'male' ? 'male' : 'female';
+      const v = window.localStorage.getItem('stem-pt-voice');
+      if (v === 'male' || v === 'zh-m' || v === 'en-m') return 'male'; // 兼容旧版/中间态
+      return 'female';
     } catch {
       return 'female';
     }
   });
   const voiceRef = useRef(voice);
   voiceRef.current = voice; // 渲染同步：跟读/朗读循环中随时可读最新选择
+  // 音色 + 界面语言 → 音频后缀（中文女 '' / 中文男 '-m' / 英文女 '-e' / 英文男 '-em'）
+  const voiceSuffix = (v: 'female' | 'male') =>
+    v === 'male' ? (lang === 'zh' ? '-m' : '-em') : lang === 'zh' ? '' : '-e';
+  const voiceText = (e: ElementInfo) => (lang === 'zh' ? e.zh : e.en);
+  /** 男声缺失回退女声（同语言） */
+  const voiceFallback = (v: 'female' | 'male'): 'female' | 'male' | null => (v === 'male' ? 'female' : null);
   const changeVoice = (v: 'female' | 'male') => {
     setVoice(v);
     try {
@@ -196,12 +204,12 @@ export default function PeriodicTable() {
 
   /**
    * 播放元素读音：
-   * 优先本地预生成 MP3（一致、离线、免语音包）；按音色选 女声/男声，
-   * 男声文件缺失时自动回退女声，再失败降级浏览器语音合成。
+   * 优先本地预生成 MP3（一致、离线、免语音包）；按音色选 中文女/中文男/英文女/英文男，
+   * 男声/英文文件缺失时按回退链降级，再失败降级浏览器语音合成。
    */
   const speak = (e: ElementInfo) => {
     const audio = getAudio(speakAudio);
-    let maleTried = false;
+    let fallbackTried = false;
     // 点击立即进入加载态（本地 MP3 网络加载/解码需要时间，给用户明确反馈）
     setSpeakState('loading');
     const tryPlay = (src: string) => {
@@ -218,19 +226,20 @@ export default function PeriodicTable() {
       setSpeakState('idle');
     };
     audio.onerror = () => {
-      // 男声文件缺失 → 回退女声（保底有声）
-      if (voiceRef.current === 'male' && !maleTried) {
-        maleTried = true;
-        tryPlay(`/audio/${e.n}.mp3`);
+      // 文件缺失 → 男声回退女声（同语言），保证有声
+      const fb = voiceFallback(voiceRef.current);
+      if (fb && !fallbackTried) {
+        fallbackTried = true;
+        tryPlay(`/audio/${e.n}${voiceSuffix(fb)}.mp3`);
         return;
       }
-      // 本地音频失败 → 降级 speechSynthesis（设备有语音包时仍可用）
+      // 本地音频全部失败 → 降级 speechSynthesis（设备有对应语言语音包时仍可用）
       if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
       setSpeakState('idle');
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(e.zh);
-      u.lang = 'zh-CN';
+      const u = new SpeechSynthesisUtterance(voiceText(e));
+      u.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
       u.rate = 0.85;
       u.onstart = () => {
         setSpeakState('playing');
@@ -248,7 +257,7 @@ export default function PeriodicTable() {
       };
       window.speechSynthesis.speak(u);
     };
-    tryPlay(voiceRef.current === 'male' ? `/audio/${e.n}-m.mp3` : `/audio/${e.n}.mp3`);
+    tryPlay(`/audio/${e.n}${voiceSuffix(voiceRef.current)}.mp3`);
     // 兜底：个别环境 onended 不触发（微信 X5 等），按音频时长估算后复位
     // MP3 均约 1.8s，此处取 4s 确保结束状态可靠复位
     window.clearTimeout(speakTimeout.current);
@@ -261,7 +270,7 @@ export default function PeriodicTable() {
       const audio = getAudio(reciteAudio);
       // 防止上一个元素被 speak 抢占或加载异常导致 onended 永不触发：超时兜底
       const timer = window.setTimeout(() => resolve(), 8000);
-      let maleTried = false;
+      let fallbackTried = false;
       const trySrc = (src: string) => {
         audio.src = src;
         audio.play().catch(() => {
@@ -274,16 +283,17 @@ export default function PeriodicTable() {
         resolve();
       };
       audio.onerror = () => {
-        // 男声文件缺失 → 回退女声（连读不中断、不出无声）
-        if (voiceRef.current === 'male' && !maleTried) {
-          maleTried = true;
-          trySrc(`/audio/${n}.mp3`);
+        // 文件缺失 → 按回退链降级（男→女，英文→中文女），连读不中断、不出无声
+        const fb = voiceFallback(voiceRef.current);
+        if (fb && !fallbackTried) {
+          fallbackTried = true;
+          trySrc(`/audio/${n}${voiceSuffix(fb)}.mp3`);
           return;
         }
         window.clearTimeout(timer);
-        resolve(); // 本地缺失 → 静默跳过（不打断连读）
+        resolve(); // 本地全部缺失 → 静默跳过（不打断连读）
       };
-      trySrc(voiceRef.current === 'male' ? `/audio/${n}-m.mp3` : `/audio/${n}.mp3`);
+      trySrc(`/audio/${n}${voiceSuffix(voiceRef.current)}.mp3`);
     });
 
   const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -349,6 +359,19 @@ export default function PeriodicTable() {
     setRecite(null);
     setReciteSetup(null);
   };
+
+  // 切换界面语言时停止正在进行的朗读/跟读：跟读循环的语言在启动时闭包绑定，
+  // 切语言后显示与读音会脱节（显示英文名、读中文音）——语言切换 = 全部重新开始
+  const prevLangRef = useRef(lang);
+  useEffect(() => {
+    if (prevLangRef.current === lang) return;
+    prevLangRef.current = lang;
+    stopRecite();
+    if (speakAudio.current) speakAudio.current.pause(); // 停止单次朗读（正在播的段属旧语言）
+    if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+    setSpeakState('idle');
+    window.speechSynthesis?.cancel(); // 降级语音合成也停
+  }, [lang]);
 
   /** 暂停跟读 */
   const pauseRecite = () => {
@@ -479,36 +502,29 @@ export default function PeriodicTable() {
           <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '// 中考跟读' : '// Recite'}
           </div>
-          {/* 声音切换（女生/男生）+ 跟读进度 */}
+          {/* 声音切换（女声/男声，语言跟随界面）+ 跟读进度 */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5" role="group" aria-label={lang === 'zh' ? '声音选择' : 'Voice'}>
               <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '声音' : 'Voice'}</span>
-              <button
-                type="button"
-                onClick={() => changeVoice('female')}
-                aria-pressed={voice === 'female'}
-                className={`px-2 py-1 text-xs mono-font border transition-colors ${
-                  voice === 'female' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
-                }`}
-              >
-                {lang === 'zh' ? '女生' : 'Female'}
-              </button>
-              <button
-                type="button"
-                onClick={() => changeVoice('male')}
-                aria-pressed={voice === 'male'}
-                className={`px-2 py-1 text-xs mono-font border transition-colors ${
-                  voice === 'male' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
-                }`}
-              >
-                {lang === 'zh' ? '男生' : 'Male'}
-              </button>
+              {(
+                [
+                  ['female', lang === 'zh' ? '女声' : 'Female'],
+                  ['male', lang === 'zh' ? '男声' : 'Male'],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => changeVoice(v)}
+                  aria-pressed={voice === v}
+                  className={`px-2 py-1 text-xs mono-font border transition-colors ${
+                    voice === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            {recite && reciteEl && recitePreset && (
-              <div className="text-[0.6875rem] mono-font text-[var(--fg)]">
-                {reciteEl.zh} {reciteEl.symbol} · {recite.pos}/{recitePreset.ns.length}
-              </div>
-            )}
           </div>
         </div>
 
@@ -618,7 +634,7 @@ export default function PeriodicTable() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs serif-font text-[var(--fg)] shrink-0">
-                    {reciteEl.zh} {reciteEl.symbol}
+                    {voiceText(reciteEl)} {reciteEl.symbol}
                   </span>
                   <div className="flex-1 h-1 bg-[var(--border)] overflow-hidden">
                     <div

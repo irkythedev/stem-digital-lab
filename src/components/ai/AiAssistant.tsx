@@ -152,6 +152,15 @@ export default function AiAssistant() {
     if (!open) stopSpeak();
   }, [open, stopSpeak]);
 
+  // 切换界面语言时停止朗读：正在播的回答绑定旧语言（voice 已在调用时确定），
+  // 避免英文界面用英文 voice 读中文回答等混淆——切语言 = 朗读重新开始
+  const prevLangRef = useRef(lang);
+  useEffect(() => {
+    if (prevLangRef.current === lang) return;
+    prevLangRef.current = lang;
+    stopSpeak();
+  }, [lang, stopSpeak]);
+
   // 朗读控制条（历史条目与当前轮共用）
   const renderSpeakControls = (text: string) => (
     <div className="flex justify-end items-center gap-1 mt-1.5">
