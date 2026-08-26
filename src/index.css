@@ -402,6 +402,11 @@ input[type="range"]::-moz-range-thumb:active {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
+/* AI 回答淡入：思考动画结束 → 内容浮现（200ms 微上移），衔接自然 */
+@keyframes answer-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* KaTeX 公式防横向溢出保护（320-360px 窄屏保护） */
 .katex-display {

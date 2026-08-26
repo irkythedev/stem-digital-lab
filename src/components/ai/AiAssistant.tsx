@@ -15,8 +15,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { BookOpen, ChevronDown, Coins, Eye, EyeOff, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
+import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
@@ -73,6 +75,35 @@ function quickAsk(pathname: string, lang: 'zh' | 'en'): { q: string; label: stri
   return null;
 }
 
+/** 兜底提取：从回答中提取疑似问句（不依赖「可以继续了解」marker），供追问推荐 */
+function extractQuestionLines(text: string): string[] {
+  const lines = text
+    .split('\n')
+    .map((l) => l.replace(/^\s*[-•*·\d.、)）]+\s*/, '').trim())
+    .filter((l) => l.length >= 4 && l.length <= 60)
+    .filter(
+      (l) =>
+        /[？?]\s*$/.test(l) || // 以问号结尾
+        /^(什么是|为什么|如何|怎样|怎么|请|能否|能不能|是不是|有没有|会不|which|what|why|how|can|is|are|do|does|would|could)/i.test(l),
+    );
+  return [...new Set(lines)].slice(0, 6);
+}
+
+/** 最后防线：按当前主题生成本地追问模板（任何模型都保证追问不断供） */
+function fallbackRecTemplates(topic: string | undefined, lang: 'zh' | 'en'): string[] {
+  const t = topic?.trim();
+  if (lang === 'zh') {
+    const base = t ? `「${t}」` : '这个知识点';
+    return [`${base}的常见考点有哪些？`, `${base}容易在哪里出错？`, `${base}在生活中有哪些应用？`];
+  }
+  const base = t ?? 'this topic';
+  return [
+    `What are the key points about ${base}?`,
+    `What mistakes are common with ${base}?`,
+    `How is ${base} used in daily life?`,
+  ];
+}
+
 /** 从回答文本解析「推荐追问」：正文 + 推荐问题列表 */
 function parseRecQuestions(text: string): { body: string; recs: string[] } {
   // 1. 精确 marker（中英）——字符串匹配优先
@@ -98,7 +129,10 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
       markerLen = v.length;
     }
   }
-  if (idx === -1) return { body: text, recs: [] };
+  if (idx === -1) {
+    // 第 2 级兜底：模型没按格式输出 marker，但回答里可能带问句 → 提取作追问（不依赖模型遵守格式）
+    return { body: text, recs: extractQuestionLines(text) };
+  }
   const recs = text
     .slice(idx + markerLen)
     .split('\n')
@@ -127,7 +161,7 @@ export default function AiAssistant() {
           if (speakState === 'playing') pause();
           else if (speakState === 'paused') resume();
           else if (speakState === 'synthesizing') stopSpeak();
-          else speak(text);
+          else speak(text, getTtsVoice(lang));
         }}
         title={
           speakState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
@@ -216,6 +250,17 @@ export default function AiAssistant() {
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // AI 思考等待秒数（仅用于「等待太久」的视觉变色提示，不显示数字；阈值与朗读一致 4s）
+  const [aiElapsed, setAiElapsed] = useState(0);
+  useEffect(() => {
+    if (!busy) {
+      setAiElapsed(0);
+      return;
+    }
+    const t = setInterval(() => setAiElapsed((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
+  const aiWaitingLong = aiElapsed > 4;
   // 用量统计（估算）：会话累计 token 数 + 最近一轮输出速度（对话完成时更新，视觉低调）
   const [usage, setUsage] = useState<{ tokens: number; speed: number } | null>(null);
   // 同页内多轮问答历史（内存态，上限 20 条；关闭面板/切换页面时清空——对齐"关页即清"承诺）
@@ -572,7 +617,13 @@ export default function AiAssistant() {
       );
       const { body, recs: parsedRecs } = parseRecQuestions(full);
       setAnswer(body);
-      setRecs(parsedRecs);
+      // 追问推荐三级兜底：①新解析优先 ②保留上一轮有效追问 ③本地主题模板（保证任何模型都不断供）
+      const topic = aiCtx.topic ?? pageSubject(location.pathname, lang);
+      setRecs((prev) => {
+        if (parsedRecs.length > 0) return parsedRecs;
+        if (prev.length > 0) return prev;
+        return fallbackRecTemplates(topic, lang);
+      });
       // 历史与追问上下文只存干净的 body（剥离「可以继续了解」追问段，避免回答内重复显示）
       lastExchange.current = { user: q, assistant: body };
       // 入历史（上限 HISTORY_MAX，超出丢最旧）
@@ -658,19 +709,34 @@ export default function AiAssistant() {
       : null;
 
   return (
-    <div
-      ref={panelRef}
-      className={`fixed z-50 w-[calc(100vw-2rem)] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden${isMobile ? ' max-h-[calc(100dvh-4.5rem)]' : ''}`}
-      style={{
-        // 移动端：两侧各留 16px（内宽 innerWidth-32）；桌面：保留用户拖拽宽度
-        width: Math.min(width, typeof window !== 'undefined' ? (isMobile ? window.innerWidth - 32 : window.innerWidth - 16) : width),
-        // 固定高度仅用于对话视图（chat）；terms/设置视图内容自适应，避免保存的小高度裁掉条款
-        ...(height > 0 && !isMobile && view === 'chat' ? { height } : {}),
-        ...(safePos ? { left: safePos.x, top: safePos.y } : isMobile ? { top: '3.5rem', left: '1rem', right: '1rem' } : { top: '3.5rem', right: '1rem' }),
-      }}
-      role="dialog"
-      aria-label="AI assistant"
-    >
+    <>
+      {/* 移动端遮罩层：点击空白处安全关闭，同时给软键盘弹出提供稳定视口边界 */}
+      {isMobile && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
+          onClick={() => { resetConversation(); setOpen(false); setPending(null); }}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        ref={panelRef}
+        className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
+          isMobile
+            ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
+            : 'w-[calc(100vw-2rem)]'
+        }`}
+        style={{
+          ...(!isMobile
+            ? {
+                width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
+                ...(height > 0 && view === 'chat' ? { height } : {}),
+                ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
+              }
+            : {}),
+        }}
+        role="dialog"
+        aria-label="AI assistant"
+      >
       {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
       <div
         className={`absolute right-0 top-0 bottom-3 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
@@ -698,7 +764,7 @@ export default function AiAssistant() {
       )}
       {/* 头部 */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none"
+        className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0"
         onPointerDown={onTitlePointerDown}
         onPointerMove={onTitlePointerMove}
         onPointerUp={onTitlePointerUp}
@@ -729,9 +795,9 @@ export default function AiAssistant() {
 
       {view === 'terms' ? (
         /* ── 第一步：使用须知（先同意才能进入设置） ── */
-        <div className="flex flex-col max-h-[60dvh]">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
           {/* 条款区：内容超高时独立滚动 */}
-          <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-3">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-3">
           <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
             {lang === 'zh' ? '使用须知' : 'Terms'}
           </p>
@@ -839,7 +905,7 @@ export default function AiAssistant() {
         </div>
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
-        <div className="p-4 space-y-3 text-sm serif-font overflow-y-auto max-h-[60dvh]">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3 text-sm serif-font">
           <div className="flex items-center justify-between">
             <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
               {lang === 'zh' ? 'AI 设置' : 'Settings'}
@@ -995,7 +1061,7 @@ export default function AiAssistant() {
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
-          <div ref={answerRef} className="flex-1 overflow-y-auto max-h-[42dvh] min-h-[150px] p-3 space-y-2.5 text-sm serif-font">
+          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-[60dvh] sm:max-h-[42dvh] p-3 space-y-2.5 text-sm serif-font">
             {history.length > 0 || answer || pending || busy ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
@@ -1015,8 +1081,25 @@ export default function AiAssistant() {
                   <>
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
                     <div className="text-left">
-                      <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
-                        {answer ? <AnswerRich text={answer} /> : (lang === 'zh' ? '思考中…' : 'Thinking…')}
+                      {/* 思考中：不显示方形边框（shaping 20px 精巧内联），明暗主题由库 auto 检测；等待>4s 变琥珀提示 */}
+                      <div className={`inline-block max-w-[95%] px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
+                        {answer ? (
+                          <div style={{ animation: 'answer-fade-in 0.2s ease' }}>
+                            <AnswerRich text={answer} />
+                          </div>
+                        ) : (
+                          <div className="flex justify-center" aria-label={lang === 'zh' ? '思考中' : 'Thinking'}>
+                            <ThinkingOrb
+                              state="shaping"
+                              size={20}
+                              theme="auto"
+                              style={{
+                                transition: 'filter 0.6s ease',
+                                ...(aiWaitingLong ? { filter: 'sepia(1) hue-rotate(-15deg) saturate(2.5)' } : {}),
+                              }}
+                            />
+                          </div>
+                        )}
                         {/* 朗读按钮：流式完成前不显示（busy 中）；完成后由历史区提供 */}
                         {answer && !busy && renderSpeakControls(answer)}
                       </div>
@@ -1102,20 +1185,27 @@ export default function AiAssistant() {
               </div>
             )}
           </div>
-          <div className="border-t border-[var(--border)] px-3 py-1.5">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
+          <div className="border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2 shrink-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
+                <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
                 {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答暂不支持保存' : 'AI output is for reference — trust the textbook · Answers cannot be saved yet'}
               </p>
-              {/* 当前模型名 + 用量统计（消耗起即显示，流式中 token 滚动增长） */}
-              <p className="shrink-0 text-[0.5625rem] mono-font text-[var(--fg)]/80 tabular-nums whitespace-nowrap">
-                {config?.model && <span className="mr-2">{config.model}</span>}
-                {usage && <span>≈{usage.tokens.toLocaleString()} tokens{busy ? (lang === 'zh' ? ' · 生成中…' : ' · Generating…') : ` · ${usage.speed} t/s`}</span>}
+              {/* 当前模型名（电压表蓝区分，加粗）+ 用量统计（数值加大，流式中 token 滚动增长） */}
+              <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">
+                {config?.model && <span className="text-[0.625rem] text-[#1565c0] font-semibold">{config.model}</span>}
+                {usage && (
+                  <span className="flex items-center gap-1 text-[var(--fg)]">
+                    <span className="text-[0.6875rem]">≈{usage.tokens.toLocaleString()} tokens</span>
+                    <span className="text-[0.6875rem] text-[var(--muted)]">{busy ? (lang === 'zh' ? '· 生成中…' : '· Generating…') : `· ${usage.speed} t/s`}</span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
         </>
       )}
     </div>
+    </>
   );
 }

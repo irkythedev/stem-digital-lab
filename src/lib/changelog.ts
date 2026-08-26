@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.8';
+export const APP_VERSION = '1.21.9';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,21 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.9',
+    date: '2026-08',
+    zh: [
+      '[新增] AI 回答加载动画升级，等待过久自动变色提示',
+      '[优化] 朗读自动匹配界面语言，切换更顺手',
+      '[修复] 优化 AI 追问建议，提问更稳定',
+    ],
+    en: [
+      '[New] Upgraded AI loading animation with a color hint when waiting too long',
+      '[Improved] Reading aloud now follows the interface language',
+      '[Fixed] Made AI follow-up suggestions more reliable',
+    ],
+  },
+
   {
     version: '1.21.8',
     date: '2026-08',

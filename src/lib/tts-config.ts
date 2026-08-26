@@ -22,3 +22,8 @@ export function getTtsUrl(): string {
   }
   return TTS_CONFIG.PRODUCTION_URL;
 }
+
+/** 按界面语言选择朗读语音：中文用晓晓，英文用美音 Aria（朗读 AI 回答时贴合内容语言） */
+export function getTtsVoice(lang: 'zh' | 'en'): string {
+  return lang === 'en' ? 'en-US-AriaNeural' : TTS_CONFIG.DEFAULT_VOICE;
+}

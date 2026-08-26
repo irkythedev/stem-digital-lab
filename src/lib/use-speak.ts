@@ -68,6 +68,8 @@ export function useSpeak() {
   const idxRef = useRef(0);
   /** 当前段播完后的回调（接下一段或结束） */
   const onNaturalEndRef = useRef<(() => void) | null>(null);
+  /** 当前朗读语音（speak 时设置；分段串行播放时贯通使用，避免每段都走默认中文） */
+  const voiceRef = useRef<string>(TTS_CONFIG.DEFAULT_VOICE);
 
   const unlockAudio = useCallback(() => {
     try {
@@ -176,7 +178,7 @@ export function useSpeak() {
         const doFetch = async (attempt: number): Promise<Response> => {
           try {
             const resp = await fetch(
-              `${url}?text=${encodeURIComponent(seg)}&voice=${encodeURIComponent(TTS_CONFIG.DEFAULT_VOICE)}`,
+              `${url}?text=${encodeURIComponent(seg)}&voice=${encodeURIComponent(voiceRef.current)}`,
             );
             if (attempt < 1 && !resp.ok) {
               await new Promise((r) => setTimeout(r, 600));
@@ -244,6 +246,7 @@ export function useSpeak() {
     async (rawText: string, voice?: string) => {
       unlockAudio();
       stop();
+      voiceRef.current = voice ?? TTS_CONFIG.DEFAULT_VOICE;
 
       const text = cleanTextForTTS(rawText);
       if (!text) return;
