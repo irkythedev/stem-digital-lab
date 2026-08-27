@@ -455,6 +455,10 @@ export default function PeriodicTable() {
       <div className="mt-5 mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+          <AskAiButton
+            question={lang === 'zh' ? '请介绍元素周期表的使用方法：如何检索元素、查看详情、听读音，以及中考跟读功能怎么用？' : 'Explain how to use the periodic table: how to search elements, view details, hear pronunciation, and use the exam recite mode.'}
+            className="ml-3"
+          />
           <ShareInline
             title={lang === 'zh' ? '元素周期表 · 数理化数字实验室' : 'Periodic Table · STEM Digital Lab'}
             text={

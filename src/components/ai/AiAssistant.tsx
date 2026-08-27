@@ -779,7 +779,8 @@ export default function AiAssistant() {
         onPointerUp={onTitlePointerUp}
       >
         <h2 className="text-xs font-bold tracking-widest mono-font uppercase truncate max-w-[80%] inline-flex items-center gap-1.5">
-          <span className="truncate">// {view === 'settings'
+          <Sparkles className="w-3 h-3 shrink-0 text-[var(--fg)]" aria-hidden="true" />
+          <span className="truncate">{view === 'settings'
             ? (lang === 'zh' ? 'AI 设置' : 'Settings')
             : view === 'terms'
               ? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')
@@ -787,7 +788,6 @@ export default function AiAssistant() {
                 ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
                 : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
           </span>
-          <Sparkles className="w-3 h-3 shrink-0 text-[var(--fg)]" aria-hidden="true" />
         </h2>
         <div className="flex items-center gap-2">
           {config && (
