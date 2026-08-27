@@ -2,13 +2,22 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.21.10-blue)
+![version](https://img.shields.io/badge/版本-v1.21.12-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6)
 
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
 本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
 
-<img src="public/qr-stem.png" width="110" alt="扫码访问" title="手机扫码访问" />
+<p style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap;align-items:flex-start;margin:10px 0 0;">
+  <span style="text-align:center;">
+    <img src="public/qr-stem.png" width="120" alt="扫码访问" title="手机扫码访问" /><br/>
+    <small>在线访问 / Visit</small>
+  </span>
+  <span style="text-align:center;">
+    <img src="public/qr-intro-video.png" width="120" alt="扫码观看介绍视频" title="手机扫码观看项目介绍视频" /><br/>
+    <small>介绍视频 / Intro video</small>
+  </span>
+</p>
 
 </div>
 
