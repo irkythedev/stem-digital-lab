@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.11';
+export const APP_VERSION = '1.21.12';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,17 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.12',
+    date: '2026-08',
+    zh: [
+      '[样式] 优化部分实验标题图标，图形更规范统一',
+    ],
+    en: [
+      '[UI] Refined the icons of some experiment titles for a cleaner, more consistent look',
+    ],
+  },
+
   {
     version: '1.21.11',
     date: '2026-08',

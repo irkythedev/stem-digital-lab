@@ -28,7 +28,7 @@ export function ParabolaIcon({ className = '' }: LabIconProps) {
   );
 }
 
-/** 双曲线 y = k/x（反比例函数，两支关于原点对称） */
+/** 双曲线 y = k/x（反比例函数，一、三象限对角两支，关于原点中心对称） */
 export function HyperbolaIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -41,8 +41,10 @@ export function HyperbolaIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M20 4 C 13 10, 13 14, 20 20" />
-      <path d="M4 4 C 11 10, 11 14, 4 20" />
+      {/* 第一象限支（按 y=k/x, k=9 计算：从贴 y 轴高处弯到贴 x 轴右侧） */}
+      <path d="M12.8,1.4 13.1,3.6 13.3,5.0 13.5,6.0 13.7,6.8 13.9,7.3 14.2,7.8 14.4,8.2 14.6,8.5 14.8,8.8 15.0,9.0 15.2,9.2 15.5,9.4 15.7,9.5 15.9,9.7 16.1,9.8 16.3,9.9 16.5,10.0 16.8,10.1 17.0,10.2 17.2,10.3 17.4,10.3 17.6,10.4 17.8,10.5 18.1,10.5 18.3,10.6 18.5,10.6 18.7,10.7 18.9,10.7 19.1,10.7 19.4,10.8 19.6,10.8 19.8,10.8 20.0,10.9 20.2,10.9 20.4,10.9 20.7,11.0 20.9,11.0 21.1,11.0 21.3,11.0 21.5,11.1 21.7,11.1 22.0,11.1 22.2,11.1 22.4,11.1" />
+      {/* 第三象限支（关于原点中心对称，对角分布） */}
+      <path d="M11.2,22.6 10.9,20.4 10.7,19.0 10.5,18.0 10.3,17.2 10.1,16.7 9.8,16.2 9.6,15.8 9.4,15.5 9.2,15.2 9.0,15.0 8.8,14.8 8.5,14.6 8.3,14.5 8.1,14.3 7.9,14.2 7.7,14.1 7.5,14.0 7.2,13.9 7.0,13.8 6.8,13.7 6.6,13.7 6.4,13.6 6.2,13.5 5.9,13.5 5.7,13.4 5.5,13.4 5.3,13.3 5.1,13.3 4.9,13.3 4.6,13.2 4.4,13.2 4.2,13.2 4.0,13.1 3.8,13.1 3.6,13.1 3.3,13.0 3.1,13.0 2.9,13.0 2.7,13.0 2.5,12.9 2.3,12.9 2.0,12.9 1.8,12.9 1.6,12.9" />
     </svg>
   );
 }
@@ -85,8 +87,12 @@ export function NeutralizationIcon({ className = '' }: LabIconProps) {
       <path d="M9 3 V10 L5 19 Q5 21 7 21 H17 Q19 21 19 19 L15 10 V3" />
       {/* 液面 */}
       <path d="M9.6 11 H14.4 L17 19 Q17 20 16 20 H8 Q7 20 7 19 Z" fill="currentColor" opacity="0.25" />
-      {/* 下落中的小水滴（呼应滴定） */}
-      <circle cx="12" cy="2.2" r="0.9" fill="currentColor" opacity="0.85" />
+      {/* 胶头滴管（胶帽 + 管身 + 尖嘴）插在瓶口 */}
+      <circle cx="12" cy="1.5" rx="1.5" ry="1.1" fill="currentColor" opacity="0.4" />
+      <line x1="12" y1="2.5" x2="12" y2="9" />
+      <path d="M11.6 9 L12.4 9 L12 10.4" />
+      {/* 正滴下的液滴 */}
+      <circle cx="12" cy="11.2" r="0.9" fill="currentColor" opacity="0.85" />
     </svg>
   );
 }
@@ -123,15 +129,21 @@ export function CircuitsIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <path d="M3 6 H7" />
-      <path d="M17 6 H21" />
-      <rect x="7" y="4" width="10" height="4" />
-      <path d="M7 12 H10" />
-      <path d="M14 12 H17" />
-      <rect x="10" y="10" width="4" height="4" />
-      <path d="M3 18 H7" />
-      <path d="M17 18 H21" />
-      <rect x="7" y="16" width="10" height="4" />
+      {/* 电源：正极长线 + 负极短线（竖式 · 左长右短） */}
+      <line x1="2" y1="8.4" x2="6" y2="8.4" />
+      <line x1="3" y1="15.6" x2="5" y2="15.6" />
+      {/* 上支路：电源正极 → 上灯 */}
+      <line x1="6" y1="8.4" x2="9.2" y2="8.4" />
+      <circle cx="12" cy="8.4" r="2.8" />
+      <path d="M10 6.4 L14 10.4 M14 6.4 L10 10.4" />
+      <line x1="14.8" y1="8.4" x2="17" y2="8.4" />
+      {/* 下支路：电源负极 → 下灯 */}
+      <line x1="6" y1="15.6" x2="9.2" y2="15.6" />
+      <circle cx="12" cy="15.6" r="2.8" />
+      <path d="M10 13.6 L14 17.6 M14 13.6 L10 17.6" />
+      <line x1="14.8" y1="15.6" x2="17" y2="15.6" />
+      {/* 两路汇合点（并联闭合） */}
+      <line x1="17" y1="8.4" x2="17" y2="15.6" />
     </svg>
   );
 }
@@ -175,7 +187,7 @@ export function CircleIcon({ className = '' }: LabIconProps) {
   );
 }
 
-/** 质量守恒：天平（支点三角 + 横梁 + 弧形托盘） */
+/** 质量守恒：托盘天平（底座 + 中央立柱 + 顶端指针刻度 + 两侧吊挂托盘） */
 export function MassIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -188,17 +200,21 @@ export function MassIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 横梁 */}
-      <line x1="4" y1="9" x2="20" y2="9" />
-      {/* 悬挂线 + 弧形托盘（微微上开口的浅槽） */}
-      <line x1="6" y1="9" x2="6" y2="13" />
-      <path d="M3.5 13 Q6 15.5 8.5 13" />
-      <line x1="18" y1="9" x2="18" y2="13" />
-      <path d="M15.5 13 Q18 15.5 20.5 13" />
-      {/* 支点：三角底座 */}
-      <path d="M12 9 L10.5 13 L13.5 13 Z" />
-      {/* 底座横线 */}
-      <line x1="10" y1="13" x2="14" y2="13" />
+      {/* 底座 + 中央立柱 */}
+      <rect x="4" y="20" width="16" height="2" rx="1" />
+      <line x1="12" y1="20" x2="12" y2="10" />
+      {/* 横梁（左右两段，中间留指针位） */}
+      <line x1="5" y1="9.5" x2="11" y2="9.5" />
+      <line x1="13" y1="9.5" x2="19" y2="9.5" />
+      {/* 中心轴点 */}
+      <circle cx="12" cy="9.5" r="0.9" fill="currentColor" />
+      {/* 顶端指针（干净竖线，避免小尺寸糊） */}
+      <line x1="12" y1="9.5" x2="12" y2="4" />
+      {/* 左右吊线 + 弧形托盘（微微上开口的浅槽） */}
+      <line x1="5" y1="9.5" x2="5" y2="13.5" />
+      <path d="M2.5 13.5 Q5 16 7.5 13.5" />
+      <line x1="19" y1="9.5" x2="19" y2="13.5" />
+      <path d="M16.5 13.5 Q19 16 21.5 13.5" />
     </svg>
   );
 }
@@ -211,7 +227,7 @@ export function GrabIcon({ className = '' }: LabIconProps) {
       className={className}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.4"
+      strokeWidth="1.2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -251,7 +267,7 @@ export function BuoyancyIcon({ className = '' }: LabIconProps) {
   );
 }
 
-/** 杠杆：水平平衡杆 + 中点三角支点 + 两端砝码用线悬挂在下方（探究杠杆平衡条件装置） */
+/** 杠杆：阿基米德撬动地球——支点 + 杠杆，长臂端向下施力，短臂托起地球 */
 export function LeverIcon({ className = '' }: LabIconProps) {
   return (
     <svg
@@ -264,18 +280,17 @@ export function LeverIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 杠杆臂（带刻度的窄板） */}
-      <rect x="3" y="7" width="18" height="2" rx="1" />
-      <line x1="6" y1="7" x2="6" y2="8" />
-      <line x1="18" y1="7" x2="18" y2="8" />
-      {/* 支点：三角顶住杆中点 */}
-      <polygon points="12,9 10,13.5 14,13.5" />
-      {/* 左吊线 + 砝码（悬挂在杆下方） */}
-      <line x1="6" y1="9" x2="6" y2="12" />
-      <rect x="4.5" y="12" width="3" height="3.5" />
-      {/* 右吊线 + 砝码（悬挂在杆下方，对称平衡） */}
-      <line x1="18" y1="9" x2="18" y2="12" />
-      <rect x="16.5" y="12" width="3" height="3.5" />
+      {/* 杠杆：从长臂(低)斜向上到短臂(高)，顶住地球 */}
+      <path d="M3.5 13.2 L16.8 8.8" />
+      {/* 施力箭头 F（长臂端向下压） */}
+      <path d="M3.5 13.2 V17 M2.3 15.2 L3.5 17 L4.7 15.2" />
+      {/* 支点（三角，尖端顶住杆下方） */}
+      <path d="M11.5 10.6 L10.3 14.3 L12.7 14.3 Z" />
+      {/* 地球（短臂端托起）+ 地轴 */}
+      <circle cx="18" cy="5.6" r="3.2" />
+      <line x1="18" y1="2.4" x2="18" y2="8.8" />
+      {/* 地面 */}
+      <line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   );
 }
@@ -319,17 +334,18 @@ export function PulleyIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* 支架横梁 + 竖杆 */}
+      {/* 支架横梁 + 竖杆（横梁 → 轮轴） */}
       <line x1="5" y1="3" x2="19" y2="3" />
-      <line x1="12" y1="3" x2="12" y2="6" />
+      <line x1="12" y1="3" x2="12" y2="10" />
       {/* 定滑轮（轮 + 轴） */}
-      <circle cx="12" cy="9.5" r="3" />
-      <circle cx="12" cy="9.5" r="0.8" />
-      {/* 绳：从轮上绕过，两端下垂（示意绕绳） */}
-      <path d="M9.3 8 q0 3 2.7 3 q2.7 0 2.7 -3" />
-      {/* 重物挂在绳的一端 */}
-      <line x1="12" y1="12.5" x2="12" y2="17" />
-      <rect x="10" y="17" width="4" height="3" />
+      <circle cx="12" cy="10" r="3" />
+      <circle cx="12" cy="10" r="0.8" />
+      {/* 绳：贴着轮外缘轮槽（左垂 → 顶弧 → 右垂） */}
+      <path d="M9 9.2 V17" />
+      <path d="M15 9.2 V17" />
+      <path d="M9 9.2 Q9 6.8 12 6.8 Q15 6.8 15 9.2" />
+      {/* 重物挂在绳的左侧一端 */}
+      <rect x="7" y="17" width="4" height="3" />
     </svg>
   );
 }
@@ -347,6 +363,12 @@ export function ElectrolysisIcon({ className = '' }: LabIconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
+      {/* 顶部电源（竖式电池：正极长线 + 负极短线） */}
+      <line x1="6" y1="2" x2="9.8" y2="2" />
+      <line x1="11.6" y1="2" x2="15.2" y2="2" />
+      {/* L 型导线（电源两端 → 两电极顶端，导线不浸入液体） */}
+      <path d="M7.9 2 V6 H10" />
+      <path d="M14.4 2 V6 H18" />
       {/* 外部水槽（U 型杯，盛水容器） */}
       <path d="M3 7 V18 Q3 20 5 20 H19 Q21 20 21 18 V7" />
       {/* 两根等高试管（倒扣浸入水槽） */}
