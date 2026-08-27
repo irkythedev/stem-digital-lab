@@ -8,16 +8,10 @@
 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。
 本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：https://stem.irky.dev
 
-<p style="display:flex;justify-content:center;gap:28px;flex-wrap:wrap;align-items:flex-start;margin:10px 0 0;">
-  <span style="text-align:center;">
-    <img src="public/qr-stem.png" width="120" alt="扫码访问" title="手机扫码访问" /><br/>
-    <small>在线访问 / Visit</small>
-  </span>
-  <span style="text-align:center;">
-    <img src="public/qr-intro-video.png" width="120" alt="扫码观看介绍视频" title="手机扫码观看项目介绍视频" /><br/>
-    <small>介绍视频 / Intro video</small>
-  </span>
-</p>
+| 在线访问 &nbsp;·&nbsp; Visit | 介绍视频 &nbsp;·&nbsp; Intro video |
+| :--: | :--: |
+| <img src="public/qr-stem.png" width="120" alt="扫码访问" title="手机扫码访问" /> | <img src="public/qr-intro-video.png" width="120" alt="扫码观看介绍视频" title="手机扫码观看项目介绍视频" /> |
+| 手机扫码访问 | 手机扫码观看介绍视频 |
 
 </div>
 
