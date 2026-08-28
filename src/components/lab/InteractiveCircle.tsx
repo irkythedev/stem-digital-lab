@@ -23,7 +23,7 @@ const CX = 250;
 const CY = 200;
 const R = 160;
 const VIEWBOX = '0 0 500 440';
-const HIT_R = 18; // 拖拽点透明命中半径（触屏友好；视觉小圆 r=5 另绘）
+const HIT_R = 26; // 拖拽点透明命中半径（触屏友好；视觉小圆 r=5 另绘）
 
 /* ── 动画常量 ── */
 const DRAW_MS = 600; // 直线描边生长时长
@@ -327,7 +327,7 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepBack}
             disabled={step <= 0}
-            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-all touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.back}
           </button>
@@ -335,21 +335,21 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepNext}
             disabled={step >= MAX}
-            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:pointer-events-none transition-all touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.next}
           </button>
           <button
             type="button"
             onClick={togglePlay}
-            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all touch-manipulation active:scale-95 rounded-sm"
           >
             {playing ? ctl.pause : ctl.play}
           </button>
           <button
             type="button"
             onClick={replay}
-            className="px-2 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.replay}
           </button>

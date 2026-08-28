@@ -40,8 +40,8 @@ const copy = {
     predictYes: 'E 平分弦 AB（AE = EB）',
     predictNo: 'E 不平分弦 AB',
     predictUnsure: '不确定',
-    predictDone: '已记录你的预测',
-    predictHint: '猜完，就可以进入探索阶段拖拽验证',
+    predictDone: '已记录你的预测，点「进入探索」去拖拽验证吧',
+    predictHint: '选择一个答案作为你的预测，然后就能进入探索阶段拖拽验证',
     revealLabel: '进入探索 →',
     // 幕2 探索
     exploreTitle: '探索',
@@ -151,8 +151,8 @@ const copy = {
     predictYes: 'E bisects AB (AE = EB)',
     predictNo: 'E does not bisect AB',
     predictUnsure: 'Not sure',
-    predictDone: 'Your prediction is recorded',
-    predictHint: 'Make your guess, then enter Explore to verify by dragging',
+    predictDone: 'Prediction recorded. Tap "Enter Explore" to verify by dragging',
+    predictHint: 'Pick an answer as your prediction, then enter Explore to verify by dragging',
     revealLabel: 'Enter Explore →',
     exploreTitle: 'Explore',
     exploreEmpty: 'No observations yet. Switch task cards and drag points on the circle, then note what you see.',
@@ -380,7 +380,7 @@ export default function Circle() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs 2xl:text-sm mono-font tracking-wider">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label =
             s === 'predict'
@@ -399,12 +399,12 @@ export default function Circle() {
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${
+              className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${
                 stage === s
-                  ? 'border-[var(--fg)] text-[var(--fg)]'
+                  ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs'
                   : isDone
-                    ? 'border-[var(--border)] text-[var(--muted)]'
-                    : 'border-[var(--border)] text-[var(--muted)] opacity-50'
+                    ? 'border-[var(--border)] text-[var(--fg)]'
+                    : 'border-[var(--border)] text-[var(--muted)] opacity-60'
               }`}
             >
               {isDone && stage !== s ? `✓ ${label}` : label}
@@ -415,9 +415,9 @@ export default function Circle() {
           <button
             type="button"
             onClick={redoAll}
-            className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors"
+            className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95"
           >
-           {c.redoLabel}
+            {c.redoLabel}
           </button>
         </div>
       </div>
@@ -458,10 +458,10 @@ export default function Circle() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPredict(opt.value as PredictBisect)}
-                  className={`text-left text-sm px-3 py-2 border transition-colors ${
+                  className={`text-left text-sm px-3 py-2 border transition-all touch-manipulation active:scale-95 ${
                     predict === opt.value
-                      ? 'border-[var(--fg)] text-[var(--fg)]'
-                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                      ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--fg)] font-medium'
+                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
                   }`}
                 >
                   {opt.label}
