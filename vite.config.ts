@@ -150,7 +150,7 @@ export default defineConfig({
     seoAssets(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg'],
+      includeAssets: ['icon.svg', 'icon-dark.svg'],
       manifest: {
         name: '数理化数字实验室',
         short_name: '数理化实验',
