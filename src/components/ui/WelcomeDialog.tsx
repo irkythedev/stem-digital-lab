@@ -279,7 +279,10 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
         </div>
 
         {/* 底部：勾选 + 知道了（固定可见，不随内容滚动） */}
-        <div className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3">
+        <div
+          className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3"
+          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer select-none">
             <input
               type="checkbox"
@@ -293,7 +296,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             ref={gotItRef}
             type="button"
             onClick={close}
-            className="px-5 py-2 text-sm mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+            className="px-5 py-2 text-sm mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors min-h-[40px] touch-manipulation"
           >
             {t.welcomeGotIt}
           </button>

@@ -53,13 +53,13 @@ export default function ConclusionStage({
   const wrongObs = observations.filter((o) => !o.balanced);
 
   return (
-    <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+    <div className="border border-[var(--border)] p-4 space-y-4 rounded-sm">
+      <h3 className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
         // {labels.title}
       </h3>
-      <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>
+      <p className="text-sm 2xl:text-base serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>
 
-      <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={labels.question}>
+      <div className="grid gap-2.5 sm:grid-cols-3" role="radiogroup" aria-label={labels.question}>
         {options.map((opt) => {
           const isSel = conclusion === opt.value;
           return (
@@ -69,24 +69,27 @@ export default function ConclusionStage({
               role="radio"
               aria-checked={isSel}
               onClick={() => onConclude(opt.value)}
-              className={`text-left text-sm px-3 py-2 border transition-colors ${
-                isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+              className={`min-h-[44px] text-left text-sm 2xl:text-base px-3.5 py-2.5 border transition-all rounded-sm flex items-center justify-between touch-manipulation active:scale-[0.99] ${
+                isSel
+                  ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-medium shadow-xs'
+                  : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
               }`}
             >
-              {opt.label}
+              <span>{opt.label}</span>
+              {isSel && <span className="text-xs mono-font font-bold">●</span>}
             </button>
           );
         })}
       </div>
 
       {conclusion && (
-        <div className="border-l-2 border-[var(--fg)] pl-3 space-y-3">
+        <div className="border-l-2 border-[var(--fg)] pl-3.5 space-y-3 pt-1">
           {/* 对照：学生的猜想 */}
           <div>
-            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.predictionTitle}
             </p>
-            <p className="text-xs text-[var(--fg)] serif-font">
+            <p className="text-xs 2xl:text-sm text-[var(--fg)] serif-font mt-0.5">
               {prediction === 'eq' && labels.predictionEq}
               {prediction === 'gt' && labels.predictionGt}
               {prediction === 'lt' && labels.predictionLt}
@@ -97,20 +100,20 @@ export default function ConclusionStage({
 
           {/* 对照：学生的观察记录（证据） */}
           <div>
-            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.evidenceTitle}
             </p>
             {observations.length === 0 ? (
-              <p className="text-xs text-[var(--muted)] serif-font italic">{labels.evidenceNone}</p>
+              <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font italic mt-0.5">{labels.evidenceNone}</p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1 mt-0.5">
                 {rightObs.length > 0 && (
-                  <p className="text-xs text-[var(--fg)] serif-font">
+                  <p className="text-xs 2xl:text-sm text-[var(--fg)] serif-font">
                     ✓ {rightObs.length} {labels.evidenceRight}
                   </p>
                 )}
                 {wrongObs.length > 0 && (
-                  <p className="text-xs text-[var(--muted)] serif-font">
+                  <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font">
                     ✗ {wrongObs.length} {labels.evidenceWrong}
                   </p>
                 )}
@@ -120,10 +123,10 @@ export default function ConclusionStage({
 
           {/* 反馈 */}
           <div>
-            <p className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            <p className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               {labels.feedbackTitle}
             </p>
-            <p className="text-xs text-[var(--fg)] serif-font leading-relaxed">{labels.feedbackText}</p>
+            <p className="text-xs 2xl:text-sm text-[var(--fg)] serif-font leading-relaxed mt-0.5">{labels.feedbackText}</p>
           </div>
         </div>
       )}

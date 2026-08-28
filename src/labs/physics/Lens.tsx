@@ -392,7 +392,7 @@ export default function Lens() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs 2xl:text-sm mono-font tracking-wider">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label =
             s === 'predict'
@@ -411,12 +411,12 @@ export default function Lens() {
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${
+              className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${
                 stage === s
-                  ? 'border-[var(--fg)] text-[var(--fg)]'
+                  ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs'
                   : isDone
-                    ? 'border-[var(--border)] text-[var(--muted)]'
-                    : 'border-[var(--border)] text-[var(--muted)] opacity-50'
+                    ? 'border-[var(--border)] text-[var(--fg)]'
+                    : 'border-[var(--border)] text-[var(--muted)] opacity-60'
               }`}
             >
               {isDone && stage !== s ? `✓ ${label}` : label}
@@ -427,9 +427,9 @@ export default function Lens() {
           <button
             type="button"
             onClick={redoAll}
-            className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors"
+            className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95"
           >
-           {c.redoLabel}
+            {c.redoLabel}
           </button>
         </div>
       </div>

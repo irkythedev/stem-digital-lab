@@ -55,22 +55,32 @@
   </head>
   <body class="antialiased selection:bg-neutral-300 dark:selection:bg-neutral-700">
     <div id="root">
-      <!-- 静态内容快照（GEO 预渲染）：React 挂载后自动替换；对不执行 JS 的 AI 爬虫 / 搜索引擎可见 -->
-      <main style="max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem; color: #1f2937; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; line-height: 1.7;">
-        <h1 style="font-size: 1.6rem; margin: 0 0 0.4rem; color: #111827;">数理化数字实验室</h1>
-        <p style="margin: 0 0 1.5rem; color: #4b5563;">STEM Digital Lab —— 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台。无需登录、中英双语、免费在线使用。</p>
-        <h2 style="font-size: 1.15rem; margin: 1.6rem 0 0.6rem; color: #111827;">15 个交互实验</h2>
-        <ul style="margin: 0; padding-left: 1.2rem; color: #374151;">
-          <li>数学：一次函数 · 二次函数 · 反比例函数 · 圆的性质</li>
-          <li>物理：欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮</li>
-          <li>化学：质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性</li>
-        </ul>
-        <h2 style="font-size: 1.15rem; margin: 1.6rem 0 0.6rem; color: #111827;">4 个查表工具</h2>
-        <ul style="margin: 0; padding-left: 1.2rem; color: #374151;">
-          <li>元素周期表（118 元素 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查</li>
-        </ul>
-        <p style="margin: 1.8rem 0 0; font-size: 0.9rem; color: #6b7280;">页面加载中，若长时间未跳转请启用 JavaScript 或刷新重试。</p>
-      </main>
+      <!-- 静态内容快照（GEO 预渲染）：React 挂载后自动替换；对不执行 JS 的 AI 爬虫 / 搜索引擎可见。
+           注意：文字内容不可删减（收录依赖 textContent），仅可通过外层样式做骨架屏观感 -->
+      <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f7f7f5;">
+        <div style="width:100%; max-width:44rem; margin:0 auto; padding:2.5rem 1.25rem;">
+          <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.25rem;">
+            <span style="width:0.9rem; height:0.9rem; border:2px solid #10b981; border-top-color:transparent; border-radius:9999px; animation:stemlabSpin 0.9s linear infinite;"></span>
+            <span style="font-size:0.8rem; color:#6b7280;">正在加载实验室…</span>
+          </div>
+          <div style="background:#ffffff; border:1px solid #e7e5e4; border-radius:0.75rem; padding:2rem 1.75rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+            <h1 style="font-size:1.5rem; margin:0 0 0.4rem; color:#111827;">数理化数字实验室</h1>
+            <p style="margin:0 0 1.5rem; color:#4b5563;">STEM Digital Lab —— 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台。无需登录、中英双语、免费在线使用。</p>
+            <h2 style="font-size:1.15rem; margin:1.6rem 0 0.6rem; color:#111827;">15 个交互实验</h2>
+            <ul style="margin:0; padding-left:1.2rem; color:#374151;">
+              <li>数学：一次函数 · 二次函数 · 反比例函数 · 圆的性质</li>
+              <li>物理：欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮</li>
+              <li>化学：质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性</li>
+            </ul>
+            <h2 style="font-size:1.15rem; margin:1.6rem 0 0.6rem; color:#111827;">4 个查表工具</h2>
+            <ul style="margin:0; padding-left:1.2rem; color:#374151;">
+              <li>元素周期表（118 元素 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查</li>
+            </ul>
+            <p style="margin:1.8rem 0 0; font-size:0.9rem; color:#6b7280;">页面加载中，若长时间未跳转请启用 JavaScript 或刷新重试。</p>
+          </div>
+        </div>
+      </div>
+      <style>@keyframes stemlabSpin{to{transform:rotate(360deg)}}</style>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
