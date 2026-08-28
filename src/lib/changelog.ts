@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.13';
+export const APP_VERSION = '1.21.14';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,13 +18,17 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.21.13',
+    version: '1.21.14',
     date: '2026-08',
     zh: [
-      '[优化] 更新项目介绍视频',
+      '[修复] 家庭电路：断开总开关后电路清晰示断（灯泡熄灭、电流归零）',
+      '[修复] 电压表测点位置校正：不再遮挡用电器，读数更清晰',
+      '[优化] 并联电路三只电流表读数方向统一，画面更整齐',
     ],
     en: [
-      '[Improved] Updated the project intro video',
+      '[Fixed] Household circuit: opening the main switch now clearly breaks the circuit (lamps off, current zero)',
+      '[Fixed] Voltmeter probe point adjusted: no longer covers the appliances, readings clearer',
+      '[Improved] Three ammeters in the parallel circuit now read in the same direction for a tidier layout',
     ],
   },
 
