@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.14';
+export const APP_VERSION = '1.21.15';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,19 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.15',
+    date: '2026-08',
+    zh: [
+      '[优化] 圆的性质探究：构造动画的「下一步」按钮更突出，预测选项选中后高亮，操作引导更清晰',
+      '[优化] 更新使用说明页的项目介绍视频',
+    ],
+    en: [
+      '[Improved] Circle properties: the "Next" button in the construction animation is now highlighted, and selected prediction options are emphasized for clearer guidance',
+      '[Improved] Updated the intro video on the guide page',
+    ],
+  },
+
   {
     version: '1.21.14',
     date: '2026-08',
