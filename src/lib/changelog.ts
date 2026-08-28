@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.16';
+export const APP_VERSION = '1.21.17';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.21.17',
+    date: '2026-08',
+    zh: [
+      '[优化] 网站图标支持深浅双主题：深色模式自动切换为高对比实心图标，小尺寸更清晰',
+    ],
+    en: [
+      '[Improved] Theme-aware favicon: dark mode now uses a high-contrast solid icon for clearer rendering at small sizes',
+    ],
+  },
   {
     version: '1.21.16',
     date: '2026-08',
