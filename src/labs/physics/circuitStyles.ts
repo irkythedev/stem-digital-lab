@@ -475,7 +475,7 @@ function genParallel(config: StyleConfig): GeneratedTopology {
     );
     const e = config.elements[i];
     if (e.kind === 'bulb') {
-      const leadY = y - 34; // 引线横线在灯上方（留出清晰间距，避免仪表骑灯泡）
+      const leadY = Math.max(16, y - 34); // 引线横线在灯上方；下限 16 保证探针方块不越 viewBox 顶界（首支路 y=40 时 leadY=6 会裁切），且与灯体留清晰间距
       comps.push({
         id: `e${i}`,
         kind: 'bulb',

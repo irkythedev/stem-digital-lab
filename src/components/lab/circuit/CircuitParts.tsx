@@ -259,7 +259,9 @@ export function HouseholdCircuit({
   return (
     <g>
       {/* ── 双母线：火线 L（上）、零线 N（下） ── */}
-      <line x1={L} y1={L_Y} x2={290} y2={L_Y} stroke={LIVE} strokeWidth="1.4" />
+      {/* L 母线在总开关 S（x=120-145）处断开：闭合由刀片补齐，断开露出缺口 */}
+      <line x1={L} y1={L_Y} x2={120} y2={L_Y} stroke={LIVE} strokeWidth="1.4" />
+      <line x1={145} y1={L_Y} x2={290} y2={L_Y} stroke={LIVE} strokeWidth="1.4" />
       <line x1={L} y1={N_Y} x2={290} y2={N_Y} stroke={NEUTRAL} strokeWidth="1.4" />
       {/* 电源进线竖线（左侧） */}
       <line x1={L} y1={L_Y} x2={L} y2={N_Y} stroke="var(--fg)" strokeWidth="1.2" />
