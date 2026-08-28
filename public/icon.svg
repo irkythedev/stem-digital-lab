@@ -1,10 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 深色圆角方形底（现代 app 图标风格） -->
-  <rect width="512" height="512" rx="112" fill="#111210"/>
-  <!-- 三角（数学）上中：顶点靠上，底边在中上区，与下方形状拉开间距 -->
-  <path d="M256 96 L360 268 L152 268 Z" fill="none" stroke="#f7f7f5" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- 方框（化学）左下 -->
-  <rect x="112" y="332" width="120" height="120" rx="10" fill="none" stroke="#f7f7f5" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- 圆（物理）右下 -->
-  <circle cx="352" cy="392" r="60" fill="none" stroke="#f7f7f5" stroke-width="30"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#ffffff"/><path d="M256 84 L332 216 L180 216 Z" fill="none" stroke="#111210" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/><rect x="80" y="281" width="152" height="152" rx="16" fill="none" stroke="#111210" stroke-width="14" stroke-linejoin="round"/><circle cx="352" cy="357" r="76" fill="none" stroke="#111210" stroke-width="14"/></svg>

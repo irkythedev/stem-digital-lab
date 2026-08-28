@@ -32,8 +32,8 @@ export default function Formula({ tex, block = false, className = '' }: FormulaP
   }, [tex, block]);
 
   return block ? (
-    <div className={className} dangerouslySetInnerHTML={{ __html: html }} />
+    <div className={`overflow-x-auto max-w-full py-1 scrollbar-thin ${className}`} dangerouslySetInnerHTML={{ __html: html }} />
   ) : (
-    <span className={className} dangerouslySetInnerHTML={{ __html: html }} />
+    <span className={`inline-block max-w-full overflow-x-auto align-middle scrollbar-thin ${className}`} dangerouslySetInnerHTML={{ __html: html }} />
   );
 }

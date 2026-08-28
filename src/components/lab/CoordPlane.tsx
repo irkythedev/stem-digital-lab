@@ -55,7 +55,7 @@ interface CoordPlaneProps {
 
 const W = 520;
 const H = 380;
-const PAD = { top: 18, right: 18, bottom: 26, left: 30 };
+const PAD = { top: 20, right: 20, bottom: 28, left: 34 };
 /** 插值动画时长（ms） */
 const INTERP_MS = 350;
 
@@ -287,9 +287,9 @@ export default function CoordPlane({
           <text
             key={`tx${v}`}
             x={sx(v)}
-            y={H - PAD.bottom + 14}
+            y={H - PAD.bottom + 15}
             textAnchor="middle"
-            fontSize="9"
+            fontSize="11"
             fill="var(--muted)"
             fontFamily="var(--f-mono)"
           >
@@ -302,9 +302,9 @@ export default function CoordPlane({
           <text
             key={`ty${v}`}
             x={PAD.left - 6}
-            y={sy(v) + 3}
+            y={sy(v) + 4}
             textAnchor="end"
-            fontSize="9"
+            fontSize="11"
             fill="var(--muted)"
             fontFamily="var(--f-mono)"
           >
@@ -314,7 +314,7 @@ export default function CoordPlane({
       )}
 
       {/* 原点 */}
-      <text x={zeroX - 8} y={zeroY + 14} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
+      <text x={zeroX - 9} y={zeroY + 15} textAnchor="middle" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">
         0
       </text>
 
@@ -354,7 +354,7 @@ export default function CoordPlane({
                     stroke={m.vline.color ?? 'var(--accent)'} strokeWidth="1" strokeDasharray="5 4"
                   />
                   {m.vline.label != null && (
-                    <text x={sx(m.vline.x) + 4} y={PAD.top + 4} fontSize="10"
+                    <text x={sx(m.vline.x) + 4} y={PAD.top + 6} fontSize="11" fontWeight="500"
                       fill={m.vline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
                       {m.vline.label}
                     </text>
@@ -368,7 +368,7 @@ export default function CoordPlane({
                     stroke={m.hline.color ?? 'var(--accent)'} strokeWidth="1" strokeDasharray="5 4"
                   />
                   {m.hline.label != null && (
-                    <text x={PAD.left + 4} y={sy(m.hline.y) + 14} fontSize="10"
+                    <text x={PAD.left + 4} y={sy(m.hline.y) + 14} fontSize="11" fontWeight="500"
                       fill={m.hline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
                       {m.hline.label}
                     </text>
@@ -377,10 +377,10 @@ export default function CoordPlane({
               )}
               {m.dot != null && (
                 <>
-                  <circle cx={sx(m.dot.x)} cy={sy(m.dot.y)} r={3.5}
+                  <circle cx={sx(m.dot.x)} cy={sy(m.dot.y)} r={4}
                     fill={m.dot.color ?? 'var(--accent)'} stroke="var(--card-bg)" strokeWidth={1} />
                   {m.dot.label != null && (
-                    <text x={sx(m.dot.x) + 8} y={sy(m.dot.y) - 8} fontSize="11"
+                    <text x={sx(m.dot.x) + 8} y={sy(m.dot.y) - 8} fontSize="12" fontWeight="600"
                       fill={m.dot.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
                       {m.dot.label}
                     </text>
@@ -394,12 +394,12 @@ export default function CoordPlane({
 
       {/* 图例（半透明背景矩形避免与曲线/网格重叠） */}
       {curves.length > 0 && (
-        <g fontFamily="var(--f-mono)" fontSize="10">
+        <g fontFamily="var(--f-mono)" fontSize="11">
           <rect
             x={PAD.left + 2}
             y={PAD.top + 2}
-            width={120}
-            height={curves.length * 14 + 6}
+            width={125}
+            height={curves.length * 16 + 6}
             rx="2"
             fill="var(--card-bg)"
             opacity="0.85"
@@ -408,7 +408,7 @@ export default function CoordPlane({
             <text
               key={`lg${c.id}`}
               x={PAD.left + 6}
-              y={PAD.top + 12 + i * 14}
+              y={PAD.top + 14 + i * 16}
               fill={i === 0 ? 'var(--fg)' : 'var(--muted)'}
             >
               {i === 0 ? '— ' : '- - '}
@@ -422,10 +422,11 @@ export default function CoordPlane({
       {xLabel && (
         <text
           x={W - PAD.right}
-          y={H - 4}
+          y={H - 6}
           textAnchor="end"
-          fontSize="10"
-          fill="var(--muted)"
+          fontSize="12"
+          fontWeight="500"
+          fill="var(--fg)"
           fontFamily="var(--f-mono)"
         >
           {xLabel}
@@ -434,10 +435,11 @@ export default function CoordPlane({
       {yLabel && (
         <text
           x={6}
-          y={PAD.top + 2}
+          y={PAD.top}
           textAnchor="start"
-          fontSize="10"
-          fill="var(--muted)"
+          fontSize="12"
+          fontWeight="500"
+          fill="var(--fg)"
           fontFamily="var(--f-mono)"
         >
           {yLabel}

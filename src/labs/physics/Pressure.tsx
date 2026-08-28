@@ -220,20 +220,19 @@ export default function Pressure() {
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
-      <div className="flex items-center gap-3 text-[0.6875rem] mono-font tracking-widest">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs 2xl:text-sm mono-font tracking-wider">
         {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
           const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
           const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
           return (
             <button key={s} type="button" onClick={() => setStage(s)}
-              className={`px-3 py-1.5 border transition-colors ${stage === s ? 'border-[var(--fg)] text-[var(--fg)]' : isDone ? 'border-[var(--border)] text-[var(--muted)]' : 'border-[var(--border)] text-[var(--muted)] opacity-50'}`}>
+              className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${stage === s ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs' : isDone ? 'border-[var(--border)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] opacity-60'}`}>
               {isDone && stage !== s ? `✓ ${label}` : label}
             </button>
           );
         })}
         <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="px-3 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg
-)] transition-colors">{c.redoLabel}</button>
+          <button type="button" onClick={redoAll} className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95">{c.redoLabel}</button>
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}

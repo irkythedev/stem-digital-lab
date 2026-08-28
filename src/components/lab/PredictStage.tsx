@@ -31,13 +31,13 @@ export default function PredictStage({ prediction, onPredict, labels }: PredictS
   ];
 
   return (
-    <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+    <div className="border border-[var(--border)] p-4 space-y-4 rounded-sm">
+      <h3 className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
         // {labels.title}
       </h3>
-      <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>
+      <p className="text-sm 2xl:text-base serif-font leading-relaxed text-[var(--fg)]">{labels.question}</p>
 
-      <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={labels.question}>
+      <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label={labels.question}>
         {options.map((opt) => {
           const isSel = prediction === opt.value;
           return (
@@ -47,20 +47,23 @@ export default function PredictStage({ prediction, onPredict, labels }: PredictS
               role="radio"
               aria-checked={isSel}
               onClick={() => onPredict(opt.value)}
-              className={`text-left text-sm px-3 py-2 border transition-colors ${
-                isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+              className={`min-h-[44px] text-left text-sm 2xl:text-base px-3.5 py-2.5 border transition-all rounded-sm flex items-center justify-between touch-manipulation active:scale-[0.99] ${
+                isSel
+                  ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-medium shadow-xs'
+                  : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
               }`}
             >
-              {opt.label}
+              <span>{opt.label}</span>
+              {isSel && <span className="text-xs mono-font font-bold">●</span>}
             </button>
           );
         })}
       </div>
 
       {prediction ? (
-        <p className="text-xs mono-font text-[var(--fg)]">✓ {labels.done}</p>
+        <p className="text-xs 2xl:text-sm mono-font text-[var(--fg)] font-medium">✓ {labels.done}</p>
       ) : (
-        <p className="text-xs text-[var(--muted)] serif-font italic">{labels.hint}</p>
+        <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font italic">{labels.hint}</p>
       )}
     </div>
   );

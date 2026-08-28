@@ -64,8 +64,8 @@ interface MeterProbeProps {
   glyph?: string;
 }
 
-const SNAP_R = 26; // 导线吸附半径（垂足距离）
-const CROSS_R = 42; // 电压表跨接判定半径（到两端距离的最大值）
+const SNAP_R = 32; // 导线吸附半径（垂足距离，增大触屏与大屏命中宽容度）
+const CROSS_R = 50; // 电压表跨接判定半径（到两端距离的最大值）
 const BODY_ERR_R = 8; // 电流表距灯泡本体的短路拒绝余量
 
 /** 点到线段最近距离 + 垂足 */
