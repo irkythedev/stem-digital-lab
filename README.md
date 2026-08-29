@@ -36,9 +36,23 @@
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
-- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版与多轮问答历史，面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
+- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版、多轮问答历史与**回答朗读**（数学公式、化学式按规范读法读出），面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - 📦 可安装为应用离线使用（PWA）
 - 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
+
+### 运行架构
+
+本项目为**纯前端 SPA**（React 19 + react-router + Tailwind 4），**无自建后端与数据库**，发布为静态站点托管（EdgeOne Pages）。运行架构如下图所示：
+
+<div align="center">
+  <img src="public/architecture-diagram.jpg" alt="运行架构图" title="数理化数字实验室运行架构" width="100%" />
+</div>
+
+- **静态托管平台**：承接 Vite 构建产物并分发，托管 /s/.../html 路径
+- **AI 学习助手**（BYOK）：浏览器直连您自己的 AI 服务商（兼容 OpenAI 端点，流式 /chat/completions），Key 仅存本机、本站无记录
+- **TTS 朗读**：LaTeX 口语化格式化 → SCF 云函数代理 edge-tts 合成语音并回放
+- **反馈收集**：按钮触发 → 本地队列（localStorage）暂存 →（可选）异步上报，无自建后端、离线可存
+- **PWA / SEO**：Service Worker 注册离线更新；构建期生成 sitemap 供搜索引擎抓取
 
 ### 实验与工具清单
 
@@ -159,9 +173,23 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): renders math formulas and keeps multi-turn history on the page, panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- 🤖 AI assistant (header entry): renders math formulas, keeps multi-turn history on the page and **reads answers aloud** (formulas and chemical names in standard spoken form), panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - 📦 Installable as an app for offline use (PWA)
 - 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
+
+### Running Architecture
+
+This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **no self-hosted backend or database**, published as a static site (EdgeOne Pages). The runtime architecture is shown below:
+
+<div align="center">
+  <img src="public/architecture-diagram.jpg" alt="Running architecture" title="STEM Digital Lab running architecture" width="100%" />
+</div>
+
+- **Static host**: serves the Vite build and distributes /s/.../html paths
+- **AI assistant** (BYOK): the browser talks directly to your own AI provider (OpenAI-compatible endpoint, streaming /chat/completions); key stays on-device, nothing is logged
+- **TTS read-aloud**: LaTeX is formatted for speech → a SCF cloud function proxies edge-tts to synthesize and play back audio
+- **Feedback**: button click → local queue (localStorage) → (optional) async report; no self-hosted backend, works offline
+- **PWA / SEO**: Service Worker registers offline updates; sitemap generated at build time for search engines
 
 ### Labs & Tools
 
