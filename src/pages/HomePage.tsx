@@ -77,7 +77,7 @@ export default function HomePage() {
       {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
       <div className="mb-6 sm:mb-10 flex flex-col items-start max-w-2xl">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">
-          <h1 className="text-base font-bold tracking-widest uppercase mono-font text-[var(--fg)]">
+          <h1 className="text-base sm:text-2xl font-bold tracking-widest uppercase mono-font text-[var(--fg)]">
             {t.brandName}
           </h1>
           <button
@@ -90,7 +90,7 @@ export default function HomePage() {
             {t.randomExplore}
           </button>
         </div>
-        <p className="text-sm sm:text-lg text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
+        <p className="text-sm sm:text-base text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
         <p className="text-[0.6875rem] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
       </div>
 
