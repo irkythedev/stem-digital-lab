@@ -59,7 +59,7 @@ type PlayState = 'idle' | 'loading' | 'playing' | 'error';
 
 export default function TtsTestPage() {
   // 测试页固定用中文朗读，直接使用生产 TTS 端点（需有外网访问）
-  const TEST_TTS_URL = scfUrlWithToken(TTS_CONFIG.PRODUCTION_URL);
+  const TEST_TTS_URL = TTS_CONFIG.PRODUCTION_URL;
   const TEST_VOICE = 'zh-CN-XiaoxiaoNeural';
   const [playingIdx, setPlayingIdx] = useState<number | null>(null);
   const [playState, setPlayState] = useState<PlayState>('idle');
@@ -81,8 +81,10 @@ export default function TtsTestPage() {
     setPlayState('loading');
     setErrMsg('');
     try {
+      // 先拼完整 query（text/voice），再用 scfUrlWithToken 把 token 用 & 挂上
+      // （避免 TEST_TTS_URL 已带 ?token= 再拼 ?text= 产生双问号 → SCF 校验失败 403）
       const resp = await fetch(
-        `${TEST_TTS_URL}?text=${encodeURIComponent(spoken)}&voice=${encodeURIComponent(TEST_VOICE)}`,
+        scfUrlWithToken(`${TEST_TTS_URL}?text=${encodeURIComponent(spoken)}&voice=${encodeURIComponent(TEST_VOICE)}`),
       );
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const raw = await resp.arrayBuffer();
