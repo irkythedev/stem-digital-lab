@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.21.17';
+export const APP_VERSION = '1.22.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.0',
+    date: '2026-08',
+    zh: [
+      '[优化] AI 回答朗读更准确：数学公式、化学式按规范读法朗读，不再读成英文字符',
+      '[优化] 优化朗读体验：多字母变量逐个清晰发音，不再连读吞音',
+      '[优化] 反馈与朗读接口增加访问令牌校验，防止恶意调用',
+    ],
+    en: [
+      '[Improved] Read-aloud of AI answers is now more accurate: math formulas and chemical names are read correctly instead of as raw characters',
+      '[Improved] Reading clarity: multi-letter variables are pronounced letter by letter with no swallowed sounds',
+      '[Improved] Added access-token validation to feedback and TTS endpoints to prevent abuse',
+    ],
+  },
   {
     version: '1.21.17',
     date: '2026-08',

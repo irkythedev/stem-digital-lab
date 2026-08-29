@@ -7,6 +7,7 @@
  * 下次打开页面自动重试补传。教师手机（钉钉/微信）实时收到反馈。
  */
 import { isServerChanConfigured, isDingtalkProxyConfigured, SERVERCHAN_CONFIG, DINGTALK_PROXY } from './serverchan-config';
+import { scfUrlWithToken } from './scf-token';
 
 export type FeedbackType = 'experiment' | 'project';
 export type FeedbackRating = 'helpful' | 'neutral' | 'not-helpful';
@@ -136,7 +137,7 @@ export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean
 /** 钉钉通道：POST {title, content} 到 SCF 云函数，云函数转发钉钉群机器人 */
 async function submitViaDingtalk(record: FeedbackRecord): Promise<boolean> {
   try {
-    const res = await fetch(DINGTALK_PROXY.apiBase, {
+    const res = await fetch(scfUrlWithToken(DINGTALK_PROXY.apiBase), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

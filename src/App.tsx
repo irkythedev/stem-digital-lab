@@ -25,6 +25,7 @@ import PhysicalConstants from './pages/PhysicalConstants';
 import MathFormulas from './pages/MathFormulas';
 import PhysicsFormulas from './pages/PhysicsFormulas';
 import LicensePage from './pages/LicensePage';
+import TtsTestPage from './pages/TtsTestPage';
 
 /** 无障碍跳转链接：键盘用户 Tab 到第一个焦点即可跳过导航直达内容（仅聚焦时可见） */
 function SkipLink() {
@@ -84,6 +85,7 @@ export default function App() {
           <Route path="/math-formulas" element={<MathFormulas />} />
           <Route path="/physics-formulas" element={<PhysicsFormulas />} />
           <Route path="/license" element={<LicensePage />} />
+          <Route path="/tts-test" element={<TtsTestPage />} />
           <Route path="/lab/:labId" element={<LabPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

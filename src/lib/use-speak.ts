@@ -9,20 +9,54 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getTtsUrl, TTS_CONFIG } from './tts-config';
+import { latexToSpeech } from './latex-speech';
 
 export type SpeakState = 'idle' | 'synthesizing' | 'playing' | 'paused' | 'error';
 
-/** 朗读前清洗：去掉 KaTeX 公式、markdown 符号 */
-export function cleanTextForTTS(text: string): string {
-  return text
-    .replace(/\$\$[\s\S]*?\$\$/g, ' 公式省略。')
-    .replace(/\$[^$\n]*?\$/g, ' 公式省略。')
-    .replace(/```[\s\S]*?```/g, ' 代码省略。')
+/** 朗读前清洗：把 LaTeX 公式（\(...\) / \[...\] / $...$ / $$...$$）转成口语，去掉 markdown 符号 */
+export function cleanTextForTTS(text: string, lang: 'zh' | 'en' = 'zh'): string {
+  // 先保护代码块与行内代码，再处理公式，避免公式转口语时污染代码
+  const codeBlocks: string[] = [];
+  let protectedText = text.replace(/```[\s\S]*?```/g, (m) => {
+    codeBlocks.push(m);
+    return `\u0000CODE${codeBlocks.length - 1}\u0000`;
+  });
+
+  // LaTeX 公式（块级 $$..$$ / \[..\] 优先，再行内 $..$ / \(..\)）
+  // 注意顺序：先长后短，避免 $$ 里的 $ 被行内先吃掉
+  const formulas: string[] = [];
+  protectedText = protectedText
+    .replace(/\$\$[\s\S]*?\$\$/g, (m) => {
+      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      return `\u0000F${formulas.length - 1}\u0000`;
+    })
+    .replace(/\\\[[\s\S]*?\\\]/g, (m) => {
+      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      return `\u0000F${formulas.length - 1}\u0000`;
+    })
+    .replace(/\$[^$\n]*?\$/g, (m) => {
+      formulas.push(latexToSpeech(m.slice(1, -1), lang));
+      return `\u0000F${formulas.length - 1}\u0000`;
+    })
+    .replace(/\\\([\s\S]*?\\\)/g, (m) => {
+      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      return `\u0000F${formulas.length - 1}\u0000`;
+    });
+
+  // 还原公式口语
+  protectedText = protectedText.replace(/\u0000F(\d+)\u0000/g, (_, idx) => formulas[Number(idx)]);
+
+  // 清理 markdown
+  let out = protectedText
     .replace(/`[^`\n]*`/g, '')
     .replace(/[#>*_~|]/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // 还原代码块（原样读出，不删公式占位）
+  out = out.replace(/\u0000CODE(\d+)\u0000/g, (_, idx) => codeBlocks[Number(idx)]);
+  return out;
 }
 
 /** 按句末标点分句，每段 ≤ MAX_SEG；无标点的长句硬切 */
@@ -243,12 +277,12 @@ export function useSpeak() {
   onNaturalEndRef.current = onSegmentEnd;
 
   const speak = useCallback(
-    async (rawText: string, voice?: string) => {
+    async (rawText: string, voice?: string, lang: 'zh' | 'en' = 'zh') => {
       unlockAudio();
       stop();
       voiceRef.current = voice ?? TTS_CONFIG.DEFAULT_VOICE;
 
-      const text = cleanTextForTTS(rawText);
+      const text = cleanTextForTTS(rawText, lang);
       if (!text) return;
 
       const segs = splitForTTS(text);

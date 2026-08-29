@@ -170,7 +170,7 @@ export default function AiAssistant() {
           if (speakState === 'playing') pause();
           else if (speakState === 'paused') resume();
           else if (speakState === 'synthesizing') stopSpeak();
-          else speak(text, getTtsVoice(lang));
+          else speak(text, getTtsVoice(lang), lang);
         }}
         title={
           speakState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
