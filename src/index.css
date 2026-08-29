@@ -110,6 +110,11 @@ main button {
   min-height: 0;
   touch-action: manipulation;
 }
+/* 可拖动探针（如电压表/电流表）的 touch-action 必须穿透到所有子元素，
+   否则浏览器按子元素默认 touch-action:auto 判定手势 → 触屏拖拽指针被取消 */
+[style*="touch-action: none"] > * {
+  touch-action: none;
+}
 
 /* ── 交互元素全局按压触感反馈（Apple HIG 风格微缩放与平滑阻尼） ── */
 button,
