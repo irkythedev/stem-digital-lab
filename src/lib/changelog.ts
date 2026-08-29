@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.22.0';
+export const APP_VERSION = '1.22.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.1',
+    date: '2026-08',
+    zh: [
+      '[优化] 首页学科卡片更精致：图文居中排布，停留时有更清晰的反馈',
+      '[优化] 学科内容清单改为概览显示，阅读更清爽',
+    ],
+    en: [
+      '[Improved] Home subject cards are more polished with centered layout and clearer hover feedback',
+      '[Improved] Subject topic lists now shown as a trimmed overview for a cleaner read',
+    ],
+  },
   {
     version: '1.22.0',
     date: '2026-08',
