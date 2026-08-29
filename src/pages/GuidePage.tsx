@@ -115,13 +115,6 @@ export default function GuidePage() {
           <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.teachingText}</p>
         </section>
         <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
-          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-4">
-            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-            {c.privacy}
-          </h2>
-          <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.privacyText}</p>
-        </section>
-        <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
           <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-2">
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             {c.ai}
@@ -139,6 +132,13 @@ export default function GuidePage() {
               </li>
             ))}
           </ul>
+        </section>
+        <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
+          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-4">
+            <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+            {c.privacy}
+          </h2>
+          <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.privacyText}</p>
         </section>
 
       </div>
