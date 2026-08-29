@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.22.2';
+export const APP_VERSION = '1.22.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.3',
+    date: '2026-08',
+    zh: [
+      '[修复] 优化触屏设备上的拖拽体验：拖动仪表、圆点等更跟手、更精准',
+    ],
+    en: [
+      '[Fixed] Improved touch drag on tablets and touchscreens: dragging meters and points is now smoother and more precise',
+    ],
+  },
   {
     version: '1.22.2',
     date: '2026-08',
