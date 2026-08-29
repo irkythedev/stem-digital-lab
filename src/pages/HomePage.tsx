@@ -19,6 +19,20 @@ import { labsForSubject, labs, labCategories, type LabCategoryId } from '../lib/
 import SubjectIcon from '../components/ui/SubjectIcon';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
+/**
+ * 学科卡片「内容清单」按「项数」统一截断：显示前 3 项 + 省略号。
+ * 三张卡片（数学/物理/化学）以同一「3 项概览 + …」形态呈现，显示范围一致。
+ * 若该项内容不足 3 项，则原样完整显示（不加省略号）。
+ * 以「·」作为项分隔符；hover（title）仍可查看完整清单。
+ */
+export function truncateNote(note: string, _maxLen?: number): string {
+  const MAX_ITEMS = 3;
+  // 按「·」拆成项（含中文与英文文案），忽略空项
+  const items = note.split('·').map((s) => s.trim()).filter(Boolean);
+  if (items.length < MAX_ITEMS) return note;
+  return items.slice(0, MAX_ITEMS).join(' · ') + '…';
+}
+
 export default function HomePage() {
   const { t, lang } = useApp();
   // 路由级 meta（首页默认标题/描述，L3 GEO）
@@ -97,17 +111,17 @@ export default function HomePage() {
                   scrollToLabList();
                 }
               }}
-              className={`group border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center sm:items-start sm:text-left transition-all duration-300 ${
+              className={`group relative border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center transition-[border-color,background-color,transform] duration-300 hover:z-10 hover:scale-[1.02] ${
                 isActive
                   ? 'border-[var(--fg)]'
-                  : 'border-[var(--border)] hover:border-[var(--fg)] opacity-60 hover:opacity-100'
+                  : 'border-[var(--border)] hover:border-[var(--fg)] hover:bg-[var(--fg)]/[0.04]'
               }`}
             >
-              <div className="h-9 sm:h-12 flex items-center justify-start mb-1.5 sm:mb-3 text-[var(--fg)]">
+              <div className="h-9 sm:h-12 flex items-center justify-center mb-1.5 sm:mb-3 text-[var(--fg)]">
                 <SubjectIcon
                   subjectId={subject.id}
-                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform group-hover:-translate-y-1 duration-300"
-                  glyphClassName="text-3xl sm:text-4xl transition-transform group-hover:-translate-y-1 duration-300"
+                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform duration-300 group-hover:scale-110"
+                  glyphClassName="text-3xl sm:text-4xl transition-transform duration-300 group-hover:scale-110"
                 />
               </div>
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">
@@ -116,9 +130,10 @@ export default function HomePage() {
               <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font mb-1 sm:mb-3">
                 {lang === 'zh' ? subject.gradeZh : subject.gradeEn}
               </span>
-              {/* 内容清单：桌面显示（移动端隐藏），最多两行超出省略；hover 可看完整清单；min-h 保证三科卡片等高 */}
+              {/* 内容清单：桌面显示（移动端隐藏），按「项数」统一截断为前 3 项 + 省略号，
+                 三科卡片呈同一「3 项概览 + …」形态；hover（title）可看完整清单；min-h 保证三科卡片等高 */}
               <div className="hidden sm:flex flex-col space-y-1 min-h-[2.6rem]">
-                <span title={meta.note} className="text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed line-clamp-2">{meta.note}</span>
+                <span title={meta.note} className="text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">{truncateNote(meta.note)}</span>
               </div>
             </button>
           );
