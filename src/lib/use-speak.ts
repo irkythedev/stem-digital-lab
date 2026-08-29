@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getTtsUrl, TTS_CONFIG } from './tts-config';
 import { latexToSpeech } from './latex-speech';
+import { scfUrlWithToken } from './scf-token';
 
 export type SpeakState = 'idle' | 'synthesizing' | 'playing' | 'paused' | 'error';
 
@@ -207,13 +208,14 @@ export function useSpeak() {
       setState('synthesizing');
       startTimer();
       try {
-        const url = getTtsUrl();
+        const base = getTtsUrl();
+        // 先拼完整 query（text/voice），再用 scfUrlWithToken 把 token 用 & 挂上
+        // （避免 base 已带 ?token= 再拼 ?text= 产生双问号 → SCF 校验失败 403）
+        const url = scfUrlWithToken(`${base}?text=${encodeURIComponent(seg)}&voice=${encodeURIComponent(voiceRef.current)}`);
         // 冷启动容错：失败自动重试一次
         const doFetch = async (attempt: number): Promise<Response> => {
           try {
-            const resp = await fetch(
-              `${url}?text=${encodeURIComponent(seg)}&voice=${encodeURIComponent(voiceRef.current)}`,
-            );
+            const resp = await fetch(url);
             if (attempt < 1 && !resp.ok) {
               await new Promise((r) => setTimeout(r, 600));
               return doFetch(attempt + 1);
