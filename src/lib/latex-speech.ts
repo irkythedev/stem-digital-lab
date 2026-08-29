@@ -249,11 +249,16 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
       const cmd = m[1];
       i += m[0].length;
 
-      // 特殊处理：\left( \right) 只读括号，不输出「左/右」
+      // 特殊处理：\left( \right) —— 按朗读习惯，收尾读「括号」，开头轻声带过（不读「左」）。
+      // 两个bug修复：\left[ 之前读裸 ASCII '['（:256），英文 \left/\right 被读成 "left/right"。
       if (cmd === 'left' || cmd === 'right') {
         if (tex[i] === '(' || tex[i] === '[' || tex[i] === '{' || tex[i] === '|') {
-          if (tex[i] === '{') out.push('花括号');
-          else out.push(tex[i]);
+          if (cmd === 'right') {
+            if (tex[i] === '{') out.push('花括号');
+            else if (tex[i] === '[') out.push('右中括号');
+            else out.push('括号');
+          }
+          // cmd === 'left': 只消费字符，不读（收尾括号承担语义）——注意保持 i 推进
           i++;
         }
         continue;
@@ -373,14 +378,22 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
     // 普通字符：数字保留原文，字母保留，运算符转口语
     if (c === '=') { out.push('等于'); lastVar = false; }
     else if (c === '+') { out.push('加'); lastVar = false; }
-    else if (c === '-') { out.push('减'); lastVar = false; }
+    else if (c === '-') {
+      // 区分负号与减号：看前一字符是否为完整操作数结尾。
+      // 负号：-b、a=-b、(-b)、\{-b\}（前界为 开头/(/{/=/+/-/,/±）→ 负
+      // 减号：a-b、2a-b、\frac12-b（前一字符是字母/数字/)/]/}）→ 减
+      const prev = tex[i - 1];
+      const prevIsOperand = prev ? /[A-Za-z0-9}\]\)]/.test(prev) : false;
+      out.push(prevIsOperand ? '减' : '负');
+      lastVar = false;
+    }
     else if (c === '*') { out.push('乘以'); lastVar = false; }
     else if (c === '/') { out.push('除以'); lastVar = false; }
     else if (c === ',') { out.push('，'); lastVar = false; }
     else if (c === '.') { out.push('点'); lastVar = false; }
-    else if (c === '(') { out.push('左括号'); lastVar = false; }
-    else if (c === ')') { out.push('右括号'); lastVar = false; }
-    else if (c === '[') { out.push('左中括号'); lastVar = false; }
+    else if (c === '(') { lastVar = false; } // 开头括号轻声带过（收尾括号承担语义），与 \left 一致
+    else if (c === ')') { out.push('括号'); lastVar = false; }
+    else if (c === '[') { lastVar = false; }
     else if (c === ']') { out.push('右中括号'); lastVar = false; }
     else if (c === '%') { out.push('百分之'); lastVar = false; }
     else {
@@ -499,6 +512,19 @@ function latexToSpeechEn(tex: string): string {
       const cmd = m[1];
       i += m[0].length;
 
+      if (cmd === 'left' || cmd === 'right') {
+        if (tex[i] === '(' || tex[i] === '[' || tex[i] === '{' || tex[i] === '|') {
+          if (cmd === 'right') {
+            if (tex[i] === '{') out.push(' close brace ');
+            else if (tex[i] === '[') out.push(' close bracket ');
+            else out.push(' close parenthesis ');
+          }
+          // cmd === 'left': 只消费字符，不读
+          i++;
+        }
+        continue;
+      }
+
       if (cmd === 'frac') {
         const a = readArg();
         const b = readArg();
@@ -573,13 +599,19 @@ function latexToSpeechEn(tex: string): string {
 
     if (c === '=') out.push(' equals ');
     else if (c === '+') out.push(' plus ');
-    else if (c === '-') out.push(' minus ');
+    else if (c === '-') {
+      const prev = tex[i - 1];
+      const prevIsOperand = prev ? /[A-Za-z0-9}\]\)]/.test(prev) : false;
+      out.push(prevIsOperand ? ' minus ' : ' negative ');
+    }
     else if (c === '*') out.push(' times ');
     else if (c === '/') out.push(' over ');
     else if (c === ',') out.push(', ');
     else if (c === '.') out.push(' point ');
-    else if (c === '(') out.push(' open parenthesis ');
+    else if (c === '(') { /* opening parenthesis: 轻声带过，收尾读 */ }
     else if (c === ')') out.push(' close parenthesis ');
+    else if (c === '[') { /* opening bracket: 轻声带过，收尾读 */ }
+    else if (c === ']') out.push(' close bracket ');
     else out.push(c);
     i++;
   }
