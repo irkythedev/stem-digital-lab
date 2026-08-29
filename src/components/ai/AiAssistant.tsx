@@ -1198,7 +1198,7 @@ export default function AiAssistant() {
             <div className="flex items-center justify-between gap-2">
               <p className="flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
                 <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答暂不支持保存' : 'AI output is for reference — trust the textbook · Answers cannot be saved yet'}
+                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答历史仅在当前页保留，关闭或切换页面即清' : 'AI output is for reference — trust the textbook · Chat history stays on this page only and clears when you close or navigate away'}
               </p>
               {/* 当前模型名（电压表蓝区分，加粗）+ 用量统计（数值加大，流式中 token 滚动增长） */}
               <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">
