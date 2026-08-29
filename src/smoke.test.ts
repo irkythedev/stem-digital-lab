@@ -10,6 +10,8 @@
 import { strict as assert } from 'node:assert';
 import { labs, labMap, labsForSubject } from './lib/labs';
 import { subjects, subjectList } from './lib/subjects';
+import { cleanTextForTTS } from './lib/use-speak';
+import { latexToSpeech } from './lib/latex-speech';
 
 let passed = 0;
 let failed = 0;
@@ -171,6 +173,83 @@ describe('Chemistry model: titration pH', () => {
 
   test('becomes basic after equivalence', () => {
     assert.ok(phAt(0.1, 25) > 7);
+  });
+});
+
+/* ── LaTeX → TTS 口语转换 ── */
+
+describe('LaTeX → TTS speech conversion', () => {
+  test('inline \\(...\\) formula read as speech (not raw chars)', () => {
+    const out = cleanTextForTTS('二次函数的一般式是 \\(y=ax^2+bx+c\\)，其中 a 不为 0。');
+    assert.ok(out.includes('x 平方'), `expected x 平方 in: ${out}`);
+    assert.ok(out.includes('等于'), `expected 等于 in: ${out}`);
+    assert.ok(!out.includes('\\('), 'should not contain raw latex \\(');
+    assert.ok(!out.includes('公式省略'), 'should not contain 公式省略');
+  });
+
+  test('display \\[...\\] formula read as speech', () => {
+    const out = cleanTextForTTS('速度公式：\\[v=\\frac{s}{t}\\]');
+    assert.ok(out.includes('t 分之 s'), `expected t 分之 s in: ${out}`);
+  });
+
+  test('$...$ inline formula read as speech (model disobedient case)', () => {
+    const out = cleanTextForTTS('根据 $E=mc^2$，能量等于质量乘光速平方。');
+    assert.ok(out.includes('c 平方'), `expected c 平方 in: ${out}`);
+    assert.ok(!out.includes('公式省略'), 'should not contain 公式省略');
+  });
+
+  test('$$...$$ display formula read as speech', () => {
+    const out = cleanTextForTTS('$$\nE = mc^2\n$$');
+    assert.ok(out.includes('c 平方'), `expected c 平方 in: ${out}`);
+  });
+
+  test('frac nested with superscript', () => {
+    const out = latexToSpeech('\\frac{a}{b^2}');
+    assert.equal(out, 'b 平方 分之 a');
+  });
+
+  test('sqrt with content', () => {
+    const out = latexToSpeech('\\sqrt{a^2+b^2}');
+    assert.ok(out.includes('根号'), `expected 根号 in: ${out}`);
+    assert.ok(out.includes('a 平方'), `expected a 平方 in: ${out}`);
+  });
+
+  test('chemistry subscript H_2O reads as 水 (compound name)', () => {
+    const out = latexToSpeech('H_2O');
+    assert.equal(out, '水');
+  });
+
+  test('chemistry compound name lookup: NaCl and CO_2', () => {
+    assert.equal(latexToSpeech('NaCl'), '氯化钠');
+    assert.equal(latexToSpeech('CO_2'), '二氧化碳');
+  });
+
+  test('non-compound formula falls back to symbol reading (x_1)', () => {
+    const out = latexToSpeech('x_1');
+    assert.equal(out, 'x 一');
+  });
+
+  test('unknown latex command degrades safely (no crash)', () => {
+    const out = latexToSpeech('\\mathrm{kg} \\cdot m');
+    assert.ok(out.includes('kg'), `expected kg in: ${out}`);
+    assert.ok(out.includes('乘以'), `expected 乘以 in: ${out}`);
+  });
+
+  test('english mode reads formulas in english', () => {
+    const out = cleanTextForTTS('The formula is \\(y=ax^2+bx+c\\).', 'en');
+    assert.ok(out.includes('x squared'), `expected x squared in: ${out}`);
+    assert.ok(!out.includes('\\('), 'should not contain raw latex');
+  });
+
+  test('greek letters spoken', () => {
+    const out = latexToSpeech('\\rho = \\frac{m}{V}');
+    assert.ok(out.includes('柔'), `expected 柔(rho) in: ${out}`);
+    assert.ok(out.includes('V 分之 m'), `expected V 分之 m in: ${out}`);
+  });
+
+  test('plain text without formulas unaffected', () => {
+    const out = cleanTextForTTS('这是一个普通的句子，没有公式。');
+    assert.equal(out, '这是一个普通的句子，没有公式。');
   });
 });
 
