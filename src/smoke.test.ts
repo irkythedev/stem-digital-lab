@@ -251,6 +251,31 @@ describe('LaTeX → TTS speech conversion', () => {
     const out = cleanTextForTTS('这是一个普通的句子，没有公式。');
     assert.equal(out, '这是一个普通的句子，没有公式。');
   });
+
+  test('minus sign distinguishes negative vs subtract (zh)', () => {
+    assert.equal(latexToSpeech('-b'), '负b');
+    assert.equal(latexToSpeech('a-b'), 'a减b');
+    assert.equal(latexToSpeech('a=-b'), 'a等于负b');
+    assert.equal(latexToSpeech('2a-b'), '2 a减b');
+    assert.equal(latexToSpeech('\\frac{1}{2}-b'), '2 分之 1减b');
+  });
+
+  test('quadratic root formula reads -b as negative b', () => {
+    const out = latexToSpeech('x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}');
+    assert.equal(out, 'x等于2 a 分之 负b正负根号 b 平方减4 a c');
+  });
+
+  test('parentheses read closing bracket only (zh)', () => {
+    assert.equal(latexToSpeech('(a+b)'), 'a加b括号');
+    assert.equal(latexToSpeech('\\left(a+b\\right)'), 'a加b括号');
+    assert.equal(latexToSpeech('\\left[ x \\right]'), 'x 右中括号');
+  });
+
+  test('minus and parentheses behave correctly (en)', () => {
+    assert.equal(latexToSpeech('a-b', 'en'), 'a minus b');
+    assert.equal(latexToSpeech('a=-b', 'en'), 'a equals negative b');
+    assert.equal(latexToSpeech('\\left(a+b\\right)', 'en'), 'a plus b close parenthesis');
+  });
 });
 
 /* ── Summary ── */
