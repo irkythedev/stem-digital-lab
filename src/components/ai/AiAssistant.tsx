@@ -2,25 +2,27 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * AI 学习助手（Header 入口，右上角面板）——单轮问答 + 链式追问，不保留历史。
+ * AI 学习助手（Header 入口，右上角面板）——单轮问答 + 链式追问 + 本地历史。
  *
  * 合规设计：
- * - 无对话历史存储（不写 localStorage/sessionStorage）——数据留存问题从根上消除；
+ * - 对话历史仅存用户本机浏览器（localStorage，上限 100 条，可随时清除）——数据不触网、不上传、不中转，清除浏览器数据即一并清除；
  * - 单轮问答：每次提问独立，仅「继续问」时携带上一轮问答作为参考（内存态，关页即清）；
+ * - 同页会话（内存态，上限 20 条）随页面/主题切换清空；持久化历史独立保留、可查看；
  * - 首次使用：先阅读使用须知，点「我同意并继续」才进入设置（两步流程）；
  * - 用户自带 API Key（仅存本机 localStorage），本站不提供、不记录；
  * - 自动注入当前页面知识（AiContext）到系统提示词，避免 AI 自由发挥；
  * - 免责声明常驻：AI 生成内容仅供参考，请以教材和老师讲解为准。
  */
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { BookOpen, ChevronDown, Coins, Eye, EyeOff, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, History, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
 import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
+import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
@@ -222,7 +224,7 @@ export default function AiAssistant() {
     </div>
   );
   const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
-  const [view, setView] = useState<'terms' | 'settings' | 'chat'>('terms');
+  const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
   const [customUrl, setCustomUrl] = useState('');
@@ -249,6 +251,16 @@ export default function AiAssistant() {
   const [savedToast, setSavedToast] = useState(false);
   const savedToastTimer = useRef<number | null>(null);
   useEffect(() => () => { if (savedToastTimer.current) window.clearTimeout(savedToastTimer.current); }, []);
+  // 复制状态：成功按钮上显示「已复制 ✓」，失败显示「复制失败」；2 秒后恢复
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
+  const copiedIdTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (copiedIdTimer.current) window.clearTimeout(copiedIdTimer.current); }, []);
+  // 持久化问答历史（本地 localStorage，上限 100 条；展开项 / 清空二次确认）
+  const [persistHistory, setPersistHistory] = useState<AiHistoryEntry[]>(() => listHistory());
+  const [expandedHistId, setExpandedHistId] = useState<string | null>(null);
+  const [confirmClearHist, setConfirmClearHist] = useState(false);
+  const navigate = useNavigate();
   // 使用须知条款折叠（默认全部展开，标题点击收起/展开，避免长条款挤占滚动空间）
   const [collapsedTerms, setCollapsedTerms] = useState<boolean[]>([false, false, false, false]);
   const toggleTerm = (i: number) => setCollapsedTerms((c) => c.map((v, idx) => (idx === i ? !v : v)));
@@ -272,7 +284,7 @@ export default function AiAssistant() {
   const aiWaitingLong = aiElapsed > 4;
   // 用量统计（估算）：会话累计 token 数 + 最近一轮输出速度（对话完成时更新，视觉低调）
   const [usage, setUsage] = useState<{ tokens: number; speed: number } | null>(null);
-  // 同页内多轮问答历史（内存态，上限 20 条；关闭面板/切换页面时清空——对齐"关页即清"承诺）
+  // 同页内多轮问答历史（内存态，上限 20 条；关闭面板/切换页面时清空——对齐页面锚定设计；持久化历史独立保留在 localStorage）
   const [history, setHistory] = useState<{ user: string; assistant: string }[]>([]);
   const HISTORY_MAX = 20;
   const lastExchange = useRef<{ user: string; assistant: string } | null>(null);
@@ -585,6 +597,67 @@ export default function AiAssistant() {
     setSavedToast(false);
   };
 
+  // 复制到剪贴板（带降级：优先 navigator.clipboard，降级隐藏 textarea + execCommand，覆盖 http 环境）
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // 降级
+      }
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
+  // 复制历史回答：成功显示「已复制 ✓」，失败显示「复制失败」；2 秒后恢复
+  const copyAnswer = async (id: string, text: string) => {
+    const ok = await copyToClipboard(text);
+    if (copiedIdTimer.current) window.clearTimeout(copiedIdTimer.current);
+    if (ok) {
+      setCopiedId(id);
+      setCopyFailedId(null);
+    } else {
+      setCopyFailedId(id);
+      setCopiedId(null);
+    }
+    copiedIdTimer.current = window.setTimeout(() => {
+      setCopiedId(null);
+      setCopyFailedId(null);
+    }, 2000);
+  };
+
+  // 清空持久化历史（只清历史，不动配置与当前会话）
+  const clearHistoryAll = () => {
+    if (!confirmClearHist) {
+      setConfirmClearHist(true);
+      return;
+    }
+    clearHistory();
+    setPersistHistory([]);
+    setExpandedHistId(null);
+    setConfirmClearHist(false);
+  };
+
+  // 回到来源页（页面级跳转：pathname + 保留 query；topic 由页面从 URL/内部状态还原）
+  const gotoHistoryPath = (path: string) => {
+    setView('chat');
+    navigate(path);
+  };
+
   // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
   const sendQuestion = async (text: string, followUp = false) => {
     const q = text.trim();
@@ -637,6 +710,16 @@ export default function AiAssistant() {
       lastExchange.current = { user: q, assistant: body };
       // 入历史（上限 HISTORY_MAX，超出丢最旧）
       setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: body }]);
+      // 持久化到本地（纯浏览器 localStorage，上限 100 条；仅存最终完整回答）
+      saveHistory({
+        path: location.pathname + location.search,
+        subject: pageSubject(location.pathname, lang),
+        topic: aiCtx.topic ?? pageSubject(location.pathname, lang),
+        question: q,
+        answer: body,
+        model: config.model,
+      });
+      setPersistHistory(listHistory());
       // 回答已入历史，清空当前轮（避免同一内容在历史区和当前轮重复显示）
       setAnswer('');
       // 最终定格（与实时滚动值对齐，避免浮点误差）
@@ -784,9 +867,11 @@ export default function AiAssistant() {
             ? (lang === 'zh' ? 'AI 设置' : 'Settings')
             : view === 'terms'
               ? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')
-              : (aiCtx.topic
-                ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
-                : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
+              : view === 'history'
+                ? (lang === 'zh' ? '问答历史' : 'Q&A History')
+                : (aiCtx.topic
+                  ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
+                  : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
           </span>
         </h2>
         <div className="flex items-center gap-2">
@@ -796,6 +881,14 @@ export default function AiAssistant() {
               title={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
               className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)]">
               <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {config && (
+            <button type="button" onClick={() => { setView(view === 'chat' ? 'history' : 'chat'); setExpandedHistId(null); }}
+              aria-label={view === 'history' ? (lang === 'zh' ? '返回对话' : 'Back to chat') : (lang === 'zh' ? '问答历史' : 'History')}
+              title={view === 'history' ? (lang === 'zh' ? '返回对话' : 'Back to chat') : (lang === 'zh' ? '问答历史' : 'History')}
+              className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)]">
+              <History className="w-3.5 h-3.5" />
             </button>
           )}
           <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
@@ -1067,6 +1160,96 @@ export default function AiAssistant() {
             <p className={`text-[0.6875rem] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
           )}
         </div>
+      ) : view === 'history' ? (
+        /* ── 问答历史：纯本地持久化（localStorage，上限 100 条）── */
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          {/* 隐私提示（与免责条同视觉层级） */}
+          <p className="shrink-0 px-4 pt-2.5 flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
+            <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
+            {lang === 'zh' ? '仅保存在本机浏览器 · 可随时清除' : 'Stored only in your browser · clearable anytime'}
+          </p>
+          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
+            {persistHistory.length === 0 ? (
+              <div className="pt-8 text-center space-y-2">
+                <History className="w-6 h-6 mx-auto text-[var(--muted)]" aria-hidden="true" />
+                <p className="text-xs text-[var(--muted)] italic">
+                  {lang === 'zh' ? '暂无历史问答。提问后会自动保存在本机。' : 'No history yet. Questions you ask will be saved on this device.'}
+                </p>
+              </div>
+            ) : (
+              persistHistory.map((h) => (
+                <div key={h.id} className="border border-[var(--border)]">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedHistId(expandedHistId === h.id ? null : h.id)}
+                    className="w-full text-left px-2.5 py-2 flex items-start justify-between gap-2 hover:bg-[var(--accent-light)]/40 transition-colors"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs serif-font leading-snug line-clamp-2">{h.question}</span>
+                      <span className="block mt-0.5 text-[0.625rem] mono-font text-[var(--muted)]">
+                        {relativeTime(h.ts, lang)}
+                        {h.subject ? ` · ${h.subject}` : ''}
+                        {h.topic && h.topic !== h.subject && !h.topic.includes(h.subject) ? ` · ${h.topic.replace(/[（(].*?[）)]/g, '')}` : ''}
+                      </span>
+                    </span>
+                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--muted)] transition-transform ${expandedHistId === h.id ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
+                  {expandedHistId === h.id && (
+                    <div className="border-t border-[var(--border)] px-2.5 py-2 space-y-1.5">
+                      <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '回答' : 'Answer'}:</p>
+                      <div className="text-left">
+                        <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
+                          <AnswerRich text={h.answer} />
+                          {renderSpeakControls(h.answer)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button type="button" onClick={() => gotoHistoryPath(h.path)}
+                          title={lang === 'zh' ? '回到来源页' : 'Back to source page'}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+                          <ArrowLeft className="w-3 h-3" aria-hidden="true" />
+                          {lang === 'zh' ? '回到来源页' : 'Back to source'}
+                        </button>
+                        <button type="button" onClick={() => void copyAnswer(h.id, h.answer)}
+                          title={lang === 'zh' ? '复制回答' : 'Copy answer'}
+                          className={`inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border transition-colors ${
+                            copiedId === h.id
+                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              : copyFailedId === h.id
+                                ? 'border-[var(--error)] text-[var(--error)]'
+                                : 'border-[var(--border)] hover:border-[var(--fg)]'
+                          }`}>
+                          {copiedId === h.id ? <Check className="w-3 h-3" aria-hidden="true" />
+                            : copyFailedId === h.id ? <CircleX className="w-3 h-3" aria-hidden="true" />
+                            : <Copy className="w-3 h-3" aria-hidden="true" />}
+                          {copiedId === h.id ? (lang === 'zh' ? '已复制 ✓' : 'Copied ✓')
+                            : copyFailedId === h.id ? (lang === 'zh' ? '复制失败' : 'Copy failed')
+                            : (lang === 'zh' ? '复制' : 'Copy')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+          {/* 清空历史（只清历史，不动配置与当前会话；二次确认） */}
+          <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between">
+            <span className="text-[0.625rem] text-[var(--muted)] mono-font">
+              {lang === 'zh' ? `共 ${persistHistory.length} 条 · 自动保留最近 100 条` : `${persistHistory.length} items · keeps latest 100`}
+            </span>
+            {persistHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={clearHistoryAll}
+                className={`inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors ${confirmClearHist ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
+              >
+                <Trash2 className="w-3 h-3" />
+                {confirmClearHist ? (lang === 'zh' ? '确认清空？' : 'Confirm clear?') : (lang === 'zh' ? '清空历史' : 'Clear history')}
+              </button>
+            )}
+          </div>
+        </div>
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
@@ -1198,7 +1381,7 @@ export default function AiAssistant() {
             <div className="flex items-center justify-between gap-2">
               <p className="flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
                 <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答历史仅在当前页保留，关闭或切换页面即清' : 'AI output is for reference — trust the textbook · Chat history stays on this page only and clears when you close or navigate away'}
+                {lang === 'zh' ? 'AI 内容仅供参考，以教材和老师讲解为准 · 问答历史仅保存在本机浏览器，可随时清除' : 'AI output is for reference — trust the textbook · Chat history is stored only in your browser and can be cleared anytime'}
               </p>
               {/* 当前模型名（电压表蓝区分，加粗）+ 用量统计（数值加大，流式中 token 滚动增长） */}
               <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">
