@@ -23,7 +23,7 @@
 
 ---
 
-**语言 / Language：** [中文](#中文说明) · [English](#english)
+**[中文](#中文说明) · [English](#english)**
 
 ## 中文说明
 
