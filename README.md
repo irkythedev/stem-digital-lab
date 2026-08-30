@@ -23,9 +23,22 @@
 
 ---
 
-**语言 / Language：** [中文说明](#中文说明) · [English](#english)
+**语言 / Language：** [中文](#中文说明) · [English](#english)
 
 ## 中文说明
+
+- [简介](#简介)
+- [运行架构](#运行架构)
+- [实验与工具清单](#实验与工具清单)
+- [快速开始](#快速开始)
+- [三幕式探究](#三幕式探究)
+- [元素周期表工具](#元素周期表工具)
+- [AI 学习助手](#ai-学习助手)
+- [每日科学](#每日科学)
+- [项目结构](#项目结构)
+- [反馈](#反馈)
+- [许可](#许可)
+- [免责条款](#免责条款)
 
 ### 简介
 
@@ -62,28 +75,6 @@
 | 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
 | 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
 | 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 物理公式速查 · 数学公式速查 |
-
-| ID | 名称 | 说明 |
-|---|---|---|
-| `linear` | 一次函数 | 理解 k 与 b 如何决定直线的走向与截距 |
-| `quadratic` | 二次函数 | 探究 a、b、c 对抛物线开口与位置的影响 |
-| `inverse` | 反比例函数 | 观察 k 值变化对双曲线形状与位置的影响 |
-| `circle` | 圆的性质 | 拖拽验证垂径定理、圆周角定理与直径对直角 |
-| `ohm` | 欧姆定律 | 探究电流与电压、电阻的定量关系 |
-| `circuits` | 串并联电路 | 对比串联与并联的电流、电压分配规律 |
-| `lens` | 凸透镜成像 | 调节物距，观察倒立/正立、放大/缩小的像 |
-| `buoyancy` | 浮力 | 探究浮力与排开液体体积、液体密度的关系 |
-| `lever` | 杠杆 | 探究杠杆平衡条件 F₁l₁=F₂l₂ |
-| `pressure` | 压强 | 探究压强 p=F/S 与压力、受力面积的关系 |
-| `pulley` | 滑轮 | 探究定滑轮与动滑轮的特点 |
-| `mass-conservation` | 质量守恒定律 | 三个方案对比验证化学反应前后质量不变 |
-| `neutralization` | 酸碱中和 | 滴定实验观察 pH 突跃与指示剂颜色变化 |
-| `electrolysis` | 电解水 | 观察正氧负氢体积比 2:1，探究水的组成 |
-| `metal-activity` | 金属活动性 | 置换反应验证 Al > Cu > Ag 的活动性顺序 |
-| `/periodic-table` | 元素周期表（工具） | 118 元素全览、检索、实物照片、中文读音、中考跟读（前 20 号/金属活动性/常见元素） |
-| `/physics-constants` | 物理常量速查（工具） | 常用物理常量与典型数值一表全览，支持分类筛选与检索 |
-| `/physics-formulas` | 物理公式速查（工具） | 29 个初中物理核心公式分类速览，公式与常量双向关联互跳 |
-| `/math-formulas` | 数学公式速查（工具） | 19 个初中数学公式分类速览，配图与易错点提醒，一键跳转对应探究；支持中文/英文/章节/公式符号检索（如 八下、kx、π）|
 
 ### 快速开始
 
@@ -164,6 +155,19 @@ src/
 
 ## English
 
+- [Overview](#overview)
+- [Running Architecture](#running-architecture)
+- [Labs & Tools](#labs--tools)
+- [Getting Started](#getting-started)
+- [Three-Act Inquiry](#three-act-inquiry)
+- [Periodic Table Tool](#periodic-table-tool)
+- [AI Assistant](#ai-assistant)
+- [Daily Science](#daily-science)
+- [Project Structure](#project-structure)
+- [Feedback](#feedback)
+- [License](#license)
+- [Disclaimer](#disclaimer)
+
 ### Overview
 
 **STEM Digital Lab** is a **no-login** middle-school STEM exploration space (Grades 7–9). Live at https://stem.irky.dev. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
@@ -200,28 +204,6 @@ This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **n
 | Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
 | Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas |
 
-| ID | Name | Description |
-|---|---|---|
-| `linear` | Linear Functions | Understand how k and b define a line |
-| `quadratic` | Quadratic Functions | Explore how a, b, c shape the parabola |
-| `inverse` | Inverse Variation | See how k changes the hyperbola |
-| `circle` | Circle Properties | Drag to verify chord and inscribed angle theorems |
-| `ohm` | Ohm's Law | Explore I = U/R through interactive circuits |
-| `circuits` | Series & Parallel Circuits | Compare current and voltage in series vs parallel |
-| `lens` | Convex Lens Imaging | Adjust object distance to see real and virtual images |
-| `buoyancy` | Buoyancy | Explore buoyancy vs displaced volume and liquid density |
-| `lever` | Levers | Explore the balance condition F₁l₁=F₂l₂ |
-| `pressure` | Pressure | Explore p=F/S vs force and contact area |
-| `pulley` | Pulleys | Explore fixed and movable pulleys |
-| `mass-conservation` | Conservation of Mass | Three experiments proving mass is conserved |
-| `neutralization` | Acid-Base Titration | Titrate to see the pH jump and indicator color shift |
-| `electrolysis` | Electrolysis of Water | See O₂ and H₂ in a 2:1 ratio, explore water's composition |
-| `metal-activity` | Metal Activity | Displacement reactions verifying Al > Cu > Ag |
-| `/periodic-table` | Periodic Table (tool) | All 118 elements, search, photos, pronunciation, recite mode (first 20 / activity series / common elements) |
-| `/physics-constants` | Physics Constants (tool) | Common constants and typical values at a glance, with filters and search |
-| `/physics-formulas` | Physics Formulas (tool) | 29 core formulas, cross-linked both ways with related constants |
-| `/math-formulas` | Math Formulas (tool) | 19 core formulas with diagrams and pitfalls, searchable by zh/en/chapter/symbol |
-
 ### Getting Started
 
 ```bash
@@ -255,7 +237,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 ### AI Assistant
 
 - Header entry that helps explain middle-school math (PEP), physics (Su-Ke) and chemistry (PEP), grounded in the current page
-- Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint (DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao / custom endpoint); this site provides no key, sells nothing, charges nothing
+- Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint; this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
 - Math formulas are rendered properly (inline / block LaTeX); multi-turn history stays viewable on the same page; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage
