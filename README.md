@@ -28,8 +28,8 @@
 ## 中文说明
 
 - [简介](#简介)
-- [运行架构](#运行架构)
 - [实验与工具清单](#实验与工具清单)
+- [运行架构](#运行架构)
 - [快速开始](#快速开始)
 - [三幕式探究](#三幕式探究)
 - [元素周期表工具](#元素周期表工具)
@@ -53,6 +53,15 @@
 - 📦 可安装为应用离线使用（PWA）
 - 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
 
+### 实验与工具清单
+
+| 科目 | 年级 | 内容 |
+|---|---|---|
+| 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
+| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
+| 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
+| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 物理公式速查 · 数学公式速查 |
+
 ### 运行架构
 
 本项目为**纯前端 SPA**（React 19 + react-router + Tailwind 4），**无自建后端与数据库**，发布为静态站点托管（EdgeOne Pages）。运行架构如下图所示：
@@ -66,15 +75,6 @@
 - **TTS 朗读**：LaTeX 口语化格式化 → SCF 云函数代理 edge-tts 合成语音并回放
 - **反馈收集**：按钮触发 → 本地队列（localStorage）暂存 →（可选）异步上报，无自建后端、离线可存
 - **PWA / SEO**：Service Worker 注册离线更新；构建期生成 sitemap 供搜索引擎抓取
-
-### 实验与工具清单
-
-| 科目 | 年级 | 内容 |
-|---|---|---|
-| 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
-| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
-| 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
-| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 物理公式速查 · 数学公式速查 |
 
 ### 快速开始
 
@@ -156,8 +156,8 @@ src/
 ## English
 
 - [Overview](#overview)
-- [Running Architecture](#running-architecture)
 - [Labs & Tools](#labs--tools)
+- [Running Architecture](#running-architecture)
 - [Getting Started](#getting-started)
 - [Three-Act Inquiry](#three-act-inquiry)
 - [Periodic Table Tool](#periodic-table-tool)
@@ -181,6 +181,15 @@ src/
 - 📦 Installable as an app for offline use (PWA)
 - 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
 
+### Labs & Tools
+
+| Subject | Grades | Content |
+|---|---|---|
+| Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
+| Physics | 8–9 | Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys |
+| Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
+| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas |
+
 ### Running Architecture
 
 This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **no self-hosted backend or database**, published as a static site (EdgeOne Pages). The runtime architecture is shown below:
@@ -194,15 +203,6 @@ This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **n
 - **TTS read-aloud**: LaTeX is formatted for speech → a SCF cloud function proxies edge-tts to synthesize and play back audio
 - **Feedback**: button click → local queue (localStorage) → (optional) async report; no self-hosted backend, works offline
 - **PWA / SEO**: Service Worker registers offline updates; sitemap generated at build time for search engines
-
-### Labs & Tools
-
-| Subject | Grades | Content |
-|---|---|---|
-| Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
-| Physics | 8–9 | Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys |
-| Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
-| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas |
 
 ### Getting Started
 
