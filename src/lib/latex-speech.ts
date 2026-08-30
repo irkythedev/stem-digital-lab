@@ -146,6 +146,7 @@ const CMD_ZH: Record<string, string> = {
   infty: '无穷',
   sum: '求和',
   int: '积分',
+  mid: '满足',
   log: '对数',
   ln: '自然对数',
   sin: '正弦',
@@ -160,11 +161,128 @@ const CMD_ZH: Record<string, string> = {
 };
 
 /**
+ * 裸 Unicode 符号 → 口语（与 \cmd 命令走同一查表语义，覆盖 AI 直接输出 unicode 符号的情况）。
+ * 注意：| 与 ∣（U+2223）不在此表——绝对值有专门的配对处理（见主循环）。
+ */
+const UNI_ZH: Record<string, string> = {
+  '<': '小于',
+  '>': '大于',
+  '≤': '小于等于',
+  '≥': '大于等于',
+  '≠': '不等于',
+  '≈': '约等于',
+  '±': '正负',
+  '×': '乘以',
+  '÷': '除以',
+  '·': '乘以',
+  'π': '派',
+  'ρ': '柔',
+  'θ': '西塔',
+  'α': '阿尔法',
+  'β': '贝塔',
+  'γ': '伽马',
+  'Δ': '德耳塔',
+  'δ': '德耳塔',
+  'λ': '兰姆达',
+  'μ': '谬',
+  'Ω': '欧米伽',
+  'ω': '欧米伽',
+  'σ': '西格马',
+  'τ': '套',
+  'φ': '斐',
+  '√': '根号',
+  '°': '度',
+  '∞': '无穷',
+};
+
+const UNI_EN: Record<string, string> = {
+  '<': ' less than ',
+  '>': ' greater than ',
+  '≤': ' less than or equal to ',
+  '≥': ' greater than or equal to ',
+  '≠': ' not equal to ',
+  '≈': ' approximately equal to ',
+  '±': ' plus or minus ',
+  '×': ' times ',
+  '÷': ' divided by ',
+  '·': ' times ',
+  'π': ' pi ',
+  'ρ': ' rho ',
+  'θ': ' theta ',
+  'α': ' alpha ',
+  'β': ' beta ',
+  'γ': ' gamma ',
+  'Δ': ' delta ',
+  'δ': ' delta ',
+  'λ': ' lambda ',
+  'μ': ' mu ',
+  'Ω': ' omega ',
+  'ω': ' omega ',
+  'σ': ' sigma ',
+  'τ': ' tau ',
+  'φ': ' phi ',
+  '√': ' square root of ',
+  '°': ' degrees ',
+  '∞': ' infinity ',
+};
+
+/**
+ * 从 start 位置开始，找到与「当前开启竖线」配对的闭合竖线下标（返回闭合标记之后的位置）。
+ * 支持嵌套：内部再遇 \lvert / \left| 时深度+1，遇 \rvert / \right| / 裸 | 时深度-1。
+ * 找不到配对返回 -1（调用方降级处理）。
+ */
+function findMatchingAbsClose(tex: string, start: number): number {
+  let depth = 0;
+  for (let j = start; j < tex.length; j++) {
+    const ch = tex[j];
+    if (ch === '\\') {
+      const m = tex.slice(j).match(/^\\([a-zA-Z]+|.)/);
+      if (m) {
+        const cmd = m[1];
+        const after = j + m[0].length;
+        // \lvert / \left| 开启嵌套；\rvert / \right| 闭合；\vert 与裸 | 同等待遇（闭合）
+        if (cmd === 'lvert' || (cmd === 'left' && tex[after] === '|')) {
+          depth++;
+          j = after - 1;
+          continue;
+        }
+        if (cmd === 'rvert' || (cmd === 'right' && tex[after] === '|')) {
+          depth--;
+          if (depth < 0) return after;
+          j = after - 1;
+          continue;
+        }
+        if (cmd === 'vert') {
+          if (depth === 0) return after;
+          depth--;
+          j = after - 1;
+          continue;
+        }
+        j = after - 1;
+        continue;
+      }
+      j++;
+      continue;
+    }
+    if (ch === '|' || ch === '∣') {
+      if (depth === 0) return j + 1;
+      depth--;
+      continue;
+    }
+  }
+  return -1;
+}
+
+/**
  * 解析一段 LaTeX 源码为口语数组（递归处理嵌套命令）。
  * 输入不含 \( \) 包裹符；输出是朗读文本（无公式省略）。
  */
 export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
   if (lang === 'en') return latexToSpeechEn(tex);
+  // 归一化：\lvert / \rvert / \vert → 裸 |，统一由绝对值处理逻辑处理
+  tex = tex.replace(/\\lvert|\\rvert|\\vert/g, '|');
+  // °C 温度 → 摄氏度（避免 ° 读「度」+ C 读变量）
+  tex = tex.replace(/°C/g, '摄氏度');
   const out: string[] = [];
   let i = 0;
   const n = tex.length;
@@ -256,6 +374,7 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
           if (cmd === 'right') {
             if (tex[i] === '{') out.push('花括号');
             else if (tex[i] === '[') out.push('右中括号');
+            else if (tex[i] === '|') out.push('的绝对值');
             else out.push('括号');
           }
           // cmd === 'left': 只消费字符，不读（收尾括号承担语义）——注意保持 i 推进
@@ -326,9 +445,26 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
       if (spoken !== undefined) {
         out.push(spoken);
       } else {
-        // 未知命令：去掉反斜杠读原词（如 \mathrm 后面跟的字母）
+        // 未知命令：去掉反斜杠读原词（如 \\mathrm 后面跟的字母）
         out.push(cmd);
       }
+      continue;
+    }
+
+    // 绝对值：裸 | 或 ∣（U+2223）→ 找配对，读「X 的绝对值」
+    if (c === '|' || c === '∣') {
+      const closeAfter = findMatchingAbsClose(tex, i + 1);
+      if (closeAfter !== -1) {
+        const inner = tex.slice(i + 1, closeAfter - 1);
+        out.push(`${latexToSpeech(inner, 'zh')} 的绝对值`);
+        i = closeAfter;
+        lastVar = false;
+        continue;
+      }
+      // 找不到配对（孤立竖线，如集合描述 {x | x>0}）：降级读「竖线」不读原字符
+      out.push('竖线');
+      i++;
+      lastVar = false;
       continue;
     }
 
@@ -396,6 +532,11 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
     else if (c === '[') { lastVar = false; }
     else if (c === ']') { out.push('右中括号'); lastVar = false; }
     else if (c === '%') { out.push('百分之'); lastVar = false; }
+    else if (UNI_ZH[c] !== undefined) {
+      // 裸 Unicode 符号（< > ≤ ≥ ≠ ± × ÷ · 希腊字母 等）→ 口语
+      out.push(UNI_ZH[c]);
+      lastVar = false;
+    }
     else {
       // 字母/数字变量：若上一个也是单字母/单数字 → 加空格（ax → a x，避免 edge-tts 吞音）
       const isVar = /^[A-Za-z0-9]$/.test(c);
@@ -465,6 +606,7 @@ const CMD_EN: Record<string, string> = {
   infty: 'infinity',
   sum: 'sum of',
   int: 'integral of',
+  mid: 'such that',
   log: 'log',
   ln: 'natural log',
   sin: 'sine',
@@ -473,6 +615,10 @@ const CMD_EN: Record<string, string> = {
 };
 
 function latexToSpeechEn(tex: string): string {
+  // 归一化：\lvert / \rvert / \vert → 裸 |，统一由绝对值处理逻辑处理
+  tex = tex.replace(/\\lvert|\\rvert|\\vert/g, '|');
+  // °C 温度 → degrees Celsius（避免 ° 读 degrees + C 读变量）
+  tex = tex.replace(/°C/g, ' degrees Celsius ');
   const out: string[] = [];
   let i = 0;
   const n = tex.length;
@@ -514,12 +660,15 @@ function latexToSpeechEn(tex: string): string {
 
       if (cmd === 'left' || cmd === 'right') {
         if (tex[i] === '(' || tex[i] === '[' || tex[i] === '{' || tex[i] === '|') {
-          if (cmd === 'right') {
+          if (cmd === 'left' && tex[i] === '|') {
+            // 绝对值：英文读法是前缀 absolute value of X → 左竖线读前缀，右竖线静默
+            out.push(' absolute value of ');
+          } else if (cmd === 'right' && tex[i] !== '|') {
             if (tex[i] === '{') out.push(' close brace ');
             else if (tex[i] === '[') out.push(' close bracket ');
             else out.push(' close parenthesis ');
           }
-          // cmd === 'left': 只消费字符，不读
+          // cmd === 'left': 只消费字符，不读（收尾括号承担语义）
           i++;
         }
         continue;
@@ -560,6 +709,21 @@ function latexToSpeechEn(tex: string): string {
       const spoken = CMD_EN[cmd];
       if (spoken !== undefined) out.push(spoken);
       else out.push(cmd);
+      continue;
+    }
+
+    // 绝对值：裸 | 或 ∣（U+2223）→ 找配对，读「absolute value of X」
+    if (c === '|' || c === '∣') {
+      const closeAfter = findMatchingAbsClose(tex, i + 1);
+      if (closeAfter !== -1) {
+        const inner = tex.slice(i + 1, closeAfter - 1);
+        out.push(` absolute value of ${latexToSpeechEn(inner)} `);
+        i = closeAfter;
+        continue;
+      }
+      // 找不到配对（孤立竖线）：读「vertical bar」降级
+      out.push(' vertical bar ');
+      i++;
       continue;
     }
 
@@ -612,6 +776,10 @@ function latexToSpeechEn(tex: string): string {
     else if (c === ')') out.push(' close parenthesis ');
     else if (c === '[') { /* opening bracket: 轻声带过，收尾读 */ }
     else if (c === ']') out.push(' close bracket ');
+    else if (UNI_EN[c] !== undefined) {
+      // 裸 Unicode 符号（< > ≤ ≥ ≠ ± × ÷ · 希腊字母 等）→ 口语
+      out.push(UNI_EN[c]);
+    }
     else out.push(c);
     i++;
   }

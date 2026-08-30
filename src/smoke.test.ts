@@ -277,6 +277,42 @@ describe('LaTeX → TTS speech conversion', () => {
     assert.equal(latexToSpeech('a=-b', 'en'), 'a equals negative b');
     assert.equal(latexToSpeech('\\left(a+b\\right)', 'en'), 'a plus b close parenthesis');
   });
+
+  test('absolute value reads as 绝对值 (zh)', () => {
+    assert.equal(latexToSpeech('|k|'), 'k 的绝对值');
+    assert.equal(latexToSpeech('∣k∣'), 'k 的绝对值');
+    assert.equal(latexToSpeech('|-3|'), '负3 的绝对值');
+    assert.equal(latexToSpeech('|x-2|<3'), 'x减2 的绝对值小于3');
+    assert.equal(latexToSpeech('\\left| k \\right|'), 'k 的绝对值');
+    assert.equal(latexToSpeech('\\lvert k \\rvert'), 'k 的绝对值');
+    assert.equal(latexToSpeech('\\vert k \\vert'), 'k 的绝对值');
+    assert.equal(latexToSpeech('\\left| \\frac{1}{2} \\right|'), '2 分之 1 的绝对值');
+  });
+
+  test('absolute value reads as absolute value of (en)', () => {
+    assert.equal(latexToSpeech('|k|', 'en'), 'absolute value of k');
+    assert.equal(latexToSpeech('\\left| k \\right|', 'en'), 'absolute value of k');
+    assert.equal(latexToSpeech('\\lvert k \\rvert', 'en'), 'absolute value of k');
+  });
+
+  test('bare unicode math symbols read as words (zh)', () => {
+    assert.equal(latexToSpeech('x<3'), 'x小于3');
+    assert.equal(latexToSpeech('x>3'), 'x大于3');
+    assert.equal(latexToSpeech('a≤b'), 'a小于等于b');
+    assert.equal(latexToSpeech('a≥b'), 'a大于等于b');
+    assert.equal(latexToSpeech('a≠b'), 'a不等于b');
+    assert.equal(latexToSpeech('2×3'), '2乘以3');
+    assert.equal(latexToSpeech('6÷2'), '6除以2');
+    assert.equal(latexToSpeech('π'), '派');
+  });
+
+  test('bare unicode math symbols read as words (en)', () => {
+    assert.equal(latexToSpeech('x<3', 'en'), 'x less than 3');
+    assert.equal(latexToSpeech('x>3', 'en'), 'x greater than 3');
+    assert.equal(latexToSpeech('a≠b', 'en'), 'a not equal to b');
+    assert.equal(latexToSpeech('2×3', 'en'), '2 times 3');
+    assert.equal(latexToSpeech('π', 'en'), 'pi');
+  });
 });
 
 /* ── AI Q&A history (localStorage persistence) ── */

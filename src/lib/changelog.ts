@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.22.3';
+export const APP_VERSION = '1.22.4';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.22.4',
+    date: '2026-08',
+    zh: [
+      '[新增] AI 问答历史：问答记录仅保存在本机浏览器，可随时回看、复制、回到来源页',
+      '[新增] 历史支持按科目、知识点筛选，快速定位想看的问答',
+      '[优化] AI 朗读更准确：绝对值、比较符号等数学表达按规范读法朗读',
+      '[优化] 历史记录中的公式可正常显示，阅读更清晰',
+      '[优化] 历史记录标注回答所用的模型，一目了然',
+    ],
+    en: [
+      '[New] AI chat history: Q&A records are stored locally in your browser — review, copy, and jump back to the source page anytime',
+      '[New] Filter history by subject or topic to quickly find the Q&A you want',
+      '[Improved] AI read-aloud is more accurate: absolute values and comparison symbols now follow standard math pronunciation',
+      '[Improved] Formulas in history entries render correctly for a clearer read',
+      '[Improved] History entries now show which model produced the answer at a glance',
+    ],
+  },
   {
     version: '1.22.3',
     date: '2026-08',
