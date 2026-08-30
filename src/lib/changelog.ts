@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.23.0';
+export const APP_VERSION = '1.24.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.24.0',
+    date: '2026-08',
+    zh: [
+      '[新增] AI 出题练习：基于当前页面知识点自动出单选题，作答后即时判分与讲解，学完随时考一考',
+      '[优化] 电路图灯泡标注对齐教科书：用电器标识由 R 改为 L，更易区分电阻与灯泡',
+    ],
+    en: [
+      '[New] AI quiz practice: generates single-choice questions from the current topic — answer instantly, get a score and explanation, test yourself anytime',
+      '[Improved] Circuit diagrams now label bulbs as L to match the textbook convention, making resistors and bulbs easier to tell apart',
+    ],
+  },
   {
     version: '1.23.0',
     date: '2026-08',

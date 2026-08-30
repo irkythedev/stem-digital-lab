@@ -215,7 +215,7 @@ export default function Circuits() {
     // 固定电表/保险丝样式：A 探针初始放干路左段，避免与符号重叠
     setMeterA({ id: cfg.fuse || cfg.fixedMeters ? 'dry-left' : 'dry-mid', x: cfg.fuse || cfg.fixedMeters ? 50 : 125, y: 60 });
     // 电压表默认跨接第一条支路元件（R₁ 两端），不从右侧干线上引出——引线从元件两端导线各引 T 节点，正交连到电压表
-    // 探针落在该元件上方引线测点（land），避免硬编码 y=60 压住用电器本体（串联 R₁ 灯泡圆心即 (200,60)）
+    // 探针落在该元件上方引线测点（land），避免硬编码 y=60 压住用电器本体（串联 L₁ 灯泡圆心即 (200,60)）
     const e0 = genTopology(cfg).comps.find((c) => c.id === 'e0');
     setMeterV(
       e0

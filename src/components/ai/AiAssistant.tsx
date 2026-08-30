@@ -15,13 +15,15 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, History, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
 import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
+import { buildQuizPrompt } from '../../lib/ai-config';
+import { parseQuizQuestion, type QuizQuestion } from '../../lib/ai-quiz';
 import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import {
@@ -149,9 +151,12 @@ export default function AiAssistant() {
   const { state: speakState, errorMsg, speak, pause, resume, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
-  const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk } = useAiContext();
+  const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal } = useAiContext();
   useEffect(() => {
-    if (!open) stopSpeak();
+    if (!open) {
+      stopSpeak();
+      quizAbortRef.current?.abort(); // 面板关闭时中止进行中的出题请求（P2）
+    }
   }, [open, stopSpeak]);
 
   // 切换界面语言时停止朗读：正在播的回答绑定旧语言（voice 已在调用时确定），
@@ -224,7 +229,7 @@ export default function AiAssistant() {
     </div>
   );
   const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
-  const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history'>('terms');
+  const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
   const [customUrl, setCustomUrl] = useState('');
@@ -297,6 +302,102 @@ export default function AiAssistant() {
     [persistHistory, subjFilter, topicFilter],
   );
   const hasFilter = subjFilter !== null || topicFilter !== null;
+  // ── 出题练习（Quiz）：一次一题，本地判分，练习统计内存态 ──
+  const [quizQ, setQuizQ] = useState<QuizQuestion | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [quizSelected, setQuizSelected] = useState<number | null>(null); // 学生选的选项下标
+  const [quizError, setQuizError] = useState<string | null>(null);
+  const [quizStats, setQuizStats] = useState<{ correct: number; total: number }>({ correct: 0, total: 0 });
+  const [quizDone, setQuizDone] = useState(false); // 本轮结束（显示小结）
+  const quizAbortRef = useRef<AbortController | null>(null);
+  const quizOpenedRef = useRef(false); // 标记面板由 openQuiz 打开，open effect 不覆盖 view
+  // 页面级入口 openQuiz：自增信号 → 打开面板并进入 quiz 视图
+  useEffect(() => {
+    if (quizSignal > 0) {
+      quizOpenedRef.current = true;
+      resetQuiz();
+      setView('quiz');
+      void loadQuiz();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizSignal]);
+
+  // 进入 quiz 视图时（面板内「考考我」按钮）自动出题；配置未就绪时停在空态等用户配置
+  useEffect(() => {
+    if (view === 'quiz' && config && quizQ === null && !quizLoading && quizDone === false) {
+      void loadQuiz();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, config]);
+
+  const resetQuiz = () => {
+    quizAbortRef.current?.abort();
+    setQuizQ(null);
+    setQuizLoading(false);
+    setQuizSelected(null);
+    setQuizError(null);
+    setQuizStats({ correct: 0, total: 0 });
+    setQuizDone(false);
+  };
+
+  // 出一道题（流式，复用 streamChat；结果走宽容解析，失败降级提示）
+  const loadQuiz = async () => {
+    if (!config) return;
+    setQuizLoading(true);
+    setQuizError(null);
+    setQuizSelected(null);
+    quizAbortRef.current = new AbortController();
+    const messages: { role: 'system' | 'user'; content: string }[] = [
+      { role: 'system', content: buildQuizPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
+      { role: 'user', content: lang === 'zh' ? '请出一道题。' : 'Please create one question.' },
+    ];
+    try {
+      const full = await streamChat(config, messages, () => {}, quizAbortRef.current.signal);
+      const parsed = parseQuizQuestion(full);
+      if (!parsed.question) {
+        setQuizError(lang === 'zh' ? '出题失败，请重试' : 'Failed to create a question, please retry');
+        setQuizQ(null);
+        setQuizLoading(false);
+        return;
+      }
+      setQuizQ(parsed);
+      setQuizLoading(false);
+    } catch (e) {
+      if (quizAbortRef.current && quizAbortRef.current.signal.aborted) return;
+      const msg = (e as Error).message;
+      const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
+      setQuizError(
+        isNetworkError(msg)
+          ? (lang === 'zh' ? '网络无法访问该端点，请检查网络或改用预设服务商' : 'Cannot reach the endpoint. Check network or use a preset provider')
+          : authFailed
+            ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
+            : (lang === 'zh' ? '出题失败：' : 'Failed: ') + msg,
+      );
+      setQuizLoading(false);
+    }
+  };
+
+  // 学生选择答案：本地判分（AI 自带答案字母），计入统计；若解析失败（无选项）不判
+  const pickQuizOption = (idx: number) => {
+    if (quizSelected !== null || !quizQ) return;
+    setQuizSelected(idx);
+    if (quizQ.answerIdx === -1) return; // 无标准答案，不判分
+    setQuizStats((s) => ({ correct: s.correct + (idx === quizQ.answerIdx ? 1 : 0), total: s.total + 1 }));
+  };
+
+  // 下一题 / 本轮结束
+  const nextQuiz = () => {
+    setQuizQ(null);
+    setQuizSelected(null);
+    void loadQuiz();
+  };
+
+  // 重新开始一轮（清统计）
+  const restartQuiz = () => {
+    resetQuiz();
+    void loadQuiz();
+  };
+
   const navigate = useNavigate();
   // 使用须知条款折叠（默认全部展开，标题点击收起/展开，避免长条款挤占滚动空间）
   const [collapsedTerms, setCollapsedTerms] = useState<boolean[]>([false, false, false, false]);
@@ -330,6 +431,7 @@ export default function AiAssistant() {
   // 统一清空对话内容（页面切换 / 关闭面板共用；不动配置与面板位置）
   const resetConversation = () => {
     abortRef.current?.abort();
+    quizAbortRef.current?.abort(); // 同时中止进行中的出题请求（P1：切页 quiz 状态残留）
     setPending(null); // 关键：清掉待发问题，防止切页后旧问题在新页面自动发送
     setAnswer('');
     setRecs([]);
@@ -339,6 +441,9 @@ export default function AiAssistant() {
     setBusy(false);
     setHistory([]);
     lastExchange.current = null;
+    resetQuiz(); // 清 quiz 状态与统计（P1）
+    // 切页/关面板时若停留在 quiz 视图，回到对话（新页面知识点不同，避免空 quiz 卡住）
+    setView((v) => (v === 'quiz' ? 'chat' : v));
   };
   // 页面切换时清空对话内容（不与新页面知识锚定错位；保持面板打开与配置不变）
   useEffect(() => {
@@ -483,8 +588,15 @@ export default function AiAssistant() {
   const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
 
   // 打开时：已配置 → 对话视图；未配置 → 须知视图（两步流程第一步）
+  // 例外：openQuiz 打开的面板已在 quizSignal effect 设过 view，不覆盖
   useEffect(() => {
-    if (open) setView(config ? 'chat' : 'terms');
+    if (open) {
+      if (quizOpenedRef.current) {
+        quizOpenedRef.current = false;
+        return;
+      }
+      setView(config ? 'chat' : 'terms');
+    }
   }, [open, config]);
 
   // 进入设置视图时回填已保存配置（刷新/重开不丢 provider/key/端点/模型）
@@ -618,6 +730,7 @@ export default function AiAssistant() {
   // 清除全部 AI 数据
   const clearAll = () => {
     resetConversation();
+    resetQuiz(); // 清 quiz 状态与统计（P2：清全部后 quiz 不残留旧题/统计）
     clearAiConfig();
     setConfigured(false);
     setConfig(null);
@@ -906,9 +1019,11 @@ export default function AiAssistant() {
               ? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')
               : view === 'history'
                 ? (lang === 'zh' ? '问答历史' : 'Q&A History')
-                : (aiCtx.topic
-                  ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
-                  : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
+                : view === 'quiz'
+                  ? (lang === 'zh' ? '考考我' : 'Quiz Me')
+                  : (aiCtx.topic
+                    ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
+                    : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
           </span>
         </h2>
         <div className="flex items-center gap-2">
@@ -1373,6 +1488,134 @@ export default function AiAssistant() {
             )}
           </div>
         </div>
+      ) : view === 'quiz' ? (
+        /* ── 考考我：AI 基于当前页面知识点出单选题，本地判分 ── */
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2.5">
+            {/* 练习统计（内存态） */}
+            {quizStats.total > 0 && (
+              <p className="text-[0.625rem] mono-font text-[var(--muted)] text-right">
+                {lang === 'zh'
+                  ? `本次答对 ${quizStats.correct}/${quizStats.total}`
+                  : `This round: ${quizStats.correct}/${quizStats.total} correct`}
+              </p>
+            )}
+            {/* 出题中 */}
+            {quizLoading && (
+              <div className="py-8 flex flex-col items-center gap-2">
+                <ThinkingOrb state="shaping" size={20} theme="auto" />
+                <p className="text-xs text-[var(--muted)] italic">{lang === 'zh' ? '正在出题…' : 'Creating a question…'}</p>
+              </div>
+            )}
+            {/* 错误 */}
+            {!quizLoading && quizError && (
+              <div className="space-y-2">
+                <p className="text-xs text-[var(--error)] mono-font">{quizError}</p>
+                <button
+                  type="button"
+                  onClick={() => void loadQuiz()}
+                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                >
+                  {lang === 'zh' ? '重试' : 'Retry'}
+                </button>
+              </div>
+            )}
+            {/* 题目 */}
+            {!quizLoading && !quizError && quizQ && (
+              <div className="space-y-2.5">
+                <p className="text-sm serif-font leading-relaxed">
+                  <AnswerRich text={quizQ.question} />
+                </p>
+                <div className="flex flex-col gap-1.5">
+                  {quizQ.options.map((opt, idx) => {
+                    const isPicked = quizSelected === idx;
+                    const isAnswer = idx === quizQ.answerIdx;
+                    let cls = 'border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)]';
+                    if (quizSelected !== null && quizQ.answerIdx !== -1) {
+                      // 答完：正确项高亮（即使学生没选它），错误选择标红
+                      if (isAnswer) cls = 'border-[var(--fg)] text-[var(--fg)] font-bold';
+                      else if (isPicked) cls = 'border-[var(--error)] text-[var(--error)]';
+                      else cls = 'border-[var(--border)] text-[var(--muted)]';
+                    }
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => pickQuizOption(idx)}
+                        disabled={quizSelected !== null}
+                        className={`text-left text-xs serif-font px-2.5 py-1.5 border transition-colors disabled:cursor-default ${cls}`}
+                      >
+                        <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
+                        <AnswerRich text={opt} />
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* 答后反馈：对/错 + 解析 */}
+                {quizSelected !== null && quizQ.answerIdx !== -1 && (
+                  <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
+                    <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === quizQ.answerIdx ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>
+                      {quizSelected === quizQ.answerIdx
+                        ? (lang === 'zh' ? '✓ 回答正确' : '✓ Correct')
+                        : (lang === 'zh' ? `✗ 正确答案是 ${String.fromCharCode(65 + quizQ.answerIdx)}` : `✗ Correct answer: ${String.fromCharCode(65 + quizQ.answerIdx)}`)}
+                    </p>
+                    {quizQ.explanation && (
+                      <div className="text-xs serif-font leading-relaxed">
+                        <AnswerRich text={quizQ.explanation} />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* 无标准答案（解析失败降级）：给出原样题目，不判分 */}
+                {quizSelected !== null && quizQ.answerIdx === -1 && (
+                  <p className="text-[0.6875rem] text-[var(--muted)] italic">
+                    {lang === 'zh' ? '本题未识别出标准答案，未计分。可点击「再来一题」。' : 'No standard answer detected for this question, not scored. Try "Next question".'}
+                  </p>
+                )}
+                {/* 操作：再来一题 / 返回 */}
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={nextQuiz}
+                    disabled={quizSelected === null || quizLoading}
+                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors disabled:opacity-40"
+                  >
+                    {lang === 'zh' ? '再来一题 →' : 'Next question →'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { resetQuiz(); setView('chat'); }}
+                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                  >
+                    {lang === 'zh' ? '返回问答' : 'Back to chat'}
+                  </button>
+                </div>
+              </div>
+            )}
+            {/* 未配置：提示先完成配置 */}
+            {!config && !quizLoading && !quizError && (
+              <div className="pt-6 text-center space-y-2">
+                <p className="text-xs text-[var(--muted)] italic">
+                  {lang === 'zh' ? '请先配置 AI 服务，再开始出题练习。' : 'Configure the AI service first to start quiz practice.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setView('settings')}
+                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
+                >
+                  {lang === 'zh' ? '去配置 →' : 'Configure →'}
+                </button>
+              </div>
+            )}
+          </div>
+          {/* 免责条 */}
+          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2">
+            <p className="flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
+              <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
+              {lang === 'zh' ? '题目与解析由 AI 生成，仅供参考，请以教材和老师讲解为准' : 'Questions and explanations are AI-generated for reference, trust the textbook and your teacher'}
+            </p>
+          </div>
+        </div>
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
@@ -1500,6 +1743,19 @@ export default function AiAssistant() {
               </div>
             )}
           </div>
+          {/* 考考我：AI 基于当前页面知识点出单选题，进入出题练习（任何对话状态可见） */}
+          {!busy && config && (
+            <div className="shrink-0 px-3 py-1.5 border-t border-[var(--border)]">
+              <button
+                type="button"
+                onClick={() => { resetQuiz(); setView('quiz'); }}
+                className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+              >
+                <GraduationCap className="w-3.5 h-3.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+                {lang === 'zh' ? '考考我：AI 出题练习' : 'Quiz me: AI practice'}
+              </button>
+            </div>
+          )}
           <div className="border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2 shrink-0">
             <div className="flex items-center justify-between gap-2">
               <p className="flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">

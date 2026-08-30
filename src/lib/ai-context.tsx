@@ -29,6 +29,9 @@ interface AiContextValue {
   ask: string | null;
   askAi: (question: string) => void;
   setAsk: (q: string | null) => void;
+  /** 出题练习：页面按钮触发打开面板并切到 quiz 视图（自增信号） */
+  quizSignal: number;
+  openQuiz: () => void;
 }
 
 const AiContext = createContext<AiContextValue>({
@@ -41,6 +44,8 @@ const AiContext = createContext<AiContextValue>({
   ask: null,
   askAi: () => undefined,
   setAsk: () => undefined,
+  quizSignal: 0,
+  openQuiz: () => undefined,
 });
 
 export function AiProvider({ children }: { children: ReactNode }) {
@@ -58,14 +63,20 @@ export function AiProvider({ children }: { children: ReactNode }) {
   });
   const [aiCtx, setAiCtx] = useState<AiPageContext>({});
   const [ask, setAsk] = useState<string | null>(null);
+  const [quizSignal, setQuizSignal] = useState(0);
 
   const askAi = (question: string) => {
     setAsk(question);
     setOpen(true);
   };
 
+  const openQuiz = () => {
+    setQuizSignal((s) => s + 1);
+    setOpen(true);
+  };
+
   return (
-    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx, ask, askAi, setAsk }}>
+    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx, ask, askAi, setAsk, quizSignal, openQuiz }}>
       {children}
     </AiContext.Provider>
   );
