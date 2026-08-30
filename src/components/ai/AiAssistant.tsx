@@ -13,7 +13,7 @@
  * - 自动注入当前页面知识（AiContext）到系统提示词，避免 AI 自由发挥；
  * - 免责声明常驻：AI 生成内容仅供参考，请以教材和老师讲解为准。
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, History, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
@@ -260,6 +260,43 @@ export default function AiAssistant() {
   const [persistHistory, setPersistHistory] = useState<AiHistoryEntry[]>(() => listHistory());
   const [expandedHistId, setExpandedHistId] = useState<string | null>(null);
   const [confirmClearHist, setConfirmClearHist] = useState(false);
+  // 历史筛选：科目 chips + 知识点下拉（内存态，关闭面板即重置）
+  const [subjFilter, setSubjFilter] = useState<string | null>(null);
+  const [topicFilter, setTopicFilter] = useState<string | null>(null);
+  const [topicMenuOpen, setTopicMenuOpen] = useState(false);
+  const topicMenuRef = useRef<HTMLDivElement | null>(null);
+  // 知识点下拉：点击外部关闭
+  useEffect(() => {
+    if (!topicMenuOpen) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      if (topicMenuRef.current && !topicMenuRef.current.contains(e.target as Node)) {
+        setTopicMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onDocPointerDown);
+    return () => document.removeEventListener('pointerdown', onDocPointerDown);
+  }, [topicMenuOpen]);
+  // 历史筛选选项（动态提取）+ 过滤结果
+  const histSubjects = useMemo(
+    () => [...new Set(persistHistory.map((h) => h.subject).filter((s): s is string => !!s))],
+    [persistHistory],
+  );
+  const histTopics = useMemo(
+    () => [...new Set(persistHistory.map((h) => (h.topic || '').replace(/[（(].*?[）)]/g, '')).filter((t) => t.length > 0))].sort((a, b) => a.localeCompare(b, 'zh')),
+    [persistHistory],
+  );
+  const filteredHistory = useMemo(
+    () => persistHistory.filter((h) => {
+      if (subjFilter && h.subject !== subjFilter) return false;
+      if (topicFilter) {
+        const t = (h.topic || '').replace(/[（(].*?[）)]/g, '');
+        if (t !== topicFilter) return false;
+      }
+      return true;
+    }),
+    [persistHistory, subjFilter, topicFilter],
+  );
+  const hasFilter = subjFilter !== null || topicFilter !== null;
   const navigate = useNavigate();
   // 使用须知条款折叠（默认全部展开，标题点击收起/展开，避免长条款挤占滚动空间）
   const [collapsedTerms, setCollapsedTerms] = useState<boolean[]>([false, false, false, false]);
@@ -1168,16 +1205,99 @@ export default function AiAssistant() {
             <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
             {lang === 'zh' ? '仅保存在本机浏览器 · 可随时清除' : 'Stored only in your browser · clearable anytime'}
           </p>
+          {/* 筛选：科目 chips + 知识点下拉（动态提取，空历史时隐藏） */}
+          {persistHistory.length > 0 && (
+            <div className="shrink-0 px-3 pt-2 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSubjFilter(null)}
+                  className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${
+                    subjFilter === null ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                  }`}
+                >
+                  {lang === 'zh' ? '全部' : 'All'}
+                </button>
+                {histSubjects.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSubjFilter(subjFilter === s ? null : s)}
+                    className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${
+                      subjFilter === s ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+                {hasFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setSubjFilter(null); setTopicFilter(null); }}
+                    className="ml-auto text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
+                  >
+                    {lang === 'zh' ? '清除筛选' : 'Clear filters'}
+                  </button>
+                )}
+              </div>
+              {histTopics.length > 0 && (
+                <div ref={topicMenuRef} className="flex items-center gap-1.5">
+                  <span className="text-[0.625rem] mono-font text-[var(--muted)] shrink-0">{lang === 'zh' ? '知识点' : 'Topic'}:</span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setTopicMenuOpen((v) => !v)}
+                      className="w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
+                    >
+                      <span className="truncate text-left">{topicFilter ?? (lang === 'zh' ? '全部知识点' : 'All topics')}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${topicMenuOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {topicMenuOpen && (
+                      <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                        <button
+                          type="button"
+                          onClick={() => { setTopicFilter(null); setTopicMenuOpen(false); }}
+                          className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
+                            topicFilter === null
+                              ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
+                              : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
+                          }`}
+                        >
+                          <span className="block truncate">{lang === 'zh' ? '全部知识点' : 'All topics'}</span>
+                        </button>
+                        {histTopics.map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => { setTopicFilter(t); setTopicMenuOpen(false); }}
+                            className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
+                              topicFilter === t
+                                ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
+                                : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
+                            }`}
+                          >
+                            <span className="block truncate">{t}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
-            {persistHistory.length === 0 ? (
+            {filteredHistory.length === 0 ? (
               <div className="pt-8 text-center space-y-2">
                 <History className="w-6 h-6 mx-auto text-[var(--muted)]" aria-hidden="true" />
                 <p className="text-xs text-[var(--muted)] italic">
-                  {lang === 'zh' ? '暂无历史问答。提问后会自动保存在本机。' : 'No history yet. Questions you ask will be saved on this device.'}
+                  {hasFilter
+                    ? (lang === 'zh' ? '没有匹配的问答。试试清除筛选。' : 'No matching Q&A. Try clearing the filters.')
+                    : (lang === 'zh' ? '暂无历史问答。提问后会自动保存在本机。' : 'No history yet. Questions you ask will be saved on this device.')}
                 </p>
               </div>
             ) : (
-              persistHistory.map((h) => (
+              filteredHistory.map((h) => (
                 <div key={h.id} className="border border-[var(--border)]">
                   <button
                     type="button"
@@ -1185,11 +1305,12 @@ export default function AiAssistant() {
                     className="w-full text-left px-2.5 py-2 flex items-start justify-between gap-2 hover:bg-[var(--accent-light)]/40 transition-colors"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs serif-font leading-snug line-clamp-2">{h.question}</span>
+                      <span className="block text-xs serif-font leading-snug line-clamp-2"><InlineAnswer text={h.question} /></span>
                       <span className="block mt-0.5 text-[0.625rem] mono-font text-[var(--muted)]">
                         {relativeTime(h.ts, lang)}
                         {h.subject ? ` · ${h.subject}` : ''}
                         {h.topic && h.topic !== h.subject && !h.topic.includes(h.subject) ? ` · ${h.topic.replace(/[（(].*?[）)]/g, '')}` : ''}
+                        {h.model ? <span className="text-[#1565c0]"> · {h.model}</span> : ''}
                       </span>
                     </span>
                     <ChevronDown className={`w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--muted)] transition-transform ${expandedHistId === h.id ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -1222,7 +1343,7 @@ export default function AiAssistant() {
                           {copiedId === h.id ? <Check className="w-3 h-3" aria-hidden="true" />
                             : copyFailedId === h.id ? <CircleX className="w-3 h-3" aria-hidden="true" />
                             : <Copy className="w-3 h-3" aria-hidden="true" />}
-                          {copiedId === h.id ? (lang === 'zh' ? '已复制 ✓' : 'Copied ✓')
+                          {copiedId === h.id ? (lang === 'zh' ? '已复制' : 'Copied')
                             : copyFailedId === h.id ? (lang === 'zh' ? '复制失败' : 'Copy failed')
                             : (lang === 'zh' ? '复制' : 'Copy')}
                         </button>
@@ -1236,7 +1357,9 @@ export default function AiAssistant() {
           {/* 清空历史（只清历史，不动配置与当前会话；二次确认） */}
           <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between">
             <span className="text-[0.625rem] text-[var(--muted)] mono-font">
-              {lang === 'zh' ? `共 ${persistHistory.length} 条 · 自动保留最近 100 条` : `${persistHistory.length} items · keeps latest 100`}
+              {lang === 'zh'
+                ? (hasFilter ? `筛选出 ${filteredHistory.length} 条 / 共 ${persistHistory.length} 条` : `共 ${persistHistory.length} 条 · 自动保留最近 100 条`)
+                : (hasFilter ? `${filteredHistory.length} of ${persistHistory.length} items` : `${persistHistory.length} items · keeps latest 100`)}
             </span>
             {persistHistory.length > 0 && (
               <button
