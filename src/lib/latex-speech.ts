@@ -192,6 +192,8 @@ const UNI_ZH: Record<string, string> = {
   'φ': '斐',
   '√': '根号',
   '°': '度',
+  '²': '平方',
+  '³': '立方',
   '∞': '无穷',
 };
 
@@ -223,6 +225,8 @@ const UNI_EN: Record<string, string> = {
   'φ': ' phi ',
   '√': ' square root of ',
   '°': ' degrees ',
+  '²': ' squared ',
+  '³': ' cubed ',
   '∞': ' infinity ',
 };
 
@@ -539,8 +543,11 @@ export function latexToSpeech(tex: string, lang: 'zh' | 'en' = 'zh'): string {
     }
     else {
       // 字母/数字变量：若上一个也是单字母/单数字 → 加空格（ax → a x，避免 edge-tts 吞音）
-      const isVar = /^[A-Za-z0-9]$/.test(c);
-      if (isVar && lastVar) out.push(' ');
+      // 但连续数字不空格（27 → 27，不是 2 7）
+      const isDigit = c >= '0' && c <= '9';
+      const isVar = isDigit || /^[A-Za-z]$/.test(c);
+      const prevEndsDigit = /\d$/.test(out[out.length - 1] ?? '');
+      if (isVar && lastVar && !(isDigit && prevEndsDigit)) out.push(' ');
       out.push(c);
       lastVar = isVar;
     }
@@ -614,6 +621,18 @@ const CMD_EN: Record<string, string> = {
   tan: 'tangent',
 };
 
+/** 数字 → 英文序数词（1st/2nd/3rd/4th…；仅正整数） */
+function ordinalEn(n: number): string {
+  const abs = Math.abs(n);
+  const lastTwo = abs % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const last = abs % 10;
+  if (last === 1) return `${n}st`;
+  if (last === 2) return `${n}nd`;
+  if (last === 3) return `${n}rd`;
+  return `${n}th`;
+}
+
 function latexToSpeechEn(tex: string): string {
   // 归一化：\lvert / \rvert / \vert → 裸 |，统一由绝对值处理逻辑处理
   tex = tex.replace(/\\lvert|\\rvert|\\vert/g, '|');
@@ -681,7 +700,7 @@ function latexToSpeechEn(tex: string): string {
         continue;
       }
       if (cmd === 'sqrt') {
-        // 可选次方根：\sqrt[n]{x} —— 先检测 [n] 再读 {x}（[n] 在前）
+        // 可选次方根：\\sqrt[n]{x} —— 先检测 [n] 再读 {x}（[n] 在前）
         let degree = '';
         if (tex[i] === '[') {
           const close = tex.indexOf(']', i);
@@ -692,7 +711,15 @@ function latexToSpeechEn(tex: string): string {
         }
         const inner = readArg();
         if (degree) {
-          out.push(`the ${degree}th root of ${latexToSpeechEn(inner)}`);
+          if (degree === '3') {
+            // 三次根 → cube root（标准数学读法，避免 "3th"）
+            out.push(`cube root of ${latexToSpeechEn(inner)}`);
+          } else if (degree === '4') {
+            out.push(`fourth root of ${latexToSpeechEn(inner)}`);
+          } else {
+            const ord = /^\d+$/.test(degree) ? ordinalEn(parseInt(degree, 10)) : degree;
+            out.push(`the ${ord} root of ${latexToSpeechEn(inner)}`);
+          }
         } else {
           out.push(`square root of ${latexToSpeechEn(inner)}`);
         }
@@ -746,8 +773,8 @@ function latexToSpeechEn(tex: string): string {
       i++;
       const sub = readGroup();
       if (!sub) continue;
-      if (/^\d+$/.test(sub)) out.push(` sub ${sub}`);
-      else out.push(` sub ${latexToSpeechEn(sub)}`);
+      if (/^\d+$/.test(sub)) out.push(` sub ${sub} `);
+      else out.push(` sub ${latexToSpeechEn(sub)} `);
       continue;
     }
 
