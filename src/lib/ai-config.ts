@@ -132,6 +132,48 @@ export function buildSystemPrompt(lang: 'zh' | 'en', subjectHint?: string, knowl
   );
 }
 
+/** 出题练习系统提示词：基于当前页面知识出一道单选题（学生作答后本地判分） */
+export function buildQuizPrompt(lang: 'zh' | 'en', subjectHint?: string, knowledge?: string): string {
+  const subject = subjectHint || '';
+  const ref = knowledge
+    ? `\n以下是当前页面实际包含的知识点，必须围绕它出题（禁止超出页面与初中教材范围；若知识不足，出最贴近的教材基础题）：\n${knowledge}`
+    : '';
+  if (lang === 'zh') {
+    return (
+      '你是「数理化数字实验室」的初中数理化出题老师，面向初中生（7-9 年级）。' +
+      `请严格按以下格式出一道单选题（仅一道，不要多题）：\n` +
+      `1. 题目必须围绕当前页面知识点${subject ? `（当前主题：${subject}）` : ''}，难度适合初中生，考察核心概念或公式；\n` +
+      `2. 四个选项 A. B. C. D.，其中只有一个正确，正确项要唯一且无歧义；\n` +
+      `3. 输出格式严格为（每行一个字段，字段名与分隔符原样输出）：\n` +
+      `【题目】题干（含必要的公式，公式用 LaTeX 行内 \\(...\\) 包裹，如 \\(y=ax^2+bx+c\\)）\n` +
+      `A. 选项内容\nB. 选项内容\nC. 选项内容\nD. 选项内容\n` +
+      `【答案】X（X 为正确选项的字母 A/B/C/D，只输出字母）\n` +
+      `【解析】为什么选 X，以及其他选项错在哪（面向初中生，简明，公式用 LaTeX）\n` +
+      `4. 题目和选项中的公式首次出现时，用括号补充中文口语读法（如 \\(I=\\frac{U}{R}\\)（即 I 等于 U 除以 R）），帮助朗读准确发音；\n` +
+      `5. 答案必须基于教材口径（数学人教版、物理苏科版、化学人教版），不确定就选最有把握的教材结论；\n` +
+      `6. 语言适合未成年人，健康积极。\n` +
+      ref
+    );
+  }
+  return (
+    'You are the quiz teacher of "STEM Digital Lab" for middle-school students (grades 7-9).' +
+    ' Create exactly ONE single-choice question following this strict format:\n' +
+    '1. The question must be based on the current page knowledge' +
+    (subject ? ` (current topic: ${subject})` : '') +
+    ', at middle-school difficulty, testing a core concept or formula.\n' +
+    '2. Four options A. B. C. D., exactly one correct and unambiguous.\n' +
+    '3. Output format, one field per line, keep the field names verbatim:\n' +
+    '【题目】question text (formulas in inline LaTeX \\(...\\), e.g. \\(y=ax^2+bx+c\\))\n' +
+    'A. option\nB. option\nC. option\nD. option\n' +
+    '【答案】X (X is the correct letter A/B/C/D, output only the letter)\n' +
+    '【解析】why X is correct and why the others are wrong (concise, middle-school level, formulas in LaTeX)\n' +
+    '4. When a formula first appears, add a short parenthetical spoken reading right after it (e.g. \\(I=U/R\\) (that is, I equals U over R)) so the read-aloud feature pronounces it correctly.\n' +
+    '5. Follow textbook standards: PEP for math and chemistry, Su-Ke edition for physics; if unsure, pick the most defensible textbook conclusion.\n' +
+    '6. Keep language kid-friendly and positive.\n' +
+    ref
+  );
+}
+
 /** 拉取服务商实际可用模型列表（OpenAI 兼容 GET /models） */
 export async function fetchModels(baseUrl: string, apiKey: string): Promise<string[]> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/models`, {

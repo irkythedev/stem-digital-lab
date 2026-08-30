@@ -334,7 +334,7 @@ export function HouseholdCircuit({
               labelY={(swY1 + swY2) / 2}
             />
             {/* 灯泡（用电器）跨接在 L-N 之间 */}
-            <Bulb cx={bx} cy={bulbY} glow={glow[i] ?? 0} label={`R${i + 1}=${effR[i]}Ω`} labelY={bulbY + 24} />
+            <Bulb cx={bx} cy={bulbY} glow={glow[i] ?? 0} label={`L${i + 1}=${effR[i]}Ω`} labelY={bulbY + 24} />
             {/* 电流小点：闭合且有电流时沿支路流动 */}
             {current > 0.01 && (
               <g fill="var(--fg)" opacity="0.85">
