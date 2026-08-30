@@ -1043,7 +1043,7 @@ export default function AiAssistant() {
               <History className="w-3.5 h-3.5" />
             </button>
           )}
-          <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
+          <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-sm leading-none">×</button>
         </div>
       </div>
 
