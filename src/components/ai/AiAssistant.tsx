@@ -1546,7 +1546,7 @@ export default function AiAssistant() {
                         className={`text-left text-xs serif-font px-2.5 py-1.5 border transition-colors disabled:cursor-default ${cls}`}
                       >
                         <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
-                        <AnswerRich text={opt} />
+                        <InlineAnswer text={opt} />
                       </button>
                     );
                   })}
