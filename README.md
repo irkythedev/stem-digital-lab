@@ -45,7 +45,7 @@
 本项目为**纯前端 SPA**（React 19 + react-router + Tailwind 4），**无自建后端与数据库**，发布为静态站点托管（EdgeOne Pages）。运行架构如下图所示：
 
 <div align="center">
-  <img src="public/architecture-diagram.jpg" alt="运行架构图" title="数理化数字实验室运行架构" width="100%" />
+  <img src="public/architecture-diagram-cn.jpg" alt="运行架构图" title="数理化数字实验室运行架构" width="100%" />
 </div>
 
 - **静态托管平台**：承接 Vite 构建产物并分发，托管 /s/.../html 路径
@@ -182,7 +182,7 @@ src/
 This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **no self-hosted backend or database**, published as a static site (EdgeOne Pages). The runtime architecture is shown below:
 
 <div align="center">
-  <img src="public/architecture-diagram.jpg" alt="Running architecture" title="STEM Digital Lab running architecture" width="100%" />
+  <img src="public/architecture-diagram-en.jpg" alt="Running architecture" title="STEM Digital Lab running architecture" width="100%" />
 </div>
 
 - **Static host**: serves the Vite build and distributes /s/.../html paths
