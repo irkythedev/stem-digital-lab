@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.22.4';
+export const APP_VERSION = '1.23.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,7 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.22.4',
+    version: '1.23.0',
     date: '2026-08',
     zh: [
       '[新增] AI 问答历史：问答记录仅保存在本机浏览器，可随时回看、复制、回到来源页',
