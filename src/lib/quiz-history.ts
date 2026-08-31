@@ -31,6 +31,12 @@ export interface QuizHistoryEntry {
   pickedIdx: number;
   /** 是否答对 */
   correct: boolean;
+  /** 题型：choice（四选一）/ fill（填空）；老数据缺省 choice */
+  type?: 'choice' | 'fill';
+  /** 填空标准答案（可多个等价写法；选择题为空） */
+  fillAnswers?: string[];
+  /** 学生填空输入（选择题为空字符串） */
+  userAnswer?: string;
   /** AI 解析讲解（为什么对/错；旧数据可能没有该字段） */
   explanation?: string;
   /** 每题限时（秒；0/缺省 = 不限时） */

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.27.0';
+export const APP_VERSION = '1.28.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.28.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 考考你新增填空题题型：单选、填空、混合三种模式可选',
+      '[新增] AI 辅助判分：填空题答案有歧义时，可让 AI 再判断一次是否等价',
+      '[优化] 出题更随机：正确答案在选项中分布更均匀，不再总在 A',
+      '[优化] AI 回答与出题更稳定：追问、讲解与格式更可靠',
+    ],
+    en: [
+      '[New] Quiz adds fill-in-the-blank questions: single-choice, fill-in or mixed modes',
+      '[New] AI-assisted grading: when a fill-in answer is ambiguous, the AI re-checks whether it is equivalent',
+      '[Improved] Correct answers are now spread evenly across options — no more always-A',
+      '[Improved] More stable answers and quiz generation after prompt refinements',
+    ],
+  },
   {
     version: '1.27.0',
     date: '2026-08',
