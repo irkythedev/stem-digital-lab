@@ -18,6 +18,7 @@ import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
 import LicenseDialog from './LicenseDialog';
 import VersionDialog from '../feedback/VersionDialog';
+import ExternalLinkConfirm from './ExternalLinkConfirm';
 import { APP_VERSION } from '../../lib/changelog';
 import { useVersionCheck } from '../../lib/use-version-check';
 
@@ -197,30 +198,30 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             <div className="flex flex-wrap items-center gap-x-1.5">
               <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
               <span>{t.welcomeFeedbackIssueA}</span>
-              <a
-                href="https://gitee.com/K4Ricky2Win/stem-digital-lab"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Gitee"
-                aria-label="Gitee project"
-                className="text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+              <ExternalLinkConfirm
+                target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
+                hint={t.externalLinkHint}
+                openLabel={t.externalLinkOpen}
+                cancelLabel={t.externalLinkCancel}
+                ariaLabel="Gitee project"
+                className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d={GITEE_PATH} />
                 </svg>
-              </a>
-              <a
-                href="https://github.com/irkythedev/stem-digital-lab"
-                target="_blank"
-                rel="noopener noreferrer"
-                title="GitHub"
-                aria-label="GitHub project"
-                className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+              </ExternalLinkConfirm>
+              <ExternalLinkConfirm
+                target={{ url: 'https://github.com/irkythedev/stem-digital-lab/issues', name: 'GitHub' }}
+                hint={t.externalLinkHint}
+                openLabel={t.externalLinkOpen}
+                cancelLabel={t.externalLinkCancel}
+                ariaLabel="GitHub project"
+                className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d={GITHUB_PATH} />
                 </svg>
-              </a>
+              </ExternalLinkConfirm>
               <span>{t.welcomeFeedbackIssueB}</span>
             </div>
           </div>

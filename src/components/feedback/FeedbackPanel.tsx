@@ -22,13 +22,13 @@ const categories: FeedbackCategory[] = ['content', 'interaction', 'visual', 'lan
 const labels = {
   zh: {
     experimentTitle: '实验反馈', projectTitle: '项目反馈',
-    question: '你的反馈主要关于什么？', rating: '这部分内容对你有帮助吗？',
+    question: '你的反馈主要关于什么？（必选）', rating: '这部分内容对你有帮助吗？（必选）',
     helpful: '有帮助', neutral: '一般', notHelpful: '没帮助',
-    message: '补充说明（可选）', placeholder: '写下问题、建议或发现……',
+    message: '补充说明（必填）', placeholder: '写下问题、建议或发现……',
     grade: '学校/年级/班级（可选）', gradePlaceholder: '如：能达中学 初三 3 班',
     name: '如何称呼你（可选）', namePlaceholder: '如：张同学 / 王老师',
     contact: '联系方式（可选）', contactPlaceholder: '手机号 / 微信 / 邮箱',
-    privacyNote: '以上信息自愿填写，仅用于问题回访，不会公开展示',
+    privacyNote: '学校、称呼、联系方式等身份信息自愿填写，仅用于问题回访，不会公开展示',
     submit: '发送反馈', close: '关闭',
     sent: '感谢您的反馈，已发送给开发者！',
     queued: '感谢您的反馈，已保存，联网后将自动发送',
@@ -36,13 +36,13 @@ const labels = {
   },
   en: {
     experimentTitle: 'Experiment feedback', projectTitle: 'Project feedback',
-    question: 'What is your feedback about?', rating: 'Was this helpful?',
+    question: 'What is your feedback about? (required)', rating: 'Was this helpful? (required)',
     helpful: 'Helpful', neutral: 'Neutral', notHelpful: 'Not helpful',
-    message: 'Additional note (optional)', placeholder: 'Write a problem, idea, or observation…',
+    message: 'Additional note (required)', placeholder: 'Write a problem, idea, or observation…',
     grade: 'School / Grade / Class (optional)', gradePlaceholder: 'e.g. Nengda Middle School, Grade 9, Class 3',
     name: 'How should we address you? (optional)', namePlaceholder: 'e.g. Zhang / Ms. Wang',
     contact: 'Contact info (optional)', contactPlaceholder: 'Phone / WeChat / Email',
-    privacyNote: 'All fields above are optional, used only for follow-up replies, and never shown publicly.',
+    privacyNote: 'Identity fields (school, name, contact) are optional, used only for follow-up replies, and never shown publicly.',
     submit: 'Send feedback', close: 'Close',
     sent: 'Thank you! Your feedback has been sent to the developer.',
     queued: 'Thank you! Your feedback has been saved and will be sent when online.',
@@ -71,8 +71,10 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
     // 代码层长度防护：HTML maxLength 只拦截键盘输入，JS 赋值可绕过，此处强制截断
     const trimSlice = (v: string, n: number) => v.trim().slice(0, n);
     const trimmed = trimSlice(message, 2000);
-    // 防空：无文字内容且未选分类 → 拒绝提交（按钮层 disabled 之外的代码层兜底）
-    if (!trimmed && selected.length === 0) return;
+    // 防空：补充说明必填、反馈类型必选、实验反馈须选「有没有帮助」→ 缺一拒绝提交（按钮层 disabled 之外的代码层兜底）
+    if (!trimmed) return;
+    if (selected.length === 0) return;
+    if (type === 'experiment' && !rating) return;
     setSending(true);
     const record = { id: makeFeedbackId(), type, labId, rating, categories: selected, message: trimmed, language: lang, grade: trimSlice(grade, 100) || undefined, name: trimSlice(name, 100) || undefined, contact: trimSlice(contact, 100) || undefined, createdAt: new Date().toISOString() };
     saveFeedback(record);
@@ -123,7 +125,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
                 <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               </div>
               <p className="text-[0.625rem] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
-              <button type="button" onClick={submit} disabled={sending || (!message.trim() && selected.length === 0)} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
+              <button type="button" onClick={submit} disabled={sending || !message.trim() || selected.length === 0 || (type === 'experiment' && !rating)} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
             </>
           )}
         </div>
