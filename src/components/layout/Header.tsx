@@ -69,7 +69,7 @@ export default function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center w-full py-3 sm:py-3.5 border-b border-[var(--border)]/70 transition-colors duration-200">
+    <header className="flex justify-between items-center w-full py-3 sm:py-3.5 pt-[env(safe-area-inset-top,0px)] border-b border-[var(--border)]/70 transition-colors duration-200">
       <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}

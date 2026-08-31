@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 路由级页面 meta 管理（L3 GEO / 生成式引擎优化）：
+ * 路由级页面 meta 管理（便于搜索引擎收录）：
  *   - document.title 随路由与语言切换
  *   - meta description 同步
  *   - 页面级 JSON-LD 结构化数据注入（如 LearningResource），卸载时自动清理

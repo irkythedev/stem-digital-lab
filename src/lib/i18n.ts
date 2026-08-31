@@ -11,10 +11,10 @@ export const translations = {
   zh: {
     brandName: '数理化数字实验室',
     brandBadge: '数理化数字实验室',
-    subtitle: '从基础公式与定理出发，在交互代码里重构数理化的本质。',
+    subtitle: '从基础公式与定理出发，用交互程序重现数理化的原理。',
     description: '初中 7-9 年级数学 · 物理 · 化学数字探究空间',
     statusTag: '正在建设中 _',
-    curriculumNotice: '涵盖 7-9 年级核心知识点，打造可视化、可交互的计算模型与实验仿真。',
+    curriculumNotice: '涵盖 7-9 年级核心知识点，做出看得见、能动手的交互实验。',
     labs: '实验',
     subjects: {
       math: {
@@ -102,7 +102,7 @@ export const translations = {
     welcomeTools: '元素周期表（含跟读）· 物理常量 · 物理公式 · 数学公式速查',
     welcomeAi: '另有 AI 学习助手：随时讲解实验原理、点拨解题思路（需自备 API Key，本站不存储任何对话或 API 凭证）。',
     welcomeDevices: '支持手机、平板、电脑与课堂交互大屏（如希沃）多端使用，触屏 / 鼠标 / 触控笔均可操作。',
-    welcomeMaintainPrefix: '本项目将持续更新、优化与调整，作为一项长期的学习 / 公益项目维护下去；基于 ',
+    welcomeMaintainPrefix: '本项目会一直更新完善，作为一项长期的学习 / 公益项目做下去；基于 ',
     welcomeMaintainSuffix: ' 协议开源，欢迎自行取用与改进。',
     welcomeFeedbackPrefix: '欢迎发邮件至',
     welcomeFeedbackIssueA: '也可在项目主页',
@@ -121,10 +121,10 @@ export const translations = {
   en: {
     brandName: 'Math · Physics · Chemistry Lab',
     brandBadge: 'STEM DIGITAL LAB',
-    subtitle: 'Rebuilding math, physics, and chemistry from first principles into interactive code.',
+    subtitle: 'Bringing math, physics, and chemistry to life as interactive programs, built from basic formulas and theorems.',
     description: 'Grades 7-9 Math · Physics · Chemistry Exploration Space',
     statusTag: 'UNDER CONSTRUCTION _',
-    curriculumNotice: 'Interactive visualization algorithms and simulations aligned with Grades 7-9 STEM core concepts.',
+    curriculumNotice: 'Hands-on interactive experiments that bring Grades 7-9 STEM concepts to life.',
     labs: 'LABS',
     subjects: {
       math: {
@@ -210,7 +210,7 @@ export const translations = {
     welcomeTools: 'periodic table (with recite mode) · physics constants · physics & math formula lookup',
     welcomeAi: 'A built-in AI study assistant explains lab principles and hints at approaches anytime (BYO API key; no conversation or API credentials are stored).',
     welcomeDevices: 'Works on phones, tablets, computers and classroom interactive whiteboards (e.g. Seewo) — touch, mouse and stylus friendly.',
-    welcomeMaintainPrefix: 'This project is continuously updated and refined as a long-term public-good project; open source under the ',
+    welcomeMaintainPrefix: 'This project keeps improving as a long-term learning / public-good project; open source under the ',
     welcomeMaintainSuffix: ' license — feel free to use and improve.',
     welcomeFeedbackPrefix: 'Email',
     welcomeFeedbackIssueA: 'On the project home',

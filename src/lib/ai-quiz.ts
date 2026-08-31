@@ -87,3 +87,33 @@ export function parseQuizQuestion(raw: string): QuizQuestion {
     explanation,
   };
 }
+
+/**
+ * 批量解析 AI 出题输出（buildQuizPrompt 的「第 N 题」分组格式）。
+ * 按「【第N题】」或空行分组，对每组复用 parseQuizQuestion 的宽容解析；
+ * 解析失败的组跳过，返回可解析的题目数组。
+ */
+export function parseQuizBatch(raw: string, expectedCount?: number): QuizQuestion[] {
+  if (!raw || !raw.trim()) return [];
+  const text = raw.trim();
+  // 1) 按【第N题】显式分组
+  const marked = text.split(/\n(?=【第\d+题】)/).filter((s) => s.includes('【第'));
+  // 2) 无显式标记时按空行分组（AI 可能省略编号）
+  const grouped = marked.length > 0 ? marked : text.split(/\n\s*\n/).filter((s) => s.includes('【题目】'));
+  const out: QuizQuestion[] = [];
+  for (const group of grouped) {
+    // 去掉「第N题」行本身
+    const clean = group.replace(/^【第\d+题】\s*\n?/, '');
+    const q = parseQuizQuestion(clean);
+    if (q.question && q.options.length >= 2 && q.answerIdx >= 0) out.push(q);
+  }
+  // 3) 兜底：分组解析不足时，尝试按【题目】出现次数切分整段
+  if (out.length === 0 && text.includes('【题目】')) {
+    const byField = text.split(/\n(?=【题目】)/).filter((s) => s.includes('【题目】'));
+    for (const group of byField) {
+      const q = parseQuizQuestion(group);
+      if (q.question && q.options.length >= 2 && q.answerIdx >= 0) out.push(q);
+    }
+  }
+  return out;
+}

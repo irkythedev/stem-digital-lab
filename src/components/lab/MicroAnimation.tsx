@@ -6,7 +6,7 @@
  * 显示反应物分子 → 原子分离 → 重新组合 → 生成物分子。
  * 自带可控播放：播放/暂停、上一步/下一步步进、重播、阶段指示。
  *
- * 视觉纪律：只用 --fg / --muted / --border / --accent。
+ * 样式说明：只用 --fg / --muted / --border / --accent。
  */
 
 import { useEffect, useRef, useState } from 'react';

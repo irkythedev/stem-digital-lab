@@ -25,7 +25,7 @@ export default function LabPage() {
 
   const lab = labId ? labMap[labId] : undefined;
   const { setAiCtx } = useAiContext();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => {
     if (!lab) return null;
     const url = `https://stem.irky.dev/lab/${lab.id}`;

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.24.0';
+export const APP_VERSION = '1.25.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,38 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.25.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 错题集：考考你答错的题自动收集，错题一目了然，可随时重做',
+      '[新增] 考考你支持设置题量、难度、限时，还可一次生成整套题',
+      '[修复] 题目与错题中的公式显示更准确：分式、分子式不再出现乱码',
+      '[优化] 答题后正确答案标绿、错误标红，对错一眼看出',
+      '[优化] AI 出题更贴近教材：题干表述更清楚，解答更规范',
+    ],
+    en: [
+      '[New] Mistake collection: questions you get wrong are collected for review and practice anytime',
+      '[New] Quiz supports setting question count, difficulty and a time limit — or generate a whole set at once',
+      '[Fixed] Formulas in questions and mistake cards display correctly — no jumbled fraction or glyph artifacts',
+      '[Improved] After answering, the correct option turns green and wrong ones red, so the result is clear at a glance',
+      '[Improved] Quiz questions are closer to the textbook: clearer phrasing and more standard solutions',
+    ],
+  },
+  {
+    version: '1.24.1',
+    date: '2026-08',
+    zh: [
+      '[修复] 反馈表单完善：空内容不能提交，反馈更可靠',
+      '[优化] 站点各处文字表述更自然顺畅，阅读更舒服',
+      '[优化] 标签页与浏览器栏适配：暗色下图标更清晰',
+    ],
+    en: [
+      '[Fixed] Feedback form refined: empty submissions are blocked for a more reliable way to reach us',
+      '[Improved] Various texts across the site are now more natural and comfortable to read',
+      '[Improved] Tab icon and browser bar adapt better, staying clear in dark mode',
+    ],
+  },
   {
     version: '1.24.0',
     date: '2026-08',

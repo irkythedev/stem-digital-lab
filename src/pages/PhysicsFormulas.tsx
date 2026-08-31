@@ -4,7 +4,7 @@
  *
  * 物理工具页 · 物理公式速查
  *
- * 复刻数学公式速查交互模型：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
+ * 参考数学公式速查的交互方式：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
  * 与物理常量速查双向关联：公式卡显示「相关常量」（带数值，点击跳常量页），
  * 常量卡显示「用于公式」（点击跳回本页）。数据来自 src/lib/physics-formulas.ts
  * （依据 physics_kb formula_sheet，苏科版章节对齐）。
@@ -28,7 +28,7 @@ const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'soun
 
 export default function PhysicsFormulas() {
   const { t, lang } = useApp();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '物理公式速查' : 'Physics Formulas'} - ${t.brandName}`,
     description: lang === 'zh' ? '初中物理公式速查：电学、力学、光学公式整理，配套单位与使用说明。' : 'Junior-high physics formulas: electricity, mechanics, optics, with units and usage notes.',

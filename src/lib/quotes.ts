@@ -4,7 +4,7 @@
  *
  * 科学名人名言与故事（首页「每日科学」板块数据）。
  *
- * 内容合规审核要点：
+ * 选材说明：
  * - 国内/华人科学家为主（约 7 成），均为官方正面宣传的科学家（两弹一星/科学家精神）；
  * - 国外人物仅选普适经典，避开政治/宗教/争议；
  * - 名言只收有据可考、广泛引用者；出处不确的改为「小故事」而非直接引语，杜绝杜撰；
@@ -417,7 +417,7 @@ export const SCIENCE_QUOTES: ScienceQuote[] = [
     person: { zh: '欧拉', en: 'Leonhard Euler' },
     field: { zh: '数学', en: 'Mathematics' },
     era: { zh: '瑞士 · 近代', en: 'Switzerland · Modern era' },
-    achievement: { zh: '18 世纪最伟大的数学家之一，以欧拉公式 e^(iπ)+1=0 闻名，贡献遍及函数、数论、力学等几乎全部数学分支。', en: 'One of the greatest mathematicians of the 18th century, famous for Euler\'s identity e^(iπ)+1=0, with contributions across nearly every branch of mathematics.' },
+    achievement: { zh: '18 世纪最伟大的数学家之一，以欧拉公式 e^iπ + 1 = 0 闻名，贡献遍及函数、数论、力学等几乎全部数学分支。', en: 'One of the greatest mathematicians of the 18th century, famous for Euler\'s identity e^iπ + 1 = 0, with contributions across nearly every branch of mathematics.' },
     story: { zh: '欧拉晚年双目失明，仍凭心算完成大量研究，一生留下八百多篇论文，是历史上最高产的数学家之一。', en: 'Euler lost his sight in his later years yet kept producing research from memory, leaving over 800 papers — among the most prolific mathematicians ever.' },
     isChinese: false,
   },

@@ -13,6 +13,9 @@ import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
 import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
+import { loadFeedback, saveFeedback, removeFeedback, FEEDBACK_LIMIT, type FeedbackRecord } from './lib/feedback';
+import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
+import { parseQuizBatch } from './lib/ai-quiz';
 
 let passed = 0;
 let failed = 0;
@@ -398,6 +401,223 @@ describe('AI Q&A history (localStorage persistence)', () => {
     assert.match(relativeTime(now - 30 * 1000, 'en'), /just now/);
     assert.match(relativeTime(now - 2 * 3600 * 1000, 'zh'), /2 小时前/);
     assert.match(relativeTime(now - 26 * 3600 * 1000, 'zh'), /昨天/);
+  });
+});
+
+/* ── Feedback queue (localStorage cap + remove) ── */
+
+describe('Feedback queue (localStorage persistence)', () => {
+  const mem = new Map<string, string>();
+  // 保留原 fetch 以便恢复；mock 成 500 响应，防止测试触发真实 Server酱推送
+  const originalFetch = (globalThis as any).fetch;
+  function installMockWindow() {
+    (globalThis as any).fetch = async () => new Response('', { status: 500 });
+    (globalThis as any).window = {
+      localStorage: {
+        getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
+        setItem: (k: string, v: string) => { mem.set(k, v); },
+        removeItem: (k: string) => { mem.delete(k); },
+      },
+    };
+  }
+  function restoreWindow() {
+    delete (globalThis as any).window;
+    (globalThis as any).fetch = originalFetch;
+  }
+  const record = (i: number): FeedbackRecord => ({
+    id: `fb-${i}`,
+    type: 'project',
+    categories: [],
+    message: `反馈${i}`,
+    language: 'zh',
+    createdAt: new Date().toISOString(),
+  });
+
+  test('save then load returns the entry', () => {
+    installMockWindow();
+    try {
+      saveFeedback(record(1));
+      const list = loadFeedback();
+      assert.equal(list.length, 1);
+      assert.equal(list[0].message, '反馈1');
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('keeps newest 100, drops oldest beyond limit', () => {
+    installMockWindow();
+    try {
+      for (let i = 0; i < FEEDBACK_LIMIT + 5; i++) saveFeedback(record(i));
+      const list = loadFeedback();
+      assert.equal(list.length, FEEDBACK_LIMIT);
+      // 最新一条保留，最旧的 0~4 被丢弃
+      assert.ok(list.some((r) => r.message === `反馈${FEEDBACK_LIMIT + 4}`));
+      assert.ok(!list.some((r) => r.message === '反馈0'));
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('removeFeedback drops only the target record', () => {
+    installMockWindow();
+    try {
+      saveFeedback(record(1));
+      saveFeedback(record(2));
+      saveFeedback(record(3));
+      removeFeedback('fb-2');
+      const list = loadFeedback();
+      assert.equal(list.length, 2);
+      assert.ok(list.some((r) => r.id === 'fb-1'));
+      assert.ok(!list.some((r) => r.id === 'fb-2'));
+      assert.ok(list.some((r) => r.id === 'fb-3'));
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+});
+
+/* ── Quiz history (localStorage cap + wrong filter) ── */
+
+describe('Quiz history (localStorage persistence)', () => {
+  const mem = new Map<string, string>();
+  function installMockWindow() {
+    (globalThis as any).window = {
+      localStorage: {
+        getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
+        setItem: (k: string, v: string) => { mem.set(k, v); },
+        removeItem: (k: string) => { mem.delete(k); },
+      },
+    };
+  }
+  function restoreWindow() {
+    delete (globalThis as any).window;
+  }
+  const entry = (i: number, correct: boolean): Omit<QuizHistoryEntry, 'id' | 'ts'> => ({
+    path: '/lab/quadratic',
+    subject: '数学',
+    topic: '二次函数',
+    question: `题目${i}`,
+    options: ['a', 'b', 'c', 'd'],
+    answerIdx: 0,
+    pickedIdx: correct ? 0 : 2,
+    correct,
+    model: 'm',
+  });
+
+  test('save then load returns entries', () => {
+    installMockWindow();
+    try {
+      saveQuizHistory(entry(1, true));
+      const list = listQuizHistory();
+      assert.equal(list.length, 1);
+      assert.equal(list[0].question, '题目1');
+      assert.equal(list[0].correct, true);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('wrongQuizHistory returns only wrong entries', () => {
+    installMockWindow();
+    try {
+      saveQuizHistory(entry(1, true));
+      saveQuizHistory(entry(2, false));
+      saveQuizHistory(entry(3, false));
+      const wrong = wrongQuizHistory();
+      assert.equal(wrong.length, 2);
+      assert.ok(wrong.every((e) => !e.correct));
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('keeps newest 100, drops oldest beyond limit', () => {
+    installMockWindow();
+    try {
+      for (let i = 0; i < QUIZ_HISTORY_LIMIT + 5; i++) saveQuizHistory(entry(i, i % 2 === 0));
+      const list = listQuizHistory();
+      assert.equal(list.length, QUIZ_HISTORY_LIMIT);
+      assert.ok(list.some((e) => e.question === `题目${QUIZ_HISTORY_LIMIT + 4}`));
+      assert.ok(!list.some((e) => e.question === '题目0'));
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('clear empties the store', () => {
+    installMockWindow();
+    try {
+      saveQuizHistory(entry(1, true));
+      clearQuizHistory();
+      assert.equal(listQuizHistory().length, 0);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+});
+
+/* ── Quiz batch parser (parseQuizBatch) ── */
+
+describe('Quiz batch parser', () => {
+  test('parses multiple marked questions', () => {
+    const raw = [
+      '【第1题】',
+      '【题目】二次函数 \\\\(y=x^2\\\\) 的对称轴是？',
+      'A. x=0',
+      'B. x=1',
+      'C. x=2',
+      'D. x=3',
+      '【答案】A',
+      '【解析】对称轴是 y 轴。',
+      '',
+      '【第2题】',
+      '【题目】抛物线 \\\\(y=x^2+1\\\\) 的顶点是？',
+      'A. (0,0)',
+      'B. (0,1)',
+      'C. (1,0)',
+      'D. (1,1)',
+      '【答案】B',
+      '【解析】顶点在 (0,1)。',
+    ].join('\n');
+    const parsed = parseQuizBatch(raw, 2);
+    assert.equal(parsed.length, 2);
+    assert.equal(parsed[0].answerIdx, 0);
+    assert.equal(parsed[1].answerIdx, 1);
+  });
+
+  test('falls back to blank-line grouping without markers', () => {
+    const raw = [
+      '【题目】一次函数 \\\\(y=2x+1\\\\) 的斜率是？',
+      'A. 1',
+      'B. 2',
+      'C. 3',
+      'D. 4',
+      '【答案】B',
+      '【解析】斜率为 2。',
+      '',
+      '【题目】反比例函数 \\\\(y=\\\\frac{2}{x}\\\\) 的图像是？',
+      'A. 直线',
+      'B. 双曲线',
+      'C. 抛物线',
+      'D. 圆',
+      '【答案】B',
+      '【解析】反比例函数图像为双曲线。',
+    ].join('\n');
+    const parsed = parseQuizBatch(raw, 2);
+    assert.equal(parsed.length, 2);
+  });
+
+  test('returns empty array for unparseable input', () => {
+    assert.equal(parseQuizBatch('没有任何题目结构').length, 0);
+    assert.equal(parseQuizBatch('').length, 0);
   });
 });
 

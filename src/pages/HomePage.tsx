@@ -35,7 +35,7 @@ export function truncateNote(note: string, _maxLen?: number): string {
 
 export default function HomePage() {
   const { t, lang } = useApp();
-  // 路由级 meta（首页默认标题/描述，L3 GEO）
+  // 路由级 meta（首页默认标题/描述）
   usePageMeta({
     title: `${t.brandName} | STEM Digital Lab`,
     description: lang === 'zh'

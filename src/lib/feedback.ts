@@ -32,6 +32,9 @@ export interface FeedbackRecord {
 
 const STORAGE_KEY = 'stem-lab-feedback';
 
+/** 本地待发队列容量上限：保留最近 100 条，超出丢最旧（与 ai-history 上限一致，防离线堆积无界增长） */
+export const FEEDBACK_LIMIT = 100;
+
 export function loadFeedback(): FeedbackRecord[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -55,7 +58,8 @@ function persist(records: FeedbackRecord[]): void {
 
 export function saveFeedback(record: FeedbackRecord): void {
   if (typeof window === 'undefined') return;
-  const records = [...loadFeedback(), record];
+  // 容量上限：保留最近 FEEDBACK_LIMIT 条，超出丢最旧（防止离线堆积无界增长）
+  const records = [...loadFeedback(), record].slice(-FEEDBACK_LIMIT);
   persist(records);
   // 异步尝试推送（不阻塞 UI）
   void flushFeedbackQueue();
@@ -67,6 +71,17 @@ export function exportFeedback(): string {
 
 export function clearFeedback(): void {
   if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * 从本地队列移除单条（直发成功后调用）。
+ * 走 persist 的 try/catch：即使存储异常也不抛到 UI，且避免裸 setItem 失败后
+ * 本地残留导致下次 flush 重复推送。
+ */
+export function removeFeedback(id: string): void {
+  if (typeof window === 'undefined') return;
+  const rest = loadFeedback().filter((r) => r.id !== id);
+  persist(rest);
 }
 
 export function makeFeedbackId(): string {
