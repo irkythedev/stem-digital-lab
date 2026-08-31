@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.26.0';
+export const APP_VERSION = '1.27.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.27.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 错题集支持按知识点筛选，学情概览一眼看清薄弱点、错误类型与做题趋势',
+      '[新增] 错题集显示 AI 解析讲解：每道错题都能看到为什么对、为什么错',
+      '[新增] 问答历史与错题集分页展示，每页 8 条，浏览更轻松',
+      '[新增] AI 用量统计：设置页可查看累计消耗 token 数，按日期与模型查看明细',
+      '[优化] 学情概览默认折叠、设置界面更清爽；AI 总结提示更清晰',
+    ],
+    en: [
+      '[New] Mistake collection: filter by topic, with a learning overview showing weak spots, error patterns and trends at a glance',
+      '[New] AI explanations in the mistake collection — see why each answer is right or wrong',
+      '[New] Q&A history and mistake collection are paginated (8 per page) for easier browsing',
+      '[New] AI usage stats in settings: check total token consumption, with per-day and per-model details',
+      '[Improved] Cleaner settings panel and collapsed learning overview; clearer AI-summary prompts',
+    ],
+  },
   {
     version: '1.26.0',
     date: '2026-08',

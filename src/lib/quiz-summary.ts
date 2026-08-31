@@ -245,6 +245,7 @@ export function buildQuizRecordsForSummary(
     const optionText = e.options && e.options.length > 0
       ? `\n选项：${e.options.map((o) => trunc(o)).join('｜')}`
       : '';
-    return `【第${i + 1}题】${e.subject || ''}${e.topic ? ` · ${e.topic}` : ''}${timeInfo}\n题目：${trunc(e.question)}${optionText}\n你的选择：${picked} / 正确答案：${answer}`;
+    const explText = e.explanation ? `\n解析：${trunc(e.explanation)}` : '';
+    return `【第${i + 1}题】${e.subject || ''}${e.topic ? ` · ${e.topic}` : ''}${timeInfo}\n题目：${trunc(e.question)}${optionText}\n你的选择：${picked} / 正确答案：${answer}${explText}`;
   }).join('\n\n');
 }

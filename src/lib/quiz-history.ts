@@ -31,6 +31,8 @@ export interface QuizHistoryEntry {
   pickedIdx: number;
   /** 是否答对 */
   correct: boolean;
+  /** AI 解析讲解（为什么对/错；旧数据可能没有该字段） */
+  explanation?: string;
   /** 每题限时（秒；0/缺省 = 不限时） */
   timeLimit?: number;
   /** 实际作答用时（秒） */
