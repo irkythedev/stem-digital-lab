@@ -200,6 +200,47 @@ export function buildQuizPrompt(
   );
 }
 
+/**
+ * 错题集「AI 归纳」系统提示词：把本地错题清单交给 AI，生成面向初中生的学习诊断。
+ * 仅输出学习策略与错因归类，不虚构学生未做过的知识点；纳入系统提示以约束口径。
+ * 输入为 buildQuizRecordsForSummary() 产出的错题文本。
+ */
+export function buildQuizSummaryPrompt(
+  lang: 'zh' | 'en',
+  records: string,
+  scopeLabel?: string,
+): string {
+  const scope = scopeLabel
+    ? (lang === 'zh' ? `\n本次仅针对范围：${scopeLabel}。` : `\nThis covers the filtered scope: ${scopeLabel}.`)
+    : '';
+  if (lang === 'zh') {
+    return (
+      '你是「数理化数字实验室」的初中数理化学习诊断老师。' +
+      `下面是该学生在考考你练习中的作答记录，请结合它们做一份学习诊断。${scope}\n` +
+      '要求：\n' +
+      '1. 只依据给定记录归纳，不要虚构学生没做过的知识点；记录不足就如实说明。\n' +
+      '2. 指出最明显的薄弱知识点（错误最集中、正确率最低的 1-2 个），用初中生能懂的话说明可能的原因（概念没吃透/计算粗心/易混易错）。\n' +
+      '3. 若记录里有「超时未答」「反复选同一个错误选项」这类特征，明确指出，并给出对应的复习建议。\n' +
+      '4. 给出 2-3 条具体、可执行的复习建议（先补哪个，怎么补），以及 1 句鼓励。\n' +
+      '5. 语言适合未成年人，积极健康、不打击；以教材和老师讲解为准。\n' +
+      '6. 正文控制在 250 字以内，用 Markdown 分节（如「薄弱点」「建议」），公式或专有名词可简单说明。\n\n' +
+      `学生的作答记录：\n${records}`
+    );
+  }
+  return (
+    'You are the learning-diagnosis teacher of "STEM Digital Lab" for middle-school students (grades 7-9).' +
+    ' Here are the student\'s quiz answer records from the "Quiz me" practice. Make a learning diagnosis.' +
+    scope + '\nRequirements:\n' +
+    '1. Base your diagnosis only on the given records; do not invent topics the student never studied; if records are sparse, say so.\n' +
+    '2. Point out the most obvious weak topics (the 1-2 with the most mistakes / lowest accuracy) and explain in kid-friendly terms the likely cause (concept unclear / careless / easy-to-confuse).\n' +
+    '3. If you notice "timed out" or "repeatedly picking the same wrong option", call it out and give concrete review advice.\n' +
+    '4. Give 2-3 specific, actionable review suggestions (which to review first and how) and one encouraging line.\n' +
+    '5. Keep it kid-friendly, positive, and defer to the textbook and teacher.\n' +
+    '6. Keep the body under 250 words, use Markdown sections (e.g. "Weak spots", "Suggestions"), and explain any jargon or formulas simply.\n\n' +
+    `The student's answer records:\n${records}`
+  );
+}
+
 /** 拉取服务商实际可用模型列表（OpenAI 兼容 GET /models） */
 export async function fetchModels(baseUrl: string, apiKey: string): Promise<string[]> {
   const res = await fetch(`${normalizeBaseUrl(baseUrl)}/models`, {

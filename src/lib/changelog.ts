@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.25.0';
+export const APP_VERSION = '1.26.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.26.0',
+    date: '2026-08',
+    zh: [
+      '[新增] 错题集新增学情概览：科目正确率、薄弱知识点、错误类型一目了然，还能看到最近做题趋势',
+      '[新增] 错题集新增 AI 归纳：让 AI 根据你的错题自动总结薄弱环节，并给出复习建议',
+      '[优化] 错题与公式显示更稳定，作答记录处理更健壮',
+    ],
+    en: [
+      '[New] Mistake collection adds a learning overview: accuracy by subject, weak topics and error patterns at a glance, plus a recent trend',
+      '[New] AI diagnosis in the mistake collection: the AI summarizes your weak spots from your wrong answers and suggests what to review',
+      '[Improved] More stable display of questions and formulas, with more robust handling of answer records',
+    ],
+  },
   {
     version: '1.25.0',
     date: '2026-08',

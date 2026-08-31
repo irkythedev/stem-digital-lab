@@ -22,10 +22,11 @@ import { useSpeak } from '../../lib/use-speak';
 import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
-import { buildQuizPrompt } from '../../lib/ai-config';
+import { buildQuizPrompt, buildQuizSummaryPrompt } from '../../lib/ai-config';
 import { parseQuizBatch, parseQuizQuestion, type QuizQuestion } from '../../lib/ai-quiz';
 import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
+import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
@@ -329,6 +330,17 @@ export default function AiAssistant() {
     }),
     [quizHistoryData, quizSubjFilter, quizScope],
   );
+  // 学情概览：基于当前筛选范围（科目 × 仅错题/全部）的本地聚合
+  // 趋势的 overall 取全量正确率（而非筛选后），使「仅错题」视图下 recent vs overall 仍有对比意义
+  const quizOverview = useMemo(
+    () => computeQuizOverview(filteredQuizHistory, 3, 10, quizStatsData.rate),
+    [filteredQuizHistory, quizStatsData.rate],
+  );
+  // AI 归纳的输入文本（随筛选范围），无记录时为空串
+  const quizSummaryRecords = useMemo(
+    () => buildQuizRecordsForSummary(filteredQuizHistory, 30, 200),
+    [filteredQuizHistory],
+  );
   const wrongQuizList = useMemo(() => wrongQuizHistory(), [quizHistoryData]);
   // 错题展开项（复用 expandedHistId 语义不冲突，单独用 quizExpandedId）
   const [quizExpandedId, setQuizExpandedId] = useState<string | null>(null);
@@ -346,6 +358,79 @@ export default function AiAssistant() {
     resetQuiz();
     setQuizExpandedId(null);
     setView('quiz');
+  };
+  // ── 错题集「AI 归纳」：把当前筛选范围的作答记录喂给 AI 生成学习诊断 ──
+  const [quizSummaryText, setQuizSummaryText] = useState<string>('');
+  const [quizSummaryLoading, setQuizSummaryLoading] = useState(false);
+  const [quizSummaryError, setQuizSummaryError] = useState<string | null>(null);
+  const [quizSummaryConfirm, setQuizSummaryConfirm] = useState(false); // 触网确认（AI 会被要求看错题）
+  const quizSummaryAbortRef = useRef<AbortController | null>(null);
+  // 当前筛选范围的中文/英文标签（用于 AI 告知范围）
+  const quizSummaryScopeLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (quizSubjFilter) parts.push(quizSubjFilter);
+    parts.push(quizScope === 'wrong' ? (lang === 'zh' ? '错题' : 'wrong answers') : (lang === 'zh' ? '全部记录' : 'all records'));
+    return parts.join(' · ');
+  }, [quizSubjFilter, quizScope, lang]);
+  /** 生成 AI 归纳（复用 streamChat；流式，展示累计文本） */
+  const runQuizSummary = async () => {
+    if (!config) return;
+    if (!quizSummaryRecords) {
+      setQuizSummaryError(lang === 'zh' ? '当前范围内没有作答记录可总结' : 'No answer records in the current scope to summarize');
+      return;
+    }
+    setQuizSummaryConfirm(false);
+    setQuizSummaryLoading(true);
+    setQuizSummaryError(null);
+    setQuizSummaryText('');
+    quizSummaryAbortRef.current = new AbortController();
+    const messages: { role: 'system' | 'user'; content: string }[] = [
+      { role: 'system', content: buildQuizSummaryPrompt(lang, quizSummaryRecords, quizSummaryScopeLabel) },
+      { role: 'user', content: lang === 'zh' ? '请根据以上作答记录生成学习诊断。' : 'Please generate a learning diagnosis from the records above.' },
+    ];
+    try {
+      const t0 = performance.now();
+      const baseTokens = usage?.tokens ?? 0;
+      const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+      let received = 0;
+      const full = await streamChat(
+        config,
+        messages,
+        (delta) => {
+          received += delta.length;
+          const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
+          const outTokens = estimateTokens(received);
+          setUsage({
+            tokens: baseTokens + promptTokens + outTokens,
+            speed: Math.round(outTokens / elapsedSec),
+          });
+        },
+        quizSummaryAbortRef.current.signal,
+        1200, // 归纳输出上限（学习诊断 250 字以内，留足分节/公式余量）
+      );
+      setQuizSummaryText(full);
+    } catch (e) {
+      if (quizSummaryAbortRef.current && quizSummaryAbortRef.current.signal.aborted) return;
+      const msg = (e as Error).message;
+      const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
+      setQuizSummaryError(
+        isNetworkError(msg)
+          ? (lang === 'zh' ? '网络无法访问该端点，请检查网络或改用预设服务商' : 'Cannot reach the endpoint. Check network or use a preset provider')
+          : authFailed
+            ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
+            : (lang === 'zh' ? '生成失败：' : 'Failed: ') + msg,
+      );
+    } finally {
+      setQuizSummaryLoading(false);
+    }
+  };
+  /** 关闭面板时中止归纳流 */
+  const closeQuizSummary = () => {
+    quizSummaryAbortRef.current?.abort();
+    setQuizSummaryText('');
+    setQuizSummaryError(null);
+    setQuizSummaryConfirm(false);
+    setQuizSummaryLoading(false);
   };
   // ── 出题练习（Quiz）：批量出题（一次 N 题），本地判分，练习统计内存态 ──
   /** 出题设置（null = 尚未设置，显示设置面板） */
@@ -1685,6 +1770,135 @@ export default function AiAssistant() {
                 </button>
               </span>
             </div>
+            {/* 学情概览 + AI 归纳（基于当前筛选范围；仅在有记录时显示） */}
+            {filteredQuizHistory.length > 0 && (
+              <div className="shrink-0 px-3 pt-2">
+                <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
+                  {/* 本地概览：科目正确率 */}
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] space-y-1">
+                    {quizOverview.subjects.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {quizOverview.subjects.map((s) => (
+                          <span key={s.subject} className="flex items-center gap-1">
+                            <span>{lang === 'zh' ? '科目正确率' : 'By subject'}（{s.subject}）</span>
+                            <span className={s.rate >= 60 ? 'text-[var(--success)]' : 'text-[var(--error)]'}>{s.rate}%</span>
+                            <span className="text-[var(--muted)] opacity-70">({s.correct}/{s.total})</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* 薄弱知识点 TOP */}
+                    {quizOverview.weakTopics.length > 0 && (
+                      <div>
+                        <span className="text-[var(--fg)]">{lang === 'zh' ? '薄弱点' : 'Weak spots'}:</span>{' '}
+                        {quizOverview.weakTopics.map((t, i) => (
+                          <span key={t.topic} className="mr-1.5">
+                            {i > 0 ? '、' : ''}
+                            <span className="text-[var(--error)]">{t.topic}</span>
+                            <span className="opacity-70">({lang === 'zh' ? '错' : '×'}{t.wrong})</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {/* 错误类型 */}
+                    {quizOverview.errorKinds.timeout + quizOverview.errorKinds.confuse + quizOverview.errorKinds.slow + quizOverview.errorKinds.fast > 0 && (
+                      <div>
+                        <span className="text-[var(--fg)]">{lang === 'zh' ? '类型' : 'Patterns'}:</span>{' '}
+                        {quizOverview.errorKinds.timeout > 0 && <span className="mr-1.5">{lang === 'zh' ? `超时未答 ${quizOverview.errorKinds.timeout}` : `Timed out ${quizOverview.errorKinds.timeout}`}</span>}
+                        {quizOverview.errorKinds.confuse > 0 && <span className="mr-1.5">{lang === 'zh' ? `易混反复错 ${quizOverview.errorKinds.confuse}` : `Repeated same wrong ${quizOverview.errorKinds.confuse}`}</span>}
+                        {quizOverview.errorKinds.slow > 0 && <span className="mr-1.5">{lang === 'zh' ? `犹豫答错 ${quizOverview.errorKinds.slow}` : `Slow & wrong ${quizOverview.errorKinds.slow}`}</span>}
+                        {quizOverview.errorKinds.fast > 0 && <span className="mr-1.5">{lang === 'zh' ? `过快答错 ${quizOverview.errorKinds.fast}` : `Too quick ${quizOverview.errorKinds.fast}`}</span>}
+                      </div>
+                    )}
+                    {/* 趋势 */}
+                    {quizOverview.trend && (
+                      <div>
+                        <span className="text-[var(--fg)]">{lang === 'zh' ? '趋势' : 'Trend'}:</span>{' '}
+                        <span>
+                          {lang === 'zh'
+                            ? `最近 ${quizOverview.trend.recentCount} 题正确率 ${quizOverview.trend.recentRate}%（整体 ${quizOverview.trend.overallRate}%）${quizOverview.trend.recentRate >= quizOverview.trend.overallRate ? '，比整体上扬' : '，比整体回落'}`
+                            : `Last ${quizOverview.trend.recentCount}: ${quizOverview.trend.recentRate}% overall ${quizOverview.trend.overallRate}%${quizOverview.trend.recentRate >= quizOverview.trend.overallRate ? ', better than overall' : ', below overall'}`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* AI 归纳：确认 → 生成 → 流式结果 */}
+                  <div className="pt-1.5 border-t border-[var(--border)]/60">
+                    <div className="flex items-center justify-end">
+                      {!quizSummaryText && !quizSummaryLoading && (
+                        <button
+                          type="button"
+                          onClick={() => setQuizSummaryConfirm(true)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] transition-colors disabled:opacity-50"
+                          disabled={!config}
+                        >
+                          <Sparkles className="w-3 h-3" aria-hidden="true" />
+                          {lang === 'zh' ? '让 AI 帮我总结' : 'Summarize with AI'}
+                        </button>
+                      )}
+                      {quizSummaryText && (
+                        <button
+                          type="button"
+                          onClick={() => setQuizSummaryConfirm(true)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                        >
+                          <Sparkles className="w-3 h-3" aria-hidden="true" />
+                          {lang === 'zh' ? '重新生成' : 'Regenerate'}
+                        </button>
+                      )}
+                    </div>
+                    {quizSummaryConfirm && (
+                      <div className="pt-1.5 space-y-1.5">
+                        <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
+                          <ShieldCheck className="w-3 h-3 inline-block mr-1 align-[-2px]" aria-hidden="true" />
+                          {lang === 'zh'
+                            ? `将把「${quizSummaryScopeLabel}」范围内的作答记录发送给你配置的 AI 服务商生成诊断，Key 仍在你本机、本站不记录。确定？`
+                            : `This will send the ${quizSummaryScopeLabel} records to your configured AI provider to generate a diagnosis. Your key stays on-device; this site logs nothing. Proceed?`}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void runQuizSummary()}
+                            disabled={quizSummaryLoading}
+                            className="px-2 py-1 text-[0.625rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors disabled:opacity-50"
+                          >
+                            {lang === 'zh' ? '生成' : 'Generate'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuizSummaryConfirm(false)}
+                            className="px-2 py-1 text-[0.625rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors"
+                          >
+                            {lang === 'zh' ? '取消' : 'Cancel'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {quizSummaryLoading && (
+                      <p className="pt-1.5 text-[0.625rem] mono-font text-[var(--muted)]">
+                        <Sparkles className="w-3 h-3 inline-block mr-1 align-[-2px] animate-pulse" aria-hidden="true" />
+                        {lang === 'zh' ? '正在总结…' : 'Summarizing…'}
+                      </p>
+                    )}
+                    {quizSummaryText && (
+                      <div className="pt-1.5">
+                        <div className="text-left">
+                          <div className="inline-block w-full px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed ai-answer">
+                            <AnswerRich text={quizSummaryText} />
+                            {renderSpeakControls(quizSummaryText)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {quizSummaryError && (
+                      <p className="pt-1.5 text-[0.625rem] mono-font text-[var(--error)] leading-snug">
+                        {lang === 'zh' ? '生成失败：' : 'Failed: '}{quizSummaryError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {/* 科目筛选 */}
             {quizSubjects.length > 0 && (
               <div className="shrink-0 px-3 pt-2 flex flex-wrap items-center gap-1.5">

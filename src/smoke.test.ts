@@ -16,6 +16,12 @@ import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } f
 import { loadFeedback, saveFeedback, removeFeedback, FEEDBACK_LIMIT, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
 import { parseQuizBatch } from './lib/ai-quiz';
+import {
+  computeQuizOverview,
+  computeErrorKinds,
+  buildQuizRecordsForSummary,
+  classifyErrorKind,
+} from './lib/quiz-summary';
 
 let passed = 0;
 let failed = 0;
@@ -618,6 +624,159 @@ describe('Quiz batch parser', () => {
   test('returns empty array for unparseable input', () => {
     assert.equal(parseQuizBatch('没有任何题目结构').length, 0);
     assert.equal(parseQuizBatch('').length, 0);
+  });
+});
+
+/* ── 错题集「学情概览」聚合层 ── */
+
+/** 构造一条 QuizHistoryEntry 测试样本 */
+function qh(partial: Partial<QuizHistoryEntry>): QuizHistoryEntry {
+  return {
+    id: Math.random().toString(36).slice(2),
+    ts: Date.now(),
+    path: '/lab/x',
+    subject: '数学',
+    topic: '一次函数',
+    question: 'q?',
+    options: ['A', 'B', 'C', 'D'],
+    answerIdx: 1,
+    pickedIdx: 1,
+    correct: true,
+    model: 'test',
+    ...partial,
+  };
+}
+
+describe('Quiz summary — 错误类型归类', () => {
+  test('超时未答归为 timeout', () => {
+    const kinds = computeErrorKinds([qh({ correct: false, pickedIdx: -1, timedOut: true })]);
+    assert.equal(kinds.timeout, 1);
+    assert.equal(kinds.plain, 0);
+  });
+
+  test('同科同知识点反复选同一干扰项归为 confuse', () => {
+    const kinds = computeErrorKinds([
+      qh({ correct: false, answerIdx: 1, pickedIdx: 0, elapsedMs: 5000 }),
+      qh({ correct: false, answerIdx: 1, pickedIdx: 0, elapsedMs: 5500 }),
+    ]);
+    assert.equal(kinds.confuse, 2);
+    assert.equal(kinds.plain, 0);
+  });
+
+  test('慢（≥中位数×2）归 slow，快（≤中位数×0.5）归 fast', () => {
+    const kinds = computeErrorKinds([
+      qh({ correct: false, answerIdx: 1, pickedIdx: 0, elapsedMs: 10000, topic: 'A' }),
+      qh({ correct: false, answerIdx: 1, pickedIdx: 2, elapsedMs: 1000, topic: 'B' }),
+      qh({ correct: false, answerIdx: 1, pickedIdx: 2, elapsedMs: 5000, topic: 'C' }),
+    ]);
+    assert.equal(kinds.slow, 1);
+    assert.equal(kinds.fast, 1);
+    assert.equal(kinds.plain, 1);
+  });
+
+  test('正确题不进入错误归类', () => {
+    const kinds = computeErrorKinds([qh({ correct: true })]);
+    assert.equal(kinds.timeout + kinds.confuse + kinds.slow + kinds.fast + kinds.plain, 0);
+  });
+});
+
+describe('Quiz summary — 科目与薄弱知识点', () => {
+  test('科目正确率按科目聚合', () => {
+    const ov = computeQuizOverview([
+      qh({ subject: '数学', correct: true }),
+      qh({ subject: '数学', correct: false }),
+      qh({ subject: '物理', correct: true }),
+    ]);
+    assert.equal(ov.total, 3);
+    assert.equal(ov.correct, 2);
+    assert.equal(ov.wrong, 1);
+    assert.equal(ov.rate, 67);
+    const math = ov.subjects.find((s) => s.subject === '数学')!;
+    assert.equal(math.total, 2);
+    assert.equal(math.rate, 50);
+  });
+
+  test('薄弱知识点 TOP 按错误数降序、截断 limit', () => {
+    const ov = computeQuizOverview([
+      qh({ topic: '一次函数', correct: false }),
+      qh({ topic: '一次函数', correct: false }),
+      qh({ topic: '二次函数', correct: false }),
+      qh({ topic: '凸透镜', correct: true }),
+    ], 1);
+    assert.equal(ov.weakTopics.length, 1);
+    assert.equal(ov.weakTopics[0].topic, '一次函数');
+    assert.equal(ov.weakTopics[0].wrong, 2);
+  });
+
+  test('无错题时 weakTopics 为空', () => {
+    const ov = computeQuizOverview([qh({ correct: true })]);
+    assert.equal(ov.weakTopics.length, 0);
+  });
+});
+
+describe('Quiz summary — 趋势与 AI 输入', () => {
+  test('有记录且窗口够时给最近 vs 整体', () => {
+    const ov = computeQuizOverview(
+      [qh({ correct: true }), qh({ correct: false }), qh({ correct: true }), qh({ correct: true })],
+      3,
+      2,
+    );
+    assert.ok(ov.trend);
+    assert.equal(ov.trend.recentCount, 2);
+  });
+
+  test('空记录时 trend 为 null', () => {
+    const ov = computeQuizOverview([]);
+    assert.equal(ov.trend, null);
+  });
+
+  test('overallRateOverride：筛选视图下 overall 取全量率（不与 recent 同批）', () => {
+    // 模拟「仅错题」视图：entries 全是错（recent 0%），但全量正确率 40%
+    const ov = computeQuizOverview(
+      [qh({ correct: false, topic: 'X' }), qh({ correct: false, topic: 'Y' })],
+      3,
+      2,
+      40,
+    );
+    assert.ok(ov.trend);
+    assert.equal(ov.trend.recentRate, 0);
+    assert.equal(ov.trend.overallRate, 40); // 来自全量，而非 entries 的 0%
+  });
+
+  test('AI 输入截断到 limit 条', () => {
+    const entries = Array.from({ length: 40 }, (_, i) => qh({ correct: i % 2 === 0 }));
+    const txt = buildQuizRecordsForSummary(entries, 30);
+    assert.equal(txt.split('【第').length, 31);
+    assert.ok(!txt.includes('【第31题】'));
+  });
+
+  test('AI 输入标记超时与选项拼接', () => {
+    const txt = buildQuizRecordsForSummary([
+      qh({ correct: false, timedOut: true, pickedIdx: -1, question: '超时题', options: ['x', 'y'] }),
+    ]);
+    assert.ok(txt.includes('（超时未答）'));
+    assert.ok(txt.includes('选项：x｜y'));
+    assert.ok(txt.includes('你的选择：无'));
+  });
+
+  test('AI 输入空记录返回空串', () => {
+    assert.equal(buildQuizRecordsForSummary([]), '');
+  });
+
+  test('AI 输入选项下标越界/非法值 clamp 回退（防 fromCharCode 怪字符/NUL）', () => {
+    const txt = buildQuizRecordsForSummary([
+      qh({ correct: false, pickedIdx: 999, answerIdx: -1, question: '越界', options: ['a', 'b'] }),
+      qh({ correct: false, pickedIdx: NaN, answerIdx: Infinity, question: '非法', options: ['a'] }),
+    ]);
+    assert.ok(txt.includes('你的选择：无'));
+    assert.ok(txt.includes('正确答案：未知'));
+    // 不出现西里尔字母/控制字符
+    assert.ok(!/[\u0400-\u04FF]/.test(txt));
+    assert.ok(!txt.includes('\u0000'));
+  });
+
+  test('正确题 classifyErrorKind 返回 plain（防御）', () => {
+    assert.equal(classifyErrorKind(qh({ correct: true })), 'plain');
   });
 });
 
