@@ -13,17 +13,23 @@ import { useMemo, type ReactNode } from 'react';
 import Formula from '../ui/Formula';
 
 /** 块级公式：$$...$$ 或 \[...\]（可跨行） */
-const BLOCK_RE = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\])/g;
+const BLOCK_RE = /(\$\$[\s\S]+?\$\$|\\{1,2}\[[\s\S]+?\\{1,2}\])/g;
 /** 行内 token：\(...\)、$...$、**加粗**（交替出现） */
-const INLINE_RE = /(\\\([\s\S]*?\\\)|\$[^$\n]+?\$|\*\*[^*\n]+\*\*)/g;
+const INLINE_RE = /(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$|\*\*[^*\n]+\*\*)/g;
+/** 把提取出的公式正文归一化：AI 常把 \\frac 写成 \\\\frac（双反斜杠），KaTeX 会当换行处理而原样泄漏 frac。 */
+function normalizeFormulaTex(tex: string): string {
+  return tex.replace(/\\\\/g, '\\');
+}
+
 
 function renderInline(text: string, keyBase: number): ReactNode[] {
   const parts = text.split(INLINE_RE);
   const out: ReactNode[] = [];
   parts.forEach((p, i) => {
     if (i % 2 === 1) {
-      if (p.startsWith('\\(') && p.endsWith('\\)') && p.length > 4) {
-        out.push(<Formula key={keyBase * 1000 + i} className="ai-answer-katex" tex={p.slice(2, -2)} />);
+      if (/^\\{1,2}\([\s\S]*\\{1,2}\)$/.test(p) && p.length > 4) {
+        const tex = normalizeFormulaTex(p.replace(/^\\{1,2}\(/, '').replace(/\\{1,2}\)$/, ''));
+        out.push(<Formula key={keyBase * 1000 + i} className="ai-answer-katex" tex={tex} />);
         return;
       }
       if (p.startsWith('$') && p.endsWith('$') && p.length > 2) {
@@ -116,7 +122,9 @@ export default function AnswerRich({ text }: { text: string }) {
     parts.forEach((p, i) => {
       if (i % 2 === 1) {
         // 块级公式：去掉 $$ 或 \[ \] 包裹
-        const tex = p.startsWith('$$') ? p.slice(2, -2) : p.slice(2, -2);
+        const tex = p.startsWith('$$')
+          ? p.slice(2, -2)
+          : normalizeFormulaTex(p.replace(/^\\{1,2}\[/, '').replace(/\\{1,2}\]$/, ''));
         out.push(<Formula key={i} block className="ai-answer-katex-block" tex={tex} />);
       } else {
         out.push(...renderBlock(p, i + 1));

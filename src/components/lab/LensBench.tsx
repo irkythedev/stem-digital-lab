@@ -6,7 +6,7 @@
  * 渲染蜡烛、凸透镜、光屏、实像/虚像、两条特殊光线。
  *
  * 物理模型：v = uf/(u-f)，u=f 时不成像（平行光）。
- * 视觉纪律：只用 --fg / --muted / --border / --accent / --card-bg。
+ * 样式说明：只用 --fg / --muted / --border / --accent / --card-bg。
  */
 
 import { useMemo } from 'react';

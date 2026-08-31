@@ -5,7 +5,7 @@
  * 首开欢迎弹窗：首次访问时展示项目介绍（参赛作品 / 板块 / AI 助手 / 维护开源 / 反馈 / 其他作品）。
  * 底部可勾选「以后不显示」→ localStorage 永久跳过；不勾选关闭 → 仅本次会话不再弹。
  *
- * 实现纪律：
+ * 实现说明：
  *  - createPortal 挂到 body（遮罩父级若带 transform 会成为 containing block，必须 portal）
  *  - 书本化视觉：var 变量自适应明暗主题，无渐变阴影
  *  - Esc 关闭 + 焦点落在主按钮；prefers-reduced-motion 无动画

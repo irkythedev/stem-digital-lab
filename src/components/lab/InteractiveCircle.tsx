@@ -11,7 +11,7 @@
  * （直线用描边生长动画、点/文字/角弧淡入），可手动步进 / 自动播放 / 重放，
  * 切换模式自动从头开始。遵循偏好减弱动画时直接全显、无过渡。
  *
- * 视觉纪律：只用 --fg / --muted / --border / --accent / --accent-light / --error。
+ * 样式说明：只用 --fg / --muted / --border / --accent / --accent-light / --error。
  */
 
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode, type SVGProps } from 'react';

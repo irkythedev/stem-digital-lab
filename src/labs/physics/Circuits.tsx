@@ -87,7 +87,7 @@ const baseCopy = {
     readoutU: '电源电压 U',
     readoutSplit: 'I₀ = I₁ + I₂',
     readoutParallelV: 'U₁ = U₂ = U（电源电压）',
-    // 电路元件公式浮层（SOP 教学增强）
+    // 电路元件公式浮层
     tipResistor: { formula: 'I = U / R', principle: '定值电阻阻值不变，电流与两端电压成正比（欧姆定律）' },
     tipBulb: { formula: 'R = U / I', principle: '灯丝电阻随温度升高而增大，是动态电阻（非线性元件）' },
     tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: '滑动变阻器串联分压，改变元件两端电压（调压 + 保护电路）' },
@@ -166,7 +166,7 @@ export default function Circuits() {
 
   const [stage, setStage] = useState<Stage>('predict');
   const [styleId, setStyleId] = useState<CircuitStyleId>('series2');
-  // 电路元件公式浮层（SOP 教学增强）：hover/focus 元件显示公式+代入+原理
+  // 电路元件公式浮层：hover/focus 元件显示公式+代入+原理
   const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
   const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
     const r = e.currentTarget.getBoundingClientRect();

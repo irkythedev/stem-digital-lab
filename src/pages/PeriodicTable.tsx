@@ -75,7 +75,7 @@ const GAP_OPTIONS = [1000, 1800, 2600];
 
 export default function PeriodicTable() {
   const { t, lang } = useApp();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '元素周期表' : 'Periodic Table'} - ${t.brandName}`,
     description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',

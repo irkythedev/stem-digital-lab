@@ -4,7 +4,7 @@
  *
  * 实验级图标：区分于科目图标（SubjectIcon），表示具体实验的主题。
  * 数学函数类：抛物线（二次函数）、双曲线（反比例函数）。
- * 视觉纪律：1px 描边、currentColor、极简，与全站 line 风格一致。
+ * 样式说明：1px 描边、currentColor、极简，与全站 line 风格一致。
  */
 export interface LabIconProps {
   className?: string;

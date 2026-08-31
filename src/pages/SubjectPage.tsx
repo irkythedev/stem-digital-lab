@@ -4,7 +4,7 @@
  *
  * 科目详情页：展示该科目的标题、说明与（建设中）实验列表。
  * 依据路由参数 /subject/:subjectId 渲染对应科目；
- * P0 阶段实验列表为占位，后续由 labs 注册表填充。
+ * 实验列表由 labs 注册表动态填充。
  */
 import { Link, useParams } from 'react-router-dom';
 import { Calculator, Gauge, Sigma } from 'lucide-react';

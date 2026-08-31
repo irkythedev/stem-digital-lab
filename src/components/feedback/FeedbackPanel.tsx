@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
-import { makeFeedbackId, saveFeedback, submitOneFeedback, loadFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
+import { makeFeedbackId, saveFeedback, submitOneFeedback, removeFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
 
 interface FeedbackPanelProps {
   type: FeedbackType;
@@ -68,15 +68,19 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
 
   const submit = async () => {
     if (sending) return;
+    // 代码层长度防护：HTML maxLength 只拦截键盘输入，JS 赋值可绕过，此处强制截断
+    const trimSlice = (v: string, n: number) => v.trim().slice(0, n);
+    const trimmed = trimSlice(message, 2000);
+    // 防空：无文字内容且未选分类 → 拒绝提交（按钮层 disabled 之外的代码层兜底）
+    if (!trimmed && selected.length === 0) return;
     setSending(true);
-    const record = { id: makeFeedbackId(), type, labId, rating, categories: selected, message: message.trim(), language: lang, grade: grade.trim() || undefined, name: name.trim() || undefined, contact: contact.trim() || undefined, createdAt: new Date().toISOString() };
+    const record = { id: makeFeedbackId(), type, labId, rating, categories: selected, message: trimmed, language: lang, grade: trimSlice(grade, 100) || undefined, name: trimSlice(name, 100) || undefined, contact: trimSlice(contact, 100) || undefined, createdAt: new Date().toISOString() };
     saveFeedback(record);
     // 已配置云端时尝试立即直发；未配置则留在本地队列（页面加载时会自动补传）
     const sent = await submitOneFeedback(record);
     if (sent) {
-      // 云端直达成功 → 从本地队列移除该条
-      const rest = loadFeedback().filter((r) => r.id !== record.id);
-      window.localStorage.setItem('stem-lab-feedback', JSON.stringify(rest));
+      // 云端直达成功 → 从本地队列移除该条（persist 内 try/catch，存储异常不抛 UI、不残留重复推送）
+      removeFeedback(record.id);
     }
     setSending(false);
     setDone(sent ? 'sent' : 'queued');
@@ -110,16 +114,16 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
             <>
               {type === 'experiment' && <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.rating}</p><div className="flex gap-2">{(['helpful', 'neutral', 'not-helpful'] as FeedbackRating[]).map((r) => <button key={r} type="button" onClick={() => setRating(r)} className={`border px-3 py-1.5 text-xs ${rating === r ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{r === 'helpful' ? l.helpful : r === 'neutral' ? l.neutral : l.notHelpful}</button>)}</div></div>}
               <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.question}</p><div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => toggleCategory(category)} className={`border px-3 py-1.5 text-xs ${selected.includes(category) ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{l.categories[category]}</button>)}</div></div>
-              <label className="block text-xs text-[var(--muted)]">{l.message}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={l.placeholder} rows={2} className="mt-1.5 w-full resize-y border border-[var(--border)] bg-transparent p-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+              <label className="block text-xs text-[var(--muted)]">{l.message}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={l.placeholder} rows={2} maxLength={2000} className="mt-1.5 w-full resize-y border border-[var(--border)] bg-transparent p-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               {/* 可选身份信息：年级/班级 + 联系方式（仅用于回访，用户自主决定填写） */}
-              <label className="block text-xs text-[var(--muted)]">{l.grade}<input type="text" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder={l.gradePlaceholder} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+              <label className="block text-xs text-[var(--muted)]">{l.grade}<input type="text" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder={l.gradePlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               {/* 称呼 + 联系方式：一行两列 */}
               <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs text-[var(--muted)]">{l.name}<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={l.namePlaceholder} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
-                <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+                <label className="block text-xs text-[var(--muted)]">{l.name}<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={l.namePlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+                <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               </div>
               <p className="text-[0.625rem] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
-              <button type="button" onClick={submit} disabled={sending} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
+              <button type="button" onClick={submit} disabled={sending || (!message.trim() && selected.length === 0)} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
             </>
           )}
         </div>

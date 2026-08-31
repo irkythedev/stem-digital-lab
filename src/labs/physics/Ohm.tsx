@@ -81,7 +81,7 @@ const copy = {
     measureResult: '你的测量平均值',
     measureTrue: '真实阻值',
     switchLabel: '开关',
-    // 电路元件公式浮层（SOP 教学增强）
+    // 电路元件公式浮层
     tipResistor: { formula: 'I = U / R', principle: '定值电阻阻值不变，电流与两端电压成正比（欧姆定律）' },
     tipBulb: { formula: 'R = U / I', principle: '灯丝电阻随温度升高而增大，是动态电阻（非线性元件）' },
     tipRheostat: { formula: 'Uₚ = I × Rₚ', principle: '滑动变阻器串联分压，改变元件两端电压（调压 + 保护电路）' },
@@ -317,7 +317,7 @@ export default function Ohm() {
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
-  // 电路元件公式浮层（SOP 教学增强）：hover/focus 元件显示公式+代入+原理
+  // 电路元件公式浮层：hover/focus 元件显示公式+代入+原理
   const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
   const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
     const r = e.currentTarget.getBoundingClientRect();

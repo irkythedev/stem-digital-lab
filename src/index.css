@@ -10,6 +10,8 @@
   --accent-light: #eeeeee;
   /* 错误反馈色（拒绝/非法接法） */
   --error: #dc2626;
+  /* 成功/正确反馈色（正确答案高亮；与 --error 语义对称） */
+  --success: #16a34a;
   /* 化学液面透明度（浅色底 0.35 足够鲜艳；暗色底需提高） */
   --liquid-opacity: 0.35;
   /* 电表指针：电流表红（红表笔/正极惯例）、电压表蓝（万用表电压档惯例） */
@@ -33,6 +35,7 @@ html.dark {
   --accent: #ffffff;
   --accent-light: #262621;
   --error: #ef4444;
+  --success: #4ade80;
   --liquid-opacity: 0.5;
   /* 暗主题下提高明度，保证指针在暗底上清晰 */
   --meter-a: #ef5350;
@@ -53,6 +56,7 @@ html.dark {
     --accent: #ffffff;
     --accent-light: #262621;
     --error: #ef4444;
+    --success: #4ade80;
     --liquid-opacity: 0.5;
     --meter-a: #ef5350;
     --meter-v: #42a5f5;
@@ -380,8 +384,9 @@ input[type="range"]::-moz-range-thumb:active {
 }
 
 /* AI 学习助手面板 · 数学公式字号适配（面板 text-xs 12px，KaTeX 默认 1.21em 偏大） */
-.ai-answer .ai-answer-katex .katex { font-size: 1.08em; }
-.ai-answer .ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
+/* 不限定 .ai-answer 外层：考考你视图（题目/选项/解析）无 ai-answer 容器，须同样收窄字号 */
+.ai-answer-katex .katex { font-size: 1.08em; }
+.ai-answer-katex-block .katex-display { margin: 0.3rem 0; }
 
 /* TTS 朗读 · 合成中：品牌三角方圆循环移位（复用 Header 品牌动画 tri/sq/ci-spin）；
    等待超 4s 时变暖色（琥珀），提示"等太久了" */
@@ -396,7 +401,7 @@ input[type="range"]::-moz-range-thumb:active {
   .speak-brand .animate-sq-spin,
   .speak-brand .animate-ci-spin { animation: none; }
 }
-.ai-answer .ai-answer-katex-block .katex { font-size: 1.08em; }
+.ai-answer-katex-block .katex { font-size: 1.08em; }
 
 /* 首开欢迎弹窗：遮罩淡入 + 卡片轻上浮（组件内已按 prefers-reduced-motion 跳过动画） */
 @keyframes welcome-fade-in {

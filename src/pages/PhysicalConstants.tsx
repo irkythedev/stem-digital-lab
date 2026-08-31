@@ -4,7 +4,7 @@
  *
  * 物理工具页 · 物理常量速查
  *
- * 复刻元素周期表交互模型：分类筛选 + 检索 + 网格卡片墙 + 点开详情卡。
+ * 参考元素周期表的交互方式：分类筛选 + 检索 + 网格卡片墙 + 点开详情卡。
  * 数据来自 src/lib/constants.ts（依据 physics_kb 提炼，数值对照教材附录）。
  */
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
@@ -24,7 +24,7 @@ const CATEGORIES: ConstantCategory[] = ['mech', 'thermal', 'optics', 'sound', 'e
 
 export default function PhysicalConstants() {
   const { t, lang } = useApp();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '物理常量速查' : 'Physics Constants'} - ${t.brandName}`,
     description: lang === 'zh' ? '常用物理常量速查：光速、引力常数、阿伏伽德罗常数等，按力学/热学/光学/声学/电学分类。' : 'Common physics constants: speed of light, gravitational constant, Avogadro constant, grouped by mechanics/thermal/optics/sound/electricity.',

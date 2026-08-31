@@ -47,9 +47,9 @@ export function cleanTextForTTS(text: string, lang: 'zh' | 'en' = 'zh'): string 
   // 还原公式口语
   protectedText = protectedText.replace(/\u0000F(\d+)\u0000/g, (_, idx) => formulas[Number(idx)]);
 
-  // 清理 markdown
+  // 清理 markdown：行内代码保留内容（去掉反引号），避免 AI 回答里的英文术语（`API` 等）被整段删除
   let out = protectedText
-    .replace(/`[^`\n]*`/g, '')
+    .replace(/`([^`\n]*)`/g, '$1')
     .replace(/[#>*_~|]/g, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\s+/g, ' ')

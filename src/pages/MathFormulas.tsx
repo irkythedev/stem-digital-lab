@@ -4,7 +4,7 @@
  *
  * 数学工具页 · 数学公式速查
  *
- * 复刻物理常量页交互模型：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
+ * 参考物理常量页的交互方式：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
  * 数据来自 src/lib/formulas.ts（依据 math_kb 提炼），公式用 KaTeX 渲染。
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -38,7 +38,7 @@ function renderRich(text: string): ReactNode[] {
 
 export default function MathFormulas() {
   const { t, lang } = useApp();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据（L3 GEO）
+  // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '数学公式速查' : 'Math Formulas'} - ${t.brandName}`,
     description: lang === 'zh' ? '初中数学公式速查：代数、几何、函数、统计与概率，按人教版教材组织。' : 'Junior-high math formulas: algebra, geometry, functions, statistics & probability, organized by textbook chapters.',

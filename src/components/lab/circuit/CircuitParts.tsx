@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 电路图公共 SVG 零件：灯泡、闸刀开关、电池、保险丝、滑动变阻器、固定电表。
- * 视觉纪律与全站一致：1px 描边 var(--fg)、card-bg 填充、无阴影无渐变。
+ * 样式说明：1px 描边 var(--fg)、card-bg 填充、无阴影无渐变。
  * 8 例经典电路图样式共享这些零件，避免重复绘制。
  */
 import type { ReactNode } from 'react';
