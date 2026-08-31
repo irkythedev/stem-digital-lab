@@ -22,6 +22,7 @@ import {
   buildQuizRecordsForSummary,
   classifyErrorKind,
 } from './lib/quiz-summary';
+import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal } from './lib/token-usage';
 
 let passed = 0;
 let failed = 0;
@@ -528,6 +529,22 @@ describe('Quiz history (localStorage persistence)', () => {
     }
   });
 
+  test('explanation round-trips and is optional (legacy data)', () => {
+    installMockWindow();
+    try {
+      saveQuizHistory({ ...entry(1, false), explanation: 'u>2f 时成倒立缩小实像，照相机原理。' });
+      const withExpl = listQuizHistory()[0];
+      assert.equal(withExpl.explanation, 'u>2f 时成倒立缩小实像，照相机原理。');
+      // 旧数据无 explanation：读取不报错、字段为 undefined
+      saveQuizHistory(entry(2, true));
+      const legacy = listQuizHistory().find((e) => e.question === '题目2')!;
+      assert.equal(legacy.explanation, undefined);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
   test('wrongQuizHistory returns only wrong entries', () => {
     installMockWindow();
     try {
@@ -759,6 +776,15 @@ describe('Quiz summary — 趋势与 AI 输入', () => {
     assert.ok(txt.includes('你的选择：无'));
   });
 
+  test('AI 输入含解析讲解（有则拼接，无则不出现）', () => {
+    const withExpl = buildQuizRecordsForSummary([
+      qh({ correct: false, explanation: '斜率等于 k，因为 y=kx+b 中 k 是斜率。' }),
+    ]);
+    assert.ok(withExpl.includes('解析：斜率等于 k'));
+    const noExpl = buildQuizRecordsForSummary([qh({ correct: false })]);
+    assert.ok(!noExpl.includes('解析：'));
+  });
+
   test('AI 输入空记录返回空串', () => {
     assert.equal(buildQuizRecordsForSummary([]), '');
   });
@@ -777,6 +803,71 @@ describe('Quiz summary — 趋势与 AI 输入', () => {
 
   test('正确题 classifyErrorKind 返回 plain（防御）', () => {
     assert.equal(classifyErrorKind(qh({ correct: true })), 'plain');
+  });
+});
+
+/* ── token 用量累计统计（localStorage，按模型 × 日期分桶） ── */
+
+describe('Token usage (localStorage persistence)', () => {
+  const mem = new Map<string, string>();
+  function installMockWindow() {
+    (globalThis as any).window = {
+      localStorage: {
+        getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
+        setItem: (k: string, v: string) => { mem.set(k, v); },
+        removeItem: (k: string) => { mem.delete(k); },
+      },
+    };
+  }
+  function restoreWindow() {
+    delete (globalThis as any).window;
+  }
+
+  test('addTokenUsage accumulates per model per day and total sums all', () => {
+    installMockWindow();
+    try {
+      addTokenUsage('deepseek-chat', 12400);
+      addTokenUsage('deepseek-chat', 600);
+      addTokenUsage('qwen-plus', 3600);
+      const usage = loadTokenUsage();
+      // 两级结构：模型 → 当天日期 → 数值
+      const deepseekDays = usage['deepseek-chat'];
+      const dayTotal = deepseekDays ? Object.values(deepseekDays).reduce((s, n) => s + n, 0) : 0;
+      assert.equal(dayTotal, 13000);
+      const qwenDays = usage['qwen-plus'];
+      const qwenTotal = qwenDays ? Object.values(qwenDays).reduce((s, n) => s + n, 0) : 0;
+      assert.equal(qwenTotal, 3600);
+      assert.equal(tokenUsageTotal(usage), 16600);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('legacy flat format migrates into before bucket', () => {
+    installMockWindow();
+    try {
+      // 旧格式 { model: total } 直接写入 → load 应迁移为 before 桶
+      mem.set('stem-ai-token-usage', JSON.stringify({ 'deepseek-chat': 5000 }));
+      const usage = loadTokenUsage();
+      assert.equal(usage['deepseek-chat']?.['before'], 5000);
+      assert.equal(tokenUsageTotal(usage), 5000);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('clearTokenUsage empties the store', () => {
+    installMockWindow();
+    try {
+      addTokenUsage('deepseek-chat', 100);
+      clearTokenUsage();
+      assert.equal(tokenUsageTotal(loadTokenUsage()), 0);
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
   });
 });
 
