@@ -245,7 +245,13 @@ export function buildQuizRecordsForSummary(
     const optionText = e.options && e.options.length > 0
       ? `\n选项：${e.options.map((o) => trunc(o)).join('｜')}`
       : '';
+    const fillText = e.type === 'fill' && e.fillAnswers && e.fillAnswers.length > 0
+      ? `\n正确答案：${e.fillAnswers.map((a) => trunc(a)).join(' 或 ')}`
+      : '';
+    const userText = e.type === 'fill' && e.userAnswer
+      ? `\n你的答案：${trunc(e.userAnswer)}`
+      : '';
     const explText = e.explanation ? `\n解析：${trunc(e.explanation)}` : '';
-    return `【第${i + 1}题】${e.subject || ''}${e.topic ? ` · ${e.topic}` : ''}${timeInfo}\n题目：${trunc(e.question)}${optionText}\n你的选择：${picked} / 正确答案：${answer}${explText}`;
+    return `【第${i + 1}题】${e.subject || ''}${e.topic ? ` · ${e.topic}` : ''}${timeInfo}\n题目：${trunc(e.question)}${optionText}${fillText}${userText}\n你的选择：${picked} / 正确答案：${answer}${explText}`;
   }).join('\n\n');
 }

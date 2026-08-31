@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v1.27.0-blue)
+![version](https://img.shields.io/badge/版本-v1.28.0-blue)
 ![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：<a href="https://stem.irky.dev">https://stem.irky.dev</a></p>
@@ -112,8 +112,8 @@ npm run test       # 运行测试
 - 使用您自己的 API Key：支持 DeepSeek / 通义千问 / Kimi / 智谱 GLM / 豆包等预设及自定义端点，本站不提供、不代购、不收取任何费用
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
-- 支持数学公式排版（行内 / 块级 LaTeX），支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算
-- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；「考考我」可让 AI 基于当前知识点出单选题，作答后即时判分与讲解；答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议；不提供自由输入框，问答历史持久保存于本机浏览器
+- 支持数学公式排版（行内 / 块级 LaTeX），支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算，设置页可查看累计 token 用量与按日明细
+- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；「考考我」可让 AI 基于当前知识点出单选题或填空题（可选单选/填空/混合，支持 AI 辅助判分），作答后即时判分与讲解；答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议；不提供自由输入框，问答历史持久保存于本机浏览器
 
 ### 每日科学
 
@@ -240,8 +240,8 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 - Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint; this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
-- Math formulas are rendered properly (inline / block LaTeX); Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage
-- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option; "Quiz me" generates a single-choice question from the current topic and scores it instantly with an explanation — no free-text input, and history persists only in your local browser. Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary
+|- Math formulas are rendered properly (inline / block LaTeX); Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage, with cumulative usage and per-day details in settings
+|- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option; "Quiz me" generates single-choice or fill-in questions (choose single-choice/fill-in/mixed, with AI-assisted grading) and scores them instantly with an explanation — no free-text input, and history persists only in your local browser. Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary
 
 ### Daily Science
 

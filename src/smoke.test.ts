@@ -15,7 +15,7 @@ import { latexToSpeech } from './lib/latex-speech';
 import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
 import { loadFeedback, saveFeedback, removeFeedback, FEEDBACK_LIMIT, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
-import { parseQuizBatch } from './lib/ai-quiz';
+import { parseQuizBatch, judgeFillAnswer } from './lib/ai-quiz';
 import {
   computeQuizOverview,
   computeErrorKinds,
@@ -641,6 +641,60 @@ describe('Quiz batch parser', () => {
   test('returns empty array for unparseable input', () => {
     assert.equal(parseQuizBatch('没有任何题目结构').length, 0);
     assert.equal(parseQuizBatch('').length, 0);
+  });
+});
+
+/* ── 填空题解析与判分（judgeFillAnswer） ── */
+
+describe('Fill-in question parsing & grading', () => {
+  test('parses fill question with 【类型】填空 marker', () => {
+    const raw = '【第1题】\n【类型】填空\n【题目】凸透镜的焦距为 ____cm\n【答案】10\n【解析】标准焦距为 10cm。\n\n';
+    const parsed = parseQuizBatch(raw, 1);
+    assert.equal(parsed.length, 1);
+    assert.equal(parsed[0].type, 'fill');
+    assert.ok(parsed[0].fillAnswers.includes('10'));
+  });
+
+  test('parses fill question without 【类型】 (fallback by answer text)', () => {
+    const raw = '【第1题】\n【题目】电压为 ____V\n【答案】0.5A 或 500mA\n【解析】根据欧姆定律计算。\n\n';
+    const parsed = parseQuizBatch(raw, 1);
+    assert.equal(parsed.length, 1);
+    assert.equal(parsed[0].type, 'fill');
+    assert.ok(parsed[0].fillAnswers.includes('0.5A'));
+    assert.ok(parsed[0].fillAnswers.includes('500mA'));
+  });
+
+  test('judgeFillAnswer: 数值容差 0.5 ≈ 1/2', () => {
+    assert.ok(judgeFillAnswer('0.5', ['1/2']));
+    assert.ok(judgeFillAnswer('0.50', ['0.5']));
+    assert.ok(judgeFillAnswer('1/2', ['0.5']));
+  });
+
+  test('judgeFillAnswer: 单位归一 0.5A = 0.5 安', () => {
+    assert.ok(judgeFillAnswer('0.5A', ['0.5A', '500mA']));
+    assert.ok(judgeFillAnswer('0.5安', ['0.5A']));
+    assert.ok(judgeFillAnswer('0.5 安培', ['0.5A']));
+  });
+
+  test('judgeFillAnswer: LaTeX 去格式等价', () => {
+    assert.ok(judgeFillAnswer('H2O', ['H_2O']));
+    assert.ok(judgeFillAnswer('h2o', ['H_2O']));
+  });
+
+  test('judgeFillAnswer: frac 归一化 i=u/r 匹配 I=\\frac{U}{R}', () => {
+    assert.ok(judgeFillAnswer('i=u/r', ['\\(I=\\frac{U}{R}\\)']));
+    assert.ok(judgeFillAnswer('I=U/R', ['\\(I=\\frac{U}{R}\\)']));
+    assert.ok(judgeFillAnswer('v=s/t', ['\\(v=\\frac{s}{t}\\)（即 v 等于 s 除以 t）']));
+  });
+
+  test('judgeFillAnswer: 拒绝错误答案', () => {
+    assert.ok(!judgeFillAnswer('3', ['0.5']));
+    assert.ok(!judgeFillAnswer('0.5', ['10']));
+  });
+
+  test('judgeFillAnswer: 空输入返回 false', () => {
+    assert.ok(!judgeFillAnswer('', ['0.5']));
+    assert.ok(!judgeFillAnswer('  ', ['0.5']));
   });
 });
 
