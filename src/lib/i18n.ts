@@ -119,6 +119,7 @@ export const translations = {
     authorHomeDesc: '作者主页 · 最新作品与动态',
     versionTitle: '版本 {version} · 点击查看更新记录',
     versionAria: '版本信息',
+    changelogTitle: '更新日志',
     updateAvailable: '有新版本，点击刷新',
   },
   en: {
@@ -230,6 +231,7 @@ export const translations = {
     authorHomeDesc: 'Author home · latest works and updates',
     versionTitle: 'Version {version} · click to view changelog',
     versionAria: 'Version info',
+    changelogTitle: 'Changelog',
     updateAvailable: 'Update available — click to refresh',
   },
 };

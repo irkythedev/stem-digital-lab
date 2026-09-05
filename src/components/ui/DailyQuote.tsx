@@ -36,6 +36,8 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
   const [idx, setIdx] = useState(dayIndex);
   const [showStory, setShowStory] = useState(false);
   const [storyModal, setStoryModal] = useState(false);
+  // 「翻一翻」图标翻转动画：每次点击递增 key 强制重挂载，触发一次性翻转
+  const [flipKey, setFlipKey] = useState(0);
   // 移动端故事是否被截断（决定是否显示「阅读完整故事」按钮）
   const [storyClamped, setStoryClamped] = useState(false);
   const storyRef = useRef<HTMLParagraphElement>(null);
@@ -53,6 +55,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
     let next = Math.floor(Math.random() * POOL.length);
     if (next === idx) next = (next + 1) % POOL.length;
     setIdx(next);
+    setFlipKey(k => k + 1);
     setShowStory(false);
     setStoryModal(false);
   };
@@ -72,7 +75,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
           onClick={shuffle}
           className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
-          <RefreshCw className="w-3 h-3" />
+          <RefreshCw key={flipKey} className="w-3 h-3 animate-daily-flip" />
           {lang === 'zh' ? '翻一翻' : 'Flip'}
         </button>
       </div>
