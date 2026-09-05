@@ -9,13 +9,28 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getTtsUrl, TTS_CONFIG } from './tts-config';
-import { latexToSpeech } from './latex-speech';
+import { latexToSpeech, PHYS_UNIT_ZH, PHYS_UNIT_KEYS_SORTED, type SpeechMode } from './latex-speech';
 import { scfUrlWithToken } from './scf-token';
 
-export type SpeakState = 'idle' | 'synthesizing' | 'playing' | 'paused' | 'error';
+export type SpeakState = 'idle' | 'synthesizing' | 'playing' | 'paused' | 'finished' | 'error';
+
+/**
+ * 重播缓存的 PCM 字节上限：48kHz 单声道 16bit ≈ 5.8MB/分钟，32MB ≈ 5.5 分钟朗读量。
+ * 超限后新合成的段不再缓存（照常播放），重播时未缓存段回退为重新合成——
+ * 防止超长回答（错题归纳等）把解码后 PCM 无限堆在页面内存里。
+ */
+const REPLAY_CACHE_MAX_BYTES = 32 * 1024 * 1024;
+
+/** 朗读公式的口径选项：physics 模式 + 逐公式量名表（多义符号按公式消歧） */
+export interface SpeechOpts {
+  mode?: SpeechMode;
+  symbols?: Record<string, string>;
+}
 
 /** 朗读前清洗：把 LaTeX 公式（\(...\) / \[...\] / $...$ / $$...$$）转成口语，去掉 markdown 符号 */
-export function cleanTextForTTS(text: string, lang: 'zh' | 'en' = 'zh'): string {
+export function cleanTextForTTS(text: string, lang: 'zh' | 'en' = 'zh', opts?: SpeechOpts): string {
+  const mode = opts?.mode ?? 'math';
+  const symbols = opts?.symbols;
   // 先保护代码块与行内代码，再处理公式，避免公式转口语时污染代码
   const codeBlocks: string[] = [];
   let protectedText = text.replace(/```[\s\S]*?```/g, (m) => {
@@ -28,24 +43,35 @@ export function cleanTextForTTS(text: string, lang: 'zh' | 'en' = 'zh'): string 
   const formulas: string[] = [];
   protectedText = protectedText
     .replace(/\$\$[\s\S]*?\$\$/g, (m) => {
-      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      formulas.push(latexToSpeech(m.slice(2, -2), lang, mode, symbols));
       return `\u0000F${formulas.length - 1}\u0000`;
     })
     .replace(/\\\[[\s\S]*?\\\]/g, (m) => {
-      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      formulas.push(latexToSpeech(m.slice(2, -2), lang, mode, symbols));
       return `\u0000F${formulas.length - 1}\u0000`;
     })
     .replace(/\$[^$\n]*?\$/g, (m) => {
-      formulas.push(latexToSpeech(m.slice(1, -1), lang));
+      formulas.push(latexToSpeech(m.slice(1, -1), lang, mode, symbols));
       return `\u0000F${formulas.length - 1}\u0000`;
     })
     .replace(/\\\([\s\S]*?\\\)/g, (m) => {
-      formulas.push(latexToSpeech(m.slice(2, -2), lang));
+      formulas.push(latexToSpeech(m.slice(2, -2), lang, mode, symbols));
       return `\u0000F${formulas.length - 1}\u0000`;
     });
 
   // 还原公式口语
   protectedText = protectedText.replace(/\u0000F(\d+)\u0000/g, (_, idx) => formulas[Number(idx)]);
+
+  // 物理模式（中文）：散文里的「数字+单位」转中文读法（220V → 220 伏特、0.5A → 0.5 安培）。
+  // 只认表内单位且必须前邻数字，「4G 网络」「1080p」等不在表内不受影响；
+  // 公式已在上面转好（输出为中文单位名），此处不会二次触碰。
+  if (mode === 'physics' && lang === 'zh') {
+    const unitAlt = PHYS_UNIT_KEYS_SORTED.map((u) => u.replace(/[·\\]/g, '\\$&')).join('|');
+    protectedText = protectedText.replace(
+      new RegExp(`(\\d)\\s*(${unitAlt})(?![A-Za-z])`, 'g'),
+      (_, d, u) => `${d} ${PHYS_UNIT_ZH[u] ?? u}`,
+    );
+  }
 
   // 清理 markdown：行内代码保留内容（去掉反引号），避免 AI 回答里的英文术语（`API` 等）被整段删除
   let out = protectedText
@@ -101,10 +127,17 @@ export function useSpeak() {
   /** 分句队列与当前索引 */
   const segsRef = useRef<string[]>([]);
   const idxRef = useRef(0);
+  /** 各段已解码音频缓存（与 segsRef 同索引）：播完后重播直接复用，不再重新合成 */
+  const bufferCacheRef = useRef<(AudioBuffer | null)[]>([]);
+  /** 缓存累计 PCM 字节数（上限见 REPLAY_CACHE_MAX_BYTES） */
+  const cacheBytesRef = useRef(0);
   /** 当前段播完后的回调（接下一段或结束） */
   const onNaturalEndRef = useRef<(() => void) | null>(null);
   /** 当前朗读语音（speak 时设置；分段串行播放时贯通使用，避免每段都走默认中文） */
   const voiceRef = useRef<string>(TTS_CONFIG.DEFAULT_VOICE);
+  /** 最近一次朗读的原始文本（finished 态下仅该文本的条目显示重播） */
+  const rawTextRef = useRef('');
+  const [finishedText, setFinishedText] = useState('');
 
   const unlockAudio = useCallback(() => {
     try {
@@ -172,7 +205,7 @@ export function useSpeak() {
     elapsedRef.current = 0;
   }, [startSource]);
 
-  /** 停止（归零）：清队列，下次从头播 */
+  /** 停止（归零）：清队列与缓存，下次从头合成 */
   const stop = useCallback(() => {
     wasStoppedRef.current = true;
     onNaturalEndRef.current = null;
@@ -181,7 +214,10 @@ export function useSpeak() {
     audioBufferRef.current = null;
     segsRef.current = [];
     idxRef.current = 0;
+    bufferCacheRef.current = [];
+    cacheBytesRef.current = 0;
     clearTimer();
+    setFinishedText('');
     setState('idle');
   }, [stopSource]);
 
@@ -202,9 +238,17 @@ export function useSpeak() {
 
   const waitingLong = elapsedSec > 4;
 
-  /** 合成一段文本并播放；播完自动接下一段 */
+  /** 合成一段文本并播放；播完自动接下一段。命中缓存的段直接播放，不再请求合成 */
   const playSegment = useCallback(
     async (seg: string) => {
+      const idx = idxRef.current;
+      const cached = bufferCacheRef.current[idx];
+      if (cached && ctxRef.current) {
+        audioBufferRef.current = cached;
+        elapsedRef.current = 0;
+        startSource(0);
+        return;
+      }
       setState('synthesizing');
       startTimer();
       try {
@@ -248,7 +292,14 @@ export function useSpeak() {
 
         const ctx = ctxRef.current;
         if (!ctx) throw new Error('no audio context');
-        audioBufferRef.current = await ctx.decodeAudioData(audioBytes);
+        const decoded = await ctx.decodeAudioData(audioBytes);
+        // 缓存上限内才留存（PCM 字节 ≈ 样本数 × 声道 × 2）；超限段不缓存，重播时回退重新合成
+        const pcmBytes = decoded.length * decoded.numberOfChannels * 2;
+        if (cacheBytesRef.current + pcmBytes <= REPLAY_CACHE_MAX_BYTES) {
+          bufferCacheRef.current[idx] = decoded;
+          cacheBytesRef.current += pcmBytes;
+        }
+        audioBufferRef.current = decoded;
         elapsedRef.current = 0;
         clearTimer();
         startSource(0);
@@ -268,23 +319,33 @@ export function useSpeak() {
       idxRef.current = nextIdx;
       void playSegment(segsRef.current[nextIdx]);
     } else {
-      // 全部播完
-      segsRef.current = [];
+      // 全部播完：进入 finished，保留 segs 与音频缓存供 replay 秒播（不重新合成）
       idxRef.current = 0;
       audioBufferRef.current = null;
-      setState('idle');
+      setFinishedText(rawTextRef.current);
+      setState('finished');
     }
   }, [playSegment]);
 
   onNaturalEndRef.current = onSegmentEnd;
 
+  /** 重新朗读：从第一段起用缓存音频秒播（命中缓存不重新合成）；缓存失效则回退重新合成 */
+  const replay = useCallback(() => {
+    if (segsRef.current.length === 0) return;
+    unlockAudio();
+    wasStoppedRef.current = false;
+    idxRef.current = 0;
+    void playSegment(segsRef.current[0]);
+  }, [unlockAudio, playSegment]);
+
   const speak = useCallback(
-    async (rawText: string, voice?: string, lang: 'zh' | 'en' = 'zh') => {
+    async (rawText: string, voice?: string, lang: 'zh' | 'en' = 'zh', opts?: SpeechOpts) => {
       unlockAudio();
       stop();
+      rawTextRef.current = rawText;
       voiceRef.current = voice ?? TTS_CONFIG.DEFAULT_VOICE;
 
-      const text = cleanTextForTTS(rawText, lang);
+      const text = cleanTextForTTS(rawText, lang, opts);
       if (!text) return;
 
       const segs = splitForTTS(text);
@@ -296,5 +357,5 @@ export function useSpeak() {
     [unlockAudio, stop, playSegment],
   );
 
-  return { state, errorMsg, speak, pause, resume, stop, waitingLong };
+  return { state, errorMsg, finishedText, speak, pause, resume, replay, stop, waitingLong };
 }

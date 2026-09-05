@@ -370,6 +370,13 @@ input[type="range"]::-moz-range-thumb:active {
   .recite-active { animation: none; box-shadow: 0 0 0 2px rgba(199, 29, 35, 0.45); }
 }
 
+/* 每日科学「翻一翻」图标：每次点击翻转一圈（一次性，非循环） */
+@keyframes daily-flip {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-daily-flip { animation: daily-flip 0.4s ease-in-out; }
+
 /* 无障碍：系统开启"减少动效"时停用品牌装饰动画（三角旋转/绿点呼吸） */
 @media (prefers-reduced-motion: reduce) {
   .animate-tri-spin, .animate-sq-spin, .animate-ci-spin,

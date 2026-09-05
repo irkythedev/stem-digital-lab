@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.28.0';
+export const APP_VERSION = '1.29.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '1.29.0',
+    date: '2026-09',
+    zh: [
+      '[新增] 物理公式朗读升级：读物理量名与单位（如「速度等于路程与时间之比」「110瓦」）',
+      '[新增] 朗读完成后可一键重新朗读，无需等待重新加载',
+      '[优化] 物理话题的 AI 回答更简洁：公式后不再重复括号读法',
+      '[优化] 每日一科学卡片换条目时图标会翻转，切换更有反馈感',
+      '[修复] 问 AI 失败时显示你的问题与失败原因，不再空白无提示',
+    ],
+    en: [
+      '[New] Physics formulas read aloud in physics terms: quantity names and units ("speed is distance over time", "110 watts")',
+      '[New] Replay a finished reading with one tap — no re-loading needed',
+      '[Improved] Physics AI answers are cleaner: no more parenthetical readings after formulas',
+      '[Improved] The Daily Science card icon flips when switching entries',
+      '[Fixed] Failed AI questions now show your question and the reason instead of a blank state',
+    ],
+  },
   {
     version: '1.28.0',
     date: '2026-08',
@@ -165,12 +183,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     zh: [
       '[优化] AI 回答朗读更准确：数学公式、化学式按规范读法朗读，不再读成英文字符',
       '[优化] 优化朗读体验：多字母变量逐个清晰发音，不再连读吞音',
-      '[优化] 反馈与朗读接口增加访问令牌校验，防止恶意调用',
+      '[优化] 反馈与朗读功能增加安全保护，交流更放心',
     ],
     en: [
       '[Improved] Read-aloud of AI answers is now more accurate: math formulas and chemical names are read correctly instead of as raw characters',
       '[Improved] Reading clarity: multi-letter variables are pronounced letter by letter with no swallowed sounds',
-      '[Improved] Added access-token validation to feedback and TTS endpoints to prevent abuse',
+      '[Improved] Added security protection to feedback and read-aloud features',
     ],
   },
   {
@@ -241,12 +259,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     zh: [
       '[优化] 元素周期表新增 AI 助手快捷入口',
       '[优化] 优化 AI 助手面板标题显示',
-      '[优化] 更新使用说明页的项目介绍视频',
     ],
     en: [
       '[Improved] Added an AI assistant shortcut to the periodic table',
       '[Improved] Refined the AI assistant panel header',
-      '[Improved] Updated the intro video on the guide page',
     ],
   },
 
@@ -598,10 +614,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.17.2',
     date: '2026-08',
     zh: [
-      '[优化] 每日科学张謇卡片的彩蛋图标改为本地加载，与卡片内容同步显示，加载更快且支持离线',
+      '[优化] 每日科学张謇卡片的彩蛋图标加载更快且支持离线',
     ],
     en: [
-      '[Improved] The Zhang Jian easter-egg icon now loads locally with the card — faster and works offline',
+      '[Improved] The Zhang Jian easter-egg icon now loads with the card — faster and works offline',
     ],
   },
   {
@@ -714,13 +730,13 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.15.0',
     date: '2026-08',
     zh: [
-      '[新增] 新增「AI 学习助手」（顶栏入口）：支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等预设及自定义端点，您自行配置 API Key 即可使用，辅助解释初中数理化知识',
+      '[新增] 新增「AI 学习助手」（顶栏入口）：支持多种主流 AI 服务商及自定义接入，您自行配置 API Key 即可使用，辅助解释初中数理化知识',
       '[优化] 首次使用先阅读并同意使用须知，再进入设置；Key 仅存本机浏览器、对话直连您所选的服务商、本站无后端不记录任何内容',
       '[优化] AI 会结合当前页面内容作答（如当前公式、实验、元素），模型列表在连接成功后自动获取；AI 内容仅供参考，请以教材和老师讲解为准',
       '[优化] 优化移动端竖屏视觉效果',
     ],
     en: [
-      '[New] New "AI Assistant" (header entry): presets for DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and a custom endpoint — configure your own API key for help with middle-school math, physics and chemistry',
+      '[New] New "AI Assistant" (header entry): presets for popular AI providers plus a custom endpoint — configure your own API key for help with middle-school math, physics and chemistry',
       '[Improved] Read and accept the terms first, then configure; the key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing',
       '[Improved] AI answers are grounded in the current page (formula, lab, element); the model list is fetched after a successful connection; output is for reference — trust the textbook and your teacher',
       '[Improved] Improved mobile portrait visuals',
@@ -876,12 +892,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '1.9.0',
     date: '2026-08',
     zh: [
-      '[新增] 元素详情新增实物照片：104 个元素可查看真实外观，点击可放大（照片来自 images-of-elements，遵循 CC BY 3.0 署名）',
+      '[新增] 元素详情新增实物照片：104 个元素可查看真实外观，点击可放大',
       '[优化] 原子结构示意图优化：第一层电子环更容易点击，修复悬停时卡片晃动问题',
       '[优化] 反馈通道升级：提交的反馈可及时送达开发者，离线时自动保存、联网后补发',
     ],
     en: [
-      '[New] Element details now show real photos for 104 elements, tappable to enlarge (photos from images-of-elements, CC BY 3.0)',
+      '[New] Element details now show real photos for 104 elements, tappable to enlarge',
       '[Improved] Bohr diagram improvements: inner shell is easier to tap; fixed card jitter on hover',
       '[Improved] Feedback now reaches the developer promptly, saved automatically when offline and re-sent once back online',
     ],
@@ -1070,30 +1086,26 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: '1.0.0',
-    date: '2026-08',
+    date: '2026-07',
     zh: [
+      '项目起步，搭建数字实验平台基础框架',
       '[新增] 首发完整版：覆盖数学、物理、化学三大科目共 9 个探究实验',
       '[新增] 每个实验采用「预测 → 探索 → 结论」三幕式，鼓励先猜想再验证',
       '[新增] 家庭电路改为真实的交流电逻辑：火线、零线、接地三线清晰呈现',
       '[新增] 支持中英双语、深浅主题，课堂投影与个人使用都舒适',
-      '[新增] 可安装到手机/电脑桌面（PWA），离线也能用',
+      '[新增] 可安装到手机/电脑桌面，离线也能用',
       '[新增] 支持一键分享、二维码分享，方便同学交流',
       '[新增] 可保存到本机，无需账号、数据不上传',
     ],
     en: [
+      'Project inception: basic framework of the digital lab platform',
       '[New] First full release: 9 inquiry labs across Math, Physics and Chemistry',
       '[New] Every lab follows a Predict → Explore → Conclude flow that encourages guessing before verifying',
       '[New] Household circuit now uses real AC logic: live, neutral and earth wires clearly shown',
       '[New] Bilingual (zh/en) and light/dark themes, comfortable for classroom projection and personal use',
-      '[New] Installable to your device home screen (PWA) and usable offline',
+      '[New] Installable to your device home screen and usable offline',
       '[New] One-tap and QR-code sharing for easy exchange with classmates',
       '[New] Saves locally — no account, no uploads',
     ],
-  },
-  {
-    version: '0.0.0',
-    date: '2026-07',
-    zh: ['项目起步，搭建数字实验平台基础框架'],
-    en: ['Project inception: basic framework of the digital lab platform'],
   },
 ];

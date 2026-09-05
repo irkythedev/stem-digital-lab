@@ -15,10 +15,11 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
+import { symbolsForTopic } from '../../lib/physics-speech-symbols';
 import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
@@ -152,7 +153,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
 
 export default function AiAssistant() {
   const { lang } = useApp();
-  const { state: speakState, errorMsg, speak, pause, resume, stop: stopSpeak, waitingLong } = useSpeak();
+  const { state: speakState, errorMsg, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal } = useAiContext();
@@ -173,7 +174,13 @@ export default function AiAssistant() {
   }, [lang, stopSpeak]);
 
   // 朗读控制条（历史条目与当前轮共用）
-  const renderSpeakControls = (text: string) => (
+  // topic 决定公式朗读口径：物理公式 topic → physics 模式 + 逐公式量名表（多义符号消歧）；其余走数学口径
+  const renderSpeakControls = (text: string, topic?: string) => {
+    const symbols = lang === 'zh' ? symbolsForTopic(topic) : null;
+    const speechOpts = symbols ? { mode: 'physics' as const, symbols } : undefined;
+    // finished 态只对刚播完的那条显示重播；其他条目保持普通朗读按钮（点了会朗读自己）
+    const isReplay = speakState === 'finished' && finishedText === text;
+    return (
     <div className="flex justify-end items-center gap-1 mt-1.5">
       <button
         type="button"
@@ -181,12 +188,14 @@ export default function AiAssistant() {
           if (speakState === 'playing') pause();
           else if (speakState === 'paused') resume();
           else if (speakState === 'synthesizing') stopSpeak();
-          else speak(text, getTtsVoice(lang), lang);
+          else if (isReplay) replay();
+          else speak(text, getTtsVoice(lang), lang, speechOpts);
         }}
         title={
           speakState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
             : speakState === 'paused' ? (lang === 'zh' ? '继续朗读' : 'Resume')
             : speakState === 'synthesizing' ? (lang === 'zh' ? '合成中' : 'Loading')
+            : isReplay ? (lang === 'zh' ? '重新朗读' : 'Replay')
             : speakState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
             : (lang === 'zh' ? '朗读回答' : 'Read aloud')
         }
@@ -211,6 +220,7 @@ export default function AiAssistant() {
           </span>
         ) : speakState === 'playing' ? <Pause className="w-4 h-4" />
           : speakState === 'paused' ? <Play className="w-4 h-4" />
+          : isReplay ? <RotateCcw className="w-4 h-4" />
           : <Volume2 className="w-4 h-4" />
         }
       </button>
@@ -232,6 +242,7 @@ export default function AiAssistant() {
       )}
     </div>
   );
+  };
   const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
   const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
@@ -1862,7 +1873,7 @@ export default function AiAssistant() {
                       <div className="text-left">
                         <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                           <AnswerRich text={h.answer} />
-                          {renderSpeakControls(h.answer)}
+                          {renderSpeakControls(h.answer, h.topic)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
@@ -2094,7 +2105,7 @@ export default function AiAssistant() {
                         <div className="text-left">
                           <div className="inline-block w-full px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed ai-answer">
                             <AnswerRich text={quizSummaryText} />
-                            {renderSpeakControls(quizSummaryText)}
+                            {renderSpeakControls(quizSummaryText, aiCtx.topic)}
                           </div>
                         </div>
                       </div>
@@ -2674,7 +2685,7 @@ export default function AiAssistant() {
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
           <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-[60dvh] sm:max-h-[42dvh] p-3 space-y-2.5 text-sm serif-font">
-            {history.length > 0 || answer || pending || busy ? (
+            {history.length > 0 || answer || pending || busy || error ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
                 {history.map((h, i) => (
@@ -2683,15 +2694,16 @@ export default function AiAssistant() {
                     <div className="text-left">
                       <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         <AnswerRich text={h.assistant} />
-                        {renderSpeakControls(h.assistant)}
+                        {renderSpeakControls(h.assistant, aiCtx.topic)}
                       </div>
                     </div>
                   </div>
                 ))}
                 {/* 当前轮（流式显示中） */}
-                {(answer || pending || busy) && (
+                {(answer || pending || busy || error) && (
                   <>
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
+                    {(answer || pending || busy) && (
                     <div className="text-left">
                       {/* 思考中：不显示方形边框（shaping 20px 精巧内联），明暗主题由库 auto 检测；等待>4s 变琥珀提示 */}
                       <div className={`inline-block max-w-[95%] px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
@@ -2713,9 +2725,10 @@ export default function AiAssistant() {
                           </div>
                         )}
                         {/* 朗读按钮：流式完成前不显示（busy 中）；完成后由历史区提供 */}
-                        {answer && !busy && renderSpeakControls(answer)}
+                        {answer && !busy && renderSpeakControls(answer, aiCtx.topic)}
                       </div>
                     </div>
+                    )}
                   </>
                 )}
                 {error && (
