@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '1.29.0';
+export const APP_VERSION = '0.29.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,7 +18,7 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: '1.29.0',
+    version: '0.29.0',
     date: '2026-09',
     zh: [
       '[新增] 物理公式朗读升级：读物理量名与单位（如「速度等于路程与时间之比」「110瓦」）',
@@ -36,7 +36,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.28.0',
+    version: '0.28.0',
     date: '2026-08',
     zh: [
       '[新增] 考考你新增填空题题型：单选、填空、混合三种模式可选',
@@ -52,7 +52,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.27.0',
+    version: '0.27.0',
     date: '2026-08',
     zh: [
       '[新增] 错题集支持按知识点筛选，学情概览一眼看清薄弱点、错误类型与做题趋势',
@@ -70,7 +70,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.26.0',
+    version: '0.26.0',
     date: '2026-08',
     zh: [
       '[新增] 错题集新增学情概览：科目正确率、薄弱知识点、错误类型一目了然，还能看到最近做题趋势',
@@ -84,7 +84,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.25.0',
+    version: '0.25.0',
     date: '2026-08',
     zh: [
       '[新增] 错题集：考考你答错的题自动收集，错题一目了然，可随时重做',
@@ -102,7 +102,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.24.1',
+    version: '0.24.1',
     date: '2026-08',
     zh: [
       '[修复] 反馈表单完善：空内容不能提交，反馈更可靠',
@@ -116,7 +116,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.24.0',
+    version: '0.24.0',
     date: '2026-08',
     zh: [
       '[新增] AI 出题练习：基于当前页面知识点自动出单选题，作答后即时判分与讲解，学完随时考一考',
@@ -128,7 +128,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.23.0',
+    version: '0.23.0',
     date: '2026-08',
     zh: [
       '[新增] AI 问答历史：问答记录仅保存在本机浏览器，可随时回看、复制、回到来源页',
@@ -146,7 +146,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.22.3',
+    version: '0.22.3',
     date: '2026-08',
     zh: [
       '[修复] 优化触屏设备上的拖拽体验：拖动仪表、圆点等更跟手、更精准',
@@ -156,7 +156,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.22.2',
+    version: '0.22.2',
     date: '2026-08',
     zh: [
       '[优化] 首页标题区域排版更清晰，重点更突出',
@@ -166,7 +166,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.22.1',
+    version: '0.22.1',
     date: '2026-08',
     zh: [
       '[优化] 首页学科卡片更精致：图文居中排布，停留时有更清晰的反馈',
@@ -178,7 +178,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.22.0',
+    version: '0.22.0',
     date: '2026-08',
     zh: [
       '[优化] AI 回答朗读更准确：数学公式、化学式按规范读法朗读，不再读成英文字符',
@@ -192,7 +192,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.21.17',
+    version: '0.21.17',
     date: '2026-08',
     zh: [
       '[优化] 网站图标支持深浅双主题：深色模式自动切换为高对比实心图标，小尺寸更清晰',
@@ -202,7 +202,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.21.16',
+    version: '0.21.16',
     date: '2026-08',
     zh: [
       '[优化] 优化首次加载体验：加载过程更直观友好',
@@ -215,7 +215,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.15',
+    version: '0.21.15',
     date: '2026-08',
     zh: [
       '[优化] 圆的性质探究：构造动画的「下一步」按钮更突出，预测选项选中后高亮，操作引导更清晰',
@@ -228,7 +228,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.14',
+    version: '0.21.14',
     date: '2026-08',
     zh: [
       '[修复] 家庭电路：断开总开关后电路清晰示断（灯泡熄灭、电流归零）',
@@ -243,7 +243,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.12',
+    version: '0.21.12',
     date: '2026-08',
     zh: [
       '[样式] 优化部分实验标题图标，图形更规范统一',
@@ -254,7 +254,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.11',
+    version: '0.21.11',
     date: '2026-08',
     zh: [
       '[优化] 元素周期表新增 AI 助手快捷入口',
@@ -267,7 +267,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.10',
+    version: '0.21.10',
     date: '2026-08',
     zh: [
       '[优化] 优化周期表朗读体验，支持英文发音',
@@ -280,7 +280,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.9',
+    version: '0.21.9',
     date: '2026-08',
     zh: [
       '[新增] AI 回答加载动画升级，等待过久自动变色提示',
@@ -295,7 +295,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.8',
+    version: '0.21.8',
     date: '2026-08',
     zh: [
       '[新增] 安装应用提供分设备图文引导',
@@ -308,7 +308,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.7',
+    version: '0.21.7',
     date: '2026-08',
     zh: [
       '[修复] 修复移动端页面底部显示问题',
@@ -321,7 +321,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.6',
+    version: '0.21.6',
     date: '2026-08',
     zh: [
       '[优化] 统一实验步骤导航与弹窗交互体验',
@@ -334,7 +334,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.5',
+    version: '0.21.5',
     date: '2026-08',
     zh: [
       '[优化] 优化移动端与触控体验，适配大屏教学设备',
@@ -347,7 +347,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.4',
+    version: '0.21.4',
     date: '2026-08',
     zh: [
       '[优化] 大屏教学设备显示优化，字号自动放大',
@@ -358,7 +358,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.3',
+    version: '0.21.3',
     date: '2026-08',
     zh: [
       '[修复] 修复「换一批」追问未跟随对话主题的问题',
@@ -369,7 +369,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.2',
+    version: '0.21.2',
     date: '2026-08',
     zh: [
       '[修复] 修复 AI 回答中追问建议重复显示的问题',
@@ -380,7 +380,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.1',
+    version: '0.21.1',
     date: '2026-08',
     zh: [
       '[优化] 优化反馈功能，可留下联系方式便于回访',
@@ -393,7 +393,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.21.0',
+    version: '0.21.0',
     date: '2026-08',
     zh: [
       '[新增] AI 助手回答支持语音朗读，可暂停、继续',
@@ -406,7 +406,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.10',
+    version: '0.20.10',
     date: '2026-08',
     zh: [
       '[新增] 使用说明页新增项目介绍视频',
@@ -417,7 +417,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.9',
+    version: '0.20.9',
     date: '2026-08',
     zh: [
       '[优化] 语言默认跟随系统，英文系统自动切到英文界面',
@@ -432,7 +432,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.8',
+    version: '0.20.8',
     date: '2026-08',
     zh: [
       '[新增] 微信内打开页面自动提示转发，分享给同学更顺手',
@@ -447,7 +447,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.7',
+    version: '0.20.7',
     date: '2026-08',
     zh: [
       '[优化] 优化欢迎介绍中的版本信息展示与更新提示',
@@ -460,7 +460,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.6',
+    version: '0.20.6',
     date: '2026-08',
     zh: [
       '[优化] 优化 AI 助手使用须知的提示样式与文案',
@@ -473,7 +473,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.5',
+    version: '0.20.5',
     date: '2026-08',
     zh: [
       '[优化] 开源协议改为弹窗查看，无需跳转页面',
@@ -486,7 +486,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.4',
+    version: '0.20.4',
     date: '2026-08',
     zh: [
       '[优化] 优化首次欢迎介绍的展示细节',
@@ -497,7 +497,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.3',
+    version: '0.20.3',
     date: '2026-08',
     zh: [
       '[优化] 优化中英文切换下的界面显示与文案表述',
@@ -512,7 +512,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.2',
+    version: '0.20.2',
     date: '2026-08',
     zh: [
       '[优化] 暗色主题调整为暖色系，夜间阅读更柔和护眼',
@@ -527,7 +527,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.1',
+    version: '0.20.1',
     date: '2026-08',
     zh: [
       '[优化] AI 助手追问支持「换一批」，问答过程中实时显示 token 用量',
@@ -542,7 +542,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.20.0',
+    version: '0.20.0',
     date: '2026-08',
     zh: [
       '[新增] AI 学习助手支持数学公式排版、多轮问答历史与用量统计，窗口尺寸可自由调整',
@@ -557,7 +557,7 @@ export const CHANGELOG: ChangelogEntry[] = [
   },
 
   {
-    version: '1.19.2',
+    version: '0.19.2',
     date: '2026-08',
     zh: [
       '[优化] 优化部分页面交互与文案描述',
@@ -567,7 +567,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.19.1',
+    version: '0.19.1',
     date: '2026-08',
     zh: [
       '[优化] 优化部分页面交互与文案描述，多端体验更顺畅',
@@ -577,7 +577,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.19.0',
+    version: '0.19.0',
     date: '2026-08',
     zh: [
       '[新增] 圆的性质探究新增分步构造动画，可逐步演示辅助线作法并配合拖拽验证',
@@ -591,7 +591,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.18.0',
+    version: '0.18.0',
     date: '2026-08',
     zh: [
       '[新增] 元素周期表跟读新增男声，可在中考跟读面板一键切换，默认女生',
@@ -601,7 +601,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.17.3',
+    version: '0.17.3',
     date: '2026-08',
     zh: [
       '[优化] 每日科学张謇卡片的彩蛋提示文案优化',
@@ -611,7 +611,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.17.2',
+    version: '0.17.2',
     date: '2026-08',
     zh: [
       '[优化] 每日科学张謇卡片的彩蛋图标加载更快且支持离线',
@@ -621,7 +621,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.17.1',
+    version: '0.17.1',
     date: '2026-08',
     zh: [
       '[修复] 修复 AI 学习助手面板在移动端打开时可能出现在屏幕外的问题：面板位置自动适配当前屏幕',
@@ -631,7 +631,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.17.0',
+    version: '0.17.0',
     date: '2026-08',
     zh: [
       '[新增] 每日科学扩充：名人名言增至 48 位科学家（国内为主），新增考点速记 30 条（物理/化学/数学，契合教材），名言与考点自然混合展示',
@@ -645,7 +645,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.16.1',
+    version: '0.16.1',
     date: '2026-08',
     zh: [
       '[新增] 页脚作者旁新增邮箱入口：点击调起本地邮件客户端，可直接给作者发邮件',
@@ -655,7 +655,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.16.0',
+    version: '0.16.0',
     date: '2026-08',
     zh: [
       '[新增] 首页学科实验按领域分类展示：物理分电学/力学/光学，数学分函数/几何，化学分物质变化/金属与酸碱，点击分类快速定位',
@@ -669,7 +669,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.5',
+    version: '0.15.5',
     date: '2026-08',
     zh: [
       '[修复] 串并联电路图完善：三电流表样式的干路电流表 A₀ 串联在干路导线上、读数不再压线，分流/汇合处补充节点标记，电表读数统一带底衬',
@@ -683,7 +683,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.4',
+    version: '0.15.4',
     date: '2026-08',
     zh: [
       '[优化] 首页学科卡片不再显示「建设中」等开发状态标签，展示更干净',
@@ -697,7 +697,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.3',
+    version: '0.15.3',
     date: '2026-08',
     zh: [
       '[优化] 首页点击学科后，实验列表紧跟学科卡片展开，内容即时可见，无需向下滚动寻找',
@@ -707,7 +707,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.2',
+    version: '0.15.2',
     date: '2026-08',
     zh: [
       '[优化] 优化新版本更新机制：检测到新版本后，点击提示一次刷新即可完成更新',
@@ -717,7 +717,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.1',
+    version: '0.15.1',
     date: '2026-08',
     zh: [
       '[优化] 移动端适配调整优化：随机探索按钮触控区域加大，页脚「其他作品」面板在手机上不再超出屏幕，作品名称精简',
@@ -727,7 +727,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.15.0',
+    version: '0.15.0',
     date: '2026-08',
     zh: [
       '[新增] 新增「AI 学习助手」（顶栏入口）：支持多种主流 AI 服务商及自定义接入，您自行配置 API Key 即可使用，辅助解释初中数理化知识',
@@ -743,7 +743,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.14.0',
+    version: '0.14.0',
     date: '2026-08',
     zh: [
       '[新增] 首页新增「每日科学」板块：每天展示一位科学家的名言与小故事，可一键换一条，中英双语',
@@ -753,7 +753,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.13.1',
+    version: '0.13.1',
     date: '2026-08',
     zh: [
       '[修复] 修复串并联电路实验的结论反馈：答题后正确显示 ✓/✗；优化实验视觉效果（灯泡点亮渐变、深色主题下液面颜色更清晰）',
@@ -763,7 +763,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.13.0',
+    version: '0.13.0',
     date: '2026-08',
     zh: [
       '[新增] 物理新增「物理公式速查」工具：29 个初中物理核心公式按力学/热学/光学/声学/电学分类，点开看公式、单位、适用条件与易错点；公式与常量双向关联——点公式里的相关常量直接跳到常量页（带数值），常量页也能反查用到它的公式',
@@ -773,7 +773,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.12.2',
+    version: '0.12.2',
     date: '2026-08',
     zh: [
       '[优化] 欧姆定律实验更贴近教材：探究流程按教材表述（保持 R 不变变电压 / 保持电压不变换 R），伏安法按教材操作（变阻器先调至最大保护电路再逐渐调小），电压表读数更准确；电路图符号对齐教科书（滑动变阻器斜向下箭头+接线端子）',
@@ -783,7 +783,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.12.1',
+    version: '0.12.1',
     date: '2026-08',
     zh: [
       '[修复] 修复数学公式速查勾股定理配图：改为课本常见的「竖短横长」画法，三个正方形与三角形边长严格对应，大小比例更协调',
@@ -793,7 +793,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.12.0',
+    version: '0.12.0',
     date: '2026-08',
     zh: [
       '[优化] 反馈更及时：实验/项目反馈提交后直达开发者；离线时自动保存，联网后自动补发',
@@ -803,7 +803,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.11.1',
+    version: '0.11.1',
     date: '2026-08',
     zh: [
       '[优化] 数学公式速查检索升级：可按公式符号（如 kx、π、l=）或章节简称（如「八下」「九上」）直接搜，英文名也能用关键词匹配，找到公式更容易',
@@ -813,7 +813,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.11.0',
+    version: '0.11.0',
     date: '2026-08',
     zh: [
       '[新增] 数学新增「数学公式速查」工具：19 个初中数学公式分类速览、随查随搜；点开看公式详解、直观配图与易错点提醒，还能一键跳去对应的函数探究',
@@ -827,7 +827,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.10.0',
+    version: '0.10.0',
     date: '2026-08',
     zh: [
       '[新增] 物理新增「物理常量速查」工具：常用常量与典型数值一表全览，支持分类筛选与检索，点开查看物理意义、应用场景与关联实验',
@@ -837,7 +837,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.9.4',
+    version: '0.9.4',
     date: '2026-08',
     zh: [
       '[修复] 新版本更新一次点击即可到位',
@@ -847,7 +847,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.9.3',
+    version: '0.9.3',
     date: '2026-08',
     zh: [
       '[修复] 有新版本时点一次刷新即更新到位（不再需要点两次）',
@@ -863,7 +863,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.9.2',
+    version: '0.9.2',
     date: '2026-08',
     zh: [
       '[新增] 实验页新增「返回学科」与「首页」双导航，浏览更方便',
@@ -877,7 +877,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.9.1',
+    version: '0.9.1',
     date: '2026-08',
     zh: [
       '[优化] 元素实物照片移入「百科故事」页签，基础属性页更紧凑',
@@ -889,7 +889,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.9.0',
+    version: '0.9.0',
     date: '2026-08',
     zh: [
       '[新增] 元素详情新增实物照片：104 个元素可查看真实外观，点击可放大',
@@ -903,7 +903,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.8.1',
+    version: '0.8.1',
     date: '2026-08',
     zh: [
       '[修复] 修复在微信等内置浏览器中跟读只播放前几个元素读音的问题，连读更顺畅',
@@ -913,7 +913,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.8.0',
+    version: '0.8.0',
     date: '2026-08',
     zh: [
       '[新增] 元素周期表新增「中考跟读」：前 20 号元素、金属活动性顺序、常见元素三大必背清单，可调朗读次数与跟读间隔，逐元素连读并高亮对应格子',
@@ -931,7 +931,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.7.0',
+    version: '0.7.0',
     date: '2026-08',
     zh: [
       '[优化] 元素周期表升级：元素详情新增原子结构示意图，并收录发现史与生活常见用途小百科',
@@ -941,7 +941,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.6.0',
+    version: '0.6.0',
 
     date: '2026-08',
     zh: [
@@ -952,7 +952,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.5.0',
+    version: '0.5.0',
 
     date: '2026-08',
     zh: [
@@ -965,7 +965,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.4.3',
+    version: '0.4.3',
     date: '2026-08',
     zh: [
       '[优化] 电解水更贴近教材：装置结构、电极与正负极标注更清晰',
@@ -979,7 +979,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.4.2',
+    version: '0.4.2',
     date: '2026-08',
     zh: [
       '[优化] 电解水装置改为标准双管电解器：两支竖直玻璃管底部连通、电极插入水中，直流电源与导线在电解器外部上方',
@@ -989,7 +989,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.4.1',
+    version: '0.4.1',
 
     date: '2026-08',
     zh: [
@@ -1004,7 +1004,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.4.0',
+    version: '0.4.0',
 
     date: '2026-08',
     zh: [
@@ -1017,7 +1017,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.3.1',
+    version: '0.3.1',
 
     date: '2026-08',
     zh: [
@@ -1028,7 +1028,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.3.0',
+    version: '0.3.0',
 
     date: '2026-08',
     zh: [
@@ -1043,7 +1043,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.2.0',
+    version: '0.2.0',
     date: '2026-08',
     zh: [
       '[新增] 每个实验页标题旁新增分享按钮：一键分享该实验（二维码 / 系统分享 / 复制链接），并针对微信给出转发引导',
@@ -1057,7 +1057,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.1.0',
+    version: '0.1.0',
     date: '2026-08',
     zh: [
       '[新增] 新增 4 个物理实验：浮力（阿基米德原理）、杠杆的平衡条件、压强、滑轮',
@@ -1071,7 +1071,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.0.1',
+    version: '0.0.1',
     date: '2026-08',
     zh: [
       '[优化] 优化触屏与点击操作：开关、按钮、滑块都更容易点中和拖动',
@@ -1085,7 +1085,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     ],
   },
   {
-    version: '1.0.0',
+    version: '0.0.0',
     date: '2026-07',
     zh: [
       '项目起步，搭建数字实验平台基础框架',
