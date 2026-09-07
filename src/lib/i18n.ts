@@ -39,6 +39,7 @@ export const translations = {
     works: [
       { name: 'AquaInsight · 水气研判', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png', desc: '水质与气象数据研判' },
       { name: '百年回响 · 江海潮声', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', desc: '张謇与南通百年文脉的互动数字展陈' },
+      { name: 'Lexi · 英语听说词汇', url: 'https://lexi.irky.dev/', icon: '/icons/lexi-favicon.png', desc: '围绕译林教材的英语听说词汇学习工具' },
     ],
     gitee: 'Gitee 项目',
     externalLinkHint: '即将前往 Gitee/GitHub 提交 Issue，请注意保护个人信息。',
@@ -153,6 +154,7 @@ export const translations = {
     works: [
       { name: 'AquaInsight · Water-Air', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png', desc: 'Water quality & weather data insights' },
       { name: '100 Years Echo · Jianghai Tides', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', desc: "An interactive digital exhibition of Zhang Jian and Nantong's century-long heritage" },
+      { name: 'Lexi · Listening & Vocab', url: 'https://lexi.irky.dev/', icon: '/icons/lexi-favicon.png', desc: 'English listening & vocabulary tool built around the Yilin textbooks' },
     ],
     gitee: 'View on Gitee',
     externalLinkHint: 'You are about to visit Gitee/GitHub to submit an Issue — please protect your personal information.',
