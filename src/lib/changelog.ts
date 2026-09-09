@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.29.0';
+export const APP_VERSION = '0.30.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.30.0',
+    date: '2026-09',
+    zh: [
+      '[新增] 欧姆定律、凸透镜与二次函数实验的参数卡新增「计算引擎」标识，可查看实验当前的计算方式',
+    ],
+    en: [
+      '[New] The parameter card in the Ohm\'s law, lens and quadratic labs now shows which calculation engine powers the experiment',
+    ],
+  },
   {
     version: '0.29.0',
     date: '2026-09',

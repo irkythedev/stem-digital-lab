@@ -10,19 +10,12 @@
  */
 
 import { useMemo } from 'react';
+import { imageV } from '../../labs/physics/lens-core';
 
 interface LensBenchProps {
   u: number;        // 物距 (cm)
   f: number;        // 焦距 (cm)
   showRays?: boolean;
-}
-
-/* ── 物理计算 ── */
-
-function imageV(u: number, f: number): number | null {
-  const diff = u - f;
-  if (Math.abs(diff) < 0.01) return null; // u=f → 不成像（平行光）
-  return (u * f) / diff;
 }
 
 /* ── 布局常量 ── */

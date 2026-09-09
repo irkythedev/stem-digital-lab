@@ -10,25 +10,20 @@
  *
  * 复用组件：LensBench（光具座 SVG）、ExploreStage（任务卡+笔记）、ParamSlider。
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import LensBench from '../../components/lab/LensBench';
+import EngineBadge from '../../components/lab/EngineBadge';
 import Formula from '../../components/ui/Formula';
+import { imageV, loadOhmEngine } from './stem-engine';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
 /** 预测题：成像性质 */
 type PredictType = 'real-inv-sm' | 'real-inv-eq' | 'real-inv-lg' | 'virt-upr-lg' | 'no-image' | null;
-
-/** 物理模型：像距 v = uf/(u-f) */
-function imageV(u: number, f: number): number | null {
-  const diff = u - f;
-  if (Math.abs(diff) < 0.01) return null;
-  return (u * f) / diff;
-}
 
 /** 成像类型描述 */
 function imageDesc(u: number, f: number, lang: 'zh' | 'en'): string {
@@ -46,6 +41,8 @@ const copy = {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     readout: '读数',
+    engineWasm: '计算引擎：C++ WebAssembly',
+    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     stagePredict: '预测',
     stageExplore: '探索',
@@ -153,6 +150,8 @@ const copy = {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     readout: 'Readings',
+    engineWasm: 'Engine: C++ WebAssembly',
+    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -282,6 +281,18 @@ export default function Lens() {
   const [conclude3, setConclude3] = useState<string | null>(null);
   const [conclude4, setConclude4] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((k) => {
+      if (alive) setEngineKind(k);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const predComplete = predict1 !== null && predict2 !== null && predict3 !== null;
   const concludeComplete = conclude1 && conclude2 && conclude3 && conclude4;
@@ -444,9 +455,12 @@ export default function Lens() {
 
       {/* ── 参数 ── */}
       <div className="border border-[var(--border)] p-4 space-y-3">
-        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-          // {c.params}
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+            // {c.params}
+          </h3>
+          <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? c.engineWasm : c.engineJs} />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <ParamSlider
             label="u (cm)"

@@ -10,3 +10,8 @@ coverage/
 # 防御：介绍视频项目（独立仓库，禁入公网）——即使被复制/移动进本站目录也忽略
 stem-intro/
 intro/
+
+# C++ 命令行验证产物（不提交二进制；cpp/ 源码与 src/wasm/stemCore.d.ts 正常入库）
+ohm_cli
+ohm_cli.exe
+*.o

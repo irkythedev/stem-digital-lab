@@ -2,8 +2,8 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v0.29.0-blue)
-![react](https://img.shields.io/badge/React-19-blue) ![vite](https://img.shields.io/badge/Vite-6-purple) ![tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![katex](https://img.shields.io/badge/KaTeX-0.18-green) ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6)
+![version](https://img.shields.io/badge/版本-v0.30.0-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
+![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![katex](https://img.shields.io/badge/KaTeX-0.18-green)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：<a href="https://stem.irky.dev">https://stem.irky.dev</a></p>
 
@@ -35,6 +35,7 @@
 - [元素周期表工具](#元素周期表工具)
 - [AI 学习助手](#ai-学习助手)
 - [每日科学](#每日科学)
+- [计算引擎](#计算引擎)
 - [项目结构](#项目结构)
 - [反馈](#反馈)
 - [许可](#许可)
@@ -120,6 +121,14 @@ npm run test       # 运行测试
 - 首页固定板块：每天展示一位科学家的名言、考点速记与小故事，可一键换一条
 - 中英双语，小故事可折叠展开
 
+### 计算引擎
+
+- 交互层仍是 React：欧姆定律、凸透镜成像与二次函数实验的数值核共用一份 C++ 实现（`cpp/stem_core.cpp` + 各公式 hpp），经 Emscripten 编译为同一份 WebAssembly（SINGLE_FILE），在浏览器中按需调用
+- 已接入实验：欧姆定律（/lab/ohm）、凸透镜成像（/lab/lens）、二次函数（/lab/quadratic），公式与页面模型一致——定值电阻 I = U/(R+Rp)，灯泡 I = U/(R + 0.4U + Rp)（γ = 0.4）；像距 v = uf/(u−f)；y = ax² + bx + c
+- 编译：`npm run build:wasm`（需 emsdk / em++），产物为 SINGLE_FILE 的 `src/wasm/stemCore.js`；未配置 em++、编译失败或运行时加载失败时，自动回退各 JS 真源（`src/labs/physics/ohm-core.ts`、`lens-core.ts`、`src/labs/math/quadratic-core.ts`），实验照常可用
+- 三个实验的参数卡会显示当前引擎：「计算引擎：C++ WebAssembly」或「计算引擎：JS 回退」
+- 另附一份仅依赖 C++ 标准库的命令行版（`cpp/cli.cpp`），用 `g++` 即可编译，便于离线验证欧姆公式
+
 ### 项目结构
 
 ```
@@ -163,6 +172,7 @@ src/
 - [Periodic Table Tool](#periodic-table-tool)
 - [AI Assistant](#ai-assistant)
 - [Daily Science](#daily-science)
+- [Computation engine](#computation-engine)
 - [Project Structure](#project-structure)
 - [Feedback](#feedback)
 - [License](#license)
@@ -247,6 +257,14 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 
 - Fixed block on the homepage: a scientist's quote, key-point tips and short story each day, shuffleable
 - Bilingual, with a collapsible story
+
+### Computation engine
+
+- The interaction layer stays in React: the Ohm's law, convex-lens and quadratic-function labs share one C++ numeric core (`cpp/stem_core.cpp` + per-formula headers), compiled to a single WebAssembly binary (SINGLE_FILE) and invoked on demand in the browser
+- Wired up labs: Ohm's law (/lab/ohm), lens (/lab/lens), quadratic (/lab/quadratic), with formulas identical to the on-page models: fixed resistor I = U/(R+Rp); bulb I = U/(R + 0.4U + Rp) (γ = 0.4); image distance v = uf/(u−f); y = ax² + bx + c
+- Build with `npm run build:wasm` (requires emsdk / em++); the output is a single-file `src/wasm/stemCore.js`. If em++ is absent, the build fails or the runtime load fails, each lab falls back to its JS core (`src/labs/physics/ohm-core.ts`, `lens-core.ts`, `src/labs/math/quadratic-core.ts`) and keeps working as usual
+- The three labs show the active engine in their parameter card: "Engine: C++ WebAssembly" or "Engine: JS fallback"
+- A stdlib-only command-line twin (`cpp/cli.cpp`) can be compiled with plain `g++` to verify the Ohm formulas offline
 
 ### Project Structure
 

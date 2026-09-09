@@ -10,7 +10,8 @@
  *
  * 复用组件：CoordPlane（I-U 图像）、ExploreStage（任务卡+笔记）、LabIcon。
  */
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import { useApp } from '../../lib/app-context';
@@ -21,6 +22,7 @@ import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget 
 import MeterGauge from '../../components/lab/MeterGauge';
 import { Bulb, Rheostat } from '../../components/lab/circuit/CircuitParts';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
+import EngineBadge from '../../components/lab/EngineBadge';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
@@ -30,44 +32,13 @@ type Stage = 'predict' | 'explore' | 'conclude';
 /** 预测题：I-U 图像形状 */
 type PredictShape = 'line' | 'curve' | 'flat' | 'drop' | null;
 
-/** 元件类型：定值电阻（线性）或小灯泡（电阻随温度/电压升高，非线性） */
-type ElementType = 'resistor' | 'bulb';
-
-/** 灯泡模型：钨丝电阻随电压（温度）升高，R_eff = R₀ + γ·U */
-const BULB_GAMMA = 0.4; // Ω/V
-
-/** 元件动态电阻：定值电阻 = R，灯泡 = R₀ + γ·U（钨丝升温） */
-function elementResistance(r: number, element: ElementType, u: number): number {
-  return element === 'bulb' ? r + BULB_GAMMA * u : r;
-}
-
-/**
- * 采样 I-U 曲线：U 为电源电压 ∈ [0, 12]。
- * 返回 [元件两端电压 U_elem, 电流 I]——横轴严格用元件真实压降（伏安法口径），
- * 定值电阻斜率 = 1/R，与结论口径一致；变阻器 Rp 参与分压不影响横轴语义。
- */
-function sampleOhm(r: number, element: ElementType, rp = 0): [number, number][] {
-  // 元件短路（R=0 相当于导线）：I-U 图像无有效关系，返回空曲线
-  if (element === 'resistor' && r === 0) return [];
-  const pts: [number, number][] = [];
-  for (let u = 0; u <= 12.0001; u += 0.1) {
-    const i = element === 'bulb' ? u / (r + BULB_GAMMA * u + rp) : u / (r + rp);
-    pts.push([i * elementResistance(r, element, u), i]);
-  }
-  return pts;
-}
-
-/** 电路读数：给定电源电压 U、元件 R、元件类型、串联变阻器 Rp，I（A） */
-function currentOf(u: number, r: number, element: ElementType, rp = 0): number {
-  if (element === 'bulb') return u / (r + BULB_GAMMA * u + rp);
-  return u / (r + rp);
-}
-
 const copy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     readout: '读数',
+    engineWasm: '计算引擎：C++ WebAssembly',
+    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     circuitLabel: '电路图',
     elementLabel: '元件',
@@ -187,6 +158,8 @@ const copy = {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     readout: 'Readings',
+    engineWasm: 'Engine: C++ WebAssembly',
+    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     circuitLabel: 'Circuit',
     elementLabel: 'Element',
@@ -317,6 +290,17 @@ export default function Ohm() {
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
   const [switchOn, setSwitchOn] = useState(true);
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((k) => {
+      if (alive) setEngineKind(k);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   // 电路元件公式浮层：hover/focus 元件显示公式+代入+原理
   const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
   const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
@@ -902,9 +886,12 @@ export default function Ohm() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-              // {t.params}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                // {t.params}
+              </h3>
+              <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? t.engineWasm : t.engineJs} />
+            </div>
 
             {/* 元件切换 */}
             <div className="flex items-center gap-2">

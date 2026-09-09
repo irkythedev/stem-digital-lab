@@ -8,6 +8,7 @@
  * Run: npx tsx src/smoke.test.ts
  */
 import { strict as assert } from 'node:assert';
+import { existsSync } from 'node:fs';
 import { labs, labMap, labsForSubject } from './lib/labs';
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
@@ -23,6 +24,19 @@ import {
   classifyErrorKind,
 } from './lib/quiz-summary';
 import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal } from './lib/token-usage';
+import {
+  currentOf as coreCurrentOf,
+  elementResistance as coreElementResistance,
+  sampleOhm as coreSampleOhm,
+} from './labs/physics/ohm-core';
+import { currentOf, elementResistance, getEngineKind, loadOhmEngine, sampleOhm } from './labs/physics/ohm-engine';
+import { imageV } from './labs/physics/lens-core';
+import { quadraticY, sampleQuadratic } from './labs/math/quadratic-core';
+import {
+  imageV as stemImageV,
+  quadraticY as stemQuadraticY,
+  sampleQuadratic as stemSampleQuadratic,
+} from './labs/physics/stem-engine';
 
 let passed = 0;
 let failed = 0;
@@ -108,12 +122,6 @@ describe('Subject metadata', () => {
 /* ── Physics: lens formula ── */
 
 describe('Physics model: lens formula', () => {
-  function imageV(u: number, f: number): number | null {
-    const diff = u - f;
-    if (Math.abs(diff) < 0.01) return null;
-    return (u * f) / diff;
-  }
-
   test('u > 2f produces real reduced image (f < v < 2f)', () => {
     const f = 10, u = 25;
     const v = imageV(u, f)!;
@@ -135,23 +143,196 @@ describe('Physics model: lens formula', () => {
     assert.equal(imageV(10, 10), null);
   });
 
+  test('near u = f (within 0.01) produces no image (null)', () => {
+    assert.equal(imageV(10.005, 10), null);
+    assert.equal(imageV(9.995, 10), null);
+  });
+
+  test('u = 2f yields exact v = 20 (f = 10)', () => {
+    assert.ok(Math.abs(imageV(20, 10)! - 20) < 1e-9);
+  });
+
   test('u < f produces virtual image (v < 0)', () => {
     const f = 10, u = 5;
     assert.ok(imageV(u, f)! < 0);
   });
 });
 
+/* ── Math: quadratic sampling ── */
+
+describe('Math model: quadratic sampling', () => {
+  test('quadraticY evaluates y = ax² + bx + c at x = 0 and x = 1', () => {
+    assert.equal(quadraticY(-2, 0, 3, 0), 3);
+    assert.equal(quadraticY(-2, 0, 3, 1), 1);
+  });
+
+  test('sampleQuadratic(1, 0, 0) spans x ∈ [-4, 4] with step 0.05', () => {
+    const pts = sampleQuadratic(1, 0, 0);
+    assert.ok(pts.length >= 160 && pts.length <= 162, `points = ${pts.length}`);
+    assert.ok(Math.abs(pts[0][0] - -4) < 1e-9, `first x = ${pts[0][0]}`);
+    const last = pts[pts.length - 1][0];
+    assert.ok(Math.abs(last - 4) < 0.001, `last x = ${last}`);
+    // 对称性：y = x² 在 x = ±2 处等值
+    const at2 = pts.find((p) => Math.abs(p[0] - 2) < 1e-9);
+    const atMinus2 = pts.find((p) => Math.abs(p[0] - -2) < 1e-9);
+    assert.ok(at2 && atMinus2 && Math.abs(at2[1] - atMinus2[1]) < 1e-9);
+  });
+
+  test('sampleQuadratic(-2, 0, 3) has y ≈ 3 at x ≈ 0', () => {
+    const pts = sampleQuadratic(-2, 0, 3);
+    const near0 = pts.find((p) => Math.abs(p[0]) < 0.0001);
+    assert.ok(near0, 'point at x ≈ 0 exists');
+    assert.ok(Math.abs(near0[1] - 3) < 1e-9, `y at x≈0 = ${near0[1]}`);
+  });
+});
+
 /* ── Physics: Ohm's law ── */
 
 describe("Physics model: Ohm's law", () => {
-  function currentOf(u: number, r: number): number {
-    return u / r;
-  }
-
   test('I = U/R for resistor', () => {
-    assert.ok(Math.abs(currentOf(6, 10) - 0.6) < 0.01);
-    assert.ok(Math.abs(currentOf(12, 10) - 1.2) < 0.01);
-    assert.ok(Math.abs(currentOf(6, 20) - 0.3) < 0.01);
+    assert.ok(Math.abs(coreCurrentOf(6, 10, 'resistor') - 0.6) < 0.01);
+    assert.ok(Math.abs(coreCurrentOf(12, 10, 'resistor') - 1.2) < 0.01);
+    assert.ok(Math.abs(coreCurrentOf(6, 20, 'resistor') - 0.3) < 0.01);
+  });
+
+  test('I = U/(R + γU) for bulb (nonlinear)', () => {
+    assert.ok(Math.abs(coreCurrentOf(6, 10, 'bulb') - 6 / (10 + 0.4 * 6)) < 1e-9);
+  });
+
+  test('sampleOhm returns [] when resistor R = 0 (short circuit)', () => {
+    assert.equal(coreSampleOhm(0, 'resistor').length, 0);
+  });
+
+  test('sampleOhm point at U = 6 is [I·R, I] = [6, 0.6]', () => {
+    const pts = coreSampleOhm(10, 'resistor');
+    // 按纵轴 I ≈ 0.6 找最近采样点，不依赖数组下标
+    const nearest = pts.reduce((best, p) =>
+      Math.abs(p[1] - 0.6) < Math.abs(best[1] - 0.6) ? p : best,
+    );
+    assert.ok(Math.abs(nearest[1] - 0.6) < 0.01, `I should be ≈0.6, got ${nearest[1]}`);
+    assert.ok(Math.abs(nearest[0] - 6) < 0.01, `U_elem should be ≈6, got ${nearest[0]}`);
+  });
+
+  test('elementResistance is R for resistor, R + γU for bulb (真源)', () => {
+    assert.equal(coreElementResistance(10, 'resistor', 6), 10);
+    assert.equal(coreElementResistance(10, 'bulb', 6), 10 + 0.4 * 6);
+  });
+});
+
+/* ── Ohm engine facade（门面默认 JS 真源；loadOhmEngine 可选 WASM，失败静默回退）── */
+
+/** 与 ohm-core（JS 真源）对拍的同一组输入：电阻/灯泡 × 无/有分压 × 常规/边界 */
+const ohmCases: { u: number; r: number; element: 'resistor' | 'bulb'; rp: number }[] = [
+  { u: 6, r: 10, element: 'resistor', rp: 0 },
+  { u: 12, r: 10, element: 'resistor', rp: 0 },
+  { u: 6, r: 20, element: 'resistor', rp: 0 },
+  { u: 6, r: 10, element: 'bulb', rp: 0 },
+  { u: 6, r: 10, element: 'bulb', rp: 4 },
+  { u: 9, r: 5, element: 'resistor', rp: 7 },
+];
+
+describe('Ohm engine facade（未 load：默认 JS 实现）', () => {
+  test('getEngineKind() === "js"', () => {
+    assert.equal(getEngineKind(), 'js');
+  });
+
+  test('门面与 ohm-core 数值对拍（currentOf / elementResistance / sampleOhm）', () => {
+    for (const c of ohmCases) {
+      assert.ok(Math.abs(currentOf(c.u, c.r, c.element, c.rp) - coreCurrentOf(c.u, c.r, c.element, c.rp)) < 1e-9);
+      assert.ok(Math.abs(elementResistance(c.r, c.element, c.u) - coreElementResistance(c.r, c.element, c.u)) < 1e-9);
+    }
+    for (const [r, element, rp] of [
+      [10, 'resistor', 0],
+      [10, 'bulb', 0],
+      [5, 'resistor', 7],
+    ] as const) {
+      const a = sampleOhm(r, element, rp);
+      const b = coreSampleOhm(r, element, rp);
+      assert.equal(a.length, b.length);
+      for (let k = 0; k < a.length; k++) {
+        assert.ok(
+          Math.abs(a[k][0] - b[k][0]) < 1e-9 && Math.abs(a[k][1] - b[k][1]) < 1e-9,
+          `point ${k} mismatch: [${a[k]}] vs [${b[k]}]`,
+        );
+      }
+    }
+  });
+});
+
+/* ── Stem engine（多学科门面）未 load：默认 JS 实现 ── */
+
+describe('Stem engine facade（未 load：lens / quadratic 默认 JS 指针）', () => {
+  test('imageV 与 lens-core 真源一致（含严格 null，不是 NaN）', () => {
+    assert.equal(stemImageV(20, 10), 20);
+    assert.equal(stemImageV(10, 10), null); // 严格 === null；NaN 会在此失败
+    assert.equal(stemImageV(10.005, 10), null);
+    assert.ok(stemImageV(5, 10)! < 0); // u < f：虚像（v < 0）
+  });
+
+  test('quadraticY / sampleQuadratic 与 quadratic-core 真源逐点一致', () => {
+    assert.equal(stemQuadraticY(-2, 0, 3, 1), quadraticY(-2, 0, 3, 1));
+    const a = stemSampleQuadratic(-2, 0, 3);
+    const b = sampleQuadratic(-2, 0, 3);
+    assert.equal(a.length, b.length);
+    for (let k = 0; k < a.length; k++) {
+      assert.ok(Math.abs(a[k][0] - b[k][0]) < 1e-9 && Math.abs(a[k][1] - b[k][1]) < 1e-9);
+    }
+  });
+});
+
+// loadOhmEngine 永不 reject：无产物 / 缺函数 / 实例化失败一律回退 js
+const loadedOhmKind = await loadOhmEngine();
+
+describe('Ohm engine facade（loadOhmEngine 后）', () => {
+  test('加载不抛错，kind ∈ {js, wasm}；本机无 stemCore.js 时应为 js', () => {
+    assert.ok(loadedOhmKind === 'js' || loadedOhmKind === 'wasm');
+    assert.equal(getEngineKind(), loadedOhmKind);
+  });
+
+  test(`引擎种类：${loadedOhmKind}（存在 stemCore.js → wasm；否则 JS 回退）`, () => {
+    assert.ok(loadedOhmKind === 'js' || loadedOhmKind === 'wasm');
+  });
+
+  test('load 后数值与 ohm-core 真源仍一致（< 1e-9）', () => {
+    for (const c of ohmCases) {
+      assert.ok(Math.abs(currentOf(c.u, c.r, c.element, c.rp) - coreCurrentOf(c.u, c.r, c.element, c.rp)) < 1e-9);
+      assert.ok(Math.abs(elementResistance(c.r, c.element, c.u) - coreElementResistance(c.r, c.element, c.u)) < 1e-9);
+    }
+  });
+});
+
+/* ── Stem engine（loadOhmEngine 后）：lens / quadratic 走当前指针 ── */
+
+describe('Stem engine（loadOhmEngine 后）lens / quadratic 数值', () => {
+  const hasWasm = existsSync(new URL('./wasm/stemCore.js', import.meta.url));
+
+  test(`产物探测：${hasWasm ? '存在 stemCore.js → 应走 wasm' : '无产物 → js 回退'}；kind = ${loadedOhmKind}`, () => {
+    if (hasWasm) {
+      assert.equal(loadedOhmKind, 'wasm'); // 本机有产物且导出齐全 → 必须 wasm
+    } else {
+      assert.equal(loadedOhmKind, 'js');
+    }
+  });
+
+  test('imageV：wasm（若有）/ js 指针与 lens-core 真源一致，u≈f 严格 null', () => {
+    assert.equal(stemImageV(20, 10), 20);
+    assert.equal(stemImageV(10, 10), null); // 必须 === null，NaN 会在此失败
+    assert.ok(Math.abs(stemImageV(25, 10)! - imageV(25, 10)!) < 1e-9);
+    assert.ok(Math.abs(stemImageV(5, 10)! - imageV(5, 10)!) < 1e-9);
+  });
+
+  test('quadraticY / sampleQuadratic：与 quadratic-core 真源误差 < 1e-9', () => {
+    assert.ok(Math.abs(stemQuadraticY(-2, 0, 3, 1) - quadraticY(-2, 0, 3, 1)) < 1e-9);
+    const a = stemSampleQuadratic(1, 0, 0);
+    const b = sampleQuadratic(1, 0, 0);
+    assert.equal(a.length, b.length);
+    for (let k = 0; k < a.length; k++) {
+      assert.ok(Math.abs(a[k][1] - b[k][1]) < 1e-9);
+    }
+  });
+
+  test('currentOf(6,10,resistor) === 0.6（误差 < 1e-9）', () => {
+    assert.ok(Math.abs(currentOf(6, 10, 'resistor', 0) - 0.6) < 1e-9);
   });
 });
 

@@ -10,7 +10,7 @@
  *
  * 复用组件：CoordPlane（坐标系）、ExploreStage（任务卡+笔记）、ConclusionStage（结论）。
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
@@ -20,6 +20,8 @@ import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import { loadOhmEngine, sampleQuadratic } from '../physics/stem-engine';
+import EngineBadge from '../../components/lab/EngineBadge';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -29,15 +31,6 @@ type PredictOpen = 'up' | 'down' | null;
 type PredictVertex = 'max' | 'min' | null;
 /** 预测题：与 y 轴交点正负 */
 type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
-
-/** 采样一条二次函数曲线：x ∈ [-4, 4]，步长 0.05 */
-function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
-  const pts: [number, number][] = [];
-  for (let x = -4; x <= 4.0001; x += 0.05) {
-    pts.push([x, a * x * x + b * x + c]);
-  }
-  return pts;
-}
 
 /** 拉平二次函数表达式为 "y = ax² + bx + c" */
 function exprOf(a: number, b: number, c: number): string {
@@ -54,6 +47,8 @@ const copy = {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     readout: '当前函数',
+    engineWasm: '计算引擎：C++ WebAssembly',
+    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     // 幕导航
     stagePredict: '预测',
@@ -148,6 +143,8 @@ const copy = {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     readout: 'Current function',
+    engineWasm: 'Engine: C++ WebAssembly',
+    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -272,6 +269,18 @@ export default function Quadratic() {
     q3: 'shift' | 'stretch' | 'none' | null;
     q4: 'intercept' | 'vertex' | 'none' | null;
   }>({ q1: null, q2: null, q3: null, q4: null });
+
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((k) => {
+      if (alive) setEngineKind(k);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const correctKeys = { q1: 'up', q2: 'narrow', q3: 'shift', q4: 'intercept' } as const;
   const conclusionComplete =
@@ -495,9 +504,12 @@ export default function Quadratic() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-              // {t.params}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                // {t.params}
+              </h3>
+              <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? t.engineWasm : t.engineJs} />
+            </div>
             <ParamSlider label="a" value={a} min={-5} max={5} step={0.1} onChange={setA} format={(v) => v.toFixed(1)} />
             <ParamSlider label="b" value={b} min={-6} max={6} step={0.1} onChange={setB} format={(v) => v.toFixed(1)} />
             <ParamSlider label="c" value={c} min={-6} max={6} step={0.1} onChange={setC} format={(v) => v.toFixed(1)} />
