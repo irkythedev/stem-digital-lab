@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 反馈存储：钉钉群机器人推送（SCF 云函数转发，未配置时回退 Server酱微信）+ 本地队列兜底。
- * 推送成功 → 删除本地记录；失败（离线/未配置/网络异常）→ 留在本地，
- * 下次打开页面自动重试补传。教师手机（钉钉/微信）实时收到反馈。
+ * 推送成功 → 按 id 删除本地记录；失败（离线/未配置/网络异常）→ 留在本地，
+ * 下次打开页面自动重试补传；累计失败达 FEEDBACK_MAX_ATTEMPTS 次后丢弃。
+ *
+ * 发送路径纪律：面板提交走 submitFeedback，离线补传走 flushFeedbackQueue，
+ * 两者共用 sendOnce（同一 id 在途即拒绝第二次发送）→ 一次提交恒定只推一条。
+ * 不要在 saveFeedback 之后再单独直发一次（历史双发即由此而来）。
  */
 import { isServerChanConfigured, isDingtalkProxyConfigured, SERVERCHAN_CONFIG, DINGTALK_PROXY } from './serverchan-config';
 import { scfUrlWithToken } from './scf-token';
@@ -28,12 +32,17 @@ export interface FeedbackRecord {
   name?: string;
   /** 可选：联系方式（手机号/微信/邮箱，仅用于回访） */
   contact?: string;
+  /** 推送失败次数（达到 FEEDBACK_MAX_ATTEMPTS 后丢弃该条，避免永久重复推送） */
+  attempts?: number;
 }
 
 const STORAGE_KEY = 'stem-lab-feedback';
 
 /** 本地待发队列容量上限：保留最近 100 条，超出丢最旧（与 ai-history 上限一致，防离线堆积无界增长） */
 export const FEEDBACK_LIMIT = 100;
+
+/** 单条失败重试上限：达到后丢弃，避免每次打开页面重复推送同一条（内容与时间完全相同） */
+export const FEEDBACK_MAX_ATTEMPTS = 5;
 
 export function loadFeedback(): FeedbackRecord[] {
   if (typeof window === 'undefined') return [];
@@ -56,13 +65,15 @@ function persist(records: FeedbackRecord[]): void {
   }
 }
 
+/**
+ * 入队并落盘（不发送）。发送请走 submitFeedback / flushFeedbackQueue。
+ * 这里刻意不自动 flush：调用方若在此之后又单独直发一次，同一条记录会被推两遍。
+ */
 export function saveFeedback(record: FeedbackRecord): void {
   if (typeof window === 'undefined') return;
   // 容量上限：保留最近 FEEDBACK_LIMIT 条，超出丢最旧（防止离线堆积无界增长）
   const records = [...loadFeedback(), record].slice(-FEEDBACK_LIMIT);
   persist(records);
-  // 异步尝试推送（不阻塞 UI）
-  void flushFeedbackQueue();
 }
 
 export function exportFeedback(): string {
@@ -74,7 +85,7 @@ export function clearFeedback(): void {
 }
 
 /**
- * 从本地队列移除单条（直发成功后调用）。
+ * 从本地队列移除单条（推送成功后调用）。
  * 走 persist 的 try/catch：即使存储异常也不抛到 UI，且避免裸 setItem 失败后
  * 本地残留导致下次 flush 重复推送。
  */
@@ -96,7 +107,7 @@ const CATEGORY_ZH: Record<FeedbackCategory, string> = {
   content: '内容', interaction: '交互', visual: '视觉', language: '语言', bug: '问题', suggestion: '建议',
 };
 
-/** 单条记录 → Server酱 desp 正文（Markdown，逐行展示） */
+/** 单条记录 → 推送正文（Markdown，逐行展示） */
 function formatPushContent(record: FeedbackRecord): string {
   const lines: string[] = [
     `- **类型**：${record.type === 'experiment' ? '实验反馈' : '项目反馈'}`,
@@ -121,11 +132,68 @@ function formatPushContent(record: FeedbackRecord): string {
   return lines.join('\n');
 }
 
+/** 发送结果：sent=已送达；failed=发送失败（可重试）；busy=同一条正在发送中（并发去重） */
+type SendOutcome = 'sent' | 'failed' | 'busy';
+
+/** 在途记录 id 集合：面板提交与队列补传并发时，同一条只允许有一次发送 */
+const inFlight = new Set<string>();
+
 /**
- * 提交单条反馈：优先钉钉通道（SCF 云函数转发 → 钉钉群机器人），
+ * 低层发送：同一 id 在途时直接拒绝（返回 busy），不做任何队列改动。
+ * 这是全模块唯一的出口，杜绝「一次提交推两条」。
+ */
+async function sendOnce(record: FeedbackRecord): Promise<SendOutcome> {
+  if (inFlight.has(record.id)) return 'busy';
+  inFlight.add(record.id);
+  try {
+    return (await sendToChannel(record)) ? 'sent' : 'failed';
+  } finally {
+    inFlight.delete(record.id);
+  }
+}
+
+/** 兼容导出：单条发送（busy 视为未送达，不代表失败） */
+export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean> {
+  return (await sendOnce(record)) === 'sent';
+}
+
+/**
+ * 提交单条反馈：入队落盘 → 发送一次 → 成功按 id 移除 / 失败累计重试次数。
+ * 面板提交只调这一个函数：一次提交 = 一条推送。
+ */
+export async function submitFeedback(record: FeedbackRecord): Promise<boolean> {
+  saveFeedback(record);
+  const outcome = await sendOnce(record);
+  if (outcome === 'sent') {
+    removeFeedback(record.id);
+  } else if (outcome === 'failed') {
+    bumpAttempt(record.id);
+  }
+  return outcome === 'sent';
+}
+
+/** 失败计数 +1；达到 FEEDBACK_MAX_ATTEMPTS 则丢弃该条，不再重试 */
+function bumpAttempt(id: string): void {
+  const next: FeedbackRecord[] = [];
+  let changed = false;
+  for (const r of loadFeedback()) {
+    if (r.id !== id) {
+      next.push(r);
+      continue;
+    }
+    changed = true;
+    const attempts = (r.attempts ?? 0) + 1;
+    // 未达上限：保留待下次补传；达上限：丢弃，避免每次打开页面重复推同一条
+    if (attempts < FEEDBACK_MAX_ATTEMPTS) next.push({ ...r, attempts });
+  }
+  if (changed) persist(next);
+}
+
+/**
+ * 通道发送：优先钉钉通道（SCF 云函数转发 → 钉钉群机器人），
  * 未配置时回退 Server酱微信推送。返回 true=推送成功。
  */
-export async function submitOneFeedback(record: FeedbackRecord): Promise<boolean> {
+async function sendToChannel(record: FeedbackRecord): Promise<boolean> {
   if (isDingtalkProxyConfigured()) {
     return submitViaDingtalk(record);
   }
@@ -169,29 +237,32 @@ async function submitViaDingtalk(record: FeedbackRecord): Promise<boolean> {
   }
 }
 
-let flushing = false;
+let flushing: Promise<void> | null = null;
 
-/** 将本地待发队列逐条推送；成功的移除，失败的保留待下次重试 */
+/**
+ * 补传本地待发队列：逐条发送，成功按 id 移除，失败累计次数（超限丢弃）。
+ * 关键：按 id 精确增删，不用开跑时的快照整体覆盖写盘，
+ * 否则补传期间新提交的记录会被覆盖掉（静默丢失）。
+ * 已在补传中时返回同一个在途 Promise（调用方 await 即为本次补传完成）。
+ */
 export async function flushFeedbackQueue(): Promise<void> {
   if (typeof window === 'undefined') return;
-  if (!isServerChanConfigured()) return;
-  if (flushing) return;
-  flushing = true;
-  try {
-    const records = loadFeedback();
-    if (records.length === 0) return;
-    const remaining: FeedbackRecord[] = [];
-    let changed = false;
-    for (const record of records) {
-      const ok = await submitOneFeedback(record);
-      if (ok) {
-        changed = true; // 已送达微信，从本地移除
-      } else {
-        remaining.push(record); // 失败保留，下次重试
+  // 任一通道已配置即可补传（旧实现只判 Server酱，仅配钉钉时补传会失效）
+  if (!isDingtalkProxyConfigured() && !isServerChanConfigured()) return;
+  if (flushing) return flushing;
+  flushing = (async () => {
+    try {
+      for (const record of loadFeedback()) {
+        const outcome = await sendOnce(record);
+        if (outcome === 'sent') {
+          removeFeedback(record.id);
+        } else if (outcome === 'failed') {
+          bumpAttempt(record.id);
+        }
       }
+    } finally {
+      flushing = null;
     }
-    if (changed) persist(remaining);
-  } finally {
-    flushing = false;
-  }
+  })();
+  return flushing;
 }

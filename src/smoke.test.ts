@@ -14,7 +14,7 @@ import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
 import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
-import { loadFeedback, saveFeedback, removeFeedback, FEEDBACK_LIMIT, type FeedbackRecord } from './lib/feedback';
+import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
 import { parseQuizBatch, judgeFillAnswer } from './lib/ai-quiz';
 import {
@@ -55,6 +55,28 @@ function test(name: string, fn: () => void) {
 function describe(_name: string, fn: () => void) {
   console.log(`\n${_name}`);
   fn();
+}
+
+/**
+ * 异步用例：按注册顺序串行执行（避免并发用例互相干扰 mock window / fetch），
+ * 在文件末尾的 runAsyncTests() 中统一 await 后计入结果。
+ */
+const asyncCases: Array<[string, () => Promise<void>]> = [];
+function testAsync(name: string, fn: () => Promise<void>) {
+  asyncCases.push([name, fn]);
+}
+
+async function runAsyncTests() {
+  for (const [name, fn] of asyncCases) {
+    try {
+      await fn();
+      passed++;
+      console.log(`  ✓ ${name}`);
+    } catch (e: any) {
+      failed++;
+      console.log(`  ✗ ${name}: ${e.message}`);
+    }
+  }
 }
 
 /* ── Lab registration ── */
@@ -1106,8 +1128,169 @@ describe('Token usage (localStorage persistence)', () => {
   });
 });
 
+/* ── Feedback push path（异步：一次提交只推一条 / 不丢记录 / 重试上限） ── */
+
+describe('Feedback push path (one push per submission)', () => {
+  const mem = new Map<string, string>();
+  const originalFetch = (globalThis as any).fetch;
+  let pushCalls: string[] = [];
+
+  const okRes = () => new Response(JSON.stringify({ code: 0 }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const failRes = () => new Response('', { status: 500 });
+  /** 默认失败；用例内可改成成功/延迟，模拟真实链路 */
+  let responder: () => Promise<Response> = async () => failRes();
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  function install() {
+    pushCalls = [];
+    responder = async () => failRes();
+    (globalThis as any).fetch = async (_url: unknown, init: any) => {
+      pushCalls.push(String(init?.body ?? ''));
+      return responder();
+    };
+    (globalThis as any).window = {
+      localStorage: {
+        getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null),
+        setItem: (k: string, v: string) => { mem.set(k, v); },
+        removeItem: (k: string) => { mem.delete(k); },
+      },
+    };
+  }
+  function restore() {
+    delete (globalThis as any).window;
+    (globalThis as any).fetch = originalFetch;
+  }
+  const rec = (i: number): FeedbackRecord => ({
+    id: `fb-${i}`,
+    type: 'project',
+    categories: [],
+    message: `补传${i}`,
+    language: 'zh',
+    createdAt: '2026-09-10T03:20:00.000Z',
+  });
+
+  testAsync('saveFeedback 只入队不推送（补传时才发，杜绝一次提交两条）', async () => {
+    install();
+    try {
+      responder = async () => okRes();
+      saveFeedback(rec(1));
+      assert.equal(pushCalls.length, 0, 'saveFeedback 不应触发推送');
+      assert.equal(loadFeedback().length, 1);
+      await flushFeedbackQueue();
+      assert.equal(pushCalls.length, 1, '补传只应推一条');
+      assert.equal(loadFeedback().length, 0);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('submitFeedback 一次提交恒定只推一条，成功后出队', async () => {
+    install();
+    try {
+      responder = async () => okRes();
+      const sent = await submitFeedback(rec(1));
+      assert.equal(sent, true);
+      assert.equal(pushCalls.length, 1, `一次提交应只推 1 条，实际 ${pushCalls.length}`);
+      assert.equal(loadFeedback().length, 0);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('推送失败时保留记录并计数（不丢反馈）', async () => {
+    install();
+    try {
+      const sent = await submitFeedback(rec(1));
+      assert.equal(sent, false);
+      assert.equal(pushCalls.length, 1);
+      const list = loadFeedback();
+      assert.equal(list.length, 1);
+      assert.equal(list[0].attempts, 1);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('连续两次提交各推一条，队列不残留', async () => {
+    install();
+    try {
+      responder = async () => { await sleep(15); return okRes(); };
+      const [a, b] = await Promise.all([submitFeedback(rec(1)), submitFeedback(rec(2))]);
+      assert.equal(a, true);
+      assert.equal(b, true);
+      assert.equal(pushCalls.length, 2);
+      assert.equal(loadFeedback().length, 0);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('并发补传同一条只推一次（在途去重）', async () => {
+    install();
+    try {
+      responder = async () => { await sleep(15); return okRes(); };
+      saveFeedback(rec(1));
+      await Promise.all([flushFeedbackQueue(), flushFeedbackQueue()]);
+      assert.equal(pushCalls.length, 1);
+      assert.equal(loadFeedback().length, 0);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('补传期间新提交失败的记录不会被覆盖丢失', async () => {
+    install();
+    try {
+      saveFeedback(rec(0)); // 模拟上次离线残留
+      let release: () => void = () => {};
+      const gate = new Promise<void>((res) => { release = res; });
+      let calls = 0;
+      responder = async () => {
+        calls++;
+        if (calls === 1) { await gate; return okRes(); } // 第一条慢成功
+        return failRes(); // 补传期间新提交的这条失败
+      };
+      const running = flushFeedbackQueue();
+      await sleep(10); // 等补传进入第一条的 await
+      const sent = await submitFeedback(rec(1));
+      assert.equal(sent, false);
+      release();
+      await running;
+      const list = loadFeedback();
+      assert.equal(list.length, 1, '新记录应保留待重试，不能被快照覆盖');
+      assert.equal(list[0].id, 'fb-1');
+      assert.equal(list[0].attempts, 1);
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+
+  testAsync('失败达到上限后丢弃该条（防止永久重复推送）', async () => {
+    install();
+    try {
+      saveFeedback(rec(1));
+      for (let i = 0; i < FEEDBACK_MAX_ATTEMPTS - 1; i++) await flushFeedbackQueue();
+      assert.equal(loadFeedback().length, 1, '未达上限应保留');
+      assert.equal(loadFeedback()[0].attempts, FEEDBACK_MAX_ATTEMPTS - 1);
+      await flushFeedbackQueue(); // 第 MAX 次失败
+      assert.equal(loadFeedback().length, 0, '达上限应丢弃');
+    } finally {
+      mem.clear();
+      restore();
+    }
+  });
+});
+
 /* ── Summary ── */
 
-console.log(`\n${'─'.repeat(40)}`);
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+void runAsyncTests().then(() => {
+  console.log(`\n${'─'.repeat(40)}`);
+  console.log(`Results: ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+});

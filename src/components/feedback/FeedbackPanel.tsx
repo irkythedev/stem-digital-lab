@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
-import { makeFeedbackId, saveFeedback, submitOneFeedback, removeFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
+import { makeFeedbackId, submitFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
 
 interface FeedbackPanelProps {
   type: FeedbackType;
@@ -77,13 +77,9 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
     if (type === 'experiment' && !rating) return;
     setSending(true);
     const record = { id: makeFeedbackId(), type, labId, rating, categories: selected, message: trimmed, language: lang, grade: trimSlice(grade, 100) || undefined, name: trimSlice(name, 100) || undefined, contact: trimSlice(contact, 100) || undefined, createdAt: new Date().toISOString() };
-    saveFeedback(record);
-    // 已配置云端时尝试立即直发；未配置则留在本地队列（页面加载时会自动补传）
-    const sent = await submitOneFeedback(record);
-    if (sent) {
-      // 云端直达成功 → 从本地队列移除该条（persist 内 try/catch，存储异常不抛 UI、不残留重复推送）
-      removeFeedback(record.id);
-    }
+    // 入队 + 单次发送：成功按 id 出队，失败留在本地队列（页面加载时自动补传）
+    // 注意：这里只能调 submitFeedback 这一个入口，不要再单独发一次，否则同一条会推两遍
+    const sent = await submitFeedback(record);
     setSending(false);
     setDone(sent ? 'sent' : 'queued');
   };

@@ -18,12 +18,26 @@ const BUILTIN_TOKEN = '9980ca248b144f7982f66ea36113835a';
 
 /** 读取 SCF token：优先环境变量，其次内置 fallback */
 function readScfToken(): string {
-  const env = (import.meta.env.VITE_SCF_TOKEN as string | undefined)?.trim();
+  const env = readEnvToken()?.trim();
   const token = env || BUILTIN_TOKEN;
   if (!token) return '';
   // token 只允许字母数字下划线连字符，防止拼 URL 时引入查询参数注入
   if (!/^[A-Za-z0-9_-]+$/.test(token)) return '';
   return token;
+}
+
+/**
+ * 读取构建期注入的 VITE_SCF_TOKEN。
+ * 必须用可选链访问 import.meta.env：纯 Node / CJS 转译环境下 import.meta 可能不存在，
+ * 直接访问 .env 会抛 TypeError，被调用方 catch 后静默降级（token 失效且难以排查）。
+ */
+function readEnvToken(): string | undefined {
+  try {
+    const meta = import.meta as ImportMeta & { env?: Record<string, string | undefined> };
+    return meta?.env?.VITE_SCF_TOKEN;
+  } catch {
+    return undefined;
+  }
 }
 
 /** 生成带 token 的查询串（?token=xxx）；无有效 token 返回空串 */
