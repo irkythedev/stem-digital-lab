@@ -22,9 +22,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-09',
     zh: [
       '[新增] 欧姆定律、凸透镜与二次函数实验的参数卡新增「计算引擎」标识，可查看实验当前的计算方式',
+      '[新增] 新增「运行架构」页：页脚可进入，用一张可交互的图看懂站点从构建到上线的全链路，支持明暗主题、中英切换、演示模式与导出图片',
     ],
     en: [
       '[New] The parameter card in the Ohm\'s law, lens and quadratic labs now shows which calculation engine powers the experiment',
+      '[New] A new "Architecture" page, reachable from the footer: an interactive map of how the site is built and shipped, with dark/light theme, Chinese/English, presentation mode and image export',
     ],
   },
   {

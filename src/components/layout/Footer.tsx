@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { useState } from 'react';
-import { Share2, Library, Mail } from 'lucide-react';
+import { Share2, Library, Mail, Network } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
@@ -22,6 +22,11 @@ export default function Footer() {
   const [showLicense, setShowLicense] = useState(false);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
+
+  // 运行架构页（docs/architecture 的脱敏成品，见 scripts/sync-architecture-page.sh）：
+  // 新标签打开完整查看器；带上当前主题，避免点开时明暗跳变。
+  const archTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const archUrl = `/architecture.html?theme=${archTheme}`;
 
   return (
     <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
@@ -115,6 +120,17 @@ export default function Footer() {
             {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} anchored />}
           </span>
           <InstallAppButton />
+          {/* 运行架构：新标签打开脱敏后的架构演示页（完整查看器，非站内 iframe 裁剪版） */}
+          <a
+            href={archUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t.architecture}
+            aria-label={t.architecture}
+            className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          >
+            <Network className="w-3.5 h-3.5" />
+          </a>
           <button
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}

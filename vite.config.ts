@@ -169,9 +169,29 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}'],
-        globIgnores: ['**/version.json', '**/audio/*.mp3'],
+        // architecture.html 是重型查看器（约 735KB）：不预缓存，避免每个访客首装体积翻倍；
+        // 改由下方 runtimeCaching 首次访问后按需缓存（离线仍可打开）。
+        globIgnores: ['**/version.json', '**/audio/*.mp3', '**/architecture.html'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // 不兜底 /architecture.html：否则导航会被 SPA 首页接管，点进去看到的是首页。
+        // （workbox 的 NavigationRoute 用 pathname + search 匹配，故需容忍 ?theme= 查询串）
+        navigateFallbackDenylist: [/^\/api\//, /^\/architecture\.html(\?|$)/],
+        runtimeCaching: [
+          {
+            urlPattern: /\/architecture\.html(\?|$)/,
+            // NetworkFirst 而不是 CacheFirst：这张页是「发布型」内容，CacheFirst + 90 天
+            // 意味着改版后回访者长期看到旧版（实测：服务端换新版后，SW 控制下的第二次
+            // 访问仍是旧副本，注销 SW 才拿到新文件）。NetworkFirst + 3s 超时 = 在线永远
+            // 取新、离线回落到缓存，离线能力不变。
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'architecture-page',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 3, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],
