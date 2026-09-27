@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.30.0';
+export const APP_VERSION = '0.31.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.31.0',
+    date: '2026-09',
+    zh: [
+      '[新增] 问 AI 的问题会带上你正在调的参数与读数：问的就是眼前这一步（欧姆定律、凸透镜、杠杆先用上）',
+      '[优化] AI 回答收尾更干脆：不再反问或说「下次再讲」，直接给 3 个能单独问出口的追问',
+      '[修复] 考考你更稳：题目数量不足会自动补齐，答案位置不再总在 A，填空题等价写法也能判对',
+    ],
+    en: [
+      '[New] Ask AI now carries the settings and readings you are working with, so the question matches the step in front of you (Ohm\'s law, lens imaging and lever labs use it first)',
+      '[Improved] AI answers end cleanly: no counter-questions or promises, just 3 follow-up questions you can tap, each complete on its own',
+      '[Fixed] Quiz practice is steadier: short batches are topped up, the correct option is no longer stuck on A, and equivalent fill-in answers are graded right',
+    ],
+  },
   {
     version: '0.30.0',
     date: '2026-09',
