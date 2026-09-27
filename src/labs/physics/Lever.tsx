@@ -10,9 +10,10 @@
  *
  * 教材依据：ch11「学生实验 探究杠杆的平衡条件」+ 杠杆原理（阿基米德）
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -146,6 +147,19 @@ export default function Lever() {
   const torque2 = m2 * 0.5 * d2;
   const isBalanced = Math.abs(torque1 - torque2) < 0.05;
 
+  // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
+  useEffect(() => {
+    setLabState('lever', { stage, m1, d1, m2, d2, balanced: isBalanced });
+  }, [stage, m1, d1, m2, d2, isBalanced]);
+  // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
+  const staticAiQuestion = lang === 'zh'
+    ? '请讲解杠杆平衡条件 F₁l₁=F₂l₂，以及省力、费力、等臂杠杆怎么区分'
+    : 'Explain the lever balance F₁l₁=F₂l₂ and how to tell effort-saving, effort-costing and equal-arm levers';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('lever', { m1, d1, m2, d2, balanced: isBalanced }, lang, staticAiQuestion)[0],
+    [m1, d1, m2, d2, isBalanced, lang, staticAiQuestion],
+  );
+
   // 倾角计算（力矩不平衡时小幅倾斜，顺时针为正，限制在 [-8, 8] 度）
   const tiltAngle = isBalanced
     ? 0
@@ -244,7 +258,7 @@ export default function Lever() {
         }}
       />
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解杠杆平衡条件 F₁l₁=F₂l₂，以及省力、费力、等臂杠杆怎么区分' : 'Explain the lever balance F₁l₁=F₂l₂ and how to tell effort-saving, effort-costing and equal-arm levers'} />
+      <AskAiButton className="mt-2" question={aiQuestion} />
 
 
       {/* ── 杠杆示意 ── */}

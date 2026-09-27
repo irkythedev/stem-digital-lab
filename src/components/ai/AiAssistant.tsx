@@ -23,8 +23,9 @@ import { symbolsForTopic } from '../../lib/physics-speech-symbols';
 import { getTtsVoice } from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
-import { buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt } from '../../lib/ai-config';
-import { parseQuizBatch, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
+import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
+import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
+import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
 import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
@@ -640,14 +641,42 @@ export default function AiAssistant() {
       // 跨会话累计 token（出题请求 = prompt + 实际输出）
       addTokenUsage(config?.model, promptTokens + estimateTokens(full));
       refreshTokenUsage();
-      const parsed = parseQuizBatch(full, count);
-      if (parsed.length === 0) {
+      let parsed = parseQuizBatchChecked(full, count);
+      if (parsed.reason) {
+        logPromptIssue('quiz-parse', parsed.reason);
+        // 一次修复重试：只回灌上一次输出的尾部，要求补出缺失题目（无对话窗口，学生无法自己重来）
+        try {
+          const repair = await streamChat(
+            config,
+            [
+              messages[0],
+              { role: 'assistant', content: full.slice(-2000) },
+              {
+                role: 'user',
+                content: lang === 'zh'
+                  ? `上一次输出${parsed.reason}。请只补出缺失的题目，沿用同一格式与字段名，写完输出 ${QUIZ_SENTINEL}；不要重复已出过的考点（已出：${parsed.items.map((q) => q.question.slice(0, 12)).join('、') || '无'}）。`
+                  : `The previous answer ${parsed.reason}. Output ONLY the missing questions in the same format and field names, then print ${QUIZ_SENTINEL}; do not repeat topics already covered (${parsed.items.map((q) => q.question.slice(0, 12)).join(', ') || 'none'}).`,
+              },
+            ],
+            () => {},
+            quizAbortRef.current.signal,
+            2000,
+          );
+          const merged = parseQuizBatchChecked(`${full}\n${repair}`, count);
+          if (merged.items.length > parsed.items.length) parsed = merged;
+        } catch {
+          logPromptIssue('quiz-repair', '修复重试失败，按首次结果继续');
+        }
+      }
+      // 去重（重试最容易产出重复题）+ 选项洗牌（正确项位置交给代码，不交给模型）
+      const items = dedupeQuizQuestions(parsed.items).slice(0, count).map((q) => shuffleOptions(q));
+      if (items.length === 0) {
         setQuizError(lang === 'zh' ? '出题失败，请重试' : 'Failed to create questions, please retry');
         setQuizQuestions([]);
         setQuizLoading(false);
         return;
       }
-      setQuizQuestions(parsed);
+      setQuizQuestions(items);
       setQuizIdx(0);
       setQuizLoading(false);
     } catch (e) {
@@ -705,22 +734,27 @@ export default function AiAssistant() {
     if (!input) return; // 空输入不判（允许继续作答）
     const ruleCorrect = judgeFillAnswer(input, quizQ.fillAnswers);
     let finalCorrect = ruleCorrect;
-    // 规则判错 + 开关开 + 有配置 → AI 兜底判分
-    if (!ruleCorrect && fillAiJudge && config && quizQ.fillAnswers.length > 0) {
+    // 规则判错 + 开关开 + 有配置 + 答案长度合理 → AI 兜底判分
+    // 长度上限：全站唯一的学生自由输入，超长既吃掉上下文、也把判分器暴露给「输入里写 Y」的玩法
+    const answerForAi = input.slice(0, 200);
+    if (!ruleCorrect && fillAiJudge && config && quizQ.fillAnswers.length > 0 && input.length <= 200) {
       setFillJudging(true);
-      const { system, user } = buildFillJudgePrompt(lang, quizQ.question, input, quizQ.fillAnswers);
+      const { system, user } = buildFillJudgePrompt(lang, quizQ.question, answerForAi, quizQ.fillAnswers);
       try {
         const signal = new AbortController(); // 判分超时 8 秒
         const timeoutId = setTimeout(() => signal.abort(), 8000);
         const full = await streamChat(config, [{ role: 'system', content: system }, { role: 'user', content: user }], () => {}, signal.signal, 20);
         clearTimeout(timeoutId);
-        const verdict = (full || '').trim().charAt(0).toUpperCase();
-        if (verdict === 'Y') finalCorrect = true;
-      } catch {
+        // 取第一个 Y/N，而不是首字符（解析见 ai-quiz.ts parseJudgeVerdict）
+        if (parseJudgeVerdict(full)) finalCorrect = true;
+      } catch (e) {
         // AI 判分失败（网络/Key 超时等）：静默回退规则结果，不抛错、不卡 UI
+        logPromptIssue('fill-judge', (e as Error).message);
       } finally {
         setFillJudging(false);
       }
+    } else if (!ruleCorrect && fillAiJudge && config && input.length > 200) {
+      logPromptIssue('fill-judge', `答案超长（${input.length} 字符）跳过 AI 兜底`);
     }
     setQuizSelected(finalCorrect ? 0 : -2); // 0 答对 / -2 答错（-1 保留给超时语义）
     clearTimer();
@@ -1175,6 +1209,20 @@ export default function AiAssistant() {
     navigate(path);
   };
 
+  /** 系统提示词：带当前主题与实验阶段（阶段由实验页写入易失注册表，见 ai-dynamic-questions.ts） */
+  const systemPromptForPage = () => {
+    const labId = labIdFromPath(location.pathname);
+    const lab = labId ? labMap[labId] : undefined;
+    return buildSystemPrompt(
+      lang,
+      aiCtx.topic ?? pageSubject(location.pathname, lang),
+      aiCtx.knowledge,
+      stageLabel(getLabState(labId)?.stage, lang),
+      // 实验页用注册表里的学科判定（显示名里没有「物理」二字）；非实验页留给主题串回退
+      lab ? lab.subjectId === 'physics' : undefined,
+    );
+  };
+
   // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
   const sendQuestion = async (text: string, followUp = false) => {
     const q = text.trim();
@@ -1185,7 +1233,7 @@ export default function AiAssistant() {
     setError(null);
     setBusy(true);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
+      { role: 'system', content: systemPromptForPage() },
     ];
     if (followUp && lastExchange.current) {
       messages.push({ role: 'user', content: lastExchange.current.user });
@@ -1193,9 +1241,7 @@ export default function AiAssistant() {
     }
     messages.push({
       role: 'user',
-      content: lang === 'zh'
-        ? `${q}\n\n回答末尾请另起一行，原样输出「可以继续了解：」，然后给出 3 个相关追问（每行一个，编号 1. 2. 3.）。即使回答很短也必须给；正文较长时间请优先保证追问段完整。`
-        : `${q}\n\nEnd your answer with the exact line "You can also explore:", then list 3 follow-up questions (one per line, numbered 1. 2. 3.). Even a short answer must include this section; if the body is long, prioritize the follow-up section.`,
+      content: lang === 'zh' ? `<学生提问>${q}</学生提问>` : `<student_question>${q}</student_question>`,
     });
     abortRef.current = new AbortController();
     const t0 = performance.now();
@@ -1283,7 +1329,7 @@ export default function AiAssistant() {
     if (!config || busy || refreshingRecs) return;
     setRefreshingRecs(true);
     const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      { role: 'system', content: buildSystemPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge) },
+      { role: 'system', content: systemPromptForPage() },
     ];
     // 携带上一轮问答作为「刚才讨论的主题」上下文（与追问同模式，避免换一批飘回页面主题）
     if (lastExchange.current) {

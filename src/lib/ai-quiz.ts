@@ -11,6 +11,8 @@
  * 与「解析失败」（options 非空但 answerIdx=-1）不冲突。
  */
 
+import { QUIZ_SENTINEL } from './ai-config';
+
 export type QuizType = 'choice' | 'fill';
 
 export interface QuizQuestion {
@@ -160,6 +162,75 @@ export function parseQuizBatch(raw: string, expectedCount?: number): QuizQuestio
     }
   }
   return out;
+}
+
+/**
+ * 出题输出的完整性判定：哨兵在不在、题数够不够、末题是否可能被截断。
+ * 解析逻辑不变（仍走 parseQuizBatch 的三层兜底），只额外给出「要不要修复重试」的信息。
+ */
+export interface QuizBatchParse {
+  items: QuizQuestion[];
+  /** 模型输出了结束哨兵，说明它认为自己写完了 */
+  complete: boolean;
+  /** 解析出的题数少于要求 */
+  short: boolean;
+  /** 空串 = 无需修复；否则是给模型看的修复原因 */
+  reason: string;
+}
+
+/** 带完整性判定的批量解析（解析端与提示词共用同一个哨兵常量） */
+export function parseQuizBatchChecked(raw: string, expected: number): QuizBatchParse {
+  const text = raw || '';
+  const complete = text.includes(QUIZ_SENTINEL);
+  const items = parseQuizBatch(text.split(QUIZ_SENTINEL).join('\n'), expected);
+  const short = items.length < expected;
+  const reason = items.length === 0
+    ? '没有解析出任何一道题'
+    : short
+      ? `只解析出 ${items.length} 道题，达不到要求的 ${expected} 道`
+      : !complete
+        ? '缺少结束标记，末题可能被截断'
+        : '';
+  return { items, complete, short, reason };
+}
+
+/** 题干去重：修复重试最容易产生重复题，用题干前 40 字（去空白）做键 */
+export function dedupeQuizQuestions(items: QuizQuestion[]): QuizQuestion[] {
+  const seen = new Set<string>();
+  const out: QuizQuestion[] = [];
+  for (const q of items) {
+    const key = (q.question || '').replace(/\s+/g, '').slice(0, 40);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(q);
+  }
+  return out;
+}
+
+/**
+ * 选项洗牌（Fisher-Yates）：把「正确答案位置要均匀分布」交给代码，不指望模型自觉。
+ * 只对选择题生效（填空题 options 为空，原样返回）。rnd 可注入固定序列，便于测试断言。
+ */
+export function shuffleOptions(q: QuizQuestion, rnd: () => number = Math.random): QuizQuestion {
+  if (q.type !== 'choice' || q.options.length < 2 || q.answerIdx < 0) return q;
+  const order = q.options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    const tmp = order[i];
+    order[i] = order[j];
+    order[j] = tmp;
+  }
+  const options = order.map((i) => q.options[i]);
+  const answerIdx = order.indexOf(q.answerIdx);
+  return { ...q, options, answerIdx };
+}
+
+/** 判分结论解析：取第一个 Y/N。
+ *  模型常输出 **Y** / "Y" / Y。 / `Y`，只看首字符会把它们判成「非 Y」→ 冤判。
+ *  与提示词的「只输出一个大写字母」契约配对，抽成纯函数便于回归测试。 */
+export function parseJudgeVerdict(raw: string): boolean {
+  const m = (raw || '').match(/[YN]/i);
+  return !!m && m[0].toUpperCase() === 'Y';
 }
 
 /* ── 填空题判分：三级归一化 ── */

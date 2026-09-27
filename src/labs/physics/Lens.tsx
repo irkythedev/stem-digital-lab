@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -299,6 +300,19 @@ export default function Lens() {
 
   const f = 10;
   const v = useMemo(() => imageV(u, f), [u, f]);
+
+  // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
+  useEffect(() => {
+    setLabState('lens', { stage, u, f, v });
+  }, [stage, u, f, v]);
+  // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
+  const staticAiQuestion = lang === 'zh'
+    ? '请讲解凸透镜成像的规律：物距与像的性质有什么关系'
+    : 'Explain convex-lens imaging: how object distance determines the image properties';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('lens', { u, f, v }, lang, staticAiQuestion)[0],
+    [u, f, v, lang, staticAiQuestion],
+  );
   const desc = useMemo(() => imageDesc(u, f, lang as Lang), [u, f, lang]);
 
   function redoAll() {
@@ -445,7 +459,7 @@ export default function Lens() {
         </div>
       </div>
       {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解凸透镜成像的规律：物距与像的性质有什么关系' : 'Explain convex-lens imaging: how object distance determines the image properties'} />
+      <AskAiButton className="mt-2" question={aiQuestion} />
 
 
       {/* ── 光具座 ── */}

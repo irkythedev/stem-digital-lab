@@ -2,8 +2,24 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * Smoke tests: verify core infrastructure loads without crashing.
+ * Smoke tests: 128 assertions covering the parts that must not silently break.
  * Uses Node built-in assert — no test framework dependency.
+ *
+ * What is covered, in the order the assertions appear below:
+ *   1. core infrastructure loads without crashing (labs registry, subjects, i18n);
+ *   2. the numeric cores agree with each other: the C++/WASM build is compared
+ *      point by point against the JS sources (ohm-core.ts, lens-core.ts,
+ *      quadratic-core.ts), so a drift on either side fails the run;
+ *   3. textbook numbers stay put: bulb resistance R = R0 + 0.4U (12.4 ohm at 6V),
+ *      the sample point whose current is about 0.6A must sit at about 6V across
+ *      the element (found by value, not by array index, so changing the sampling
+ *      range cannot make the test pass by accident);
+ *   4. boundary semantics: lens |u-f| < 0.01 returns null instead of drawing a
+ *      phantom real image, and a short circuit returns inf rather than 0;
+ *   5. TTS text cleaning and the feedback queue behave as documented.
+ *
+ * Add an assertion whenever a new number or boundary becomes part of the
+ * teaching content.
  *
  * Run: npx tsx src/smoke.test.ts
  */
@@ -16,7 +32,16 @@ import { latexToSpeech } from './lib/latex-speech';
 import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
 import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
-import { parseQuizBatch, judgeFillAnswer } from './lib/ai-quiz';
+import {
+  parseQuizBatch, judgeFillAnswer, parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions,
+  parseJudgeVerdict, type QuizQuestion,
+} from './lib/ai-quiz';
+import {
+  buildSystemPrompt, buildQuizPrompt, buildFillJudgePrompt, QUIZ_SENTINEL, PROMPT_VERSION,
+} from './lib/ai-config';
+import {
+  getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel,
+} from './lib/ai-dynamic-questions';
 import {
   computeQuizOverview,
   computeErrorKinds,
@@ -1284,6 +1309,206 @@ describe('Feedback push path (one push per submission)', () => {
       mem.clear();
       restore();
     }
+  });
+});
+
+
+/* ── AI 提示词契约与出题容错（PROMPT_VERSION 随提示词改动递增） ── */
+
+const Q = (over: Partial<QuizQuestion> = {}): QuizQuestion => ({
+  question: '题干', options: [], answerIdx: -1, explanation: '', type: 'choice', fillAnswers: [], ...over,
+});
+
+const RAW_OK = `【第1题】
+【类型】单选
+【题目】题干一
+A. 甲
+B. 乙
+C. 丙
+D. 丁
+【答案】B
+【解析】略
+
+【第2题】
+【类型】单选
+【题目】题干二
+A. 甲
+B. 乙
+C. 丙
+D. 丁
+【答案】C
+【解析】略
+
+===END===`;
+
+describe('AI prompt contracts', () => {
+  test('提示词版本号是显式常量（解析异常日志会带上它）', () => {
+    assert.equal(typeof PROMPT_VERSION, 'string');
+    assert.ok(PROMPT_VERSION.length > 0);
+    assert.equal(QUIZ_SENTINEL, '===END===');
+  });
+
+  test('答疑提示词：带阶段、禁反问、禁承诺、追问契约在系统侧、资料进标签槽', () => {
+    const zh = buildSystemPrompt('zh', '欧姆定律实验', '页面资料', '预测', true);
+    assert.ok(zh.includes('当前阶段：预测'), '应带上实验阶段');
+    assert.ok(zh.includes('严禁向学生提问或反问'), '必须禁止反问');
+    assert.ok(zh.includes('严禁承诺后续交互'), '必须禁止承诺后续');
+    assert.ok(zh.includes('可以继续了解：'), '追问标记必须原样出现在契约里');
+    assert.ok(zh.includes('不给最终结论'), '探究型问题不给结论');
+    assert.ok(zh.includes('<页面资料>'), '页面资料进标签槽');
+  });
+
+  test('物理分支判定：显式判定优先，主题串含「物理」作为回退（实验页显示名不含「物理」）', () => {
+    // 实验页：显示名是「欧姆定律实验」，必须靠显式判定走物理分支
+    assert.ok(buildSystemPrompt('zh', '欧姆定律实验', '', '', true).includes('公式的中文口语读法由朗读功能处理'));
+    // 非实验的物理工具页：没有 lab 记录，靠主题串回退
+    assert.ok(buildSystemPrompt('zh', '物理公式速查').includes('公式的中文口语读法由朗读功能处理'));
+    // 数学实验页：两条都不满足 → 要求补读法
+    assert.ok(buildSystemPrompt('zh', '圆的性质实验', '', '', false).includes('补中文口语读法'));
+  });
+
+  test('答疑提示词：非物理中文要求补口语读法；无资料时不出现资料块', () => {
+    const zh = buildSystemPrompt('zh', '化学元素周期表实验');
+    assert.ok(zh.includes('公式首次出现时紧跟一个括号补中文口语读法'));
+    assert.ok(!zh.includes('<页面资料>'), '没有资料就不应出现资料块');
+  });
+
+  test('英文答疑提示词：禁反问、追问标记、问题进 student_question 标签', () => {
+    const en = buildSystemPrompt('en', 'Ohm lab', 'page material', 'predict');
+    assert.ok(en.includes('Never ask the student a question'));
+    assert.ok(en.includes('You can also explore:'));
+    assert.ok(en.includes('<student_question>'));
+    assert.ok(en.includes('stage: predict'));
+  });
+
+  test('出题提示词：中英都要求输出结束哨兵（解析端据此判截断）', () => {
+    const zh = buildQuizPrompt('zh', '欧姆定律实验', '资料', 5, 'basic', 0, 'choice');
+    const en = buildQuizPrompt('en', 'Ohm lab', 'material', 5, 'basic', 0, 'choice');
+    assert.ok(zh.includes(QUIZ_SENTINEL), '中文出题提示词必须含哨兵');
+    assert.ok(en.includes(QUIZ_SENTINEL), '英文出题提示词必须含哨兵');
+  });
+
+  test('判分提示词：学生答案进标签槽，输出契约是单个大写字母', () => {
+    const zh = buildFillJudgePrompt('zh', '电流是多少', '500 mA', ['0.5A']);
+    assert.ok(zh.user.includes('<学生答案>500 mA</学生答案>'));
+    assert.ok(zh.system.includes('只输出一个大写字母'));
+    assert.ok(zh.system.includes('无法判断时输出 N'));
+    const en = buildFillJudgePrompt('en', 'current?', '500 mA', ['0.5A']);
+    assert.ok(en.user.includes('<student_answer>500 mA</student_answer>'));
+    assert.ok(en.system.includes('Output exactly one capital letter'));
+  });
+
+  test('判分结论解析：取第一个 Y/N，不被 Markdown 或标点带偏', () => {
+    assert.equal(parseJudgeVerdict('Y'), true);
+    assert.equal(parseJudgeVerdict('**Y**'), true, '粗体 Y 必须判对');
+    assert.equal(parseJudgeVerdict('"Y"'), true, '带引号的 Y 必须判对');
+    assert.equal(parseJudgeVerdict('Y。'), true);
+    assert.equal(parseJudgeVerdict(' y '), true);
+    assert.equal(parseJudgeVerdict('N'), false);
+    assert.equal(parseJudgeVerdict('**N**'), false);
+    assert.equal(parseJudgeVerdict(''), false);
+    assert.equal(parseJudgeVerdict('抱歉，我无法判断'), false);
+  });
+
+  test('出题批量解析：带哨兵的完整输出 = 无需修复', () => {
+    const r = parseQuizBatchChecked(RAW_OK, 2);
+    assert.equal(r.items.length, 2);
+    assert.equal(r.complete, true);
+    assert.equal(r.short, false);
+    assert.equal(r.reason, '');
+  });
+
+  test('出题批量解析：缺哨兵 = 提示末题可能被截断', () => {
+    const r = parseQuizBatchChecked(RAW_OK.split(QUIZ_SENTINEL).join(''), 2);
+    assert.equal(r.items.length, 2);
+    assert.equal(r.complete, false);
+    assert.ok(r.reason.includes('结束标记'));
+  });
+
+  test('出题批量解析：题数不足 = 提示补齐', () => {
+    const one = RAW_OK.split('【第2题】')[0] + '\n' + QUIZ_SENTINEL;
+    const r = parseQuizBatchChecked(one, 2);
+    assert.equal(r.items.length, 1);
+    assert.equal(r.short, true);
+    assert.ok(r.reason.includes('2 道'));
+  });
+
+  test('出题批量解析：完全解析不出 = 空结果且给出原因', () => {
+    const r = parseQuizBatchChecked('模型今天不想出题', 5);
+    assert.equal(r.items.length, 0);
+    assert.equal(r.reason, '没有解析出任何一道题');
+  });
+
+  test('题干去重：同一道题只留一条（修复重试最容易产出重复题）', () => {
+    const items = [Q({ question: '同一道题' }), Q({ question: '同一道题' }), Q({ question: '另一道题' })];
+    const out = dedupeQuizQuestions(items);
+    assert.equal(out.length, 2);
+    assert.equal(out[0].question, '同一道题');
+    assert.equal(out[1].question, '另一道题');
+  });
+
+  test('选项洗牌：选项是原集合的排列，且答案仍指向同一个选项内容', () => {
+    const base = Q({ options: ['甲', '乙', '丙', '丁'], answerIdx: 2, explanation: 'x' });
+    const seq = [0.9, 0.1, 0.5];
+    let k = 0;
+    const shuffled = shuffleOptions(base, () => seq[k++ % seq.length]);
+    assert.deepEqual([...shuffled.options].sort(), [...base.options].sort(), '洗牌不应增删选项');
+    assert.equal(shuffled.options[shuffled.answerIdx], '丙', '答案必须跟着选项一起搬家');
+  });
+
+  test('选项洗牌：填空题与非选择题原样返回', () => {
+    const fill = Q({ type: 'fill', options: [], answerIdx: -1 });
+    assert.equal(shuffleOptions(fill).options.length, 0);
+    const broken = Q({ options: ['甲', '乙'], answerIdx: -1 });
+    assert.equal(shuffleOptions(broken).answerIdx, -1, '无标准答案不洗牌');
+  });
+
+  test('动态问题：欧姆定律用当前读数出题，缺读数则回退静态文案', () => {
+    const withReading = getDynamicQuestions('ohm', { u: 6, i: 0.48, element: 'bulb' }, 'zh', '静态问题');
+    assert.equal(withReading.length, 2);
+    assert.ok(withReading[0].includes('6.00V') && withReading[0].includes('0.48A'), '应插进当前读数');
+    assert.ok(withReading[0].includes('灯泡'));
+    assert.equal(withReading[1], '静态问题', '静态文案留在末位兜底');
+    const missing = getDynamicQuestions('ohm', { u: 6 }, 'zh', '静态问题');
+    assert.deepEqual(missing, ['静态问题'], '读数不全时不得输出半句话');
+  });
+
+  test('动态问题：凸透镜 u≈f（像距为空）与未注册实验都回退静态文案', () => {
+    assert.deepEqual(getDynamicQuestions('lens', { u: 10, f: 10, v: null }, 'zh', '静态'), ['静态']);
+    const ok = getDynamicQuestions('lens', { u: 25, f: 10, v: 16.67 }, 'zh', '静态');
+    assert.ok(ok[0].includes('25.00cm') && ok[0].includes('16.67cm'));
+    assert.deepEqual(getDynamicQuestions('circle', { u: 1 }, 'zh', '静态'), ['静态']);
+  });
+
+  test('动态问题：杠杆带平衡状态；英文模板同样成句', () => {
+    const bal = getDynamicQuestions('lever', { m1: 2, d1: 3, m2: 3, d2: 2, balanced: true }, 'zh', '静态');
+    assert.ok(bal[0].includes('2×3') && bal[0].includes('刚好平衡'));
+    const en = getDynamicQuestions('lever', { m1: 2, d1: 3, m2: 3, d2: 2, balanced: false }, 'en', 'static');
+    assert.ok(en[0].includes('tilts to the heavier side'));
+  });
+
+  test('动态问题：三个试点的输出都不含 undefined / NaN', () => {
+    const cases: Array<[string, Record<string, unknown>]> = [
+      ['ohm', { u: 6, i: 0.6, element: 'resistor' }],
+      ['lens', { u: 25, f: 10, v: 16.67 }],
+      ['lever', { m1: 2, d1: 3, m2: 3, d2: 2, balanced: false }],
+    ];
+    for (const [lab, state] of cases) {
+      const out = getDynamicQuestions(lab, state, 'zh', '静态')[0];
+      assert.ok(!/undefined|NaN/.test(out), lab + ' 输出不应含 undefined/NaN');
+    }
+  });
+
+  test('实验状态注册表与阶段标签：写入即读、可清除、可从路径取实验 id', () => {
+    setLabState('ohm', { stage: 'explore' });
+    assert.equal(getLabState('ohm')?.stage, 'explore');
+    clearLabState('ohm');
+    assert.equal(getLabState('ohm'), undefined);
+    assert.equal(labIdFromPath('/lab/ohm?x=1'), 'ohm');
+    assert.equal(labIdFromPath('/periodic-table'), '');
+    assert.equal(stageLabel('predict', 'zh'), '预测');
+    assert.equal(stageLabel('conclude', 'en'), 'conclude');
+    assert.equal(stageLabel(undefined, 'zh'), '');
   });
 });
 
