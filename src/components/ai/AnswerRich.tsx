@@ -9,7 +9,7 @@
  *   - 渲染失败的公式退回原文（KaTeX throwOnError:false），绝不崩溃
  * 复用现有 Formula 组件（KaTeX 全局 CSS 已在 main.tsx 引入）。
  */
-import { useMemo, type ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import Formula from '../ui/Formula';
 
 /** 块级公式：$$...$$ 或 \[...\]（可跨行） */
@@ -115,7 +115,7 @@ function renderBlock(text: string, keyBase: number): ReactNode[] {
 }
 
 /** AI 回答富文本渲染入口 */
-export default function AnswerRich({ text }: { text: string }) {
+function AnswerRich({ text }: { text: string }) {
   const nodes = useMemo(() => {
     const parts = text.split(BLOCK_RE);
     const out: ReactNode[] = [];
@@ -143,3 +143,6 @@ export function InlineAnswer({ text }: { text: string }) {
   const nodes = useMemo(() => renderInline(text, 1), [text]);
   return <>{nodes}</>;
 }
+
+/** 记忆化：props 只有一个字符串，拖拽/流式以外的高频重渲染不必重解析 KaTeX。 */
+export default memo(AnswerRich);

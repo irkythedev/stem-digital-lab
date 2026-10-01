@@ -933,18 +933,27 @@ export default function AiAssistant() {
     try {
       const raw = window.localStorage.getItem('stem-ai-height');
       const h = raw ? parseInt(raw, 10) : 0;
-      return Number.isFinite(h) ? Math.min(720, Math.max(200, h)) : 0;
+      // 0 = 没有记忆：不设显式上限，交给外层视口上限兜底（旧写法把 0 夹成 200，会裁掉页脚）
+      if (!Number.isFinite(h) || h <= 0) return 0;
+      return Math.min(720, Math.max(200, h));
     } catch {
       return 0;
     }
   });
   const heightRef = useRef(0);
   useEffect(() => { heightRef.current = height; }, [height]);
+  // 拖拽期间禁用文本选区（鼠标快速滑动时指针会滑出把手，页面正文会被误选）
+  // 只在两个 resize 把手上使用：标题栏本身已 select-none；pointerup 与 lostpointercapture 双保险恢复
+  const setDragSelectionLock = (on: boolean) => {
+    try { document.body.style.userSelect = on ? 'none' : ''; } catch { /* 静默 */ }
+  };
+  const releaseDragSelectionLock = () => setDragSelectionLock(false);
   const cornerRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
   // 右下角对角拖拽：同时调整宽高（等比例手感由用户控制，不做强制比例）
   const onCornerPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
+    setDragSelectionLock(true);
     cornerRef.current = { startX: e.clientX, startY: e.clientY, startW: widthRef.current, startH: heightRef.current };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
@@ -966,6 +975,7 @@ export default function AiAssistant() {
     });
   };
   const onCornerPointerUp = () => {
+    releaseDragSelectionLock();
     if (!cornerRef.current) return;
     cornerRef.current = null;
     try {
@@ -976,6 +986,7 @@ export default function AiAssistant() {
 
   const onResizePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
+    setDragSelectionLock(true);
     resizeRef.current = { startX: e.clientX, startW: widthRef.current };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
@@ -992,6 +1003,7 @@ export default function AiAssistant() {
     });
   };
   const onResizePointerUp = () => {
+    releaseDragSelectionLock();
     if (!resizeRef.current) return;
     resizeRef.current = null;
     try {
@@ -1000,6 +1012,8 @@ export default function AiAssistant() {
   };
 
   const onTitlePointerDown = (e: React.PointerEvent) => {
+    // 移动端是底部抽屉，位置由 inset-x-0 bottom-0 决定：拖动只会写入脏坐标，直接不响应
+    if (isMobile) return;
     const rect = panelRef.current?.getBoundingClientRect();
     if (!rect) return;
     dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
@@ -1457,13 +1471,14 @@ export default function AiAssistant() {
         className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
           isMobile
             ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
-            : 'w-[calc(100vw-2rem)]'
+            : 'w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]'
         }`}
         style={{
           ...(!isMobile
             ? {
                 width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
-                ...(height > 0 && view === 'chat' ? { height } : {}),
+                // 记忆值作为「上限」而非写死高度：内容不足时面板收缩，超出时滚动、页脚始终贴底
+                ...(height > 0 && view === 'chat' ? { maxHeight: height } : {}),
                 ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
               }
             : {}),
@@ -1473,10 +1488,11 @@ export default function AiAssistant() {
       >
       {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
       <div
-        className={`absolute right-0 top-0 bottom-3 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
+        className={`absolute right-0 top-0 bottom-4 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
         onPointerDown={onResizePointerDown}
         onPointerMove={onResizePointerMove}
         onPointerUp={onResizePointerUp}
+        onLostPointerCapture={releaseDragSelectionLock}
         title={lang === 'zh' ? '拖拽调整宽度' : 'Drag to resize'}
       />
       {/* 右下角斜拉把手（同时调宽高；移动端隐藏） */}
@@ -1485,6 +1501,7 @@ export default function AiAssistant() {
         onPointerDown={onCornerPointerDown}
         onPointerMove={onCornerPointerMove}
         onPointerUp={onCornerPointerUp}
+        onLostPointerCapture={releaseDragSelectionLock}
         title={lang === 'zh' ? '斜拉调整宽高' : 'Drag corner to resize'}
       >
         <span className="w-2 h-2 border-r border-b border-[var(--muted)]" aria-hidden="true" />
@@ -2797,7 +2814,7 @@ export default function AiAssistant() {
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
-          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-[60dvh] sm:max-h-[42dvh] p-3 space-y-2.5 text-sm serif-font">
+          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-[60dvh] sm:max-h-none p-3 space-y-2.5 text-sm serif-font">
             {history.length > 0 || answer || pending || busy || error ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}

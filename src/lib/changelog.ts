@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.1';
+export const APP_VERSION = '0.32.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -18,8 +18,20 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.32.2',
+    date: '2026-10',
+    zh: [
+      '[修复] AI 助手窗口改为按内容自适应，不再出现底部大片空白或内容被裁切',
+      '[修复] 拖动窗口边缘或角落调整大小时不再误选页面文字，长回答下也不卡顿',
+    ],
+    en: [
+      '[Fixed] The assistant window now fits its content: no more large empty space at the bottom and no clipped rows',
+      '[Fixed] Dragging the window edge or corner no longer selects page text, and stays smooth with long answers',
+    ],
+  },
+  {
     version: '0.32.1',
-    date: '2026-09',
+    date: '2026-10',
     zh: [
       '[新增] 支持思考的模型会显示「思考过程」：默认折叠，想看点开就能看到 AI 是怎么一步步想的',
       '[优化] 思考草稿留在这个页面里、不写入本地历史，关掉页面即消失',
