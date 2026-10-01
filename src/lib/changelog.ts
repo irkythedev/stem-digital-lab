@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.6';
+export const APP_VERSION = '0.32.7';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.7',
+    date: '2026-10',
+    zh: [
+      '[优化] 欢迎介绍卡片化重排：四大板块一屏看清，底部说明收拢，需要滚动的内容更少',
+      '[优化] 主按钮改为「开始探究」，反馈与开源信息排版更清爽',
+    ],
+    en: [
+      '[Improved] The welcome intro is card-based now: the four subjects read at a glance and the footer notes need less scrolling',
+      '[Improved] The main button says "Start exploring", with tidier feedback and open-source notes',
+    ],
+  },
   {
     version: '0.32.6',
     date: '2026-10',

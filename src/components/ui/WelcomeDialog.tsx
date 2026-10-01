@@ -137,100 +137,99 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <p className="text-sm leading-relaxed serif-font">{t.welcomeIntro}</p>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
+          {/* 一句话定位（原文案保留，作为整屏唯一的主文案） */}
+          <p className="text-sm leading-snug serif-font">{t.welcomeIntro}</p>
 
-          {/* 多端适配（设备图标 + 左边框注记） */}
-          <p className="flex items-start gap-1.5 text-xs leading-relaxed mono-font text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">
-            <MonitorSmartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-            <span>{t.welcomeDevices}</span>
-          </p>
+          {/* 多端适配 + AI 助手：两条次级注记并排收拢，压低纵向高度 */}
+          <div className="space-y-1.5">
+            <p className="flex items-start gap-1.5 text-xs leading-relaxed mono-font text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">
+              <MonitorSmartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{t.welcomeDevices}</span>
+            </p>
+            <p className="text-xs leading-snug text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">{t.welcomeAi}</p>
+          </div>
 
-          {/* 板块（标题图标与全站统一：学科用 SubjectIcon，工具用 Calculator） */}
-          <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
+          {/* 四大板块：2x2 微型卡片（细边框 + 微弱底色，形成模块感） */}
+          <div className="grid grid-cols-2 gap-1.5">
             {[
               { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-[0.8125rem] leading-none" /> },
               { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-3.5 h-3.5" /> },
               { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-3.5 h-3.5" /> },
               { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-3.5 h-3.5" /> },
             ].map((s, i) => (
-              <div key={i}>
+              <div key={i} className="border border-[var(--border)]/70 bg-[var(--accent-light)]/30 p-2">
                 <div className="flex items-center gap-1.5 text-[0.6875rem] mono-font font-bold tracking-widest text-[var(--fg)]">
                   {s.icon}
                   <span>{s.title}</span>
                 </div>
-                <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">{s.desc}</p>
+                <p className="mt-0.5 text-[0.6875rem] leading-snug text-[var(--muted)]">{s.desc}</p>
               </div>
             ))}
           </div>
 
-          <p className="text-sm leading-relaxed serif-font">{t.welcomeAi}</p>
-          <p className="text-sm leading-relaxed serif-font">
-            {t.welcomeMaintainPrefix}
-            <button
-              type="button"
-              onClick={() => setShowLicense(true)}
-              title="AGPL-3.0"
-              aria-label="AGPL-3.0"
-              className="underline hover:opacity-70 mono-font"
-            >
-              AGPL-3.0
-            </button>
-            {t.welcomeMaintainSuffix}
-          </p>
-
-          {/* 反馈渠道：三行分组清单（邮件 / 反馈气泡 / 项目主页，# 注释符风格前缀） */}
-          <div className="flex flex-col gap-y-1.5 text-xs mono-font text-[var(--muted)]">
-            <div className="flex flex-wrap items-center gap-x-1.5">
-              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
-              <span>{t.welcomeFeedbackPrefix}</span>
-              <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-              <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">
-                king4g@yeah.net
-              </a>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-1.5">
-              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
-              <span>{t.welcomeFeedbackBubbleA}</span>
-              <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-              <span>{t.welcomeFeedbackBubbleB}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-1.5">
-              <span className="text-[var(--muted)]/60 select-none" aria-hidden="true">#</span>
-              <span>{t.welcomeFeedbackIssueA}</span>
-              <ExternalLinkConfirm
-                target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
-                hint={t.externalLinkHint}
-                openLabel={t.externalLinkOpen}
-                cancelLabel={t.externalLinkCancel}
-                ariaLabel="Gitee project"
-                className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+          {/* 次级弱化区：开源协议 / 反馈通道 / 其他作品统一收拢（text-xs + 弱底色信息块） */}
+          <div className="border border-[var(--border)]/70 bg-[var(--accent-light)]/40 p-2 space-y-1.5 text-xs text-[var(--muted)]">
+            <p className="leading-snug">
+              {t.welcomeMaintainPrefix}
+              <button
+                type="button"
+                onClick={() => setShowLicense(true)}
+                title="AGPL-3.0"
+                aria-label="AGPL-3.0"
+                className="underline hover:opacity-70 mono-font"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d={GITEE_PATH} />
-                </svg>
-              </ExternalLinkConfirm>
-              <ExternalLinkConfirm
-                target={{ url: 'https://github.com/irkythedev/stem-digital-lab/issues', name: 'GitHub' }}
-                hint={t.externalLinkHint}
-                openLabel={t.externalLinkOpen}
-                cancelLabel={t.externalLinkCancel}
-                ariaLabel="GitHub project"
-                className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d={GITHUB_PATH} />
-                </svg>
-              </ExternalLinkConfirm>
-              <span>{t.welcomeFeedbackIssueB}</span>
-            </div>
-          </div>
+                AGPL-3.0
+              </button>
+              {t.welcomeMaintainSuffix}
+            </p>
 
-          {/* 其他作品（左起，点击确认后跳转）—— 参考页脚样式 */}
-          <div className="flex flex-col gap-1.5 border-t border-[var(--border)] pt-3">
-            <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-1">
-              <span className="flex items-center gap-1.5 text-[var(--muted)]">
-                <Library className="w-3.5 h-3.5" />
+            {/* 反馈通道：标签流（去掉伪 Markdown 的 # 前缀） */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mono-font">
+              <span className="flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t.welcomeFeedbackPrefix}</span>
+                <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">king4g@yeah.net</a>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span>{t.welcomeFeedbackBubbleA}</span>
+                <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>{t.welcomeFeedbackBubbleB}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span>{t.welcomeFeedbackIssueA}</span>
+                <ExternalLinkConfirm
+                  target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
+                  hint={t.externalLinkHint}
+                  openLabel={t.externalLinkOpen}
+                  cancelLabel={t.externalLinkCancel}
+                  ariaLabel="Gitee project"
+                  className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d={GITEE_PATH} />
+                  </svg>
+                </ExternalLinkConfirm>
+                <ExternalLinkConfirm
+                  target={{ url: 'https://github.com/irkythedev/stem-digital-lab/issues', name: 'GitHub' }}
+                  hint={t.externalLinkHint}
+                  openLabel={t.externalLinkOpen}
+                  cancelLabel={t.externalLinkCancel}
+                  ariaLabel="GitHub project"
+                  className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d={GITHUB_PATH} />
+                  </svg>
+                </ExternalLinkConfirm>
+                <span>{t.welcomeFeedbackIssueB}</span>
+              </span>
+            </div>
+
+            {/* 其他作品（点击确认后跳转） */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--border)]/70 pt-2">
+              <span className="flex items-center gap-1.5">
+                <Library className="w-3.5 h-3.5" aria-hidden="true" />
                 <span className="text-[0.625rem] mono-font uppercase tracking-wider">{t.moreWorks}</span>
               </span>
               {t.works.map((w) => (
@@ -238,7 +237,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                   key={w.url}
                   type="button"
                   onClick={() => setPendingWork(w)}
-                  className="flex items-center gap-1.5 text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                  className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors"
                 >
                   <img src={w.icon} alt="" width="14" height="14" className="flex-shrink-0" />
                   {w.name}
@@ -248,13 +247,13 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
 
             {/* 内联确认：点「其他作品」后在此展开，先看简介再决定是否跳转 */}
             {pendingWork && (
-              <div ref={confirmRef} className="border border-[var(--border)] bg-[var(--accent-light)] px-3 py-2.5 flex flex-col gap-1.5">
+              <div ref={confirmRef} className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                   <img src={pendingWork.icon} alt="" width="16" height="16" className="flex-shrink-0" />
-                  <span className="text-xs font-bold mono-font">{pendingWork.name}</span>
+                  <span className="text-xs font-bold mono-font text-[var(--fg)]">{pendingWork.name}</span>
                 </div>
-                {pendingWork.desc && <p className="text-[0.6875rem] leading-relaxed text-[var(--muted)]">{pendingWork.desc}</p>}
-                <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all">{pendingWork.url}</p>
+                {pendingWork.desc && <p className="text-[0.6875rem] leading-relaxed">{pendingWork.desc}</p>}
+                <p className="text-[0.625rem] mono-font break-all">{pendingWork.url}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -262,7 +261,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
                       window.open(pendingWork.url, '_blank', 'noopener,noreferrer');
                       setPendingWork(null);
                     }}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--card-bg)] transition-colors"
+                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                   >
                     {zh ? '前往' : 'Open'}
                   </button>
@@ -279,7 +278,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
           </div>
         </div>
 
-        {/* 底部：勾选 + 知道了（固定可见，不随内容滚动） */}
+        {/* 底部：勾选 + 开始探究（固定可见，不随内容滚动） */}
         <div
           className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3"
           style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
