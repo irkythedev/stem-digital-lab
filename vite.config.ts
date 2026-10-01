@@ -175,7 +175,17 @@ export default defineConfig({
         navigateFallback: '/index.html',
         // 不兜底 /architecture.html：否则导航会被 SPA 首页接管，点进去看到的是首页。
         // （workbox 的 NavigationRoute 用 pathname + search 匹配，故需容忍 ?theme= 查询串）
-        navigateFallbackDenylist: [/^\/api\//, /^\/architecture\.html(\?|$)/],
+        // 同理不兜底任何「真实存在的静态文件」：扫码或粘贴地址打开 /videos/stem-intro.mp4 这类
+        // 顶层导航一旦被接管，浏览器拿到的是缓存的 index.html，SPA 路由落到 * 渲染成 404 页
+        // （实测：装过 SW 的浏览器直连视频地址看到「404 / Page Not Found」，而 curl 与页面内的
+        //  <video> 都正常——子资源请求不是导航，只有顶层导航会走兜底）。
+        // 后缀规则覆盖视频/音频/图片/文本/数据/字体/压缩包；目录规则兜住无后缀的静态目录。
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/architecture\.html(\?|$)/,
+          /\.(?:mp4|webm|mov|m4v|mp3|wav|ogg|m4a|jpg|jpeg|png|gif|webp|avif|svg|ico|txt|xml|json|webmanifest|csv|js|mjs|css|map|woff2?|ttf|otf|eot|wasm|zip|pdf)$/i,
+          /^\/(?:videos|audio|element-images|icons)\//,
+        ],
         runtimeCaching: [
           {
             urlPattern: /\/architecture\.html(\?|$)/,

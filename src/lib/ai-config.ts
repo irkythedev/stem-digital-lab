@@ -408,6 +408,78 @@ export async function fetchModels(baseUrl: string, apiKey: string): Promise<stri
   return ids;
 }
 
+/** SSE 单条 delta 的两路文本：思考字段名各家不同（DeepSeek / 百炼用 reasoning_content，vLLM 系用 reasoning）。
+ *  取不到就是空串——没有思考能力的模型这两条路径永远为空，行为与改造前一致。 */
+export function extractStreamDelta(payload: unknown): { content: string; reasoning: string } {
+  const delta = (payload as { choices?: { delta?: Record<string, unknown> }[] } | null)?.choices?.[0]?.delta ?? {};
+  const d = delta as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  return { content: str(d.content), reasoning: str(d.reasoning_content) || str(d.reasoning) };
+}
+
+/** 内联思考标签：部分端点不装 reasoning parser，思考整段混在 content 里。
+ *  不切就会污染正文（300 字契约）与「可以继续了解：」追问标记。 */
+const THINK_TAGS: ReadonlyArray<readonly [string, string]> = [
+  ['<`think>', '</`think>'],
+  ['<thinking>', '</thinking>'],
+];
+
+/**
+ * 把 content 里内联的思考段改道到 reasoning 通道。
+ * 跨 chunk 也要能切开：尾部若可能是标签的前缀（如 '<`think>' 被拆成 `<thi` + `nk>`），先扣住不吐，等下一个 chunk；
+ * 流结束时用 flush() 放出扣住的尾巴。闭标签之后一律按正文处理。
+ */
+export function createInlineThinkSplitter(emit: (channel: 'content' | 'reasoning', text: string) => void) {
+  let buf = '';
+  let inThink = false;
+  let seenClose = false;
+  return {
+    push(chunk: string) {
+      buf += chunk;
+      for (;;) {
+        const pairs = seenClose ? [] : THINK_TAGS;
+        let at = -1;
+        let tag = '';
+        for (const pair of pairs) {
+          const t = inThink ? pair[1] : pair[0];
+          const i = buf.indexOf(t);
+          if (i >= 0 && (at < 0 || i < at)) {
+            at = i;
+            tag = t;
+          }
+        }
+        if (at >= 0) {
+          if (at > 0) emit(inThink ? 'reasoning' : 'content', buf.slice(0, at));
+          buf = buf.slice(at + tag.length);
+          inThink = !inThink;
+          if (!inThink) seenClose = true;
+          continue;
+        }
+        let hold = 0;
+        for (const pair of pairs) {
+          const t = inThink ? pair[1] : pair[0];
+          for (let k = Math.min(t.length - 1, buf.length); k > 0; k--) {
+            if (buf.endsWith(t.slice(0, k))) hold = Math.max(hold, k);
+          }
+        }
+        const safe = buf.length - hold;
+        if (safe > 0) {
+          emit(inThink ? 'reasoning' : 'content', buf.slice(0, safe));
+          buf = buf.slice(safe);
+        }
+        return;
+      }
+    },
+    /** 流结束时放出扣住的尾巴（未闭合的思考段归 reasoning） */
+    flush() {
+      if (buf) {
+        emit(inThink ? 'reasoning' : 'content', buf);
+        buf = '';
+      }
+    },
+  };
+}
+
 /** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
 export async function streamChat(
   cfg: AiConfig,
@@ -415,6 +487,7 @@ export async function streamChat(
   onDelta: (text: string) => void,
   signal?: AbortSignal,
   maxTokens?: number,
+  onReasoning?: (text: string) => void,
 ): Promise<string> {
   const url = `${normalizeBaseUrl(cfg.baseUrl)}/chat/completions`;
   const res = await fetch(url, {
@@ -444,6 +517,15 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let full = '';
   let buf = '';
+  // 正文与思考分流：content 里若内联了思考标签，由切分器改道到 reasoning 通道
+  const splitter = createInlineThinkSplitter((channel, text) => {
+    if (channel === 'reasoning') {
+      onReasoning?.(text);
+    } else {
+      full += text;
+      onDelta(text);
+    }
+  });
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -456,16 +538,14 @@ export async function streamChat(
       const payload = t.slice(5).trim();
       if (payload === '[DONE]') continue;
       try {
-        const json = JSON.parse(payload);
-        const delta: string = json?.choices?.[0]?.delta?.content ?? '';
-        if (delta) {
-          full += delta;
-          onDelta(delta);
-        }
+        const { content, reasoning } = extractStreamDelta(JSON.parse(payload));
+        if (reasoning) onReasoning?.(reasoning);
+        if (content) splitter.push(content);
       } catch {
         /* skip keep-alive or partial */
       }
     }
   }
+  splitter.flush();
   return full;
 }

@@ -37,7 +37,12 @@ import {
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType,
 } from '../../lib/ai-config';
 
-/** 当前页面 → 主题提示（注入系统提示词） */
+/** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
+function turnKey(user: string, assistant: string): string {
+  return `${user}\u0000${assistant}`;
+}
+
+/* ── 当前页面 → 主题提示（注入系统提示词） ── */
 function pageSubject(pathname: string, lang: 'zh' | 'en'): string | undefined {
   const zh = lang === 'zh';
   if (pathname.startsWith('/lab/')) {
@@ -799,6 +804,37 @@ export default function AiAssistant() {
   const toggleTerm = (i: number) => setCollapsedTerms((c) => c.map((v, idx) => (idx === i ? !v : v)));
   // 由 AI 推荐驱动的追问：当前回答 / 推荐追问列表 / 待发问题 / 上一轮问答（内存）
   const [answer, setAnswer] = useState('');
+  // AI 思考草稿（部分模型才有）：本回合显示、不落盘；思考中自动展开，正文一开始自动折叠
+  const [reasoning, setReasoning] = useState('');
+  // 折叠状态：'live' = 当前轮，'h<i>' = 第 i 条历史（同一时刻只展开一个）
+  const [openReasoningId, setOpenReasoningId] = useState<string | null>(null);
+  // 本回合的思考草稿按问答对暂存在内存（不落盘）：回答入历史后当前轮会被清空，
+  // 没有这份映射，思考过程就只能在流式那几秒里看到
+  const [reasoningByTurn, setReasoningByTurn] = useState<Record<string, { text: string; sec: number }>>({});
+  /** 思考草稿折叠区：默认折叠，标题写明它可能直接写出结论（与「探究型不给结论」的口径并存） */
+  const renderReasoning = (text: string, sec: number, id: string) => {
+    const open = openReasoningId === id;
+    return (
+      <div className="inline-block max-w-[95%] mb-1 border border-[var(--border)]">
+        <button
+          type="button"
+          onClick={() => setOpenReasoningId(open ? null : id)}
+          className="w-full text-left px-2.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+        >
+          {open ? '▾ ' : '▸ '}
+          {lang === 'zh'
+            ? `思考过程（约 ${sec}s · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`
+            : `Thinking (≈${sec}s · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`}
+        </button>
+        {open && (
+          <div className="px-2.5 pb-2 pt-1 text-[0.6875rem] leading-relaxed whitespace-pre-wrap text-[var(--muted)] border-t border-[var(--border)]">
+            {text}
+          </div>
+        )}
+      </div>
+    );
+  };
+  const [reasoningSec, setReasoningSec] = useState(0);
   const [recs, setRecs] = useState<string[]>([]);
   const [pending, setPending] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -1229,6 +1265,9 @@ export default function AiAssistant() {
     if (!q || busy || !config) return;
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
     setAnswer('');
+    setReasoning('');
+    setOpenReasoningId('live');
+    setReasoningSec(0);
     setRecs([]);
     setError(null);
     setBusy(true);
@@ -1249,11 +1288,20 @@ export default function AiAssistant() {
     const baseTokens = usage?.tokens ?? 0;
     const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
     let received = 0;
+    let firstContentAt = 0; // 首个正文 token 的时刻（用来算「思考了几秒」并自动折叠）
+    let reasoningText = '';   // 本轮思考全文（闭包内累积，结束后挂到本轮问答对上）
+    let reasoningSecLocal = 0;
     try {
       const full = await streamChat(
         config,
         messages,
         (delta) => {
+          if (!firstContentAt) {
+            firstContentAt = performance.now();
+            reasoningSecLocal = Math.max(1, Math.round((firstContentAt - t0) / 1000));
+            setReasoningSec(reasoningSecLocal);
+            setOpenReasoningId(null); // 正文开始 → 思考区自动折叠（默认不看）
+          }
           setAnswer((a) => a + delta);
           received += delta.length;
           const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
@@ -1265,9 +1313,15 @@ export default function AiAssistant() {
         },
         abortRef.current.signal,
         2000, // 对话输出上限：保证追问段完整
+        (r) => {
+          // 思考增量：也算学生付费的输出，计入本轮用量（想得多=花得多，学生看得见）
+          received += r.length;
+          reasoningText += r;
+          setReasoning((x) => x + r);
+        },
       );
-      // 跨会话累计 token（本次请求 = prompt + 实际输出）
-      addTokenUsage(config?.model, promptTokens + estimateTokens(full));
+      // 跨会话累计 token（本次请求 = prompt + 实际输出 + 思考增量：想得多花得多，口径与本轮显示一致）
+      addTokenUsage(config?.model, promptTokens + estimateTokens(received));
       refreshTokenUsage();
       const { body, recs: parsedRecs } = parseRecQuestions(full);
       setAnswer(body);
@@ -1292,11 +1346,24 @@ export default function AiAssistant() {
         model: config.model,
       });
       setPersistHistory(listHistory());
+      // 思考草稿只留内存（本回合问答对为键；最多 20 轮、每轮截 4000 字），供历史气泡回看，不落盘
+      if (reasoningText) {
+        const key = turnKey(q, body);
+        setReasoningByTurn((m) => {
+          const next: Record<string, { text: string; sec: number }> = {
+            ...m,
+            [key]: { text: reasoningText.slice(0, 4000), sec: reasoningSecLocal },
+          };
+          const keys = Object.keys(next);
+          for (const k of keys.slice(0, Math.max(0, keys.length - 20))) delete next[k];
+          return next;
+        });
+      }
       // 回答已入历史，清空当前轮（避免同一内容在历史区和当前轮重复显示）
       setAnswer('');
-      // 最终定格（与实时滚动值对齐，避免浮点误差）
+      // 最终定格（与实时滚动值对齐，避免浮点误差；含思考增量，避免完成瞬间数字回落）
       const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-      const outTokens = estimateTokens(full);
+      const outTokens = estimateTokens(received);
       setUsage({
         tokens: baseTokens + promptTokens + outTokens,
         speed: Math.round(outTokens / elapsedSec),
@@ -2737,6 +2804,15 @@ export default function AiAssistant() {
                 {history.map((h, i) => (
                   <div key={i} className="space-y-1.5">
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={h.user} /></p>
+                    {reasoningByTurn[turnKey(h.user, h.assistant)] && (
+                      <div className="text-left">
+                        {renderReasoning(
+                          reasoningByTurn[turnKey(h.user, h.assistant)].text,
+                          reasoningByTurn[turnKey(h.user, h.assistant)].sec,
+                          `h${i}`,
+                        )}
+                      </div>
+                    )}
                     <div className="text-left">
                       <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         <AnswerRich text={h.assistant} />
@@ -2751,13 +2827,14 @@ export default function AiAssistant() {
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
                     {(answer || pending || busy) && (
                     <div className="text-left">
-                      {/* 思考中：不显示方形边框（shaping 20px 精巧内联），明暗主题由库 auto 检测；等待>4s 变琥珀提示 */}
+                      {/* AI 的思考草稿（部分模型才有）：默认折叠，思考中自动展开；拿不到就不渲染 */}
+                      {reasoning && renderReasoning(reasoning, reasoningSec, 'live')}
                       <div className={`inline-block max-w-[95%] px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
                         {answer ? (
                           <div style={{ animation: 'answer-fade-in 0.2s ease' }}>
                             <AnswerRich text={answer} />
                           </div>
-                        ) : (
+                        ) : reasoning ? null : (
                           <div className="flex justify-center" aria-label={lang === 'zh' ? '思考中' : 'Thinking'}>
                             <ThinkingOrb
                               state="shaping"

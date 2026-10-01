@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * Smoke tests: 128 assertions covering the parts that must not silently break.
+ * Smoke tests: 133 assertions covering the parts that must not silently break.
  * Uses Node built-in assert — no test framework dependency.
  *
  * What is covered, in the order the assertions appear below:
@@ -38,6 +38,7 @@ import {
 } from './lib/ai-quiz';
 import {
   buildSystemPrompt, buildQuizPrompt, buildFillJudgePrompt, QUIZ_SENTINEL, PROMPT_VERSION,
+  extractStreamDelta, createInlineThinkSplitter, streamChat,
 } from './lib/ai-config';
 import {
   getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel,
@@ -1509,6 +1510,86 @@ describe('AI prompt contracts', () => {
     assert.equal(stageLabel('predict', 'zh'), '预测');
     assert.equal(stageLabel('conclude', 'en'), 'conclude');
     assert.equal(stageLabel(undefined, 'zh'), '');
+  });
+});
+
+
+/* ── AI 思考过程只显示（Phase 1：不配置、不改请求参数）── */
+
+const T_OPEN = '<`think>';
+const T_CLOSE = '</`think>';
+
+describe('AI thinking stream (display only)', () => {
+  test('流式 delta：思考字段名各家不同，正文永不被污染', () => {
+    assert.deepEqual(extractStreamDelta({ choices: [{ delta: { content: '正文' } }] }), { content: '正文', reasoning: '' });
+    assert.deepEqual(extractStreamDelta({ choices: [{ delta: { reasoning_content: '想' } }] }), { content: '', reasoning: '想' });
+    assert.deepEqual(extractStreamDelta({ choices: [{ delta: { reasoning: '想' } }] }), { content: '', reasoning: '想' },
+      'vLLM 系用 reasoning 字段');
+    assert.deepEqual(extractStreamDelta({ choices: [{ delta: { reasoning_content: 'A', reasoning: 'B', content: 'C' } }] }),
+      { content: 'C', reasoning: 'A' }, '两个思考字段同时出现时优先 reasoning_content');
+    assert.deepEqual(extractStreamDelta({}), { content: '', reasoning: '' });
+    assert.deepEqual(extractStreamDelta(null), { content: '', reasoning: '' });
+  });
+
+  test('内联思考标签：正文/思考各归各位，闭标签之后一律正文', () => {
+    const got: string[] = [];
+    const s = createInlineThinkSplitter((ch, t) => got.push(`${ch}:${t}`));
+    s.push(`前文${T_OPEN}思考中${T_CLOSE}后文`);
+    s.flush();
+    assert.deepEqual(got, ['content:前文', 'reasoning:思考中', 'content:后文']);
+  });
+
+  test('内联标签跨 chunk：标签被切开也不能漏进正文', () => {
+    const got: string[] = [];
+    const s = createInlineThinkSplitter((ch, t) => got.push(`${ch}:${t}`));
+    s.push(`A${T_OPEN.slice(0, 5)}`);      // 半个开标签（还缺 nk>）
+    s.push(`nk>B${T_CLOSE.slice(0, 5)}`);  // 补齐开标签 + 半个闭标签（还缺 ing>）
+    s.push('ink>C');
+    s.flush();
+    assert.equal(got.join('|'), 'content:A|reasoning:B|content:C', `实际 ${got.join('|')}`);
+  });
+
+  test('未闭合的思考标签：余下内容进思考通道，不污染正文', () => {
+    const got: string[] = [];
+    const s = createInlineThinkSplitter((ch, t) => got.push(`${ch}:${t}`));
+    s.push(`A${T_OPEN}B`);
+    s.flush();
+    assert.equal(got.join('|'), 'content:A|reasoning:B');
+  });
+
+  testAsync('streamChat 端到端：思考走 reasoning 通道，返回值只有正文', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    const enc = new TextEncoder();
+    const sse = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+    (globalThis as any).fetch = async () => {
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { reasoning_content: '先想一下。' } }] })));
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { content: '结论' } }] })));
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { content: '在此' } }] })));
+          c.enqueue(enc.encode('data: [DONE]\n\n'));
+          c.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    try {
+      const reasons: string[] = [];
+      const contents: string[] = [];
+      const full = await streamChat(
+        { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
+        [{ role: 'user', content: 'hi' }],
+        (d) => contents.push(d),
+        undefined,
+        100,
+        (r) => reasons.push(r),
+      );
+      assert.equal(full, '结论在此', '返回值只能是正文');
+      assert.deepEqual(reasons, ['先想一下。'], '思考必须走 reasoning 通道');
+      assert.deepEqual(contents, ['结论', '在此']);
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
   });
 });
 

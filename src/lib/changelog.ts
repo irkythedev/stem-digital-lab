@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.31.0';
+export const APP_VERSION = '0.32.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.1',
+    date: '2026-09',
+    zh: [
+      '[新增] 支持思考的模型会显示「思考过程」：默认折叠，想看点开就能看到 AI 是怎么一步步想的',
+      '[优化] 思考草稿留在这个页面里、不写入本地历史，关掉页面即消失',
+      '[修复] 回答结束时的用量数字不再往回跳（思考的消耗也算进去）',
+      '[修复] 扫码或直接打开介绍视频、元素照片、朗读音频不再显示「页面不存在」（离线缓存不再抢走这些文件）',
+    ],
+    en: [
+      '[New] Models that think now show a "Thinking" section: collapsed by default, expand it to see how the AI worked it out',
+      '[Improved] The thinking draft stays on this page only - it is never written into your local history',
+      '[Fixed] The usage number no longer drops back the moment an answer finishes (thinking is counted too)',
+      '[Fixed] Opening the intro video, element photos or read-aloud audio from a QR code or a pasted link no longer shows \"Page Not Found\" (the offline cache no longer intercepts those files)',
+    ],
+  },
   {
     version: '0.31.0',
     date: '2026-09',
