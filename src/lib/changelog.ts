@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.3';
+export const APP_VERSION = '0.32.4';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.4',
+    date: '2026-10',
+    zh: [
+      '[新增] AI 助手可以收成一个小胶囊：先去看别的，回头点一下就能展开',
+      '[优化] 标题栏的设置、历史、关闭更好点：按钮放大、与关闭之间加了分隔，不再误点',
+      '[优化] 按 Esc 可以收起助手或回到对话',
+    ],
+    en: [
+      '[New] The assistant can be minimised into a small capsule - click it to bring the panel back',
+      '[Improved] The title bar controls are easier to hit and separated from Close, so you stop tapping the wrong one',
+      '[Improved] Escape now collapses the assistant or takes you back to the chat',
+    ],
+  },
   {
     version: '0.32.3',
     date: '2026-10',

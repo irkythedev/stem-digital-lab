@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, Minus, X } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -936,6 +936,17 @@ export default function AiAssistant() {
       return 0;
     }
   });
+  // 最小化（收起为胶囊）：UI 偏好，localStorage 记忆；移动端不启用
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try { return window.localStorage.getItem('stem-ai-collapsed') === '1'; } catch { return false; }
+  });
+  const setCollapsedPersisted = (v: boolean) => {
+    setCollapsed(v);
+    try { window.localStorage.setItem('stem-ai-collapsed', v ? '1' : '0'); } catch { /* 静默 */ }
+  };
+  // 拖拽是否真的移动过（胶囊上「点击还原」与「拖动」靠它区分）
+  const dragMovedRef = useRef(false);
   const heightRef = useRef(0);
   useEffect(() => { heightRef.current = height; }, [height]);
   // ── 拖拽 / 缩放：拖拽期间只写 DOM（不触发 React 重渲染、不逐帧回流），松手时单次结算 ──
@@ -1007,11 +1018,18 @@ export default function AiAssistant() {
 
   const beginDrag = (kind: 'title' | 'width' | 'corner', e: React.PointerEvent) => {
     if (isMobile) return; // 移动端是底部抽屉，位置/尺寸都由 CSS 决定，不接受拖拽
+    // 标题栏里还有设置/历史/关闭按钮：从按钮上按下时既不拖窗口、也不设置指针捕获——
+    // 捕获一旦落在标题栏上，按钮的 click 会被吞掉（表现为「点了没反应」）
+    if (kind === 'title') {
+      const from = e.target as Element | null;
+      if (from && from !== e.currentTarget && from.closest('button, a, input, select, textarea, [role="button"]')) return;
+    }
     const el = panelRef.current;
     const rect = el?.getBoundingClientRect();
     if (!el || !rect) return;
     e.preventDefault();
     setDragSelectionLock(true);
+    dragMovedRef.current = false;
     dragStateRef.current = {
       kind,
       startX: e.clientX,
@@ -1034,6 +1052,7 @@ export default function AiAssistant() {
     if (!st) return;
     st.lastX = e.clientX;
     st.lastY = e.clientY;
+    if (Math.abs(e.clientX - st.startX) + Math.abs(e.clientY - st.startY) > 4) dragMovedRef.current = true;
     scheduleDragStyles();
   };
 
@@ -1333,6 +1352,7 @@ export default function AiAssistant() {
 
   // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
   const sendQuestion = async (text: string, followUp = false) => {
+    setCollapsedPersisted(false); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
     if (!q || busy || !config) return;
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
@@ -1503,6 +1523,28 @@ export default function AiAssistant() {
     setRefreshingRecs(false);
   };
 
+  /** 收起面板（关闭按钮与 Esc 共用同一套动作） */
+  const closePanel = () => {
+    resetConversation();
+    setOpen(false);
+    setPending(null);
+  };
+
+  // Esc：子视图先回对话，对话视图直接收起面板（与关闭按钮同语义）
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (collapsed) { setCollapsedPersisted(false); return; }
+      if (view !== 'chat') { setView('chat'); return; }
+      resetConversation();
+      setOpen(false);
+      setPending(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, view, collapsed]);
+
   if (!open) return null;
 
   // 移动端（<640px，含窄屏）：面板改为顶部锚定的近全宽卡片——忽略桌面拖拽/缩放记忆、隐藏缩放手柄、限制最大高度不超可视区
@@ -1530,14 +1572,20 @@ export default function AiAssistant() {
         className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
           isMobile
             ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
-            : 'w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]'
+            : collapsed
+              ? 'w-auto'
+              : 'w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]'
         }`}
         style={{
           ...(!isMobile
             ? {
-                width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
-                // 记忆值作为「上限」而非写死高度：内容不足时面板收缩，超出时滚动、页脚始终贴底
-                ...(height > 0 && view === 'chat' ? { maxHeight: maxPanelHeight(height) } : {}),
+                ...(collapsed
+                  ? {}
+                  : {
+                      width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
+                      // 记忆值作为「上限」而非写死高度：内容不足时面板收缩，超出时滚动、页脚始终贴底
+                      ...(height > 0 && view === 'chat' ? { maxHeight: maxPanelHeight(height) } : {}),
+                    }),
                 ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
               }
             : {}),
@@ -1545,6 +1593,25 @@ export default function AiAssistant() {
         role="dialog"
         aria-label="AI assistant"
       >
+      {collapsed && !isMobile ? (
+        /* ── 收起态：32px 胶囊（点击还原 / 可拖动 / 流式回答不中断） ── */
+        <button
+          type="button"
+          onPointerDown={(e) => beginDrag('title', e)}
+          onPointerMove={onDragMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onLostPointerCapture={endDragOrUnlock}
+          onClick={() => { if (!dragMovedRef.current) setCollapsedPersisted(false); }}
+          title={lang === 'zh' ? '展开 AI 助手' : 'Expand'}
+          className="flex h-8 max-w-[16rem] items-center gap-1.5 px-2.5 text-[var(--muted)] hover:text-[var(--fg)] transition-colors cursor-move"
+        >
+          <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate text-[0.6875rem] mono-font">{lang === 'zh' ? 'AI 助手' : 'AI Assistant'}</span>
+          <ChevronDown className="w-3 h-3 shrink-0 -rotate-180" aria-hidden="true" />
+        </button>
+      ) : (
+      <>
       {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
       <div
         className={`absolute right-0 top-0 bottom-4 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
@@ -1598,24 +1665,40 @@ export default function AiAssistant() {
                     : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
           </span>
         </h2>
-        <div className="flex items-center gap-2">
-          {/* 非对话视图：显示「返回」箭头（chat 视图显示设置入口） */}
+        <div className="-my-1.5 -mr-1 flex items-center gap-1">
+          {/* 功能区：设置/返回、历史（窄屏与子视图自适应） */}
           <button type="button" onClick={() => setView(view === 'chat' ? 'settings' : 'chat')}
             aria-label={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回' : 'Back')}
-            title={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
-            className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)]">
-            {view === 'chat' ? <Settings className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+            title={view === 'chat' ? (lang === 'zh' ? '设置模型与接口' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
+            className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
+            {view === 'chat' ? <Settings className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
           </button>
-          {/* 问答历史入口：仅对话视图显示（子视图由返回箭头回对话） */}
+          {/* 问答历史入口：仅对话视图显示（子视图由返回箭头回对话）；有记录时挂一个小圆点 */}
           {config && view === 'chat' && (
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
-              title={lang === 'zh' ? '问答历史' : 'History'}
-              className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)]">
-              <History className="w-3.5 h-3.5" />
+              title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
+              <History className="w-4 h-4" />
+              {persistHistory.length > 0 && (
+                <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+              )}
             </button>
           )}
-          <button type="button" onClick={() => { resetConversation(); setOpen(false); setPending(null); }} aria-label="Close" className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-sm leading-none">×</button>
+          {/* 分隔线：功能区与窗口控制区分离，避免「查历史」误触「关闭」 */}
+          <span className="mx-0.5 h-3.5 w-px bg-[var(--border)]" aria-hidden="true" />
+          {/* 窗口控制区：最小化 + 关闭（破坏性语义，隔离在右端并给红色反馈） */}
+          <button type="button" onClick={() => setCollapsedPersisted(true)}
+            aria-label={lang === 'zh' ? '最小化' : 'Minimize'}
+            title={lang === 'zh' ? '收起为胶囊（Esc 也可）' : 'Minimize'}
+            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer${isMobile ? ' hidden' : ''}`}>
+            <Minus className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={closePanel}
+            aria-label="Close" title={lang === 'zh' ? '关闭助手 (Esc)' : 'Close (Esc)'}
+            className="flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -3049,6 +3132,7 @@ export default function AiAssistant() {
           </div>
         </>
       )}
+      </>)}
     </div>
     {/* token 用量明细树状图（设置页「明细」点开；portal 到 body） */}
     {showTokenUsage && (
