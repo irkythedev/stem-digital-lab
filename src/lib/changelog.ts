@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.4';
+export const APP_VERSION = '0.32.5';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.5',
+    date: '2026-10',
+    zh: [
+      '[修复] 收起后的 AI 胶囊可以从任意位置随手拖动（图标、文字上按下都行）',
+      '[修复] 收起与展开时胶囊和窗口保持同一条边缘，切换大小不再乱跳',
+    ],
+    en: [
+      '[Fixed] The collapsed AI capsule can be dragged from anywhere on it, icons and text included',
+      '[Fixed] Collapsing and expanding keep the same edge, so the panel no longer jumps around',
+    ],
+  },
   {
     version: '0.32.4',
     date: '2026-10',

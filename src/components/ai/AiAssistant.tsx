@@ -945,6 +945,13 @@ export default function AiAssistant() {
     setCollapsed(v);
     try { window.localStorage.setItem('stem-ai-collapsed', v ? '1' : '0'); } catch { /* 静默 */ }
   };
+  // 收起 / 展开各自记一次「要对齐的右边缘与顶边」（胶囊与面板宽度差很多，任其贴左边会感觉乱跳）
+  const edgeAnchorRef = useRef<{ right: number; top: number } | null>(null);
+  const expandFromCapsule = () => {
+    const r = panelRef.current?.getBoundingClientRect();
+    if (r) edgeAnchorRef.current = { right: r.right, top: r.top };
+    setCollapsedPersisted(false);
+  };
   // 拖拽是否真的移动过（胶囊上「点击还原」与「拖动」靠它区分）
   const dragMovedRef = useRef(false);
   const heightRef = useRef(0);
@@ -1022,7 +1029,12 @@ export default function AiAssistant() {
     // 捕获一旦落在标题栏上，按钮的 click 会被吞掉（表现为「点了没反应」）
     if (kind === 'title') {
       const from = e.target as Element | null;
-      if (from && from !== e.currentTarget && from.closest('button, a, input, select, textarea, [role="button"]')) return;
+      if (from && from !== e.currentTarget) {
+        const hit = from.closest('button, a, input, select, textarea, [role="button"]');
+        // 只有「命中的按钮不是拖拽面本身」才让位：标题栏里的三个按钮会被命中 → 不拖；
+        // 胶囊按钮本体就是拖拽面（其内部的图标/文字也在它里面）→ 照常拖
+        if (hit && hit !== e.currentTarget) return;
+      }
     }
     const el = panelRef.current;
     const rect = el?.getBoundingClientRect();
@@ -1352,7 +1364,7 @@ export default function AiAssistant() {
 
   // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
   const sendQuestion = async (text: string, followUp = false) => {
-    setCollapsedPersisted(false); // 有提问就把胶囊展开，否则学生看不到回答
+    expandFromCapsule(); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
     if (!q || busy || !config) return;
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
@@ -1523,6 +1535,13 @@ export default function AiAssistant() {
     setRefreshingRecs(false);
   };
 
+  /** 收起为胶囊：先记下当前面板右边缘，收起后由下方 effect 把胶囊右边缘对齐过去 */
+  const collapseToCapsule = () => {
+    const r = panelRef.current?.getBoundingClientRect();
+    if (r) edgeAnchorRef.current = { right: r.right, top: r.top };
+    setCollapsedPersisted(true);
+  };
+
   /** 收起面板（关闭按钮与 Esc 共用同一套动作） */
   const closePanel = () => {
     resetConversation();
@@ -1535,7 +1554,7 @@ export default function AiAssistant() {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (collapsed) { setCollapsedPersisted(false); return; }
+      if (collapsed) { expandFromCapsule(); return; }
       if (view !== 'chat') { setView('chat'); return; }
       resetConversation();
       setOpen(false);
@@ -1544,6 +1563,20 @@ export default function AiAssistant() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, view, collapsed]);
+
+  // 收起 / 展开后对齐同一条右边缘：新版宽度只有渲染后才知道，所以放在渲染后的 effect 里量一次
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) return; // 移动端不启用胶囊
+    const anchor = edgeAnchorRef.current;
+    const el = panelRef.current;
+    if (!anchor || !el) return;
+    edgeAnchorRef.current = null;
+    const w = el.getBoundingClientRect().width;
+    const x = Math.max(8, Math.min(anchor.right - w, Math.max(8, window.innerWidth - w - 8)));
+    const y = Math.max(8, Math.min(anchor.top, window.innerHeight - 60));
+    setPos({ x, y });
+    try { window.localStorage.setItem('stem-ai-pos', JSON.stringify({ x, y })); } catch { /* 静默 */ }
+  }, [collapsed]);
 
   if (!open) return null;
 
@@ -1602,7 +1635,7 @@ export default function AiAssistant() {
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onLostPointerCapture={endDragOrUnlock}
-          onClick={() => { if (!dragMovedRef.current) setCollapsedPersisted(false); }}
+          onClick={() => { if (!dragMovedRef.current) expandFromCapsule(); }}
           title={lang === 'zh' ? '展开 AI 助手' : 'Expand'}
           className="flex h-8 max-w-[16rem] items-center gap-1.5 px-2.5 text-[var(--muted)] hover:text-[var(--fg)] transition-colors cursor-move"
         >
@@ -1688,7 +1721,7 @@ export default function AiAssistant() {
           {/* 分隔线：功能区与窗口控制区分离，避免「查历史」误触「关闭」 */}
           <span className="mx-0.5 h-3.5 w-px bg-[var(--border)]" aria-hidden="true" />
           {/* 窗口控制区：最小化 + 关闭（破坏性语义，隔离在右端并给红色反馈） */}
-          <button type="button" onClick={() => setCollapsedPersisted(true)}
+          <button type="button" onClick={collapseToCapsule}
             aria-label={lang === 'zh' ? '最小化' : 'Minimize'}
             title={lang === 'zh' ? '收起为胶囊（Esc 也可）' : 'Minimize'}
             className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer${isMobile ? ' hidden' : ''}`}>
