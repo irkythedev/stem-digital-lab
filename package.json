@@ -1,9 +1,12 @@
 {
   "name": "stem-digital-lab",
   "private": true,
-  "version": "0.32.5",
+  "version": "0.32.6",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
   "license": "AGPL-3.0",
+  "author": "Ricky <king4g@yeah.net>",
+  "repository": { "type": "git", "url": "git+https://gitee.com/K4Ricky2Win/stem-digital-lab.git" },
+  "bugs": { "url": "https://gitee.com/K4Ricky2Win/stem-digital-lab/issues" },
   "homepage": "https://stem.irky.dev",
   "type": "module",
   "scripts": {

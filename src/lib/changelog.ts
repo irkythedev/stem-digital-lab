@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.5';
+export const APP_VERSION = '0.32.6';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.6',
+    date: '2026-10',
+    zh: [
+      '[优化] 完善开源元数据与仓库文档链接',
+      '[修复] 统一反馈面板年级班级占位示例文案',
+    ],
+    en: [
+      '[Improved] Open-source metadata and repository links are now complete',
+      '[Fixed] The grade/class placeholder in the feedback panel is unified',
+    ],
+  },
   {
     version: '0.32.5',
     date: '2026-10',

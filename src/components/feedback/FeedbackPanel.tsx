@@ -25,7 +25,7 @@ const labels = {
     question: '你的反馈主要关于什么？（必选）', rating: '这部分内容对你有帮助吗？（必选）',
     helpful: '有帮助', neutral: '一般', notHelpful: '没帮助',
     message: '补充说明（必填）', placeholder: '写下问题、建议或发现……',
-    grade: '学校/年级/班级（可选）', gradePlaceholder: '如：能达中学 初三 3 班',
+    grade: '学校/年级/班级（可选）', gradePlaceholder: '如：某某中学 初三 3 班',
     name: '如何称呼你（可选）', namePlaceholder: '如：张同学 / 王老师',
     contact: '联系方式（可选）', contactPlaceholder: '手机号 / 微信 / 邮箱',
     privacyNote: '学校、称呼、联系方式等身份信息自愿填写，仅用于问题回访，不会公开展示',

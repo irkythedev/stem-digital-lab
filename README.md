@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v0.32.5-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
+![version](https://img.shields.io/badge/版本-v0.32.6-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![katex](https://img.shields.io/badge/KaTeX-0.18-green)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：<a href="https://stem.irky.dev">https://stem.irky.dev</a></p>
@@ -299,4 +299,4 @@ This project is open-sourced under the **GNU Affero General Public License v3 (A
 
 ---
 
-**License**: AGPL-3.0 · Author: Ricky (张子熠) · 在线访问 / Live: https://stem.irky.dev
+**License**: AGPL-3.0 · Author: Ricky (张子熠) · 在线访问 / Live: https://stem.irky.dev · 源码 / Source: [Gitee](https://gitee.com/K4Ricky2Win/stem-digital-lab) · [GitHub](https://github.com/irkythedev/stem-digital-lab)
