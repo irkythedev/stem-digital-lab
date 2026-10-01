@@ -911,7 +911,6 @@ export default function AiAssistant() {
       return null;
     }
   });
-  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
   // 面板宽度（右侧边缘拖拽调整，localStorage 记忆 UI 偏好；280–720px，默认 384）
   const [width, setWidth] = useState<number>(() => {
     if (typeof window === 'undefined') return 384;
@@ -923,9 +922,6 @@ export default function AiAssistant() {
       return 384;
     }
   });
-  const widthRef = useRef(384);
-  useEffect(() => { widthRef.current = width; }, [width]);
-  const resizeRef = useRef<{ startX: number; startW: number } | null>(null);
 
   // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；200–720px）
   const [height, setHeight] = useState<number>(() => {
@@ -942,99 +938,161 @@ export default function AiAssistant() {
   });
   const heightRef = useRef(0);
   useEffect(() => { heightRef.current = height; }, [height]);
+  // ── 拖拽 / 缩放：拖拽期间只写 DOM（不触发 React 重渲染、不逐帧回流），松手时单次结算 ──
+  // 三个把手共用一份拖拽状态；pointermove 只更新「最近一次指针坐标」，真正的样式写入放在 rAF 帧里，
+  // 因此一帧内无论收到多少 pointermove 都只写一次样式，也不会触发任何 setState。
+  const dragStateRef = useRef<{
+    kind: 'title' | 'width' | 'corner';
+    startX: number; startY: number;
+    startW: number; startH: number;
+    baseLeft: number; baseTop: number;
+    curW: number; curH: number;
+    lastX: number; lastY: number;
+    rafId: number | null;
+  } | null>(null);
+  const posRef = useRef<{ x: number; y: number } | null>(null);
+  useEffect(() => { posRef.current = pos; }, [pos]);
+  useEffect(() => () => { const st = dragStateRef.current; if (st && st.rafId !== null) window.cancelAnimationFrame(st.rafId); }, []);
+
   // 拖拽期间禁用文本选区（鼠标快速滑动时指针会滑出把手，页面正文会被误选）
-  // 只在两个 resize 把手上使用：标题栏本身已 select-none；pointerup 与 lostpointercapture 双保险恢复
+  // 两个 resize 把手上锁；pointerup / pointercancel / lostpointercapture 三重恢复，避免整页文字一直不可选
   const setDragSelectionLock = (on: boolean) => {
     try { document.body.style.userSelect = on ? 'none' : ''; } catch { /* 静默 */ }
   };
   const releaseDragSelectionLock = () => setDragSelectionLock(false);
-  const cornerRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
 
-  // 右下角对角拖拽：同时调整宽高（等比例手感由用户控制，不做强制比例）
-  const onCornerPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    setDragSelectionLock(true);
-    cornerRef.current = { startX: e.clientX, startY: e.clientY, startW: widthRef.current, startH: heightRef.current };
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  /** 位置夹取：至少 60px 留在视口内（外接屏拔除、窗口缩小后不会把面板丢到屏幕外） */
+  const clampPos = (x: number, y: number) => ({
+    x: Math.max(8, Math.min(x, Math.max(8, window.innerWidth - 60))),
+    y: Math.max(8, Math.min(y, Math.max(8, window.innerHeight - 60))),
+  });
+  /** 尺寸上限：既服从用户记忆值，也不超过视口（否则面板底部会沉到屏幕外） */
+  const maxPanelHeight = (want: number) => Math.max(200, Math.min(720, want, window.innerHeight - 72));
+  const maxPanelWidth = (want: number) => Math.max(280, Math.min(720, want, window.innerWidth - 16));
+
+  /** 纯 DOM 写入：拖拽期间唯一改样式的地方（不碰 React state） */
+  const applyDragStyles = () => {
+    const st = dragStateRef.current;
+    const el = panelRef.current;
+    if (!st || !el) return;
+    const dx = st.lastX - st.startX;
+    const dy = st.lastY - st.startY;
+
+    if (st.kind === 'title') {
+      // 位移用 transform：只合成、不回流
+      const target = clampPos(st.baseLeft + dx, st.baseTop + dy);
+      el.style.transform = 'translate3d(' + Math.round(target.x - st.baseLeft) + 'px, ' + Math.round(target.y - st.baseTop) + 'px, 0)';
+      return;
+    }
+
+    st.curW = maxPanelWidth(st.startW + dx);
+    el.style.width = st.curW + 'px';
+    if (st.kind === 'corner') {
+      st.curH = maxPanelHeight(st.startH + dy);
+      el.style.maxHeight = st.curH + 'px';
+    }
   };
-  const onCornerPointerMove = (e: React.PointerEvent) => {
-    if (!cornerRef.current) return;
-    const dx = e.clientX - cornerRef.current.startX;
-    const dy = e.clientY - cornerRef.current.startY;
-    const newW = Math.min(720, Math.max(280, cornerRef.current.startW + dx));
-    const newH = Math.min(720, Math.max(200, cornerRef.current.startH + dy));
-    setWidth(newW);
-    setHeight(newH);
-    setPos((prev) => {
-      if (!prev) return prev;
-      const maxX = window.innerWidth - newW - 8;
-      const maxY = window.innerHeight - newH - 8;
-      const nx = prev.x > maxX ? Math.max(8, maxX) : prev.x;
-      const ny = prev.y > maxY ? Math.max(8, maxY) : prev.y;
-      return nx !== prev.x || ny !== prev.y ? { x: nx, y: ny } : prev;
+
+  /** 帧节流：一帧只写一次；多次 pointermove 自动合并（不堆积） */
+  const scheduleDragStyles = () => {
+    const st = dragStateRef.current;
+    if (!st || st.rafId !== null) return;
+    st.rafId = window.requestAnimationFrame(() => {
+      const cur = dragStateRef.current;
+      if (!cur) return;
+      cur.rafId = null;
+      applyDragStyles();
     });
   };
-  const onCornerPointerUp = () => {
-    releaseDragSelectionLock();
-    if (!cornerRef.current) return;
-    cornerRef.current = null;
-    try {
-      window.localStorage.setItem('stem-ai-width', String(widthRef.current));
-      window.localStorage.setItem('stem-ai-height', String(heightRef.current));
-    } catch { /* ignore */ }
-  };
 
-  const onResizePointerDown = (e: React.PointerEvent) => {
+  const beginDrag = (kind: 'title' | 'width' | 'corner', e: React.PointerEvent) => {
+    if (isMobile) return; // 移动端是底部抽屉，位置/尺寸都由 CSS 决定，不接受拖拽
+    const el = panelRef.current;
+    const rect = el?.getBoundingClientRect();
+    if (!el || !rect) return;
     e.preventDefault();
     setDragSelectionLock(true);
-    resizeRef.current = { startX: e.clientX, startW: widthRef.current };
+    dragStateRef.current = {
+      kind,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: rect.width,
+      startH: heightRef.current > 0 ? heightRef.current : rect.height,
+      baseLeft: rect.left,
+      baseTop: rect.top,
+      curW: rect.width,
+      curH: rect.height,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      rafId: null,
+    };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
-  const onResizePointerMove = (e: React.PointerEvent) => {
-    if (!resizeRef.current) return;
-    const delta = e.clientX - resizeRef.current.startX;
-    const newW = Math.min(720, Math.max(280, resizeRef.current.startW + delta));
-    setWidth(newW);
-    // 面板右边缘超出视口时同步左移，保持整块可见
-    setPos((prev) => {
-      if (!prev) return prev;
-      const maxX = window.innerWidth - newW - 8;
-      return prev.x > maxX ? { ...prev, x: Math.max(8, maxX) } : prev;
-    });
-  };
-  const onResizePointerUp = () => {
-    releaseDragSelectionLock();
-    if (!resizeRef.current) return;
-    resizeRef.current = null;
-    try {
-      window.localStorage.setItem('stem-ai-width', String(widthRef.current));
-    } catch { /* ignore */ }
+
+  const onDragMove = (e: React.PointerEvent) => {
+    const st = dragStateRef.current;
+    if (!st) return;
+    st.lastX = e.clientX;
+    st.lastY = e.clientY;
+    scheduleDragStyles();
   };
 
-  const onTitlePointerDown = (e: React.PointerEvent) => {
-    // 移动端是底部抽屉，位置由 inset-x-0 bottom-0 决定：拖动只会写入脏坐标，直接不响应
-    if (isMobile) return;
-    const rect = panelRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
-    (e.target as Element).setPointerCapture(e.pointerId);
-  };
-  const onTitlePointerMove = (e: React.PointerEvent) => {
-    if (!dragRef.current) return;
-    const w = panelRef.current?.offsetWidth ?? 320;
-    const h = panelRef.current?.offsetHeight ?? 420;
-    const nx = Math.max(8, Math.min(e.clientX - dragRef.current.dx, window.innerWidth - w - 8));
-    const ny = Math.max(8, Math.min(e.clientY - dragRef.current.dy, window.innerHeight - h - 8));
-    setPos({ x: nx, y: ny });
-  };
-  const onTitlePointerUp = () => {
-    if (!dragRef.current) return;
-    dragRef.current = null;
-    // 记录位置（UI 偏好，非敏感内容）
+  /** 松手结算：只在这一刻写 React state 与 localStorage（整个拖拽过程中零 setState） */
+  const endDrag = () => {
+    releaseDragSelectionLock();
+    const st = dragStateRef.current;
+    const el = panelRef.current;
+    dragStateRef.current = null;
+    if (!st || !el) return;
+    if (st.rafId !== null) { window.cancelAnimationFrame(st.rafId); st.rafId = null; }
+
+    if (st.kind === 'title') {
+      const target = clampPos(st.baseLeft + (st.lastX - st.startX), st.baseTop + (st.lastY - st.startY));
+      // 先落到 left/top 再清 transform：视觉上连续，避免 React 重渲染前闪一下旧位置
+      el.style.left = target.x + 'px';
+      el.style.top = target.y + 'px';
+      el.style.right = 'auto';
+      el.style.transform = '';
+      setPos(target);
+      try { window.localStorage.setItem('stem-ai-pos', JSON.stringify(target)); } catch { /* 静默 */ }
+      return;
+    }
+
+    // 宽度/高度：把最终值固化到内联样式（与即将写入的 state 一致，避免交回 React 时跳一下）
+    el.style.width = st.curW + 'px';
+    if (st.kind === 'corner') { el.style.maxHeight = st.curH + 'px'; }
+    setWidth(st.curW);
+    if (st.kind === 'corner') setHeight(st.curH);
+
+    // 变大后右边缘可能越界：只在用户已有自定义位置时同步左移，默认右对齐无需处理
+    const prev = posRef.current;
+    if (prev) {
+      const maxX = window.innerWidth - st.curW - 8;
+      const nx = Math.max(8, Math.min(prev.x, Math.max(8, maxX)));
+      if (nx !== prev.x) {
+        el.style.left = nx + 'px';
+        el.style.top = prev.y + 'px';
+        el.style.right = 'auto';
+        setPos({ x: nx, y: prev.y });
+        try { window.localStorage.setItem('stem-ai-pos', JSON.stringify({ x: nx, y: prev.y })); } catch { /* 静默 */ }
+      }
+    }
     try {
-      window.localStorage.setItem('stem-ai-pos', JSON.stringify(pos));
-    } catch { /* ignore */ }
+      window.localStorage.setItem('stem-ai-width', String(st.curW));
+      if (st.kind === 'corner') window.localStorage.setItem('stem-ai-height', String(st.curH));
+    } catch { /* 静默 */ }
   };
+
+  /** 捕获丢失/取消：拖拽中要结算，否则只解锁选区（避免整页文字一直不可选） */
+  const endDragOrUnlock = () => {
+    if (dragStateRef.current) endDrag();
+    else releaseDragSelectionLock();
+  };
+
+  // 拖拽中若有其它原因触发重渲染（例如回答流式更新），React 会按旧 state 覆写内联样式；
+  // 每次渲染后把拖拽中的样式再写一遍，保证拖拽视觉不被撤回。
+  useEffect(() => { if (dragStateRef.current) applyDragStyles(); });
+
 
   const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
 
@@ -1451,9 +1509,10 @@ export default function AiAssistant() {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   // 面板位置：记忆的 pos 若超出当前视口（如桌面拖动保存后切到小屏/移动端），回退右上默认位置；移动端一律顶部锚定
+  // 挂载时夹取一次：外接屏拔除 / 窗口变小后，被记住的位置可能落在屏幕外，强制拉回可见区域
   const safePos =
-    !isMobile && pos && typeof window !== 'undefined' && pos.x >= 8 && pos.y >= 8 && pos.x < window.innerWidth - 120 && pos.y < window.innerHeight - 80
-      ? pos
+    !isMobile && pos && typeof window !== 'undefined'
+      ? clampPos(pos.x, pos.y)
       : null;
 
   return (
@@ -1478,7 +1537,7 @@ export default function AiAssistant() {
             ? {
                 width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
                 // 记忆值作为「上限」而非写死高度：内容不足时面板收缩，超出时滚动、页脚始终贴底
-                ...(height > 0 && view === 'chat' ? { maxHeight: height } : {}),
+                ...(height > 0 && view === 'chat' ? { maxHeight: maxPanelHeight(height) } : {}),
                 ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
               }
             : {}),
@@ -1489,19 +1548,21 @@ export default function AiAssistant() {
       {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
       <div
         className={`absolute right-0 top-0 bottom-4 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
-        onPointerDown={onResizePointerDown}
-        onPointerMove={onResizePointerMove}
-        onPointerUp={onResizePointerUp}
-        onLostPointerCapture={releaseDragSelectionLock}
+        onPointerDown={(e) => beginDrag('width', e)}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDragOrUnlock}
         title={lang === 'zh' ? '拖拽调整宽度' : 'Drag to resize'}
       />
       {/* 右下角斜拉把手（同时调宽高；移动端隐藏） */}
       <div
         className={`absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize touch-none z-20 flex items-end justify-end${isMobile ? ' hidden' : ''}`}
-        onPointerDown={onCornerPointerDown}
-        onPointerMove={onCornerPointerMove}
-        onPointerUp={onCornerPointerUp}
-        onLostPointerCapture={releaseDragSelectionLock}
+        onPointerDown={(e) => beginDrag('corner', e)}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDragOrUnlock}
         title={lang === 'zh' ? '斜拉调整宽高' : 'Drag corner to resize'}
       >
         <span className="w-2 h-2 border-r border-b border-[var(--muted)]" aria-hidden="true" />
@@ -1516,9 +1577,11 @@ export default function AiAssistant() {
       {/* 头部 */}
       <div
         className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0"
-        onPointerDown={onTitlePointerDown}
-        onPointerMove={onTitlePointerMove}
-        onPointerUp={onTitlePointerUp}
+        onPointerDown={(e) => beginDrag('title', e)}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDragOrUnlock}
       >
         <h2 className="text-xs font-bold tracking-widest mono-font uppercase truncate max-w-[80%] inline-flex items-center gap-1.5">
           <Sparkles className="w-3 h-3 shrink-0 text-[var(--fg)]" aria-hidden="true" />

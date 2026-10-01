@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.2';
+export const APP_VERSION = '0.32.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.32.3',
+    date: '2026-10',
+    zh: [
+      '[优化] 拖动、缩放 AI 助手窗口更跟手，长回答和复杂实验下也不掉帧',
+      '[优化] 边界防护更稳：切换显示器或把窗口缩很小之后，AI 助手不会再跑到屏幕外',
+    ],
+    en: [
+      '[Improved] Dragging and resizing the assistant window is smoother, even with long answers on screen',
+      '[Improved] Better bounds handling: after switching monitors or shrinking the window, the assistant never ends up off-screen',
+    ],
+  },
   {
     version: '0.32.2',
     date: '2026-10',
