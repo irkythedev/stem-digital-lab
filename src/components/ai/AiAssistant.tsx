@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Pause, Play, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, Minus, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -34,8 +34,68 @@ import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
-  type AiConfig, type AiProvider, type QuizAngle, type QuizQType,
+  effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, buildThinkingParams, isTierLocked,
+  type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
 } from '../../lib/ai-config';
+
+/** 思考强度三档（顺序即界面顺序）。「标准」不再标注「默认」：它现在会显式下发较低力度值，
+ *  与部分服务商的默认（DeepSeek/百炼默认即高强度）并不相同。 */
+const THINKING_TIERS: { id: ThinkingEffort; zh: string; en: string }[] = [
+  { id: 'off', zh: '关闭', en: 'Off' },
+  { id: 'standard', zh: '标准', en: 'Standard' },
+  { id: 'deep', zh: '深度思考', en: 'Deep thinking' },
+];
+
+/** 档位不可用的原因文案（与 lib/ai-config 的 ThinkingNote 一一对应） */
+const THINKING_NOTE: Record<ThinkingNote, { zh: string; en: string }> = {
+  cannotDisable: {
+    zh: '该模型始终进行推理，不支持关闭思考，因此「关闭」档不可选。',
+    en: 'This model always reasons, so thinking cannot be turned off — the Off tier is disabled.',
+  },
+  alwaysThinksNoKnob: {
+    zh: '该模型始终进行推理，也不提供力度调节。',
+    en: 'This model always reasons and offers no effort control.',
+  },
+  noEffortTier: {
+    zh: '该模型只支持开启或关闭思考，不提供力度档位。',
+    en: 'This model only supports on/off; it has no effort tier.',
+  },
+  noThinkingSupport: {
+    zh: '该模型不在深度思考支持范围内，未下发任何思考参数。',
+    en: 'This model is not in the deep-thinking support list, so no thinking parameter is sent.',
+  },
+  unverified: {
+    zh: '该模型的思考参数暂无官方依据，因此不下发任何相关字段。',
+    en: 'No documented thinking parameter for this model, so none is sent.',
+  },
+  passthroughOnly: {
+    zh: '自定义端点不预设思考参数，请用下方透传框自行指定。',
+    en: 'Custom endpoints preset nothing — specify parameters in the passthrough box below.',
+  },
+};
+
+/** 档位标签（按当前语言） */
+function tierLabel(id: ThinkingEffort, lang: 'zh' | 'en'): string {
+  const t = THINKING_TIERS.find((x) => x.id === id);
+  return t ? (lang === 'zh' ? t.zh : t.en) : id;
+}
+
+/**
+ * 把待下发的参数压成一行短标签，例如 reasoning_effort=low、thinking.type=disabled。
+ * 仅供界面「本次下发」留痕显示；数据来自 buildThinkingParams，与实际请求体同源，
+ * 因此这一行永远不会和真正发出去的东西不一致。
+ */
+function describeParams(params: Record<string, unknown>): string {
+  const flat: string[] = [];
+  for (const [k, v] of Object.entries(params)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) flat.push(`${k}.${k2}=${String(v2)}`);
+    } else {
+      flat.push(`${k}=${String(v)}`);
+    }
+  }
+  return flat.join(', ');
+}
 
 /** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
 function turnKey(user: string, assistant: string): string {
@@ -256,6 +316,13 @@ export default function AiAssistant() {
   const [customUrl, setCustomUrl] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [model, setModel] = useState('');
+  // 思考强度档位（默认 standard：按模型能力表下发，模型不支持则不下发）
+  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>('standard');
+  // 各服务商各自保存的 Key：切服务商时按此回填，未配置过则为空（绝不复用上一家的 Key）
+  const [keyByProvider, setKeyByProvider] = useState<Record<string, string>>({});
+  // 自定义端点附加请求参数（JSON 文本，仅「自定义端点」显示与生效）
+  const [extraParamsText, setExtraParamsText] = useState('');
+  const [extraParamsOpen, setExtraParamsOpen] = useState(false);
   const [liveModels, setLiveModels] = useState<string[]>([]);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement | null>(null);
@@ -272,11 +339,22 @@ export default function AiAssistant() {
   }, [modelMenuOpen]);
   const [modelNote, setModelNote] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  // 「获取模型」是独立动作，与「测试连接」互不阻塞：两者各有自己的 loading 态
+  const [fetching, setFetching] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
   // 保存成功 toast（面板内提示，2 秒自动消失）
   const [savedToast, setSavedToast] = useState(false);
   const savedToastTimer = useRef<number | null>(null);
   useEffect(() => () => { if (savedToastTimer.current) window.clearTimeout(savedToastTimer.current); }, []);
+  // 动作结果轻量 Toast（获取模型 / 测试连接）：即时反馈；完整报错仍留在下方结果行
+  const [actToast, setActToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const actToastTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (actToastTimer.current) window.clearTimeout(actToastTimer.current); }, []);
+  const flashToast = (ok: boolean, msg: string) => {
+    setActToast({ ok, msg });
+    if (actToastTimer.current) window.clearTimeout(actToastTimer.current);
+    actToastTimer.current = window.setTimeout(() => setActToast(null), 2600);
+  };
   // 复制状态：成功按钮上显示「已复制 ✓」，失败显示「复制失败」；2 秒后恢复
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
@@ -1127,6 +1205,30 @@ export default function AiAssistant() {
 
   const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
 
+  // 当前模型的思考能力（模型为空时不判定，避免输入过程中闪烁）
+  const thinkingPlan = model.trim() ? thinkingPlanFor(providerId, model) : null;
+  // 实际生效的档位：所选档位在当前模型不可用时回落（标准优先）
+  const activeEffort = effectiveThinkingEffort(providerId, model, thinkingEffort);
+  // 只有「模型有可调档位、但缺这一档」才置灰；模型完全没有可调参数（未收录 / 自定义端点 /
+  // 无可调项）时三档仍可点——保证点击永远有反馈，实际发不发由下方「本次下发」一行交代
+  const tiersRestricted = !!thinkingPlan && thinkingPlan.available.length > 0;
+  const tierLocked = (id: ThinkingEffort) => !!thinkingPlan && isTierLocked(thinkingPlan, id);
+  const selectedEffort: ThinkingEffort = tiersRestricted ? (activeEffort ?? 'standard') : thinkingEffort;
+  // 本次真正会下发的思考参数：与请求体同源（同一个 buildThinkingParams），留痕不会失真
+  const sentDesc = describeParams(buildThinkingParams(providerId, model, selectedEffort));
+
+  // 自定义参数文本是否为「可用的 JSON 对象」（仅用于界面提示；非法时请求端同样忽略，不阻断）
+  const extraParamsValid = (() => {
+    const t = extraParamsText.trim();
+    if (!t) return true;
+    try {
+      const v: unknown = JSON.parse(t);
+      return !!v && typeof v === 'object' && !Array.isArray(v);
+    } catch {
+      return false;
+    }
+  })();
+
   // 打开时：已配置 → 对话视图；未配置 → 须知视图（两步流程第一步）
   // 例外：openQuiz 打开的面板已在 quizSignal effect 设过 view，不覆盖
   useEffect(() => {
@@ -1142,10 +1244,15 @@ export default function AiAssistant() {
   // 进入设置视图时回填已保存配置（刷新/重开不丢 provider/key/端点/模型）
   useEffect(() => {
     if (view === 'settings' && config) {
+      const keys = keysByProviderOf(config);
+      setKeyByProvider(keys);
       setProviderId(config.providerId);
-      setApiKey(config.apiKey);
+      // Key 按服务商取：当前服务商没配置过就是空，绝不复用其他服务商的 Key
+      setApiKey(keys[config.providerId] ?? '');
       if (config.providerId === 'custom') setCustomUrl(config.baseUrl);
       setModel(config.model);
+      setThinkingEffort(config.thinkingEffort ?? 'standard');
+      setExtraParamsText(config.extraParamsText ?? '');
       setTestResult(null);
     }
   }, [view]);
@@ -1174,70 +1281,82 @@ export default function AiAssistant() {
   // 切换预设
   const selectProvider = (id: string) => {
     setProviderId(id);
+    // Key 跟着服务商走：该家没配置过就清空，绝不把上一家的 Key 留在输入框里
+    setApiKey(keyByProvider[id] ?? '');
     setModel('');
     setLiveModels([]);
     setModelNote(null);
     setTestResult(null);
+    setFetching(false);
+    setTesting(false);
     if (id !== 'custom') setCustomUrl('');
   };
 
-  // 获取模型列表（同时验证连接）：优先 GET /models（无需模型名），失败时回退最小 chat 请求
-  const testConnection = async () => {
+  /** 取端点（自定义用输入值，预设用服务商地址），返回 null 表示地址无效 */
+  const resolveBaseUrl = (): string | null =>
+    normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl) || null;
+
+  // 【获取模型】只做一件事：GET /models 列出该家可用模型（该接口不需要模型名）。
+  // 不验证「能否对话」——那是「测试连接」的职责，两者拆开才能分别诊断。
+  const fetchModelList = async () => {
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
-    setTesting(true);
+    const baseUrl = resolveBaseUrl();
+    if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
+    setFetching(true);
     setTestResult(null);
-    const baseUrl = normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl);
-    if (!baseUrl) { setTesting(false); setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
     try {
-      // ① 优先获取模型列表（OpenAI 兼容 GET /models，无需 model 参数）
-      let ids: string[] = [];
-      let modelsErr: string | null = null;
-      try {
-        ids = await fetchModels(baseUrl, apiKey);
-      } catch (e) {
-        modelsErr = (e as Error).message;
-      }
+      const ids = await fetchModels(baseUrl, apiKey);
       if (ids.length > 0) {
         setLiveModels(ids);
         setModel(ids[0]);
         setModelNote(lang === 'zh' ? `已获取 ${ids.length} 个可用模型` : `${ids.length} models available`);
-        setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功 ✓ 已获取 ${ids.length} 个模型` : `Connected ✓ ${ids.length} models found` });
+        setTestResult({ ok: true, msg: lang === 'zh' ? `已列出 ${ids.length} 个模型 ✓ 请再点「测试连接」确认能否对话` : `${ids.length} models listed ✓ now use "Test connection"` });
+        flashToast(true, lang === 'zh' ? `已获取 ${ids.length} 个模型` : `${ids.length} models fetched`);
       } else {
-        // ② /models 不可用或未返回列表 → 回退最小 chat 请求验证连接（使用当前模型或预设首个）
-        const fallbackModel = model.trim() || provider.models[0] || '';
-        if (!fallbackModel) {
-          setLiveModels([]);
-          setModelNote(lang === 'zh' ? '无法获取模型列表，可手输模型名' : 'Could not list models — type one manually');
-          setTestResult({ ok: false, msg: lang === 'zh' ? '该端点未返回模型列表，请手动输入模型名' : 'No model list returned — type a model name manually' });
-        } else {
-          try {
-            const res = await fetch(`${baseUrl}/chat/completions`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
-              body: JSON.stringify({ model: fallbackModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
-            });
-            if (res.ok) {
-              setLiveModels([]);
-              setModel(fallbackModel);
-              setModelNote(modelsErr
-                ? (lang === 'zh' ? '连接成功，但该端点未提供模型列表（可手输）' : 'Connected, but no model list from this endpoint (type one manually)')
-                : (lang === 'zh' ? '服务商未返回模型列表，可手输模型名' : 'No models returned — type one manually'));
-              setTestResult({ ok: true, msg: lang === 'zh' ? '连接成功 ✓（端点未提供模型列表，请手动输入模型名）' : 'Connected ✓ (no model list — type the model name manually)' });
-            } else {
-              const j = await res.json().catch(() => null);
-              const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
-              setTestResult({ ok: false, msg: detail });
-            }
-          } catch (e2) {
-            const msg = (e2 as Error).message;
-            setTestResult({
-              ok: false,
-              msg: isNetworkError(msg)
-                ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
-                : msg.slice(0, 80),
-            });
-          }
-        }
+        setLiveModels([]);
+        setModelNote(lang === 'zh' ? '该端点未返回模型列表，可手输模型名' : 'No model list — type a model name');
+        setTestResult({ ok: false, msg: lang === 'zh' ? '该端点未返回模型列表，请手动输入模型名（仍可用「测试连接」验证能否对话）' : 'No model list returned — type a model name (you can still use "Test connection")' });
+        flashToast(false, lang === 'zh' ? '该端点未返回模型列表' : 'No model list from this endpoint');
+      }
+    } catch (e) {
+      const msg = (e as Error).message;
+      setLiveModels([]);
+      setTestResult({
+        ok: false,
+        msg: isNetworkError(msg)
+          ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
+          : msg.slice(0, 80),
+      });
+      flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
+    }
+    setFetching(false);
+  };
+
+  // 【测试连接】只做一件事：发一次极小的 chat 请求，验证 Key / 端点 / 模型三者确实可用。
+  // 与「获取模型」分开：有些端点不提供 /models 但能正常对话，只有真发一次才验证得住。
+  // 注意：该动作会消耗极少量 token（由用户自己的 Key 承担）。
+  const testConnection = async () => {
+    if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
+    const baseUrl = resolveBaseUrl();
+    if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
+    const probeModel = model.trim() || provider.models[0] || '';
+    if (!probeModel) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先选择或输入模型名，再测试连接' : 'Choose or type a model name first' }); return; }
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
+        body: JSON.stringify({ model: probeModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
+      });
+      if (res.ok) {
+        setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功 ✓ 模型 ${probeModel} 可正常对话` : `Connected ✓ ${probeModel} responds` });
+        flashToast(true, lang === 'zh' ? '连接成功 ✓' : 'Connected ✓');
+      } else {
+        const j = await res.json().catch(() => null);
+        const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
+        setTestResult({ ok: false, msg: detail });
+        flashToast(false, lang === 'zh' ? '连接失败，详见下方说明' : 'Connection failed — see the message below');
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -1247,6 +1366,7 @@ export default function AiAssistant() {
           ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
           : msg.slice(0, 80),
       });
+      flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
     }
     setTesting(false);
   };
@@ -1256,7 +1376,11 @@ export default function AiAssistant() {
     const baseUrl = normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl);
     if (!apiKey.trim() || !baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写 API Key 与端点地址' : 'Fill in API key and endpoint' }); return; }
     if (!model.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写或选择模型' : 'Choose or type a model' }); return; }
-    const cfg: AiConfig = { providerId, apiKey: apiKey.trim(), baseUrl, model, agreed: true };
+    const trimmedKey = apiKey.trim();
+    // Key 按服务商归档：本次填写的 Key 只记到当前服务商名下
+    const nextKeys = { ...keyByProvider, [providerId]: trimmedKey };
+    setKeyByProvider(nextKeys);
+    const cfg: AiConfig = { providerId, apiKey: trimmedKey, baseUrl, model, agreed: true, thinkingEffort, keyByProvider: nextKeys, extraParamsText: providerId === 'custom' ? extraParamsText.trim() : undefined };
     saveAiConfig(cfg);
     setConfigured(true);
     setConfig(cfg);
@@ -1280,9 +1404,14 @@ export default function AiAssistant() {
     setCustomUrl('');
     setShowKey(false);
     setModel('');
+    setKeyByProvider({});
+    setThinkingEffort('standard');
+    setExtraParamsText('');
+    setExtraParamsOpen(false);
     setLiveModels([]);
     setModelNote(null);
     setTesting(false);
+    setFetching(false);
     setTestResult(null);
     setSavedToast(false);
   };
@@ -1674,6 +1803,13 @@ export default function AiAssistant() {
           {lang === 'zh' ? '已保存 ✓' : 'Saved ✓'}
         </div>
       )}
+      {/* 动作结果轻量 Toast（获取模型 / 测试连接）：放第二行，避免与「已保存」重叠 */}
+      {actToast && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+          <span className={`w-1.5 h-1.5 rounded-full ${actToast.ok ? 'bg-green-500' : 'bg-[var(--error)]'}`} aria-hidden="true" />
+          {actToast.msg}
+        </div>
+      )}
       {/* 头部 */}
       <div
         className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0"
@@ -1906,67 +2042,209 @@ export default function AiAssistant() {
                 {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
+            {/* 安全声明：只陈述事实（明文存于本机 localStorage），严禁「加密」等不实表述 */}
+            <p className="mt-1 flex items-start gap-1 text-[0.625rem] text-[var(--muted)] leading-snug">
+              <ShieldCheck className="mt-[1px] w-3 h-3 shrink-0" aria-hidden="true" />
+              <span>
+                {lang === 'zh'
+                  ? '密钥仅保存在本机浏览器的本地存储（localStorage）中，请求直连您所选服务商端点，不上报任何开发者服务器。'
+                  : 'The key is kept only in this browser\'s local storage (localStorage); requests go straight to the endpoint you chose and are never sent to any developer server.'}
+              </span>
+            </p>
           </div>
 
-          {/* 模型：仅显示测试连接后实际获取的模型 */}
+          {/* 模型：单行 Combobox（输入框内嵌 ▾）+ 获取模型 / 测试连接 + 常用气泡 */}
           <div>
             <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
               {lang === 'zh' ? '模型' : 'Model'}
               {modelNote && <span className="ml-1.5 text-[0.625rem] text-[var(--fg)]">({modelNote})</span>}
             </p>
-            {liveModels.length > 0 ? (
-              <>
-                <div ref={modelMenuRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setModelMenuOpen((v) => !v)}
-                    className="w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
-                  >
-                    <span className="truncate text-left">{model || (lang === 'zh' ? '选择模型…' : 'Select a model…')}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {modelMenuOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                      {liveModels.map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => { setModel(m); setModelMenuOpen(false); }}
-                          className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                            m === model
-                              ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                              : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {/* 单行：可输入下拉框 + 两个独立动作按钮（按钮在相对定位容器之外，不与浮层抢位置） */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Combobox：输入框与内嵌 ▾ 同属一个容器，浮层锚定其正下方；
+                  value 直接绑定 model，默认即展示当前生效模型，可随时改写 */}
+              <div ref={modelMenuRef} className="relative min-w-[3.5rem] flex-1">
                 <input
                   type="text"
-                  placeholder={lang === 'zh' ? '或手动输入模型名…' : 'or type a model name…'}
-                  value={liveModels.includes(model) ? '' : model}
-                  onChange={(e) => setModel(e.target.value.trim())}
-                  className="mt-1.5 w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-                />
-              </>
-            ) : (
-              <>
-                <input
-                  type="text"
-                  placeholder={lang === 'zh' ? '点击「获取模型」自动列出可用模型，或手动输入…' : 'Click "Fetch models" to list available ones, or type…'}
+                  role="combobox"
+                  aria-expanded={modelMenuOpen}
+                  aria-controls="ai-model-listbox"
+                  aria-autocomplete="list"
+                  aria-label={lang === 'zh' ? '模型' : 'Model'}
+                  placeholder={lang === 'zh' ? '可直接输入，或点 ▾ 选择' : 'Type a name, or click ▾ to pick'}
                   value={model}
                   onChange={(e) => setModel(e.target.value.trim())}
-                  className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                  onClick={() => { if (liveModels.length > 0) setModelMenuOpen(true); }}
+                  className="w-full min-w-0 border border-[var(--border)] bg-[var(--bg)] py-1.5 pl-2 pr-7 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
                 />
-                {!modelNote && (
-                  <p className="text-[0.625rem] text-[var(--muted)] mt-1">
-                    {lang === 'zh' ? '提示：点击「获取模型」，自动拉取该服务商实际可用的模型并填入' : 'Tip: click "Fetch models" to pull the provider\'s actual model list automatically'}
-                  </p>
+                {/* ▾ 内嵌在输入框右侧；未拉取到列表时禁用并说明原因 */}
+                <button
+                  type="button"
+                  disabled={liveModels.length === 0}
+                  onClick={() => setModelMenuOpen((v) => !v)}
+                  aria-label={lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list'}
+                  title={liveModels.length > 0
+                    ? (lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list')
+                    : (lang === 'zh' ? '先点「获取模型」拉取可用列表' : 'Click "Fetch models" first')}
+                  className="absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                {modelMenuOpen && liveModels.length > 0 && (
+                  <div
+                    id="ai-model-listbox"
+                    role="listbox"
+                    className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                  >
+                    {liveModels.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        role="option"
+                        aria-selected={m === model}
+                        onClick={() => { setModel(m); setModelMenuOpen(false); }}
+                        className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
+                          m === model
+                            ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
+                            : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </>
+              </div>
+              <button
+                type="button"
+                onClick={fetchModelList}
+                disabled={fetching}
+                aria-label={lang === 'zh' ? '获取模型' : 'Fetch models'}
+                title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap border border-[var(--border)] px-2 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
+              >
+                <List className="w-3 h-3" aria-hidden="true" />
+                {fetching ? (lang === 'zh' ? '获取中…' : 'Fetching…') : (lang === 'zh' ? '获取模型' : 'Fetch')}
+              </button>
+              <button
+                type="button"
+                onClick={testConnection}
+                disabled={testing}
+                aria-label={lang === 'zh' ? '测试连接' : 'Test connection'}
+                title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap border border-[var(--border)] px-2 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
+              >
+                <PlugZap className="w-3 h-3" aria-hidden="true" />
+                {testing ? (lang === 'zh' ? '测试中…' : 'Testing…') : (lang === 'zh' ? '测试连接' : 'Test')}
+              </button>
+            </div>
+            <p className="text-[0.625rem] text-[var(--muted)] mt-1 leading-snug">
+              {lang === 'zh'
+                ? '「获取模型」列出该家可用模型；「测试连接」发一次极小请求验证能否对话（消耗极少量 token）。'
+                : '"Fetch models" lists what the provider offers; "Test connection" sends one tiny request to confirm it replies (a few tokens).'}
+            </p>
+            {/* 常用气泡：数据源为当前服务商自己的模型清单，不联网也能填；与输入框内容完全一致时高亮 */}
+            {provider.models.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '常用：' : 'Common:'}</span>
+                {provider.models.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setModel(m)}
+                    aria-pressed={m === model}
+                    className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${m === model
+                      ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold'
+                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 思考强度：三档；可用档位由当前模型的能力表决定，不可用档位置灰并说明原因 */}
+          <div>
+            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '思考强度' : 'Thinking effort'}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {THINKING_TIERS.map((t) => {
+                // 只有「模型有档位集合但缺这一档」才置灰；其余情况三档都可点，保证点击有反馈
+                const usable = !tierLocked(t.id);
+                const selected = usable && selectedEffort === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={!usable}
+                    aria-pressed={selected}
+                    title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
+                    onClick={() => setThinkingEffort(t.id)}
+                    className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${selected
+                      ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold'
+                      : usable
+                        ? 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                        : 'border-[var(--border)] text-[var(--muted)] opacity-40 cursor-not-allowed'}`}
+                  >
+                    {selected ? '● ' : ''}{lang === 'zh' ? t.zh : t.en}
+                  </button>
+                );
+              })}
+            </div>
+            {/* 留痕：当前档位 + 本次实际下发的参数（与请求体同源，永不与实际不一致） */}
+            <p className="text-[0.625rem] mono-font text-[var(--fg)] mt-1 leading-snug">
+              {sentDesc
+                ? (lang === 'zh'
+                    ? `当前：${tierLabel(selectedEffort, 'zh')} · 本次下发 ${sentDesc}`
+                    : `Active: ${tierLabel(selectedEffort, 'en')} · sending ${sentDesc}`)
+                : (lang === 'zh'
+                    ? '当前模型本次不下发任何思考参数。'
+                    : 'No thinking parameter is sent for this model.')}
+            </p>
+            {/* 成本提示（浅灰小字，不占操作位）：档位只影响思考深度，不改变「只给线索」的刚性约束 */}
+            <p className="text-[0.625rem] text-[var(--muted)] mt-1 leading-snug">
+              {lang === 'zh'
+                ? '深度思考会给出更充分的启发线索，但 Token 消耗显著增加；自带 Key 请留意额度。'
+                : 'Deep thinking gives fuller hints but consumes noticeably more tokens — watch your own key quota.'}
+            </p>
+            {/* 模型能力说明：不能关闭 / 无力度档 / 不在支持范围 / 自定义端点走透传 */}
+            {thinkingPlan?.note && (
+              <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
+                {THINKING_NOTE[thinkingPlan.note][lang === 'zh' ? 'zh' : 'en']}
+              </p>
+            )}
+            {providerId === 'custom' && (
+              <div className="mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => setExtraParamsOpen((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${extraParamsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  {lang === 'zh' ? '自定义请求参数（JSON，选填）' : 'Custom request params (JSON, optional)'}
+                </button>
+                {extraParamsOpen && (
+                  <>
+                    <textarea
+                      value={extraParamsText}
+                      onChange={(e) => setExtraParamsText(e.target.value)}
+                      rows={3}
+                      placeholder={'{"reasoning_effort": "high"}'}
+                      className="mt-1 w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
+                    />
+                    {!extraParamsValid && (
+                      <p className="text-[0.625rem] text-[var(--error)] mt-0.5 leading-snug">
+                        {lang === 'zh' ? 'JSON 格式无效，已忽略（不影响保存与提问）' : 'Invalid JSON — ignored (saving and asking still work)'}
+                      </p>
+                    )}
+                    <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
+                      {lang === 'zh'
+                        ? '注意：部分模型在深度思考模式下会忽略 temperature 等采样参数（不报错，但不生效）。'
+                        : 'Note: in deep-thinking mode some models ignore sampling parameters such as temperature (no error, just no effect).'}
+                    </p>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -2003,8 +2281,8 @@ export default function AiAssistant() {
             <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
               {tokenUsageTotalCount > 0
                 ? (lang === 'zh'
-                    ? `累计消耗 ≈ ${tokenUsageTotalCount.toLocaleString()} tokens（估算，按 1 token ≈ 1.8 字符，仅供参考）`
-                    : `≈ ${tokenUsageTotalCount.toLocaleString()} tokens in total (estimated, 1 token ≈ 1.8 chars, for reference only)`)
+                    ? `累计消耗 ≈ ${tokenUsageTotalCount.toLocaleString()} tokens（本地估算值，非服务商账单口径；实际计费以服务商后台为准）`
+                    : `≈ ${tokenUsageTotalCount.toLocaleString()} tokens in total (local estimate, not the provider\'s billing figure — check your provider dashboard for actual charges)`)
                 : (lang === 'zh' ? '还没有使用记录。对话、出题、AI 总结的消耗会累计在这里。' : 'No usage yet. Chat, quiz and AI-summary usage will accumulate here.')}
             </p>
           </div>
@@ -2020,10 +2298,7 @@ export default function AiAssistant() {
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>
             )}
-            <button type="button" onClick={testConnection} disabled={testing} className="px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors disabled:opacity-50">
-              {testing ? (lang === 'zh' ? '获取中…' : 'Fetching…') : lang === 'zh' ? '获取模型' : 'Fetch models'}
-            </button>
-            <button type="button" onClick={save} className="px-3 py-1.5 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors">
+            <button type="button" onClick={save} className="px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--card-bg)]">
               {lang === 'zh' ? '保存' : 'Save'}
             </button>
             <button type="button" onClick={clearAll} className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]">

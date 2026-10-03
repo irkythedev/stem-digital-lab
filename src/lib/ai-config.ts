@@ -80,7 +80,31 @@ export interface AiConfig {
   model: string;
   /** 是否已勾选「已阅读并同意」使用须知 */
   agreed: boolean;
+  /** 思考强度档位（可选；未设置按 standard 处理，兼容历史已保存配置） */
+  thinkingEffort?: ThinkingEffort;
+  /** 自定义端点的附加请求参数（JSON 文本透传；仅 providerId === 'custom' 时生效） */
+  extraParamsText?: string;
+  /**
+   * 各服务商各自保存的 API Key。
+   * 切换服务商时按此回填：A 家的 Key 绝不能出现在 B 家的输入框里，
+   * 某家没配置过则为空（而不是沿用上一家的 Key）。
+   */
+  keyByProvider?: Record<string, string>;
 }
+
+/**
+ * 取「服务商 → Key」映射，并兼容没有该字段的历史配置：
+ * 旧配置里只有一把 Key，按它自己的 providerId 归档，绝不外泄给其他服务商。
+ */
+export function keysByProviderOf(cfg: AiConfig | null): Record<string, string> {
+  if (!cfg) return {};
+  const map: Record<string, string> = { ...(cfg.keyByProvider ?? {}) };
+  if (cfg.providerId && cfg.apiKey && !map[cfg.providerId]) map[cfg.providerId] = cfg.apiKey;
+  return map;
+}
+
+/** 思考强度档位：关闭 / 标准（沿用服务商默认，不发任何参数）/ 深度思考 */
+export type ThinkingEffort = 'off' | 'standard' | 'deep';
 
 const STORAGE_KEY = 'stem-ai-config';
 
@@ -480,6 +504,196 @@ export function createInlineThinkSplitter(emit: (channel: 'content' | 'reasoning
   };
 }
 
+/**
+ * 思考档位 → 逐模型能力表。
+ *
+ * 为什么按「模型」而不是按「服务商」判定：同一家内部不同模型的思考能力并不一致。
+ * 例如月之暗面 kimi-k3 始终推理但可调力度、kimi-k2.6 可关闭却没有力度档、
+ * kimi-k2.7-code 只能保持开启；智谱 GLM-5.3 起不再支持关闭（传 disabled 会报错）。
+ * 按服务商映射必然产出「空操作档」甚至「请求被拒档」，故改为逐模型，并把该模型
+ * 支持的档位作为能力表的一部分交给界面置灰。
+ *
+ * 依据（全部取官方文档；下列默认值只用于说明，代码一律显式下发，不依赖默认）：
+ * - DeepSeek：思考默认开启、默认 effort 为 high；reasoning_effort 取值 low/high/max
+ *   （medium 会被映射为 high，故不采用）；关闭用 thinking.type=disabled。
+ * - 月之暗面：kimi-k3 始终推理，顶层 reasoning_effort 取 low/high/max（默认 max）；
+ *   kimi-k2.6 的 thinking 取 enabled（默认）/disabled；kimi-k2.7-code 只接受
+ *   enabled（保留式思考无法关闭），且无力度档。
+ * - 智谱：thinking.type 取 enabled（默认）/disabled；GLM-5.3 与 5.3-FLASH 起不再支持
+ *   disabled（传了会报错）；reasoning_effort 是 GLM-5.2 起的力度参数，max 为默认且推荐，
+ *   5.3 仅接受 max/high/low。
+ * - 阿里云百炼（通义千问）：enable_thinking 取 true/false；thinking_budget 是「推理过程
+ *   最大 Token 数」——是上限而非力度，不设时放开到模型最大思维链长度，控制台默认值 4000。
+ *   因此标准档取平台默认上限 4000，深度档不设上限（放开）。
+ * - 火山方舟（豆包）：thinking.type 开关。该页正文本轮未能取到（JS 渲染），依据为公开的
+ *   第三方实现文档与社区 issue，故只开放开关、不提供无依据的力度档。
+ *
+ * 注意：档位只影响模型的思考深度，不改变系统提示词里「只给线索、严禁透题」的刚性约束。
+ */
+
+/** 档位不可用时给界面的原因标识（文案在展示层，便于中英双语与统一改词） */
+export type ThinkingNote =
+  | 'cannotDisable' // 纯推理模型，不支持关闭
+  | 'alwaysThinksNoKnob' // 始终思考且无可调参数
+  | 'noEffortTier' // 可开关，但没有力度档
+  | 'noThinkingSupport' // 不在深度思考支持范围内
+  | 'unverified' // 模型未在能力表内，参数名无依据
+  | 'passthroughOnly'; // 自定义端点：一律交给附加参数透传
+
+export interface ThinkingPlan {
+  /** 该模型可选的档位（顺序固定 off → standard → deep）；空数组 = 不支持调节 */
+  available: ThinkingEffort[];
+  /** 各档位实际下发的参数 */
+  params: Partial<Record<ThinkingEffort, Record<string, unknown>>>;
+  /** 不可用原因（界面小字） */
+  note?: ThinkingNote;
+}
+
+interface ThinkingRule {
+  /** 匹配小写后的模型 id（前缀式，先具体后宽泛） */
+  match: RegExp;
+  plan: Omit<ThinkingPlan, 'note'> & { note?: ThinkingNote };
+}
+
+const PLANS: {
+  /** 可关闭 + 三档力度 */
+  full: ThinkingPlan;
+  /** 纯推理：只能调力度，不能关闭 */
+  effortOnly: (low: unknown, high: unknown) => ThinkingPlan;
+  /** 只能开关，没有力度档 */
+  toggleOnly: ThinkingPlan;
+} = {
+  full: {
+    available: ['off', 'standard', 'deep'],
+    params: {
+      off: { thinking: { type: 'disabled' } },
+      standard: { reasoning_effort: 'low' },
+      deep: { reasoning_effort: 'high' },
+    },
+  },
+  effortOnly: (low, high) => ({
+    available: ['standard', 'deep'],
+    note: 'cannotDisable',
+    params: { standard: { reasoning_effort: low }, deep: { reasoning_effort: high } },
+  }),
+  toggleOnly: {
+    available: ['off', 'standard'],
+    note: 'noEffortTier',
+    params: { off: { thinking: { type: 'disabled' } }, standard: { thinking: { type: 'enabled' } } },
+  },
+};
+
+const THINKING_RULES: ThinkingRule[] = [
+  // DeepSeek：思考默认开启、默认 high；low/high 显式下发后三档才真正互不相同
+  { match: /^deepseek-/, plan: PLANS.full },
+  // 月之暗面：k3 始终推理，力度 low/high/max（默认 max）
+  { match: /^kimi-k3/, plan: PLANS.effortOnly('low', 'max') },
+  // kimi-k2.7-code：保留式思考无法关闭，且无力度档
+  { match: /^kimi-k2\.7-code/, plan: { available: [], note: 'alwaysThinksNoKnob', params: {} } },
+  // kimi-k2.6 / k2.5：可关闭，无力度档（reasoning_effort 不支持）
+  { match: /^kimi-k2\.(6|5)/, plan: PLANS.toggleOnly },
+  // 智谱 GLM-5.3+：纯推理，传 disabled 会报错 → 不提供「关闭」档
+  { match: /^glm-5\.3/, plan: PLANS.effortOnly('low', 'max') },
+  // 智谱 GLM-5.2：可关闭 + 力度（max 为默认且推荐）
+  {
+    match: /^glm-5\.2/,
+    plan: {
+      available: ['off', 'standard', 'deep'],
+      params: {
+        off: { thinking: { type: 'disabled' } },
+        standard: { reasoning_effort: 'low' },
+        deep: { reasoning_effort: 'max' },
+      },
+    },
+  },
+  // 智谱 GLM-5 / 5.1 / 4.7 / 4.6 / 4.5：可关闭，力度参数为 5.2 起才有
+  { match: /^glm-(5$|5\.1|4\.7|4\.6|4\.5)/, plan: PLANS.toggleOnly },
+  // 智谱其余 glm 系（含预设 glm-4-flash / glm-4-plus）：不在深度思考支持范围内
+  { match: /^glm-/, plan: { available: [], note: 'noThinkingSupport', params: {} } },
+  // 阿里云百炼（通义千问）：开关 + 上限。标准档取平台控制台默认上限 4000，深度档放开
+  {
+    match: /^qwen/,
+    plan: {
+      available: ['off', 'standard', 'deep'],
+      params: {
+        off: { enable_thinking: false },
+        standard: { enable_thinking: true, thinking_budget: 4000 },
+        deep: { enable_thinking: true },
+      },
+    },
+  },
+  // 火山方舟（豆包）：仅开关
+  { match: /^(doubao|seed)/, plan: PLANS.toggleOnly },
+];
+
+/**
+ * 按当前服务商与模型取思考能力。
+ * 自定义端点一律不猜参数（交给附加参数透传），与「不注入未知字段」的原则一致。
+ */
+export function thinkingPlanFor(providerId: string, model: string): ThinkingPlan {
+  if (providerId === 'custom') return { available: [], params: {}, note: 'passthroughOnly' };
+  const m = (model || '').trim().toLowerCase();
+  if (!m) return { available: [], params: {}, note: 'unverified' };
+  const rule = THINKING_RULES.find((r) => r.match.test(m));
+  return rule ? { ...rule.plan, available: [...rule.plan.available] } : { available: [], params: {}, note: 'unverified' };
+}
+
+/**
+ * 当前实际生效的档位：所选档位在该模型不可用时回落（标准档优先，否则取首个可用档）。
+ * 模型完全不可调节时返回 null。
+ */
+export function effectiveThinkingEffort(
+  providerId: string,
+  model: string,
+  effort?: ThinkingEffort,
+): ThinkingEffort | null {
+  const plan = thinkingPlanFor(providerId, model);
+  if (plan.available.length === 0) return null;
+  const want = effort ?? 'standard';
+  if (plan.available.includes(want)) return want;
+  return plan.available.includes('standard') ? 'standard' : plan.available[0];
+}
+
+/**
+ * 档位是否应置灰。
+ * 仅当该模型「有可选档位集合、但缺这一项」时置灰（如 GLM-5.3 缺「关闭」）。
+ * 模型完全没有可调参数时（available 为空：未收录 / 自定义端点 / 无可调项）返回 false ——
+ * 三档保持可点，界面才能对点击给出反馈，实际发不发由「本次下发」一行交代。
+ */
+export function isTierLocked(plan: ThinkingPlan, id: ThinkingEffort): boolean {
+  return plan.available.length > 0 && !plan.available.includes(id);
+}
+
+/**
+ * 组装该档位要下发的参数。
+ * 档位不被当前模型支持时返回空对象——静默回退，绝不下发无依据字段导致请求被拒。
+ */
+export function buildThinkingParams(
+  providerId: string,
+  model: string,
+  effort: ThinkingEffort,
+): Record<string, unknown> {
+  const plan = thinkingPlanFor(providerId, model);
+  if (!plan.available.includes(effort)) return {};
+  return plan.params[effort] ?? {};
+}
+
+/**
+ * 自定义端点的附加请求参数透传：宽松解析、不作强校验，彻底解耦。
+ * 仅当文本非空且能解析为「普通对象」时才合并；其余情况一律忽略，绝不影响请求发出。
+ * 合并顺序在思考档位之后，用户自填参数可覆盖预设。
+ */
+export function parseExtraParams(text?: string): Record<string, unknown> {
+  if (!text || !text.trim()) return {};
+  try {
+    const v: unknown = JSON.parse(text);
+    if (v && typeof v === 'object' && !Array.isArray(v)) return { ...(v as Record<string, unknown>) };
+  } catch {
+    /* 非法 JSON：忽略（界面另有格式提示，此处不阻断） */
+  }
+  return {};
+}
+
 /** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
 export async function streamChat(
   cfg: AiConfig,
@@ -499,6 +713,10 @@ export async function streamChat(
       stream: true,
       // 输出上限：对话与出题分开设（对话 2000 保证追问段完整，出题 4000 保证末题不截断）
       ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      // 思考强度档位：按当前模型能力表下发；该模型不支持该档位时静默为空对象
+      ...buildThinkingParams(cfg.providerId, cfg.model, cfg.thinkingEffort ?? 'standard'),
+      // 自定义端点附加参数透传（仅 custom 生效；用户自填可覆盖上面的预设项）
+      ...(cfg.providerId === 'custom' ? parseExtraParams(cfg.extraParamsText) : {}),
     }),
     signal,
   });

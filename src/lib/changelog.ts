@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.32.7';
+export const APP_VERSION = '0.33.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,32 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.33.0',
+    date: '2026-10',
+    zh: [
+      '[修复] 元素周期表原子结构示意图按真实电子数逐点绘制：此前每个电子层最多只画 8 个点，与同一面板「电子层排布」的文字自相矛盾（如金 Au 的 18/32/18 只剩 8/8/8）',
+      '[优化] AI 设置的模型选择改为单行可输入下拉框：可直接打字，也可点右侧箭头从已拉取的模型列表中选择',
+      '[新增] AI 设置新增「常用模型」快捷气泡：按当前服务商列出常用模型，点一下即可填入，网络不通时也能手动选好',
+      '[优化] 「获取模型」与「测试连接」拆成两个独立按钮：前者只列出可用模型，后者只验证是否真能对话，失败时能看清是哪一步的问题',
+      '[新增] AI 设置新增「思考强度」档位（关闭 / 标准 / 深度思考）：按所选模型的实际能力下发，模型做不到的档位会自动置灰并说明原因，档位下方还写明本次实际下发的参数',
+      '[修复] AI 密钥改为按服务商分别保存：切换服务商不再显示上一家的密钥，未配置过的服务商显示为空',
+      '[新增] AI 设置新增密钥安全说明：密钥仅保存在本机浏览器，请求直连所选服务商，不上报开发者服务器',
+      '[优化] 用量说明改为「本地估算值，非服务商账单口径」，并注明实际计费以服务商后台为准',
+      '[新增] 自定义端点支持附加请求参数（如 reasoning_effort），供本机或自建服务使用',
+    ],
+    en: [
+      '[Fixed] The periodic table draws every electron in the Bohr model: each shell used to be capped at 8 dots, contradicting the "electron shells" row in the same panel (gold Au showed 8/8/8 instead of 18/32/18)',
+      '[Improved] Model selection is one editable dropdown: type a name, or use the arrow to pick from the fetched list',
+      '[New] Suggested models: the current provider\'s common models appear as chips you can click to fill in, so a failed request never blocks you',
+      '[Improved] "Fetch models" and "Test connection" are two separate buttons: one lists what the provider offers, the other confirms the model really replies, so a failure tells you which step broke',
+      '[New] AI settings gain a thinking-effort tier (Off / Standard / Deep thinking) driven by what the chosen model actually supports; tiers it cannot do are greyed out with the reason, and the panel states the parameters it will send',
+      '[Fixed] API keys are stored per provider: switching providers no longer shows the previous provider\'s key, and an unconfigured provider starts empty',
+      '[New] A key notice beside the field: the key lives only in this browser, requests go straight to your provider, and nothing is sent to a developer server',
+      '[Improved] The usage figure is labelled a local estimate rather than the provider\'s billing figure',
+      '[New] Custom endpoints can pass extra request parameters (such as reasoning_effort) for local or self-hosted services',
+    ],
+  },
   {
     version: '0.32.7',
     date: '2026-10',

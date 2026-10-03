@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * Smoke tests: 133 assertions covering the parts that must not silently break.
+ * Smoke tests: 156 assertions covering the parts that must not silently break.
  * Uses Node built-in assert — no test framework dependency.
  *
  * What is covered, in the order the assertions appear below:
@@ -16,7 +16,22 @@
  *      range cannot make the test pass by accident);
  *   4. boundary semantics: lens |u-f| < 0.01 returns null instead of drawing a
  *      phantom real image, and a short circuit returns inf rather than 0;
- *   5. TTS text cleaning and the feedback queue behave as documented.
+ *   5. TTS text cleaning and the feedback queue behave as documented;
+ *   6. the Bohr model draws every electron: for all 118 elements the dot count per
+ *      shell equals shells[i], with no overlapping dots and no canvas overflow;
+ *   7. the AI thinking-effort tier follows a per-model capability table: each tier
+ *      sends a different parameter value (never a no-op tier), unavailable tiers send
+ *      nothing, and the custom-endpoint JSON passthrough merges exactly what the user
+ *      typed;
+ *   8. the API key is scoped per provider, so switching providers never leaves another
+ *      vendor's key in the field (a legacy single-key config is filed under its own
+ *      provider and does not leak);
+ *   9. the AI panel's user-facing copy makes no false security claim: no "encryption"
+ *      wording (the key is plain text in localStorage) and the token figure is labelled
+ *      a local estimate rather than the provider's billing figure;
+ *  10. the version is consistent in all three places a release touches: package.json,
+ *      APP_VERSION, and the newest changelog entry (which must stay bilingual and
+ *      carry no duplicate version).
  *
  * Add an assertion whenever a new number or boundary becomes part of the
  * teaching content.
@@ -24,7 +39,7 @@
  * Run: npx tsx src/smoke.test.ts
  */
 import { strict as assert } from 'node:assert';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { labs, labMap, labsForSubject } from './lib/labs';
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
@@ -39,7 +54,12 @@ import {
 import {
   buildSystemPrompt, buildQuizPrompt, buildFillJudgePrompt, QUIZ_SENTINEL, PROMPT_VERSION,
   extractStreamDelta, createInlineThinkSplitter, streamChat,
+  buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
+  type ThinkingEffort,
 } from './lib/ai-config';
+import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
+import { ELEMENTS } from './lib/elements';
+import { APP_VERSION, CHANGELOG } from './lib/changelog';
 import {
   getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel,
 } from './lib/ai-dynamic-questions';
@@ -1589,6 +1609,346 @@ describe('AI thinking stream (display only)', () => {
       assert.deepEqual(contents, ['结论', '在此']);
     } finally {
       (globalThis as any).fetch = originalFetch;
+    }
+  });
+});
+
+/* ── 原子结构示意图：电子层点数不得截断（科学事实优先于观感） ── */
+
+describe('原子结构示意图 · 电子层点数（真实电子数，不截断）', () => {
+  test('Fe（[2,8,14,2]）每层点数与真实电子数严格相等', () => {
+    const fe = shellLayout([2, 8, 14, 2], coreRadiusFor(26));
+    assert.deepEqual(fe.map((s) => s.count), [2, 8, 14, 2]);
+    assert.deepEqual(fe.map((s) => s.dots.length), [2, 8, 14, 2], '第 3 层必须是 14 点，不能是 8');
+  });
+
+  test('Au（[2,8,18,32,18,1]）第 3/4/5 层分别为 18/32/18 点（旧的 8 点上限已废除）', () => {
+    const au = shellLayout([2, 8, 18, 32, 18, 1], coreRadiusFor(79));
+    assert.deepEqual(au.map((s) => s.dots.length), [2, 8, 18, 32, 18, 1]);
+    assert.equal(Math.max(...au.map((s) => s.dots.length)), 32);
+  });
+
+  test('全部 118 个元素：点数 == 真实电子数，相邻点不重叠，且不溢出画布', () => {
+    assert.equal(ELEMENTS.length, 118, '元素表应为 118 个');
+    for (const el of ELEMENTS) {
+      const layout = shellLayout(el.shells, coreRadiusFor(el.n));
+      assert.deepEqual(
+        layout.map((s) => s.dots.length),
+        el.shells,
+        `${el.zh}（Z=${el.n}）点数与真实电子数不一致`,
+      );
+      layout.forEach((s, i) => {
+        if (s.count > 1) {
+          // 整圈均匀分布：相邻点最小间距为弦长 2r·sin(π/n)，必须大于点直径
+          const chord = 2 * s.r * Math.sin(Math.PI / s.count);
+          assert.ok(
+            chord > 2 * s.dotR,
+            `${el.zh} 第 ${i + 1} 层点重叠：弦长 ${chord.toFixed(2)} ≤ 直径 ${(2 * s.dotR).toFixed(2)}`,
+          );
+        }
+        assert.ok(
+          s.r + s.dotR <= ATOM_VIEW.h / 2,
+          `${el.zh} 第 ${i + 1} 层溢出画布：外沿 ${(s.r + s.dotR).toFixed(2)} > ${ATOM_VIEW.h / 2}`,
+        );
+      });
+    }
+  });
+
+  test('点半径按密度自适应：≤8 保持 2.6，>18 收细但仍 ≥1.8', () => {
+    assert.equal(dotRadiusFor(2), 2.6);
+    assert.equal(dotRadiusFor(8), 2.6);
+    assert.ok(dotRadiusFor(18) < 2.6, '9~18 应略收细');
+    assert.ok(dotRadiusFor(32) < dotRadiusFor(18), '32 点层应比 18 点层更细');
+    assert.ok(dotRadiusFor(32) >= 1.8 && dotRadiusFor(32) <= 2.0, '32 点层半径应落在 1.8~2.0');
+  });
+
+  test('图上点数与属性栏「电子层排布」文本同源同值（同一视图不得自相矛盾）', () => {
+    for (const z of [26, 47, 79, 92]) {
+      const el = ELEMENTS.find((e) => e.n === z);
+      assert.ok(el, `元素表缺少 Z=${z}`);
+      const drawn = shellLayout(el.shells, coreRadiusFor(el.n)).map((s) => s.dots.length).join(', ');
+      assert.equal(drawn, el.shells.join(', '), `Z=${z} 图上点数与属性栏文本不一致`);
+    }
+  });
+});
+
+/* ── AI 思考强度档位：逐模型能力表，档位必须真正互不相同 ── */
+
+describe('AI 思考强度档位（逐模型能力表；教学伦理：只调思考深度，不改提示词约束）', () => {
+  const P = (pid: string, model: string, e: ThinkingEffort) => buildThinkingParams(pid, model, e);
+
+  test('DeepSeek：三档互不相同，不再出现「标准 = 深度」的空操作', () => {
+    assert.deepEqual(P('deepseek', 'deepseek-chat', 'off'), { thinking: { type: 'disabled' } });
+    assert.deepEqual(P('deepseek', 'deepseek-chat', 'standard'), { reasoning_effort: 'low' });
+    assert.deepEqual(P('deepseek', 'deepseek-chat', 'deep'), { reasoning_effort: 'high' });
+    assert.notDeepEqual(
+      P('deepseek', 'deepseek-chat', 'standard'),
+      P('deepseek', 'deepseek-chat', 'deep'),
+      '标准与深度不得等价（DeepSeek 默认即 high，标准档必须显式下调）',
+    );
+    assert.equal(thinkingPlanFor('deepseek', 'deepseek-reasoner').note, undefined);
+  });
+
+  test('通义千问：删除被误当「力度」的 2048 上限；标准取平台默认上限、深度放开', () => {
+    assert.deepEqual(P('dashscope', 'qwen-plus', 'off'), { enable_thinking: false });
+    assert.deepEqual(P('dashscope', 'qwen-plus', 'standard'), { enable_thinking: true, thinking_budget: 4000 });
+    assert.deepEqual(P('dashscope', 'qwen-plus', 'deep'), { enable_thinking: true });
+    assert.equal(
+      (P('dashscope', 'qwen-plus', 'deep') as { thinking_budget?: number }).thinking_budget,
+      undefined,
+      '深度档不得再设上限（thinking_budget 是上限而非力度，设小了等于反向下调）',
+    );
+    assert.ok(
+      !JSON.stringify(P('dashscope', 'qwen-plus', 'deep')).includes('2048'),
+      '深度档必须彻底移除 2048',
+    );
+    assert.notDeepEqual(P('dashscope', 'qwen-plus', 'standard'), P('dashscope', 'qwen-plus', 'deep'));
+  });
+
+  test('智谱 GLM-5.3：纯推理模型不提供关闭档（传 disabled 会被拒），力度 low/max', () => {
+    assert.deepEqual(thinkingPlanFor('zhipu', 'glm-5.3').available, ['standard', 'deep']);
+    assert.equal(thinkingPlanFor('zhipu', 'glm-5.3').note, 'cannotDisable');
+    assert.equal(
+      (P('zhipu', 'glm-5.3', 'off') as { thinking?: unknown }).thinking,
+      undefined,
+      'GLM-5.3 关不得：绝不能下发 thinking.type=disabled',
+    );
+    assert.deepEqual(P('zhipu', 'glm-5.3', 'standard'), { reasoning_effort: 'low' });
+    assert.deepEqual(P('zhipu', 'glm-5.3', 'deep'), { reasoning_effort: 'max' });
+    assert.deepEqual(thinkingPlanFor('zhipu', 'glm-5.3-flash').available, ['standard', 'deep']);
+  });
+
+  test('智谱 GLM-4.5 可关闭但无力度档；glm-4-flash 不在支持范围，不发任何参数', () => {
+    assert.deepEqual(thinkingPlanFor('zhipu', 'glm-4.5').available, ['off', 'standard']);
+    assert.equal(thinkingPlanFor('zhipu', 'glm-4.5').note, 'noEffortTier');
+    assert.deepEqual(P('zhipu', 'glm-4.5', 'off'), { thinking: { type: 'disabled' } });
+    assert.deepEqual(P('zhipu', 'glm-4.5', 'deep'), {}, '没有力度档就不许下发力度字段');
+    assert.deepEqual(thinkingPlanFor('zhipu', 'glm-4-flash').available, []);
+    assert.equal(thinkingPlanFor('zhipu', 'glm-4-flash').note, 'noThinkingSupport');
+    assert.deepEqual(P('zhipu', 'glm-4-flash', 'deep'), {});
+  });
+
+  test('Kimi 逐模型：k3 可调力度不可关、k2.6 可关无力度、k2.7-code 什么都不可调', () => {
+    assert.deepEqual(thinkingPlanFor('moonshot', 'kimi-k3').available, ['standard', 'deep']);
+    assert.deepEqual(P('moonshot', 'kimi-k3', 'standard'), { reasoning_effort: 'low' });
+    assert.deepEqual(P('moonshot', 'kimi-k3', 'deep'), { reasoning_effort: 'max' });
+    assert.equal((P('moonshot', 'kimi-k3', 'off') as { thinking?: unknown }).thinking, undefined);
+    assert.deepEqual(thinkingPlanFor('moonshot', 'kimi-k2.6').available, ['off', 'standard']);
+    assert.deepEqual(P('moonshot', 'kimi-k2.6', 'off'), { thinking: { type: 'disabled' } });
+    assert.equal((P('moonshot', 'kimi-k2.6', 'deep') as { reasoning_effort?: unknown }).reasoning_effort, undefined, 'k2.6 不支持 reasoning_effort');
+    assert.deepEqual(thinkingPlanFor('moonshot', 'kimi-k2.7-code').available, []);
+    assert.equal(thinkingPlanFor('moonshot', 'kimi-k2.7-code').note, 'alwaysThinksNoKnob');
+    assert.deepEqual(P('moonshot', 'kimi-k2.7-code', 'deep'), {});
+  });
+
+  test('自定义端点与未收录模型一律不下发思考字段（不猜参数名，防 400）', () => {
+    assert.deepEqual(thinkingPlanFor('custom', 'anything').available, []);
+    assert.equal(thinkingPlanFor('custom', 'anything').note, 'passthroughOnly');
+    assert.deepEqual(P('custom', 'deepseek-chat', 'deep'), {}, '自定义端点是透传，不套用能力表');
+    assert.deepEqual(P('deepseek', 'some-unknown-model', 'deep'), {});
+    assert.equal(thinkingPlanFor('deepseek', 'some-unknown-model').note, 'unverified');
+    assert.deepEqual(thinkingPlanFor('deepseek', '').available, []);
+  });
+
+  test('生效档位回落：不可用档位回到标准档，完全不可调时返回 null', () => {
+    assert.equal(effectiveThinkingEffort('deepseek', 'deepseek-chat', 'deep'), 'deep');
+    assert.equal(effectiveThinkingEffort('zhipu', 'glm-5.3', 'off'), 'standard', '关闭不可用应回落标准');
+    assert.equal(effectiveThinkingEffort('moonshot', 'kimi-k2.7-code', 'deep'), null);
+    assert.equal(effectiveThinkingEffort('deepseek', 'deepseek-chat', undefined), 'standard');
+    assert.equal(effectiveThinkingEffort('custom', 'x', 'deep'), null);
+  });
+
+  test('置灰判据：只有「模型有档位集合但缺这一档」才置灰，无可调参数时三档都不得置灰', () => {
+    const glm53 = thinkingPlanFor('zhipu', 'glm-5.3');
+    assert.equal(isTierLocked(glm53, 'off'), true, 'GLM-5.3 的关闭档应置灰');
+    assert.equal(isTierLocked(glm53, 'standard'), false);
+    assert.equal(isTierLocked(glm53, 'deep'), false);
+    // 回归防护：没有可调参数的模型若把三档全置灰，点击将毫无反馈（用户报告过的缺陷）
+    for (const [pid, m] of [
+      ['custom', 'anything'],
+      ['deepseek', 'some-unknown-model'],
+      ['moonshot', 'kimi-k2.7-code'],
+      ['zhipu', 'glm-4-flash'],
+    ] as const) {
+      const plan = thinkingPlanFor(pid, m);
+      assert.deepEqual(plan.available, [], `${pid}/${m} 应无可选档位`);
+      for (const t of ['off', 'standard', 'deep'] as ThinkingEffort[]) {
+        assert.equal(isTierLocked(plan, t), false, `${pid}/${m} 的 ${t} 不得置灰（否则点击无反馈）`);
+      }
+    }
+  });
+
+  test('自定义端点附加参数：合法 JSON 对象才合并，其余一律忽略（宽松透传不阻断）', () => {
+    assert.deepEqual(parseExtraParams('{"reasoning_effort":"high"}'), { reasoning_effort: 'high' });
+    assert.deepEqual(parseExtraParams('  {"a":1,"b":{"c":2}}  '), { a: 1, b: { c: 2 } });
+    assert.deepEqual(parseExtraParams(''), {});
+    assert.deepEqual(parseExtraParams('   '), {});
+    assert.deepEqual(parseExtraParams(undefined), {});
+    assert.deepEqual(parseExtraParams('[1,2]'), {}, '数组不是普通对象，应忽略');
+    assert.deepEqual(parseExtraParams('"just a string"'), {}, '标量应忽略');
+    assert.deepEqual(parseExtraParams('{"a":}'), {}, '非法 JSON 应忽略');
+  });
+
+  testAsync('streamChat：三家请求体各自正确，且不含多余或会被拒的字段', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    const enc = new TextEncoder();
+    let sent: Record<string, unknown> = {};
+    (globalThis as any).fetch = async (_url: string, init: any) => {
+      sent = JSON.parse(init.body);
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: 'ok' } }] })}\n\n`));
+          c.enqueue(enc.encode('data: [DONE]\n\n'));
+          c.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    const ask = (cfg: Record<string, unknown>) =>
+      streamChat({ apiKey: 'k', agreed: true, ...cfg } as never, [{ role: 'user', content: 'hi' }], () => {});
+
+    try {
+      // ① DeepSeek 关闭：thinking.type=disabled，且不得同时带 reasoning_effort
+      await ask({ providerId: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', thinkingEffort: 'off' });
+      assert.deepEqual(sent.thinking, { type: 'disabled' });
+      assert.equal(sent.reasoning_effort, undefined);
+
+      // ② DeepSeek 标准 / 深度：显式低强度与高强度，两者不同
+      await ask({ providerId: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', thinkingEffort: 'standard' });
+      assert.equal(sent.reasoning_effort, 'low');
+      await ask({ providerId: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', thinkingEffort: 'deep' });
+      assert.equal(sent.reasoning_effort, 'high');
+
+      // ③ 通义千问标准：平台默认上限 4000；深度：放开上限（无 thinking_budget）
+      await ask({ providerId: 'dashscope', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', thinkingEffort: 'standard' });
+      assert.equal(sent.enable_thinking, true);
+      assert.equal(sent.thinking_budget, 4000);
+      await ask({ providerId: 'dashscope', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', thinkingEffort: 'deep' });
+      assert.equal(sent.enable_thinking, true);
+      assert.equal(sent.thinking_budget, undefined, '深度档必须放开上限');
+
+      // ④ GLM-5.3 关闭：绝不下发 disabled（会被拒），也不得下发其他思考字段
+      await ask({ providerId: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.3', thinkingEffort: 'off' });
+      assert.equal(sent.thinking, undefined, 'GLM-5.3 传 disabled 会报错');
+      assert.equal(sent.reasoning_effort, undefined);
+      await ask({ providerId: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.3', thinkingEffort: 'deep' });
+      assert.equal(sent.reasoning_effort, 'max');
+
+      // ⑤ 自定义端点：能力表不介入，只合并用户透传
+      await ask({ providerId: 'custom', baseUrl: 'https://x.example.com/v1', model: 'm', thinkingEffort: 'deep', extraParamsText: '{"reasoning_effort":"max","top_p":0.9}' });
+      assert.equal(sent.reasoning_effort, 'max');
+      assert.equal(sent.top_p, 0.9);
+      assert.equal(sent.thinking, undefined);
+      assert.equal(sent.model, 'm');
+      assert.equal(sent.stream, true);
+
+      // ⑥ 非自定义端点不得外泄透传参数
+      await ask({ providerId: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', thinkingEffort: 'standard', extraParamsText: '{"top_p":0.9}' });
+      assert.equal(sent.top_p, undefined);
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+});
+
+
+/* ── AI 配置：Key 按服务商隔离（换服务商不得沿用上一家的 Key） ── */
+
+describe('AI 配置 · Key 按服务商隔离', () => {
+  test('历史配置（无 keyByProvider）把 Key 归到它自己的服务商，不外泄给其他家', () => {
+    const legacy = {
+      providerId: 'deepseek', apiKey: 'sk-deepseek-only', baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-chat', agreed: true,
+    };
+    const map = keysByProviderOf(legacy);
+    assert.equal(map.deepseek, 'sk-deepseek-only');
+    assert.equal(map.dashscope, undefined, '不得把 DeepSeek 的 Key 带到通义千问');
+    assert.equal(map.moonshot, undefined);
+    assert.equal(map.custom, undefined);
+    // 切到未配置的服务商，输入框应拿到空串
+    assert.equal(map.dashscope ?? '', '');
+  });
+
+  test('多家各自保存，互不覆盖（切回原服务商能取回自己的 Key）', () => {
+    const cfg = {
+      providerId: 'dashscope', apiKey: 'sk-qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      model: 'qwen-plus', agreed: true,
+      keyByProvider: { deepseek: 'sk-ds', dashscope: 'sk-qwen' },
+    };
+    const map = keysByProviderOf(cfg);
+    assert.deepEqual(Object.keys(map).sort(), ['dashscope', 'deepseek']);
+    assert.equal(map.deepseek, 'sk-ds');
+    assert.equal(map.dashscope, 'sk-qwen');
+    assert.equal(map.zhipu ?? '', '', '没配置过的服务商必须为空');
+  });
+
+  test('keyByProvider 缺失或配置为空时返回空映射，不抛错', () => {
+    assert.deepEqual(keysByProviderOf(null), {});
+    const bare = { providerId: 'zhipu', apiKey: '', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4.5', agreed: true };
+    assert.deepEqual(keysByProviderOf(bare), {}, '空 Key 不应写入映射');
+  });
+});
+
+
+/* ── AI 面板文案合规：不得出现不实安全声明 ── */
+
+describe('AI 面板文案合规（安全声明与用量口径）', () => {
+  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  // 只检查用户可见文案：先剥掉注释（注释里出现「加密」二字不算声明，但会误伤断言）
+  const panelCopy = panelSrc
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|\s)\/\/[^\n]*/g, '$1');
+
+  test('安全声明不得出现「加密」：密钥是明文存于本机 localStorage', () => {
+    assert.ok(
+      !panelCopy.includes('加密'),
+      '禁止声称「加密」——saveAiConfig 直接 JSON.stringify 写入 localStorage，并无加密',
+    );
+    assert.ok(
+      panelSrc.includes('密钥仅保存在本机浏览器的本地存储'),
+      '安全声明须使用已核定的规范文案（只陈述事实）',
+    );
+    assert.ok(panelSrc.includes('不上报任何开发者服务器'), '安全声明须写明不上报开发者服务器');
+  });
+
+  test('用量口径须标明为本地估算，不得冒充服务商账单', () => {
+    assert.ok(panelSrc.includes('本地估算值，非服务商账单口径'), '用量文案须写明是本地估算值');
+    assert.ok(
+      !panelSrc.includes('按模型返回统计'),
+      '尚未解析服务商回传的 usage（无 stream_options），不得声称按返回统计',
+    );
+  });
+});
+
+
+/* ── 版本一致性：避免发布时三方（构建产物 / 常量 / 变更记录）不同步 ── */
+
+describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条）', () => {
+  const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+
+  test('APP_VERSION 与 package.json 的 version 完全一致', () => {
+    assert.equal(
+      APP_VERSION,
+      pkg.version,
+      'APP_VERSION 与 package.json 不一致：构建产物里的版本号来自 package.json，界面显示的来自 APP_VERSION',
+    );
+  });
+
+  test('变更记录首条即当前版本，且版本号不重复', () => {
+    assert.equal(CHANGELOG[0].version, APP_VERSION, '新版本记录在前：首条必须是当前版本');
+    const seen = new Set<string>();
+    for (const e of CHANGELOG) {
+      assert.ok(!seen.has(e.version), `变更记录出现重复版本号：${e.version}`);
+      seen.add(e.version);
+    }
+  });
+
+  test('每条变更记录中英条目数一致且非空（中英双语必须同步维护）', () => {
+    for (const e of CHANGELOG) {
+      assert.ok(/^\d+\.\d+\.\d+$/.test(e.version), `版本号格式应为 x.y.z：${e.version}`);
+      assert.ok(e.date && e.date.length > 0, `${e.version} 缺少日期`);
+      assert.ok(e.zh.length > 0 && e.en.length > 0, `${e.version} 的中英条目都不能为空`);
+      assert.equal(e.zh.length, e.en.length, `${e.version} 中英条目数不一致（zh ${e.zh.length} / en ${e.en.length}）`);
     }
   });
 });

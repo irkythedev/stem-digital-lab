@@ -22,6 +22,7 @@ import AskAiButton from '../components/ai/AskAiButton';
 import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
+import { ATOM_VIEW, coreRadiusFor, shellLayout } from '../lib/atom-shells';
 
 /** 类别 → 配色（教科书三色区分；类金属用中间色）——浅色背景填充 + 同色系边框 */
 const CAT_COLOR: Record<ElementInfo['cat'], { border: string; text: string; bg: string }> = {
@@ -850,25 +851,19 @@ export default function PeriodicTable() {
                       // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
                     </div>
                     <svg viewBox="0 0 180 150" className="w-full max-h-[160px]" aria-label={`${selected.zh} 原子结构`}>
-                      {/* 动态轨道半径：按层数分配，任何元素（1~7 层）都清晰不溢出 */}
+                      {/* 轨道半径与电子点位由 lib/atom-shells 统一给出（纯函数，smoke 测试共用同一实现） */}
                       {(() => {
-                        const layers = selected.shells.length;
-                        const cx = 90, cy = 75;
-                        // 核半径随位数自适应：1-2 位 +111 三位数时核加大、字号缩小，避免文字出格
+                        const { cx, cy } = ATOM_VIEW;
+                        // 核半径随位数自适应：1-2 位为 13；三位数时核加大、字号缩小，避免文字出格
                         const digits = String(selected.n).length;
-                        const coreR = digits >= 3 ? 16 : 13;
+                        const coreR = coreRadiusFor(selected.n);
                         const coreFont = digits >= 3 ? 10 : 13;
-                        // 最大可用半径：略放大（允许最外层轻微裁切，核居中即可），多层元素仍清晰
-                        const maxR = Math.min(64, coreR + 51);
-                        // 核与第一层轨道之间留空隙（否则第一层与核重合，感应区被核盖住难触发）
-                        const innerGap = 8;
-                        const step = layers > 1 ? (maxR - coreR - innerGap) / (layers - 1) : 0;
-                        const rOf = (i: number) => coreR + innerGap + (layers > 1 ? i * step : 0);
+                        const shells = shellLayout(selected.shells, coreR);
                         return (
                           <>
                             {/* 电子层轨道 + 隐形感应区：悬停/点击整层都可触发，避免细线难点 */}
-                            {selected.shells.map((_, i) => {
-                              const r = rOf(i);
+                            {shells.map((s, i) => {
+                              const r = s.r;
                               const active = hoveredLayer === i;
                               return (
                                 <g
@@ -896,15 +891,9 @@ export default function PeriodicTable() {
                             <text x={cx} y={cy + (coreFont >= 13 ? 4 : 3.5)} textAnchor="middle" fontSize={coreFont} fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold" style={{ pointerEvents: 'none' }}>
                               +{selected.n}
                             </text>
-                            {/* 各层电子：绕核旋转（内快外慢、交替反向）；每层最多 8 个示意点 */}
-                            {selected.shells.map((count, i) => {
-                              const r = rOf(i);
-                              const dots: { x: number; y: number }[] = [];
-                              const show = Math.min(count, 8);
-                              for (let k = 0; k < show; k++) {
-                                const a = (k / show) * 2 * Math.PI - Math.PI / 2;
-                                dots.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
-                              }
+                            {/* 各层电子：绕核旋转（内快外慢、交替反向）；
+                                点数 = 该层真实电子数（不截断）——教材画法，且与属性栏「电子层排布」一致 */}
+                            {shells.map((s, i) => {
                               // 内层快(3s)、外层慢(9s)；相邻层反向
                               const dur = (3 + i * 2).toFixed(1);
                               const reverse = i % 2 === 1;
@@ -914,8 +903,8 @@ export default function PeriodicTable() {
                                   className="electron-layer"
                                   style={{ animationDuration: `${dur}s`, animationDirection: reverse ? 'reverse' : 'normal' }}
                                 >
-                                  {dots.map((d, k) => (
-                                    <circle key={k} cx={d.x} cy={d.y} r="2.6" fill="var(--fg)" />
+                                  {s.dots.map((d, k) => (
+                                    <circle key={k} cx={d.x} cy={d.y} r={s.dotR} fill="var(--fg)" />
                                   ))}
                                 </g>
                               );
