@@ -86,6 +86,10 @@ export default function GuidePage() {
       </div>
 
       {/* 项目介绍视频：先看总览再读细节；preload="none" 不拖慢首屏 */}
+      {/* ?v= 为内容哈希：该文件由 EdgeOne 以 immutable + 1 年缓存发出，同名路径替换后
+          回访者的浏览器不会回源，会长期看到旧片；改了查询串即换缓存键。
+          路径本身保持不变——public/qr-intro-video.png 二维码编码的就是
+          https://stem.irky.dev/videos/stem-intro.mp4，改名会让二维码失效。 */}
       <div className="mb-10 max-w-2xl">
         <video
           controls
@@ -93,7 +97,7 @@ export default function GuidePage() {
           playsInline
           className="w-full border border-[var(--border)] bg-[var(--card-bg)]"
         >
-          <source src="/videos/stem-intro.mp4" type="video/mp4" />
+          <source src="/videos/stem-intro.mp4?v=40040fe8" type="video/mp4" />
         </video>
       </div>
 
