@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.33.0';
+export const APP_VERSION = '0.34.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.34.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 错题集支持导出 A4 复习卷：把筛选出的错题排成一份可打印试卷，含答案与解析、演算留白、排序方式都能自选',
+      '[优化] 试卷预览所见即所得：打印前先按 A4 纸面预览真实排版，含公式的选项改为单列，长公式不再被挤在一起',
+      '[修复] AI 设置里「本次下发」的说明现在与实际发送完全一致，自定义端点的附加参数也会如实列出',
+      '[修复] 手机与小窗口下的避让：弹出键盘时面板自动上移，输入框和「保存」不被遮住，导出弹窗与设置面板的操作按钮不再被内容挤出屏幕',
+      '[优化] 触屏设备上「保存」「导出错题卷」等主操作按钮加大到拇指容易点中的尺寸',
+    ],
+    en: [
+      '[New] Export your mistake set as an A4 revision sheet: the mistakes you filtered become a printable paper, with answers and explanations, working space and sort order all optional',
+      '[Improved] What you preview is what prints: check the real A4 layout first, and options containing formulas now take a single column instead of being squeezed together',
+      '[Fixed] The "sending" line in AI settings now matches exactly what is sent, including extra parameters set for a custom endpoint',
+      '[Fixed] The panel steps aside on phones and in small windows: the on-screen keyboard no longer covers the input or Save, and the action buttons of the export dialog and settings panel can no longer be pushed off screen',
+      '[Improved] On touch screens, Save, Export paper and other primary actions are a comfortable thumb-sized target',
+    ],
+  },
   {
     version: '0.33.0',
     date: '2026-10',
