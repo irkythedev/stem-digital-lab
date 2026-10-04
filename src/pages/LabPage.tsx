@@ -59,12 +59,12 @@ export default function LabPage() {
 
   if (!lab) {
     return (
-      <main className="grow shrink-0 flex flex-col my-16 px-2 sm:px-6">
+      <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
         <div className="mb-8">
           <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
             / lab / {labId ?? 'unknown'}
           </span>
-          <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font mt-2 mb-2 text-[var(--fg)]">
+          <h1 className="t-h1 font-medium serif-font mt-2 mb-2 text-[var(--fg)]">
             {t.underConstruction}
           </h1>
           <p className="text-sm text-[var(--muted)] serif-font italic">{t.labUnderConstruction}</p>
@@ -84,12 +84,12 @@ export default function LabPage() {
   const Lab = lab.component;
 
   return (
-    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
       {/* 面包屑导航：返回学科（主）+ 首页（图标）——py-2 扩大触控热区（移动端 ≥24px） */}
       <nav className="flex items-center gap-1 text-xs mono-font">
         <Link
           to={subjects[lab.subjectId].path}
-          className="py-2 -my-2 text-[var(--muted)] underline hover:text-[var(--fg)]"
+          className="py-2 -my-2 text-[var(--muted)] underline hover:text-[var(--fg)] tap-area"
         >
           ← {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
         </Link>
@@ -97,21 +97,21 @@ export default function LabPage() {
           to="/"
           aria-label={t.homeIcon}
           title={t.homeIcon}
-          className="py-2 -my-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+          className="py-2 -my-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
         >
           <House className="w-3.5 h-3.5" />
         </Link>
       </nav>
 
-      <div className="mt-5 mb-8">
+      <div className="rise mt-5 mb-8">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 shrink-0 flex items-center justify-center text-[var(--fg)]">
             <lab.icon className="w-10 h-10" />
           </div>
           <div className="flex flex-col items-start leading-tight">
-            <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
+            <h1 className="t-h1 font-medium serif-font text-[var(--fg)]">
               {lab.name[lang]}
-              <span className="ml-3 text-[0.6875rem] uppercase tracking-widest text-[var(--muted)] mono-font align-middle">
+              <span className="t-eyebrow ml-3 text-[var(--muted)] mono-font align-middle">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
               </span>
               <ShareInline

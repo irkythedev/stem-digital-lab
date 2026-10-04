@@ -88,17 +88,17 @@ export default function PhysicalConstants() {
   });
 
   return (
-    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
       {/* 面包屑导航：返回物理 + 首页 */}
       <nav className="flex items-center gap-3 text-xs mono-font">
-        <Link to="/subject/physics" className="text-[var(--muted)] underline hover:text-[var(--fg)]">
+        <Link to="/subject/physics" className="text-[var(--muted)] underline hover:text-[var(--fg)] tap-area">
           ← {lang === 'zh' ? '返回物理' : 'Back to Physics'}
         </Link>
         <Link
           to="/"
           aria-label={t.homeIcon}
           title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
         >
           <House className="w-3.5 h-3.5" />
         </Link>
@@ -170,7 +170,7 @@ export default function PhysicalConstants() {
             type="button"
             onClick={() => setSelected(c)}
             aria-label={`${c.symbol} ${c.value} ${c.unit} ${lang === 'zh' ? c.name.zh : c.name.en}`}
-            className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)]"
+            className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1 transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)]"
           >
             <span className="text-lg font-bold mono-font text-[var(--fg)] leading-none">{c.symbol}</span>
             <span className="text-xs mono-font text-[var(--muted)] leading-none">{c.value} {c.unit}</span>

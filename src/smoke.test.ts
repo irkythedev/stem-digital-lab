@@ -2272,3 +2272,30 @@ void runAsyncTests().then(() => {
   console.log(`Results: ${passed} passed, ${failed} failed`);
   if (failed > 0) process.exit(1);
 });
+
+describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  const touchBlock = css.slice(css.indexOf('@media (hover: none) and (pointer: coarse)'));
+
+  test('tap-icon 必须有自身定位上下文：::after 是 absolute，锚点若为 static 会逃逸到视口劫持全页点击', () => {
+    assert.match(touchBlock, /\.tap-icon:not\(\[class\*='absolute'\]\)\s*\{\s*position:\s*relative/);
+    assert.match(touchBlock, /\.tap-icon::after\s*\{[^}]*position:\s*absolute/);
+  });
+
+  test('tap-area 必须居中内容：min-height 撑高的盒子多出的空间全加在下方，<a> 没有 UA 居中会被顶到上方', () => {
+    assert.match(touchBlock, /\.tap-area\s*\{[^}]*display:\s*inline-flex/);
+    assert.match(touchBlock, /\.tap-area\s*\{[^}]*align-items:\s*center/);
+    assert.match(touchBlock, /\.tap-area\s*\{[^}]*min-height:\s*2\.5rem/);
+  });
+
+  test('密集并排图标不得使用 tap-icon：扩区会互相压盖，出现点A触B', () => {
+    const footer = readFileSync('src/components/layout/Footer.tsx', 'utf8');
+    assert.ok(!footer.includes('tap-icon'), '页脚图标行彼此仅隔几像素，外扩热区会互相抢点击');
+  });
+
+  test('顶栏安全区不得清零上内边距：须为 calc 叠加（页脚同款写法）', () => {
+    const header = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    assert.ok(!/pt-\[env\(safe-area-inset-top/.test(header), 'pt-[env(...)] 会覆盖 py 的上内边距，造成上下不对称');
+    assert.match(header, /pt-\[calc\([^)]*env\(safe-area-inset-top/);
+  });
+});

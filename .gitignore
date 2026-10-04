@@ -30,3 +30,7 @@ ohm_cli.exe
 # 独立仓库目录：若被误复制进本仓目录则忽略
 stem-intro/
 intro/
+
+# Python 运行产物（投屏/生成脚本会在 docs 下留缓存）
+__pycache__/
+*.pyc

@@ -73,7 +73,7 @@ export default function GuidePage() {
   usePageMeta({ title: `${lang === 'zh' ? '使用说明' : 'Guide'} - ${lang === 'zh' ? '数理化数字实验室' : 'STEM Digital Lab'}` });
   const c = copy[lang];
   return (
-    <main className="grow shrink-0 my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 my-[var(--sp-block)] px-2 sm:px-6">
       <Link
         to="/"
         className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
@@ -81,7 +81,7 @@ export default function GuidePage() {
         ← {c.backHome}
       </Link>
       <div className="mb-10 mt-5 max-w-2xl">
-        <h1 className="text-base font-bold tracking-widest uppercase mono-font text-[var(--fg)] mb-4">{c.title}</h1>
+        <h1 className="t-h1 font-bold serif-font text-[var(--fg)] mb-4">{c.title}</h1>
         <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.intro}</p>
       </div>
 

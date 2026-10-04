@@ -29,7 +29,7 @@ export default function Footer() {
   const archUrl = `/architecture.html?theme=${archTheme}`;
 
   return (
-    <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-200" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
         {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
         <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
@@ -37,7 +37,7 @@ export default function Footer() {
             href="https://irky.dev/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1.5 hover:opacity-80 transition-opacity py-2 -my-2"
+            className="inline-flex items-center space-x-1.5 hover:opacity-80 transition-opacity py-2 -my-2 tap-area"
             title="irky.dev"
           >
             <img

@@ -23,7 +23,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
     >
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-sm font-bold tracking-widest text-[var(--fg)]">
+          <h2 className="t-h2 flex items-center gap-2 font-bold tracking-widest text-[var(--fg)]">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-[var(--accent)]" aria-hidden="true">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 16v-4" />

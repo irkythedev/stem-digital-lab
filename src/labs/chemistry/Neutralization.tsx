@@ -567,7 +567,7 @@ export default function Neutralization() {
             <button
               type="button"
               onClick={reset}
-              className="text-xs mono-font uppercase underline text-[var(--muted)] hover:text-[var(--fg)]"
+              className="text-xs mono-font uppercase underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
             >
               {t.reset}
             </button>
@@ -855,7 +855,7 @@ export default function Neutralization() {
                 onClick={redoAll}
                 className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
               >
-                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
                 <span>{t.redoLabel}</span>
               </button>
             </div>

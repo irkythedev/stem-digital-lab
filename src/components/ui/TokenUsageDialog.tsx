@@ -72,7 +72,7 @@ export default function TokenUsageDialog({ usage, onClose, lang }: TokenUsageDia
         {/* 头部 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-xs font-bold mono-font tracking-widest">{zh ? 'TOKEN 用量明细' : 'TOKEN USAGE'}</h2>
+            <h2 className="t-h2 font-bold mono-font tracking-widest">{zh ? 'TOKEN 用量明细' : 'TOKEN USAGE'}</h2>
             <p className="text-[0.625rem] mono-font text-[var(--muted)]">
               {zh ? `累计 ≈ ${total.toLocaleString()} tokens` : `≈ ${total.toLocaleString()} tokens in total`}
             </p>

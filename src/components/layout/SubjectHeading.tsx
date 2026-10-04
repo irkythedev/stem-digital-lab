@@ -22,11 +22,11 @@ export default function SubjectHeading({ subjectId, name, caption }: SubjectHead
         <SubjectIcon subjectId={subjectId} className="w-10 h-10 stroke-[1.0]" glyphClassName="text-4xl" />
       </div>
       <div className="flex flex-col items-start leading-tight">
-        <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
+        <h1 className="t-h1 font-medium serif-font text-[var(--fg)]">
           {name}
         </h1>
         {caption && (
-          <span className="text-[0.6875rem] mt-1 uppercase tracking-widest text-[var(--muted)] mono-font">
+          <span className="t-eyebrow mt-1 text-[var(--muted)] mono-font">
             {caption}
           </span>
         )}

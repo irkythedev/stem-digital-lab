@@ -69,8 +69,8 @@ export default function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center w-full py-3 sm:py-3.5 pt-[env(safe-area-inset-top,0px)] border-b border-[var(--border)]/70 transition-colors duration-200">
-      <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors" aria-label={t.brandName}>
+    <header className="flex justify-between items-center w-full pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] border-b border-[var(--border)]/70 transition-colors duration-[var(--dur-base)]">
+      <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors tap-area" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
@@ -160,7 +160,7 @@ export default function Header() {
           onClick={() => setAiOpen(!aiOpen)}
           aria-label={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
           title={lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
-          className="relative flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+          className="relative flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
           <Sparkles className="w-3.5 h-3.5" />
           {!aiConfigured && (
@@ -173,7 +173,7 @@ export default function Header() {
           onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           aria-label="Switch language"
           title={lang === 'zh' ? 'EN' : '中文'}
-          className="px-2.5 py-1.5 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+          className="px-2.5 py-1.5 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
           {lang === 'zh' ? '中文' : 'EN'}
         </button>
@@ -185,7 +185,7 @@ export default function Header() {
           onClick={cycleTheme}
           title={t[themeMode]}
           aria-label={t[themeMode]}
-          className="flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+          className="flex items-center justify-center p-2 rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
           <ThemeIcon className="w-3.5 h-3.5" />
         </button>
@@ -195,7 +195,7 @@ export default function Header() {
         {/* Guide link */}
         <Link
           to="/guide"
-          className="px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+          className="px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
           {t.guide}
         </Link>

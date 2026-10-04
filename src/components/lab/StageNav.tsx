@@ -76,7 +76,7 @@ export default function StageNav({
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`min-h-[34px] px-3.5 py-1 rounded-lg font-medium transition-all duration-150 touch-manipulation select-none whitespace-nowrap ${
+              className={`min-h-[34px] px-3.5 py-1 tap-area rounded-lg font-medium transition-all duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap ${
                 active
                   ? 'bg-[var(--card-bg)] text-[var(--fg)] shadow-xs font-semibold'
                   : done
@@ -96,7 +96,7 @@ export default function StageNav({
           <button
             type="button"
             onClick={handleNext}
-            className="min-h-[36px] px-4 py-1.5 border border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-all rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap"
+            className="min-h-[36px] px-4 py-1.5 tap-area border border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-all rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap"
           >
             {labels.next || 'Next →'}
           </button>
@@ -104,9 +104,9 @@ export default function StageNav({
           <button
             type="button"
             onClick={onRedo}
-            className="group inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-all rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap"
+            className="group inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 tap-area border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-all rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap"
           >
-            <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-200" />
+            <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
             <span>{labels.redo || 'Redo'}</span>
           </button>
         ) : null}

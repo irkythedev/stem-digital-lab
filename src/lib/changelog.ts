@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.34.0';
+export const APP_VERSION = '0.35.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,24 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.35.0',
+    date: '2026-10',
+    zh: [
+      '[优化] 全站标题层级重排：首页、实验页、工具页与说明页的标题按屏幕宽度自适应放大，手机上不再出现单字换行',
+      '[优化] 文字对比度全面提档：投影、大屏与暗色模式下正文与次要文字都更清晰，输入框边界也更容易辨识',
+      '[修复] 手机端顶栏三处问题：点「使用说明」会误跳运行架构页、各项文字与图标不对齐、顶部留白被吃掉——现已全部修正',
+      '[优化] 触屏与键盘可访问性：主操作与导航项更容易点中；键盘 Tab 聚焦时的轮廓清晰可见，不再被卡片边界裁掉',
+      '[优化] 动效手感统一：全站过渡时长与缓动收敛为同一套节奏，并完整响应系统的「减少动态效果」设置',
+    ],
+    en: [
+      '[Improved] A site-wide type scale: headings on the home, lab, tool and guide pages now scale with the viewport, and phones no longer break a title mid-word',
+      '[Improved] Contrast raised across the board: body and secondary text stay legible on projectors, large screens and in dark mode, and input borders are easier to make out',
+      '[Fixed] Three mobile top-bar problems: tapping Guide opened the architecture page, the items did not line up, and the top padding was eaten — all corrected',
+      '[Improved] Touch and keyboard accessibility: primary actions and navigation are easier to hit, and the keyboard focus ring is clearly visible instead of being clipped by card edges',
+      '[Improved] Motion unified: transition timing and easing converge on one feel, and the system reduce-motion setting is fully honoured',
+    ],
+  },
   {
     version: '0.34.0',
     date: '2026-10',

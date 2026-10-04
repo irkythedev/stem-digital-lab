@@ -73,11 +73,11 @@ export default function HomePage() {
   };
 
   return (
-    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
       {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
-      <div className="mb-6 sm:mb-10 flex flex-col items-start max-w-2xl">
+      <div className="rise mb-[var(--sp-block)] flex flex-col items-start max-w-2xl">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">
-          <h1 className="text-base sm:text-2xl font-bold tracking-widest uppercase mono-font text-[var(--fg)]">
+          <h1 className="t-hero serif-font text-[var(--fg)]">
             {t.brandName}
           </h1>
           <button
@@ -90,12 +90,12 @@ export default function HomePage() {
             {t.randomExplore}
           </button>
         </div>
-        <p className="text-sm sm:text-base text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
+        <p className="t-lead text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
         <p className="text-[0.6875rem] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
       </div>
 
       {/* ── 学科切换卡片 ── */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-6 w-full mb-6 sm:mb-8">
+      <div className="rise rise-2 grid grid-cols-3 gap-3 sm:gap-6 w-full mb-[var(--sp-block)]">
         {subjectList.map((subject) => {
           const meta = t.subjects[subject.id];
           const isActive = activeSubject === subject.id;
@@ -111,7 +111,7 @@ export default function HomePage() {
                   scrollToLabList();
                 }
               }}
-              className={`group relative border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center transition-[border-color,background-color,transform] duration-300 hover:z-10 hover:scale-[1.02] ${
+              className={`group relative border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center transition-[border-color,background-color,transform] duration-[var(--dur-slow)] hover:z-10 hover:scale-[1.02] ${
                 isActive
                   ? 'border-[var(--fg)]'
                   : 'border-[var(--border)] hover:border-[var(--fg)] hover:bg-[var(--fg)]/[0.04]'
@@ -120,8 +120,8 @@ export default function HomePage() {
               <div className="h-9 sm:h-12 flex items-center justify-center mb-1.5 sm:mb-3 text-[var(--fg)]">
                 <SubjectIcon
                   subjectId={subject.id}
-                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform duration-300 group-hover:scale-110"
-                  glyphClassName="text-3xl sm:text-4xl transition-transform duration-300 group-hover:scale-110"
+                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform duration-[var(--dur-slow)] group-hover:scale-110"
+                  glyphClassName="text-3xl sm:text-4xl transition-transform duration-[var(--dur-slow)] group-hover:scale-110"
                 />
               </div>
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">
@@ -153,7 +153,7 @@ export default function HomePage() {
           return (
             <div
               key={subject.id}
-              className={`w-full transition-all duration-400 ${
+              className={`w-full transition-all duration-[var(--dur-slow)] ${
                 isActive
                   ? 'opacity-100 translate-y-0 pointer-events-auto'
                   : 'opacity-0 translate-y-2 pointer-events-none absolute inset-0'
@@ -187,7 +187,7 @@ export default function HomePage() {
                     <Link
                       key={lab.id}
                       to={`/lab/${lab.id}`}
-                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
                     >
                       <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                         <Icon className="w-7 h-7" />
@@ -214,7 +214,7 @@ export default function HomePage() {
                   {subject.id === 'math' && (
                     <Link
                       to="/math-formulas"
-                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)] sm:max-w-md"
                     >
                       <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                         <Sigma className="w-7 h-7" />
@@ -232,7 +232,7 @@ export default function HomePage() {
                   {subject.id === 'chemistry' && (
                     <Link
                       to="/periodic-table"
-                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200 sm:max-w-md"
+                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)] sm:max-w-md"
                     >
                       <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                         <PeriodicTableIcon className="w-7 h-7" />
@@ -251,7 +251,7 @@ export default function HomePage() {
                     <div className="grid gap-2 sm:grid-cols-2">
                       <Link
                         to="/physics-constants"
-                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
                       >
                         <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                           <Gauge className="w-7 h-7" />
@@ -267,7 +267,7 @@ export default function HomePage() {
                       </Link>
                       <Link
                         to="/physics-formulas"
-                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-200"
+                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
                       >
                         <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                           <Calculator className="w-7 h-7" />
@@ -291,7 +291,9 @@ export default function HomePage() {
       </div>
 
       {/* ── 每日科学：名人名言与故事（当天固定 + 可换一条） ── */}
-      <DailyQuote lang={lang} />
+      <div className="rise rise-3">
+        <DailyQuote lang={lang} />
+      </div>
     </main>
   );
 }

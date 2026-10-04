@@ -1,9 +1,17 @@
 @import "tailwindcss";
 
+/* ── 统一全站过渡：把 Tailwind 的默认时长/缓动改接到本项目的动效令牌 ──
+   这样 15 个实验与所有组件里的 transition-* 工具类自动统一，
+   不再出现 0.15 / 0.18 / 0.2 / 0.3s 与四种缓动混用的情况。 */
+@theme {
+  --default-transition-duration: 180ms;
+  --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 :root {
   --bg: #fafafa;
   --fg: #111111;
-  --muted: #737373;
+  --muted: #5f5f5f; /* 素底 ≈6.1、分类色底 ≈5.25 —— 全站文本均 ≥5.2（原 #737373 仅 4.54 压线） */
   --border: #d4d4d4;
   --card-bg: #ffffff;
   --accent: #000000;
@@ -65,6 +73,100 @@ html.dark {
   }
 }
 
+/* ── 字阶 / 节奏 / 动效令牌（编辑级排版体系）──────────────────────────────
+   规则一：显示级一律流式 clamp，绝不写死 px —— 375px 下中文不得出现难看的单字断行。
+   规则二：本体系的间距收敛只作用于「页面宏观栅格、列表、卡片外边距与通用组件」；
+           仿真仪器内部（电表刻度、砝码排布、周期表卡片内微排版）豁免，保持科学拟真。
+   规则三：动效令牌全部 ≤260ms，克制干脆；全局 prefers-reduced-motion 兜底见文件末尾块。 */
+:root {
+  /* 显示级（流式缩放，min 值按 375px 中文可读最小宽度反推） */
+  --t-hero: clamp(1.75rem, 4.2vw, 3.75rem); /* 28 → 60px */
+  --t-h1: clamp(1.875rem, 2.8vw, 2.5rem); /* 30 → 40px（下限取实验页现有移动端字号，不放小） */
+  --t-h2: clamp(1.125rem, 1.6vw, 1.5rem); /* 18 → 24px 章节/弹窗标题 */
+  --t-lead: clamp(0.9375rem, 1.1vw, 1.125rem); /* 15 → 18px */
+  /* 宏观节奏（仅页面级） */
+  --sp-block: clamp(2.5rem, 4vw, 3.5rem); /* 章节间距 40（移动，与现状一致）→ 56px（桌面） */
+  /* 动效令牌 */
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* 签名缓动：快出慢入 */
+  --ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+
+/* v0.35.0 缓动归一：Tailwind v4 的 --tw-duration / --tw-ease 是「可继承」自定义属性，
+   祖先写 duration-* 会被后代 .transition-* 通过 var() 吃到，造成旧时长泄漏。
+   这里让「自身未声明 duration-*」的过渡元素一律回到令牌（:where 零特异性 → 不压任何组件类）。 */
+:where([class*='transition-']:not([class*='duration-'])) {
+  transition-duration: var(--dur-base);
+  transition-timing-function: var(--ease-out);
+} /* 标准位移 */
+  /* 功能性线框（可交互边界 / 焦点 / 输入框）——装饰性发丝线仍用 --border */
+  --border-strong: #8f8f8f;
+}
+
+html.dark {
+  --border-strong: #6f6d64;
+}
+
+/* 显示级排版类。text-wrap: balance 让中文每行长度接近，避免末行只剩一个字；
+   不可用 word-break: keep-all —— 那会把整句挤成一行并横向溢出。 */
+.t-hero,
+.t-h1,
+.t-h2,
+.t-lead {
+  text-wrap: balance;
+}
+.t-hero {
+  font-size: var(--t-hero);
+  line-height: 1.04;
+  letter-spacing: -0.015em;
+  font-weight: 500;
+}
+.t-h1 {
+  font-size: var(--t-h1);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  font-weight: 500;
+}
+.t-h2 {
+  font-size: var(--t-h2);
+  line-height: 1.25;
+  font-weight: 500;
+}
+.t-lead {
+  font-size: var(--t-lead);
+  line-height: 1.7;
+}
+/* 页面级微入场：错峰合计 260ms（80ms 延迟 + 180ms 时长），克制干脆。
+   只用于页面骨架块（无 position:fixed 后代），不影响仪器与浮层。 */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise-in var(--dur-base) var(--ease-out) both;
+}
+.rise-2 {
+  animation-delay: 40ms;
+}
+.rise-3 {
+  animation-delay: 80ms;
+}
+
+/* 技术性小标签（mono 眉标）：仪器内标签沿用同一枚令牌 */
+.t-eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg);
@@ -78,7 +180,7 @@ body {
   display: flex;
   flex-direction: column;
   margin: 0;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -103,6 +205,19 @@ body {
    甲案：主操作按钮保底 44px 拇指命中区；微型图标用「透明伪元素」把热区向外扩，
    视觉字号与图标尺寸一律不变，服务商/模型气泡保持原紧凑排布，移动端一屏密度不受影响。 */
 @media (hover: none) and (pointer: coarse) {
+  /* v0.35.0：触屏命中区精准补齐（仅触屏生效，桌面完全不动）
+     .tap-area 给「导航项 / 卡片式链接 / 顶栏与页脚控件」真实盒尺寸；
+     .tap-icon 给「独立小图标」透明伪类扩区（视觉尺寸不变）。 */
+  /* min-height 撑高的盒子，多出的空间全加在下方 → 文字被顶到上方。
+     button 由 UA 内部居中，<a> 不会：实测「使用说明」文字中线比图标高 6.5px。
+     这里统一改为居中容器，文字/图标中线一致。 */
+  .tap-area { display: inline-flex; align-items: center; justify-content: center; min-width: 2.5rem; min-height: 2.5rem; }
+  input[type='range'] { min-height: 2.5rem; }
+  /* 透明扩区必须挂在自己的定位上下文里：tap-icon 目标多为 position:static，
+     而 ::after 是 position:absolute → 会逃逸到视口，生成覆盖首屏的隐形热区
+     （实测 406×860px），把整条顶栏的点击劫持到该链接上。
+     absolute 目标自身已是定位块，不能再覆盖其 position。 */
+  .tap-icon:not([class*='absolute']) { position: relative; }
   /* 底部主操作栏与关键 CTA：保存 / 返回 / 关闭 / 导出错题卷 / 取消 / 直接打印 / 预览 /
      我同意并继续 / 打印预览工具条——点得中比排得密更重要 */
   .tap-primary,
@@ -144,7 +259,9 @@ main button {
 button,
 .btn,
 [role="button"] {
-  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), background-color 150ms ease, border-color 150ms ease, opacity 150ms ease, box-shadow 150ms ease;
+  /* v0.35.0：统一到令牌（原 150ms + 自定曲线）：全站按钮/方块吸附手感一致 */
+  transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -175,7 +292,7 @@ input[type="range"]::-webkit-slider-runnable-track {
   border-radius: 9999px;
   background-color: var(--accent-light);
   border: 1px solid var(--border);
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -189,7 +306,7 @@ input[type="range"]::-webkit-slider-thumb {
   border: 2px solid var(--fg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: grab;
-  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 input[type="range"]::-webkit-slider-thumb:active {
@@ -204,7 +321,7 @@ input[type="range"]::-moz-range-track {
   border-radius: 9999px;
   background-color: var(--accent-light);
   border: 1px solid var(--border);
-  transition: background-color 150ms ease, border-color 150ms ease;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 input[type="range"]::-moz-range-thumb {
@@ -215,7 +332,7 @@ input[type="range"]::-moz-range-thumb {
   border: 2px solid var(--fg);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: grab;
-  transition: transform 150ms cubic-bezier(0.33, 1, 0.68, 1), box-shadow 150ms ease;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 
 input[type="range"]::-moz-range-thumb:active {
@@ -266,7 +383,7 @@ input[type="range"]::-moz-range-thumb:active {
   color: var(--muted);
   background: transparent;
   border: none;
-  transition: all 150ms cubic-bezier(0.33, 1, 0.68, 1);
+  transition: all var(--dur-fast) var(--ease-out);
   user-select: none;
   touch-action: manipulation;
 }
@@ -311,12 +428,12 @@ input[type="range"]::-moz-range-thumb:active {
 
 /* 液面高度平滑过渡（随滴入体积变化） */
 .titration-liquid {
-  transition: fill 0.35s ease-out;
+  transition: fill var(--dur-slow) var(--ease-out);
 }
 
 /* 开关刀片：闭合/断开平滑切换 */
 .switch-blade {
-  transition: d 0.18s ease-out;
+  transition: d var(--dur-base) var(--ease-out);
 }
 
 /* 品牌 icon 正三角排布：△（数学）在上，□（化学）左下，○（物理）右下 */
@@ -737,5 +854,44 @@ input[type="range"]::-moz-range-thumb:active {
     background: var(--bg);
     border-top: 1px solid var(--border);
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+  }
+}
+
+/* ── 键盘焦点可见性（WCAG 2.4.7）───────────────────────────────
+   全局 :focus-visible 环：键盘导航给清晰焦点，鼠标点击不出现（互不打扰）。
+   本规则在 @layer 之外，优先级高于组件里的 focus:outline-none，故必定生效。 */
+:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+/* 焦点环裁切修正（实测：首页学科卡/实验卡等 19 个可聚焦元素位于 .overflow-hidden 容器内，
+   外置 4px 焦点环被裁掉，键盘用户看不到任何指示）。
+   命中该类祖先时把环改为内缩绘制，仍在元素边界内可见。 */
+:where([class*='overflow-hidden'], [style*='overflow: hidden']) :focus-visible {
+  outline-offset: -2px;
+}
+
+/* ── 表单控件边界（WCAG 1.4.11 非文本对比度 ≥3:1）────────────────
+   输入框/下拉/文本域的唯一可识别线索就是边框，装饰性发丝线（1.42:1）不够，
+   故改用 --border-strong（浅色 3.1:1 / 暗色同档）；卡片、气泡等有文字标签的控件
+   仍保持发丝线，以守住学术出版物的空气感。 */
+input:not([type='hidden']),
+select,
+textarea {
+  border-color: var(--border-strong);
+}
+
+/* ── 减动效全局兜底 ──────────────────────────────────────────────
+   1ms 而非 0：保留「事件已被响应」的语义，同时让一切动效在偏好减动效时近乎瞬时。
+   覆盖入场编排、微反馈、主题过渡与平滑滚动；教学操作永不被动画拖慢。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }

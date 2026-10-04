@@ -413,7 +413,7 @@ export default function PeriodicTable() {
         onClick={() => { setSelected(el); setTab('props'); setHoveredLayer(null); }}
         title={`${el.zh} ${el.symbol}`}
         aria-label={`${el.zh} ${el.symbol}`}
-        className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)] ${
+        className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)] ${
           matched ? 'ring-2 ring-[var(--fg)]' : ''
         } ${reciting ? 'recite-active' : ''}`}
         style={{ borderColor: color.border, backgroundColor: color.bg }}
@@ -437,17 +437,17 @@ export default function PeriodicTable() {
   };
 
   return (
-    <main className="grow shrink-0 flex flex-col my-10 px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
       {/* 面包屑导航：返回化学（主）+ 首页（图标） */}
       <nav className="flex items-center gap-3 text-xs mono-font">
-        <Link to="/subject/chemistry" className="text-[var(--muted)] underline hover:text-[var(--fg)]">
+        <Link to="/subject/chemistry" className="text-[var(--muted)] underline hover:text-[var(--fg)] tap-area">
           ← {lang === 'zh' ? '返回化学' : 'Back to Chemistry'}
         </Link>
         <Link
           to="/"
           aria-label={t.homeIcon}
           title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center"
+          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
         >
           <House className="w-3.5 h-3.5" />
         </Link>
@@ -643,7 +643,7 @@ export default function PeriodicTable() {
                   </span>
                   <div className="flex-1 h-1 bg-[var(--border)] overflow-hidden">
                     <div
-                      className="h-full bg-[var(--fg)] transition-all duration-300"
+                      className="h-full bg-[var(--fg)] transition-all duration-[var(--dur-slow)]"
                       style={{ width: `${(recite.pos / recitePreset.ns.length) * 100}%` }}
                     />
                   </div>
@@ -669,14 +669,14 @@ export default function PeriodicTable() {
       <div className="relative">
         {/* 移动端左侧滚动渐变阴影指示器 */}
         <div
-          className={`pointer-events-none absolute left-0 top-0 bottom-2 w-8 sm:hidden z-10 bg-gradient-to-r from-[var(--bg)] to-transparent transition-opacity duration-300 ${
+          className={`pointer-events-none absolute left-0 top-0 bottom-2 w-8 sm:hidden z-10 bg-gradient-to-r from-[var(--bg)] to-transparent transition-opacity duration-[var(--dur-slow)] ${
             canScrollLeft ? 'opacity-100' : 'opacity-0'
           }`}
           aria-hidden="true"
         />
         {/* 移动端右侧滚动渐变阴影与提示指示器 */}
         <div
-          className={`pointer-events-none absolute right-0 top-0 bottom-2 w-10 sm:hidden z-10 bg-gradient-to-l from-[var(--bg)] via-[var(--bg)]/80 to-transparent flex items-center justify-end pr-1 transition-opacity duration-300 ${
+          className={`pointer-events-none absolute right-0 top-0 bottom-2 w-10 sm:hidden z-10 bg-gradient-to-l from-[var(--bg)] via-[var(--bg)]/80 to-transparent flex items-center justify-end pr-1 transition-opacity duration-[var(--dur-slow)] ${
             canScrollRight ? 'opacity-100' : 'opacity-0'
           }`}
           aria-hidden="true"

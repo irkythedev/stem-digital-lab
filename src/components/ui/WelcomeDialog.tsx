@@ -83,7 +83,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
         {/* 顶部条 */}
         <div className="flex-shrink-0 flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3">
           <div className="min-w-0">
-            <h2 className="text-base font-bold mono-font tracking-widest">
+            <h2 className="t-h2 font-bold mono-font tracking-widest">
               {t.brandName}
               {/* 版本号 + 更新提示（点击查看版本历史，与 Header 一致） */}
               <button
