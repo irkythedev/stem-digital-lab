@@ -55,11 +55,16 @@ import {
   buildSystemPrompt, buildQuizPrompt, buildFillJudgePrompt, QUIZ_SENTINEL, PROMPT_VERSION,
   extractStreamDelta, createInlineThinkSplitter, streamChat,
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
+  resolveThinkingDispatch, describeThinkingParams,
   type ThinkingEffort,
 } from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS } from './lib/elements';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
+import {
+  buildQuizPaper, normalizeTopic, optionLabel, correctTextOf, wrongTextOf,
+  estimateSeconds, BLANK_MM, canUseTwoColumnOptions, type PaperBlankLevel,
+} from './lib/quiz-paper';
 import {
   getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel,
 } from './lib/ai-dynamic-questions';
@@ -1827,10 +1832,11 @@ describe('AI 思考强度档位（逐模型能力表；教学伦理：只调思�
       assert.equal(sent.enable_thinking, true);
       assert.equal(sent.thinking_budget, undefined, '深度档必须放开上限');
 
-      // ④ GLM-5.3 关闭：绝不下发 disabled（会被拒），也不得下发其他思考字段
+      // ④ GLM-5.3 关闭（纯推理模型关不掉）：安全回落为标准档——绝不下发 disabled（会被拒），
+      //    回落后按标准档下发较低力度，与界面留痕完全一致
       await ask({ providerId: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.3', thinkingEffort: 'off' });
       assert.equal(sent.thinking, undefined, 'GLM-5.3 传 disabled 会报错');
-      assert.equal(sent.reasoning_effort, undefined);
+      assert.equal(sent.reasoning_effort, 'low', '关不掉的模型必须回落标准档，而非静默不下发');
       await ask({ providerId: 'zhipu', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-5.3', thinkingEffort: 'deep' });
       assert.equal(sent.reasoning_effort, 'max');
 
@@ -1848,6 +1854,83 @@ describe('AI 思考强度档位（逐模型能力表；教学伦理：只调思�
     } finally {
       (globalThis as any).fetch = originalFetch;
     }
+  });
+});
+
+
+/* ── 思考参数下发：请求体与界面留痕共用唯一出口 resolveThinkingDispatch ── */
+
+describe('思考参数下发 · 留痕与实发同源（resolveThinkingDispatch）', () => {
+  const D = (providerId: string, model: string, thinkingEffort?: ThinkingEffort, extraParamsText?: string) =>
+    resolveThinkingDispatch({ providerId, model, thinkingEffort, extraParamsText });
+
+  test('P1-1 自定义端点填了透传：params 与留痕都如实反映真实键值', () => {
+    const d = D('custom', 'local-llama3', 'standard', '{"reasoning_effort":"max"}');
+    assert.deepEqual(d.params, { reasoning_effort: 'max' });
+    assert.equal(d.summaryText, 'reasoning_effort=max', '留痕必须显示透传，严禁谎报「不下发任何参数」');
+    assert.equal(d.effort, null, '自定义端点不预设档位，一律由透传决定');
+  });
+
+  test('P1-1 多键与嵌套值同样如实呈现；未填透传时才为空', () => {
+    assert.equal(
+      D('custom', 'm', 'deep', '{"reasoning_effort":"max","top_p":0.9}').summaryText,
+      'reasoning_effort=max, top_p=0.9',
+    );
+    assert.equal(D('custom', 'm', 'deep', '{"thinking":{"type":"enabled"}}').summaryText, 'thinking.type=enabled');
+    const empty = D('custom', 'm', 'deep');
+    assert.deepEqual(empty.params, {});
+    assert.equal(empty.summaryText, '', '空透传时留痕为空，界面才显示「不下发任何思考参数」');
+    // 非法 JSON 透传：不阻断，也不谎报
+    assert.deepEqual(D('custom', 'm', 'deep', '{"a":}').params, {});
+  });
+
+  test('P1-2 存储档位为 off / 非法：回落标准档，请求体与留痕同为一个事实', () => {
+    const g = D('zhipu', 'glm-5.3', 'off');
+    assert.equal(g.effort, 'standard', 'GLM-5.3 关不掉 → 回落标准');
+    assert.deepEqual(g.params, { reasoning_effort: 'low' });
+    assert.equal(g.summaryText, 'reasoning_effort=low', '留痕必须与实发一致，不得再说「不下发任何参数」');
+    // 合法 off 仍照发（DeepSeek 可关闭）
+    const d = D('deepseek', 'deepseek-chat', 'off');
+    assert.deepEqual(d.params, { thinking: { type: 'disabled' } });
+    assert.equal(d.summaryText, 'thinking.type=disabled');
+    // 未收录模型无档位：什么都不发，留痕为空
+    const u = D('deepseek', 'some-unknown-model', 'deep');
+    assert.equal(u.effort, null);
+    assert.deepEqual(u.params, {});
+    assert.equal(u.summaryText, '');
+    // 空模型名（刚切服务商的瞬间）不得乱发参数
+    assert.deepEqual(D('deepseek', '', 'deep').params, {});
+  });
+
+  test('留痕文本恒等于实发字段的描述（同源、不可漂移）', () => {
+    const cases: [string, string, ThinkingEffort, string | undefined][] = [
+      ['deepseek', 'deepseek-chat', 'standard', undefined],
+      ['deepseek', 'deepseek-chat', 'off', undefined],
+      ['dashscope', 'qwen-plus', 'standard', undefined],
+      ['zhipu', 'glm-5.3', 'off', undefined],
+      ['moonshot', 'kimi-k2.7-code', 'deep', undefined],
+      ['custom', 'local', 'deep', '{"a":1,"b":{"c":2}}'],
+      ['custom', 'local', 'deep', undefined],
+    ];
+    for (const [pid, m, e, x] of cases) {
+      const d = D(pid, m, e, x);
+      assert.equal(d.summaryText, describeThinkingParams(d.params), `${pid}/${m}/${e} 留痕必须由实发字段生成`);
+    }
+  });
+
+  test('代码级防漂移：streamChat 与面板留痕必须共用同一出口', () => {
+    const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+    const lib = strip(readFileSync('src/lib/ai-config.ts', 'utf8'));
+    const body = lib.slice(lib.indexOf('export async function streamChat'));
+    assert.ok(body.includes('resolveThinkingDispatch(cfg).params'), 'streamChat 必须用 resolveThinkingDispatch 组装');
+    assert.ok(!body.includes('buildThinkingParams(cfg.providerId'), 'streamChat 不得再自己拼一半');
+    assert.ok(!body.includes('parseExtraParams(cfg.extraParamsText)'), '透传不得在 streamChat 里另拼一次');
+    const panel = strip(readFileSync('src/components/ai/AiAssistant.tsx', 'utf8'));
+    assert.ok(
+      panel.includes('resolveThinkingDispatch({ providerId, model, thinkingEffort, extraParamsText })'),
+      '面板留痕必须走同一出口',
+    );
+    assert.ok(panel.includes('sentDesc = dispatch.summaryText'), '留痕文本只能取自 dispatch');
   });
 });
 
@@ -1921,6 +2004,103 @@ describe('AI 面板文案合规（安全声明与用量口径）', () => {
 });
 
 
+/* ── 浮层高度边界：低矮视口下弹窗/面板不得把自己的操作栏挤出可见范围 ── */
+
+describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
+  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const cssSrc = readFileSync('src/index.css', 'utf8');
+
+  test('错题卷导出弹窗：安全最大高度 + 内容区可滚 + 页脚不参与收缩', () => {
+    const card = panelSrc.match(/className="relative z-10 flex flex-col w-full max-w-sm max-h-\[85dvh\][^"]*"/);
+    assert.ok(card, '弹窗卡片必须显式声明 flex flex-col 与 max-h-[85dvh]——否则矮视口下顶底同时被裁且遮罩不可滚');
+    assert.ok(
+      panelSrc.includes('flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3'),
+      '弹窗内容区必须是 flex-1 min-h-0 且可滚动，操作项才不会被推出去',
+    );
+    assert.ok(
+      /className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-\[var\(--border\)\]"/.test(panelSrc),
+      '弹窗页脚必须 shrink-0（不参与收缩），保证「开始打印」常驻',
+    );
+  });
+
+  test('设置面板操作栏吸底常驻（sticky bottom-0 且带不透明底色）', () => {
+    const bar = panelSrc.match(/className="sticky bottom-0[^"]*"/);
+    assert.ok(bar, '设置面板的「保存/清除」操作栏必须吸底，否则长表单下保存按钮滚出可见区');
+    assert.ok(bar[0].includes('bg-[var(--bg)]'), '吸底操作栏需要不透明底色，否则滚动内容会从中透出');
+    assert.ok(bar[0].includes('border-t'), '吸底操作栏需要上边框与内容区分隔');
+  });
+
+  test('预览工具栏与卷面预览容器留出底部安全区（env(safe-area-inset-bottom)）', () => {
+    assert.ok(
+      /\.exam-preview-bar\s*\{[\s\S]*?env\(safe-area-inset-bottom/.test(cssSrc),
+      '固定吸底的预览工具栏必须做底部安全区兜底，否则被 Home Indicator 压住',
+    );
+    assert.ok(
+      /data-preview='on'\]\s*\{[\s\S]*?padding: 26px 16px calc\(96px \+ env\(safe-area-inset-bottom/.test(cssSrc),
+      '预览容器底部内边距须随安全区增长，卷面尾页才不会被工具栏盖住',
+    );
+  });
+
+  test('软键盘适配：视觉视口变量被维护且被移动端抽屉使用', () => {
+    const mainSrc = readFileSync('src/main.tsx', 'utf8');
+    assert.ok(
+      /visualViewport\?\.addEventListener\('(resize|scroll)'/.test(mainSrc),
+      'main.tsx 必须监听 visualViewport 的 resize —— 软键盘不触发 window.resize，dvh 也不随键盘收缩',
+    );
+    assert.ok(mainSrc.includes("setProperty('--kb'"), 'main.tsx 必须维护 --kb（键盘占高）');
+    assert.ok(mainSrc.includes("setProperty('--vvh'"), 'main.tsx 必须维护 --vvh（视觉视口高）');
+    assert.ok(/raw < 120 \? 0/.test(mainSrc), 'iOS 地址栏收展造成的几十像素差不得被当成键盘（阈值兜底）');
+    assert.ok(
+      panelSrc.includes('bottom-[var(--kb,0px)]') &&
+        panelSrc.includes('max-h-[min(85dvh,var(--vvh,100dvh))]'),
+      '移动端抽屉必须以 --kb 抬高、以 --vvh 限高，否则键盘弹起会盖住吸底操作栏与输入框',
+    );
+  });
+
+  test('卷面不含写死超过 A4 内容高的固定像素高度（唯一固定高为演算留白 mm）', () => {
+    const paperSrc = readFileSync('src/components/ai/QuizPaperPrint.tsx', 'utf8');
+    const pxHeights = [...paperSrc.matchAll(/height:\s*[^,}\n]*?px/g)].map((m) => m[0].trim());
+    assert.equal(pxHeights.length, 0, `卷面不得写死像素高度（实际：${pxHeights.join(' | ')}）`);
+    assert.ok(
+      /height:\s*`\$\{[^`]*\}mm`/.test(paperSrc),
+      '演算留白应以毫米声明（height: `${blankMm}mm`），随题目自适应而非写死',
+    );
+    const paperCss = cssSrc.match(/#quiz-paper-root[\s\S]*?(?=@media screen|$)/)?.[0] ?? '';
+    assert.ok(
+      !/min-height:\s*\d+px|(^|\s)height:\s*\d+px/m.test(paperCss),
+      '卷面本体不得使用固定像素高度，分页交给浏览器流式排版',
+    );
+  });
+});
+
+
+/* ── 触屏命中区：主操作保底 44px、微型图标热区外扩（视觉尺寸一律不变） ── */
+
+describe('触屏命中区（hover:none + pointer:coarse）', () => {
+  const cssSrc = readFileSync('src/index.css', 'utf8');
+  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const touchBlock = cssSrc.match(/@media \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?\n\}/)?.[0] ?? '';
+
+  test('命中区规则限定在粗指针媒体查询内（不得误伤桌面）', () => {
+    assert.ok(touchBlock, '缺少 (hover: none) and (pointer: coarse) 媒体查询：命中区规则会污染桌面版');
+    assert.ok(/\.tap-primary,[\s\S]*?min-height: 44px/.test(touchBlock), '主操作按钮在触屏下必须保底 44px');
+    assert.ok(touchBlock.includes('.exam-preview-bar button'), '打印预览工具条同样属于底部主操作，需一并保底');
+  });
+
+  test('微型图标靠透明伪元素扩热区，图标本身不放大', () => {
+    assert.ok(/\.tap-icon::after \{[\s\S]*?inset: -8px/.test(touchBlock), '图标热区必须外扩（视觉 14px → 热区 30px）');
+    assert.ok(touchBlock.includes("content: ''"), '伪元素需要 content 才会生成，否则热区不存在');
+  });
+
+  test('标记类覆盖到位：漏标即静默失效', () => {
+    const primary = (panelSrc.match(/className="tap-primary/g) || []).length;
+    const icon = (panelSrc.match(/className="tap-icon/g) || []).length;
+    assert.ok(primary >= 8, `tap-primary 应覆盖底部主操作（实际 ${primary}）`);
+    assert.equal(icon, 2, `tap-icon 只应标记密钥眼睛与模型下拉箭头这两个孤立图标（实际 ${icon}）——顶部并排图标外扩会互相抢点击`);
+  });
+});
+
+
 /* ── 版本一致性：避免发布时三方（构建产物 / 常量 / 变更记录）不同步 ── */
 
 describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条）', () => {
@@ -1950,6 +2130,138 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
       assert.ok(e.zh.length > 0 && e.en.length > 0, `${e.version} 的中英条目都不能为空`);
       assert.equal(e.zh.length, e.en.length, `${e.version} 中英条目数不一致（zh ${e.zh.length} / en ${e.en.length}）`);
     }
+  });
+});
+
+
+/* ── 错题卷组卷（纯函数）：分节 / 连续编号 / 答案形态 / 留白 ── */
+
+describe('错题卷组卷（buildQuizPaper）', () => {
+  const E = (over: Partial<QuizHistoryEntry>): QuizHistoryEntry => ({
+    id: 'x', ts: 1000, path: '/lab/ohm', subject: '物理', topic: '欧姆定律',
+    question: '题干', options: ['甲', '乙', '丙', '丁'], answerIdx: 1, pickedIdx: 2,
+    correct: false, model: 'm', ...over,
+  });
+
+  test('选项排布：含公式一律单列，短文本选项才两列', () => {
+    assert.equal(canUseTwoColumnOptions('choice', ['甲', '乙', '丙']), true, '短文本选择题可两列省纸');
+    assert.equal(canUseTwoColumnOptions('choice', ['甲', '乙']), false, '不足 3 项不分组');
+    assert.equal(canUseTwoColumnOptions('fill', ['甲', '乙', '丙']), false, '非选择题不分组');
+    assert.equal(
+      canUseTwoColumnOptions('choice', ['$y=ax^{2}+bx+c$', '乙', '丙']),
+      false,
+      '含 LaTeX 一律单列：公式宽度由 KaTeX 渲染后决定，两列会横向挤压甚至越界',
+    );
+    assert.equal(
+      canUseTwoColumnOptions('choice', ['甲', '乙', '丙', '这是一段明显偏长的选项文本']),
+      false,
+      '偏长选项退回单列',
+    );
+  });
+
+  test('选择题：正确答案为选项字母、错答为学生所选字母', () => {
+    const paper = buildQuizPaper([E({ answerIdx: 1, pickedIdx: 3 })]);
+    assert.equal(paper.sections[0].items[0].correctText, 'B');
+    assert.equal(paper.sections[0].items[0].wrongText, 'D');
+  });
+
+  test('填空题：多家答案顺序连接，错答为原文；超时不展示错答', () => {
+    assert.equal(correctTextOf(E({ type: 'fill', fillAnswers: ['0.6A', '0.60A'] })), '0.6A / 0.60A');
+    assert.equal(wrongTextOf(E({ type: 'fill', userAnswer: '0.5A' })), '0.5A');
+    assert.equal(wrongTextOf(E({ type: 'fill', userAnswer: '0.5A', timedOut: true })), '', '超时未答不得展示错答');
+    assert.equal(wrongTextOf(E({ type: 'fill', userAnswer: '' })), '');
+  });
+
+  test('无标准答案（answerIdx=-1 或缺失）不产出正确答案文本', () => {
+    assert.equal(correctTextOf(E({ answerIdx: -1 })), '');
+    assert.equal(correctTextOf(E({ answerIdx: undefined as unknown as number })), '');
+    assert.equal(optionLabel(4), 'E', '标签表覆盖 A–F，下标 4 是合法项');
+    assert.equal(optionLabel(6), '', '下标 6 已越出标签表，不得产出标签');
+    assert.equal(optionLabel(-1), '');
+  });
+
+  test('按知识点分组：同组归并，组间按错题数降序（薄弱点优先）', () => {
+    const paper = buildQuizPaper([
+      E({ topic: '欧姆定律' }), E({ topic: '欧姆定律' }), E({ topic: '欧姆定律' }),
+      E({ topic: '凸透镜成像' }), E({ topic: '凸透镜成像' }),
+      E({ topic: '质量守恒' }),
+    ]);
+    assert.deepEqual(paper.sections.map((s) => s.topic), ['欧姆定律', '凸透镜成像', '质量守恒']);
+    assert.deepEqual(paper.sections.map((s) => s.items.length), [3, 2, 1]);
+  });
+
+  test('题号跨分节连续，且与分节展平顺序一致', () => {
+    const paper = buildQuizPaper([E({ topic: 'B' }), E({ topic: 'A' }), E({ topic: 'A' })]);
+    const flat = paper.sections.flatMap((s) => s.items);
+    assert.deepEqual(flat.map((i) => i.no), [1, 2, 3]);
+    assert.equal(paper.total, 3);
+    assert.equal(flat.length, paper.total);
+  });
+
+  test('time 模式：只有单节且不设小节标题', () => {
+    const paper = buildQuizPaper([E({ topic: 'A' }), E({ topic: 'B' })], { sortMode: 'time' });
+    assert.equal(paper.sections.length, 1);
+    assert.equal(paper.sections[0].topic, '');
+    assert.deepEqual(paper.sections[0].items.map((i) => i.no), [1, 2]);
+  });
+
+  test('演算留白档位：compact 0 / standard 20 / roomy 35（每道题都带）', () => {
+    for (const [lv, mm] of Object.entries(BLANK_MM)) {
+      const paper = buildQuizPaper([E({}), E({})], { blankLevel: lv as PaperBlankLevel });
+      assert.equal(paper.blankMm, mm, `${lv} 应为 ${mm}mm`);
+      assert.ok(paper.sections[0].items.every((i) => i.blankMm === mm));
+    }
+    assert.equal(buildQuizPaper([E({})]).blankMm, 20, '默认应为标准 20mm');
+  });
+
+  test('答案开关：关闭时答案集为空，开启时与正文同序同数', () => {
+    const off = buildQuizPaper([E({}), E({ topic: '另一个' })]);
+    assert.deepEqual(off.answers, [], '默认不出答案');
+    assert.equal(off.includeAnswers, false);
+    const on = buildQuizPaper([E({}), E({ topic: '另一个' })], { includeAnswers: true });
+    assert.equal(on.answers.length, on.total);
+    assert.deepEqual(on.answers.map((i) => i.no), on.sections.flatMap((s) => s.items).map((i) => i.no));
+  });
+
+  test('空记录与空题干：不抛错且 total 为 0', () => {
+    for (const input of [[], [E({ question: '' })], [E({ question: '   ' })]]) {
+      const paper = buildQuizPaper(input);
+      assert.equal(paper.total, 0);
+      assert.deepEqual(paper.sections, []);
+      assert.equal(paper.estimatedMinutes, 0);
+    }
+  });
+
+  test('建议限时：优先真实限时，否则按题型默认，向上取整到 5 分钟', () => {
+    assert.equal(estimateSeconds(E({})), 60, '选择题默认 60s');
+    assert.equal(estimateSeconds(E({ type: 'fill' })), 90, '填空默认 90s');
+    assert.equal(estimateSeconds(E({ timeLimit: 150 })), 150, '有真实限时则优先');
+    // 3 题各 60s = 180s = 3min → 向上取整到 5
+    assert.equal(buildQuizPaper([E({}), E({}), E({})]).estimatedMinutes, 5);
+    // 5 题各 60s = 300s = 5min → 恰好 5
+    assert.equal(buildQuizPaper([E({}), E({}), E({}), E({}), E({})]).estimatedMinutes, 5);
+  });
+
+  test('知识点归一化：剥除括号提示，空值兜底「综合」', () => {
+    assert.equal(normalizeTopic('欧姆定律（8-9 年级）'), '欧姆定律');
+    assert.equal(normalizeTopic('凸透镜成像(实验)'), '凸透镜成像');
+    assert.equal(normalizeTopic(''), '综合');
+    assert.equal(normalizeTopic('   '), '综合');
+    // 分节也走同一归一化，避免同一知识点被拆成两节
+    const paper = buildQuizPaper([E({ topic: '欧姆定律' }), E({ topic: '欧姆定律（8-9 年级）' })]);
+    assert.equal(paper.sections.length, 1);
+    assert.equal(paper.sections[0].items.length, 2);
+  });
+
+  test('溯源：sourceOf 解析器为每题补上实验名', () => {
+    const paper = buildQuizPaper(
+      [E({ path: '/lab/ohm' }), E({ path: '/lab/unknown' })],
+      {},
+      (path) => (path === '/lab/ohm' ? '欧姆定律实验' : ''),
+    );
+    const flat = paper.sections.flatMap((s) => s.items);
+    assert.equal(flat[0].source, '欧姆定律实验');
+    assert.equal(flat[1].source, '');
   });
 });
 

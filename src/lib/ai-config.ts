@@ -694,6 +694,52 @@ export function parseExtraParams(text?: string): Record<string, unknown> {
   return {};
 }
 
+/**
+ * 把待下发的参数压成一行短标签，例如 reasoning_effort=low、thinking.type=disabled。
+ * 只由 resolveThinkingDispatch 的输出生成，界面留痕因此与真实请求体同源。
+ */
+export function describeThinkingParams(params: Record<string, unknown>): string {
+  const flat: string[] = [];
+  for (const [k, v] of Object.entries(params)) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) flat.push(`${k}.${k2}=${String(v2)}`);
+    } else {
+      flat.push(`${k}=${String(v)}`);
+    }
+  }
+  return flat.join(', ');
+}
+
+/** 本次请求的思考参数下发方案（请求体与界面留痕的唯一事实源） */
+export interface ThinkingDispatch {
+  /** 真正会并入请求体的字段（自定义端点的透传最后合并，可覆盖预设项） */
+  params: Record<string, unknown>;
+  /** 界面「本次下发」留痕文本；由 params 生成，故与请求体永不背离 */
+  summaryText: string;
+  /** 实际生效的档位；模型无可调档位时为 null（自定义端点恒为 null） */
+  effort: ThinkingEffort | null;
+}
+
+/**
+ * 统一组装「这次请求会下发的思考参数」——底层请求体与界面留痕共用这一个出口，
+ * 杜绝两边各拼一半导致留痕谎报。
+ *
+ * 规则 1：自定义端点不预设任何思考参数，extraParamsText 里填了什么就如实下发、
+ *         如实留痕（严禁在填了透传时仍显示「不下发任何参数」）。
+ * 规则 2：存储的档位若为 off 或该模型不支持（纯推理模型如 GLM-5.3 / R1），
+ *         按有效档位安全回落（标准优先），回落结果既进请求体也进留痕——
+ *         界面承诺什么就发什么，二者逐字节吻合。
+ */
+export function resolveThinkingDispatch(
+  cfg: Pick<AiConfig, 'providerId' | 'model' | 'thinkingEffort' | 'extraParamsText'>,
+): ThinkingDispatch {
+  const effort = effectiveThinkingEffort(cfg.providerId, cfg.model, cfg.thinkingEffort);
+  const preset = effort ? buildThinkingParams(cfg.providerId, cfg.model, effort) : {};
+  const extra = cfg.providerId === 'custom' ? parseExtraParams(cfg.extraParamsText) : {};
+  const params = { ...preset, ...extra };
+  return { params, summaryText: describeThinkingParams(params), effort };
+}
+
 /** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
 export async function streamChat(
   cfg: AiConfig,
@@ -713,10 +759,9 @@ export async function streamChat(
       stream: true,
       // 输出上限：对话与出题分开设（对话 2000 保证追问段完整，出题 4000 保证末题不截断）
       ...(maxTokens ? { max_tokens: maxTokens } : {}),
-      // 思考强度档位：按当前模型能力表下发；该模型不支持该档位时静默为空对象
-      ...buildThinkingParams(cfg.providerId, cfg.model, cfg.thinkingEffort ?? 'standard'),
-      // 自定义端点附加参数透传（仅 custom 生效；用户自填可覆盖上面的预设项）
-      ...(cfg.providerId === 'custom' ? parseExtraParams(cfg.extraParamsText) : {}),
+      // 思考强度档位 + 自定义端点透传：与界面「本次下发」留痕共用同一出口
+      // （resolveThinkingDispatch），因此界面承诺什么，这里就发什么。
+      ...resolveThinkingDispatch(cfg).params,
     }),
     signal,
   });

@@ -99,6 +99,26 @@ body {
   min-height: calc(var(--vh, 1vh) * 100);
 }
 
+/* ── 触屏命中区（无悬停 + 粗指针）────────────────────────────────────────
+   甲案：主操作按钮保底 44px 拇指命中区；微型图标用「透明伪元素」把热区向外扩，
+   视觉字号与图标尺寸一律不变，服务商/模型气泡保持原紧凑排布，移动端一屏密度不受影响。 */
+@media (hover: none) and (pointer: coarse) {
+  /* 底部主操作栏与关键 CTA：保存 / 返回 / 关闭 / 导出错题卷 / 取消 / 直接打印 / 预览 /
+     我同意并继续 / 打印预览工具条——点得中比排得密更重要 */
+  .tap-primary,
+  .exam-preview-bar button {
+    min-height: 44px;
+  }
+  /* 微型图标热区：视觉仍是 14px（w-3.5 h-3.5），四周各外扩 8px → 30×30。
+     只用于四周留白充足、不会与相邻可点元素抢点击的孤立图标（密钥显示眼睛、模型下拉箭头）；
+     顶部并排的 h-7 w-7 图标按钮不适用——它们彼此仅隔几像素，外扩热区会互相抢点击。 */
+  .tap-icon::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+}
+
 /* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */
 main button {
   min-height: 40px;
@@ -442,3 +462,280 @@ input[type="range"]::-moz-range-thumb:active {
   }
 }
 
+/* ==========================================================================
+   错题卷（屏幕预览 + 打印）
+   组件见 src/components/ai/QuizPaperPrint.tsx
+
+   一份样式两处使用：下面「介质无关」那组规则同时服务于屏幕预览与打印输出，
+   预览所见即打印所得，不存在第二套样式漂移。
+
+   ⚠ 有意例外（经批准）：卷面硬编码 #000 / #fff，不使用 token。
+   暗色主题下 --fg=#e8e6df、--bg=#161613，直接打印会变成深底浅字（费墨且看不清）。
+   ========================================================================== */
+
+/* 卷面默认隐藏：屏幕端仅预览模式显示，打印时强制显示 */
+#quiz-paper-root {
+  display: none;
+}
+
+/* ── 介质无关：卷面本体视觉（预览与打印共用同一套） ── */
+#quiz-paper-root {
+  color: #000;
+  background: #fff;
+  font-family: var(--f-serif);
+  font-size: 11pt;
+  line-height: 1.55;
+}
+#quiz-paper-root .exam-sheet {
+  background: #fff;
+}
+
+/* 卷头 */
+#quiz-paper-root .exam-head {
+  border-bottom: 1.5pt solid #000;
+  padding-bottom: 3mm;
+  margin-bottom: 5mm;
+}
+#quiz-paper-root .exam-title {
+  font-size: 16pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 2mm;
+}
+#quiz-paper-root .exam-sub {
+  font-size: 9pt;
+  text-align: center;
+  margin: 0 0 3mm;
+}
+#quiz-paper-root .exam-idline {
+  display: flex;
+  justify-content: space-between;
+  gap: 6mm;
+  font-size: 10pt;
+}
+#quiz-paper-root .exam-hint {
+  font-size: 9pt;
+  color: #444;
+  margin: 2mm 0 0;
+}
+
+/* 分节 */
+#quiz-paper-root .exam-section-title {
+  font-size: 12pt;
+  font-weight: 700;
+  margin: 4mm 0 2mm;
+  padding-bottom: 1mm;
+  border-bottom: 1pt solid #000;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* 单题：严禁跨页腰斩 */
+#quiz-paper-root .exam-item {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 4mm;
+}
+#quiz-paper-root .exam-q {
+  display: flex;
+  gap: 1.5mm;
+  align-items: baseline;
+}
+#quiz-paper-root .exam-no {
+  font-weight: 700;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+#quiz-paper-root .exam-stem {
+  flex: 1 1 auto;
+}
+#quiz-paper-root .exam-src {
+  flex: none;
+  font-size: 8pt;
+  color: #444;
+}
+
+/* 选项：短选项两列，长选项单列 */
+#quiz-paper-root .exam-options {
+  list-style: none;
+  margin: 1.5mm 0 0 5mm;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6mm;
+  row-gap: 1mm;
+}
+#quiz-paper-root .exam-options--single {
+  grid-template-columns: 1fr;
+}
+#quiz-paper-root .exam-options li {
+  display: flex;
+  gap: 1mm;
+  align-items: baseline;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+#quiz-paper-root .exam-opt-label {
+  font-weight: 600;
+  flex: none;
+}
+
+/* 填空作答线 */
+#quiz-paper-root .exam-fill-line {
+  margin: 1.5mm 0 0 5mm;
+}
+#quiz-paper-root .exam-underline {
+  display: inline-block;
+  min-width: 45mm;
+  border-bottom: 0.75pt solid #000;
+}
+
+/* 演算留白（高度由行内 style 给出） */
+#quiz-paper-root .exam-work {
+  margin: 1.5mm 0 0 5mm;
+  border-bottom: 0.4pt dotted #999;
+}
+
+/* 答案与解析：强制独立起页 */
+#quiz-paper-root .exam-answers {
+  break-before: page;
+  page-break-before: always;
+}
+#quiz-paper-root .exam-answers-title {
+  font-size: 14pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 4mm;
+  padding-bottom: 2mm;
+  border-bottom: 1.5pt solid #000;
+}
+#quiz-paper-root .exam-answer {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin: 0 0 3mm;
+}
+#quiz-paper-root .exam-answer-line {
+  display: flex;
+  gap: 1.5mm;
+  align-items: baseline;
+  margin: 0;
+}
+#quiz-paper-root .exam-answer-text {
+  font-weight: 700;
+}
+#quiz-paper-root .exam-answer-exp {
+  font-size: 9.5pt;
+  color: #333;
+  margin: 0.5mm 0 0 5mm;
+}
+
+/* 页脚：预览时跟在纸尾（静态），打印时改为固定重复 */
+#quiz-paper-root .exam-foot {
+  font-size: 8pt;
+  color: #333;
+  text-align: center;
+  border-top: 0.5pt solid #999;
+  padding-top: 1mm;
+}
+
+/* KaTeX：抑制默认 1.21em 放大，并强制纯黑 */
+#quiz-paper-root .katex {
+  font-size: 1em !important;
+}
+#quiz-paper-root .katex,
+#quiz-paper-root .katex * {
+  color: #000 !important;
+}
+
+/* ── 屏幕预览皮肤（仅屏幕；打印时全部复位，故不影响打印输出） ── */
+@media screen {
+  #quiz-paper-root[data-preview='on'] {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.55);
+    padding: 26px 16px calc(96px + env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+  #quiz-paper-root[data-preview='on'] .exam-sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 14mm 12mm;
+    box-sizing: border-box;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
+  }
+}
+
+/* ── 打印：页面尺寸与分页（预览皮肤在此全部复位） ── */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 12mm 18mm;
+  }
+
+  /* 页面底色强制白（覆盖暗色主题） */
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  /* 只留卷面：应用主体与所有 portal 弹窗（含预览工具栏）一律隐藏 */
+  body > *:not(#quiz-paper-root) {
+    display: none !important;
+  }
+  #quiz-paper-root {
+    display: block !important;
+  }
+
+  /* 纸张复位：A4 尺寸与页边距交给 @page，避免与预览皮肤叠加成双重留白 */
+  #quiz-paper-root .exam-sheet {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  /* 打印时禁用阴影与动画、抹掉主题底色，避免灰底拖影与费墨 */
+  #quiz-paper-root *,
+  #quiz-paper-root *::before,
+  #quiz-paper-root *::after {
+    box-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+    background-color: transparent !important;
+  }
+
+  /* 页脚固定于页面底部，随每页重复 */
+  #quiz-paper-root .exam-foot {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    margin: 0;
+    padding: 1mm 0 0;
+  }
+}
+
+/* ── 预览工具栏（仅屏幕；打印时作为 body 子元素被上面规则隐藏） ── */
+@media screen {
+  .exam-preview-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 96;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    /* 底部安全区兜底：带 Home Indicator 的机型上工具栏不被指示条压住 */
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+  }
+}

@@ -15,7 +15,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -28,13 +29,15 @@ import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-que
 import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
 import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
+import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
+import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
 import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageModelTotal, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
-  effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, buildThinkingParams, isTierLocked,
+  effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
 } from '../../lib/ai-config';
 
@@ -78,23 +81,6 @@ const THINKING_NOTE: Record<ThinkingNote, { zh: string; en: string }> = {
 function tierLabel(id: ThinkingEffort, lang: 'zh' | 'en'): string {
   const t = THINKING_TIERS.find((x) => x.id === id);
   return t ? (lang === 'zh' ? t.zh : t.en) : id;
-}
-
-/**
- * 把待下发的参数压成一行短标签，例如 reasoning_effort=low、thinking.type=disabled。
- * 仅供界面「本次下发」留痕显示；数据来自 buildThinkingParams，与实际请求体同源，
- * 因此这一行永远不会和真正发出去的东西不一致。
- */
-function describeParams(params: Record<string, unknown>): string {
-  const flat: string[] = [];
-  for (const [k, v] of Object.entries(params)) {
-    if (v && typeof v === 'object' && !Array.isArray(v)) {
-      for (const [k2, v2] of Object.entries(v as Record<string, unknown>)) flat.push(`${k}.${k2}=${String(v2)}`);
-    } else {
-      flat.push(`${k}=${String(v)}`);
-    }
-  }
-  return flat.join(', ');
 }
 
 /** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
@@ -342,6 +328,10 @@ export default function AiAssistant() {
   // 「获取模型」是独立动作，与「测试连接」互不阻塞：两者各有自己的 loading 态
   const [fetching, setFetching] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  // 在途闸门：fetching / testing 是异步 state，同一个 tick 内连点拦不住（状态还没重渲染），
+  // 用 ref 做同步锁，请求返回前一律拦截后续点击，避免对限流严格的服务商打出重复请求。
+  const fetchingRef = useRef(false);
+  const testingRef = useRef(false);
   // 保存成功 toast（面板内提示，2 秒自动消失）
   const [savedToast, setSavedToast] = useState(false);
   const savedToastTimer = useRef<number | null>(null);
@@ -492,6 +482,117 @@ export default function AiAssistant() {
   const wrongQuizList = useMemo(() => wrongQuizHistory(), [quizHistoryData]);
   // 错题展开项（复用 expandedHistId 语义不冲突，单独用 quizExpandedId）
   const [quizExpandedId, setQuizExpandedId] = useState<string | null>(null);
+
+  // ── 错题卷导出（方案 A：配置弹窗 → 数据快照 → window.print()）──
+  const [paperOpen, setPaperOpen] = useState(false);
+  const [paperOpts, setPaperOpts] = useState<{
+    includeAnswers: boolean;
+    blankLevel: PaperBlankLevel;
+    sortMode: PaperSortMode;
+  }>({
+    includeAnswers: false, // 默认不出答案：先让学生自己做一遍
+    blankLevel: 'standard', // 默认标准 20mm 演算留白
+    sortMode: 'topic', // 默认按知识点分组（薄弱点优先）
+  });
+  /** 打印快照：仅打印/预览期间挂载卷面；结束后清空，不常驻大块 DOM */
+  const [paperData, setPaperData] = useState<{ paper: QuizPaper; generatedAt: string } | null>(null);
+  /** 预览模式：先看版面再决定打印；与打印共用同一棵卷面 DOM */
+  const [paperPreview, setPaperPreview] = useState(false);
+
+  /** 溯源：把记录里的来源路径解析成实验名；解析不到就留空，绝不编造 */
+  const paperSourceOf = (path: string): string => {
+    const id = labIdFromPath(path);
+    const lab = id ? labMap[id] : undefined;
+    return lab ? (lang === 'zh' ? lab.name.zh : lab.name.en) : '';
+  };
+
+  /** 组卷：范围 = 当前筛选的全部记录（忽略每页 8 条的浏览分页）。
+   *  preview=true 先进预览层；false 直接调起打印。两条动线共用同一棵卷面 DOM。 */
+  const exportPaper = (preview: boolean) => {
+    const paper = buildQuizPaper(filteredQuizHistory, paperOpts, paperSourceOf);
+    if (paper.total === 0) return;
+    setPaperOpen(false);
+    setPaperPreview(preview);
+    setPaperData({
+      paper,
+      generatedAt: new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-CA'),
+    });
+  };
+
+  /** 预览层「返回修改」：回到配置弹窗，丢弃当前快照 */
+  const backToPaperOptions = () => {
+    setPaperPreview(false);
+    setPaperData(null);
+    setPaperOpen(true);
+  };
+
+  /** 关闭预览（Esc / 关闭按钮）：丢弃快照，不打印 */
+  const closePaperPreview = () => {
+    setPaperPreview(false);
+    setPaperData(null);
+  };
+
+  // 预览层 Esc 关闭。
+  // 必须用捕获阶段并阻断传播：面板自身也监听 Esc（会关掉整个面板），
+  // 若在冒泡阶段处理，关预览的同时会把面板一起关掉，用户就丢了当前位置。
+  useEffect(() => {
+    if (!paperPreview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      closePaperPreview();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [paperPreview]);
+
+  // 打印生命周期：等字体就绪 → 解锁 body 滚动 → 调起打印 → 结束后复原并清快照。
+  // 必须解锁：useLockBodyScroll 把 body.overflow 设为 hidden，不解开会裁切卷面。
+  // 预览模式不触发打印；从预览点「打印」时把 paperPreview 置 false，本副作用随之重跑。
+  useEffect(() => {
+    if (!paperData || paperPreview) return;
+    let disposed = false;
+    let done = false;
+    let fallback = 0;
+    const prevOverflow = document.body.style.overflow;
+    // 复原：滚动锁回滚 + 卸下临时卷面。三条路径（afterprint / 超时兜底 / print 抛错）共用，
+    // 保证任何一条走到就只复原一次，body.overflow 与临时 DOM 都稳定回到原状。
+    const finish = () => {
+      if (disposed || done) return;
+      done = true;
+      if (fallback) window.clearTimeout(fallback);
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('afterprint', finish);
+      setPaperData(null);
+    };
+    const start = async () => {
+      // KaTeX 字体未就绪就打印会掉字或错位，先等字体加载完（旧环境无该 API 则直接继续）
+      try {
+        await document.fonts?.ready;
+      } catch {
+        /* 忽略：字体 API 不可用不应阻断打印 */
+      }
+      if (disposed) return;
+      document.body.style.overflow = '';
+      window.addEventListener('afterprint', finish);
+      // 兜底：部分浏览器/取消路径不派发 afterprint，1.5s 后强制复原，
+      // 否则滚动锁会丢（面板打开时背景仍可滚动）且卷面常驻 DOM。
+      // print() 在主流浏览器会阻塞主线程，故该计时实际从对话框关闭后才开始走。
+      fallback = window.setTimeout(finish, 1500);
+      try {
+        window.print();
+      } catch {
+        // 打印被安全策略拦截等异常：立即复原，不把界面留在打印态
+        finish();
+      }
+    };
+    void start();
+    return () => {
+      disposed = true;
+      if (fallback) window.clearTimeout(fallback);
+      window.removeEventListener('afterprint', finish);
+    };
+  }, [paperData, paperPreview]);
   // 清空错题二次确认
   const [confirmClearQuiz, setConfirmClearQuiz] = useState(false);
   const clearQuizHistoryAll = () => {
@@ -1214,8 +1315,14 @@ export default function AiAssistant() {
   const tiersRestricted = !!thinkingPlan && thinkingPlan.available.length > 0;
   const tierLocked = (id: ThinkingEffort) => !!thinkingPlan && isTierLocked(thinkingPlan, id);
   const selectedEffort: ThinkingEffort = tiersRestricted ? (activeEffort ?? 'standard') : thinkingEffort;
-  // 本次真正会下发的思考参数：与请求体同源（同一个 buildThinkingParams），留痕不会失真
-  const sentDesc = describeParams(buildThinkingParams(providerId, model, selectedEffort));
+  // 本次真正会下发的思考参数：与底层请求体共用同一个出口（resolveThinkingDispatch），
+  // 因此留痕与实发逐字节一致——既含自定义端点的透传，也含非法档位的安全回落。
+  const dispatch = resolveThinkingDispatch({ providerId, model, thinkingEffort, extraParamsText });
+  const sentDesc = dispatch.summaryText;
+
+  // 模型名匹配一律大小写不敏感：用户手输 QWEN-PLUS 也应命中常用气泡的 qwen-plus，
+  // 否则「已选中的模型」看起来没有任何反馈。
+  const modelMatches = (m: string) => m.trim().toLowerCase() === (model || '').trim().toLowerCase();
 
   // 自定义参数文本是否为「可用的 JSON 对象」（仅用于界面提示；非法时请求端同样忽略，不阻断）
   const extraParamsValid = (() => {
@@ -1299,9 +1406,11 @@ export default function AiAssistant() {
   // 【获取模型】只做一件事：GET /models 列出该家可用模型（该接口不需要模型名）。
   // 不验证「能否对话」——那是「测试连接」的职责，两者拆开才能分别诊断。
   const fetchModelList = async () => {
+    if (fetchingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     const baseUrl = resolveBaseUrl();
     if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
+    fetchingRef.current = true;
     setFetching(true);
     setTestResult(null);
     try {
@@ -1328,19 +1437,24 @@ export default function AiAssistant() {
           : msg.slice(0, 80),
       });
       flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
+    } finally {
+      // 成功/失败/异常都要释放闸门，避免异常路径把后续点击永久锁死
+      fetchingRef.current = false;
+      setFetching(false);
     }
-    setFetching(false);
   };
 
   // 【测试连接】只做一件事：发一次极小的 chat 请求，验证 Key / 端点 / 模型三者确实可用。
   // 与「获取模型」分开：有些端点不提供 /models 但能正常对话，只有真发一次才验证得住。
   // 注意：该动作会消耗极少量 token（由用户自己的 Key 承担）。
   const testConnection = async () => {
+    if (testingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     const baseUrl = resolveBaseUrl();
     if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
     const probeModel = model.trim() || provider.models[0] || '';
     if (!probeModel) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先选择或输入模型名，再测试连接' : 'Choose or type a model name first' }); return; }
+    testingRef.current = true;
     setTesting(true);
     setTestResult(null);
     try {
@@ -1367,8 +1481,10 @@ export default function AiAssistant() {
           : msg.slice(0, 80),
       });
       flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
+    } finally {
+      testingRef.current = false;
+      setTesting(false);
     }
-    setTesting(false);
   };
 
   // 保存配置
@@ -1414,6 +1530,9 @@ export default function AiAssistant() {
     setFetching(false);
     setTestResult(null);
     setSavedToast(false);
+    // 闸门一并复位：清空后再点「获取模型 / 测试连接」不应被残留锁挡住
+    testingRef.current = false;
+    fetchingRef.current = false;
   };
 
   // 复制到剪贴板（带降级：优先 navigator.clipboard，降级隐藏 textarea + execCommand，覆盖 http 环境）
@@ -1733,7 +1852,7 @@ export default function AiAssistant() {
         ref={panelRef}
         className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
           isMobile
-            ? 'inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
             : collapsed
               ? 'w-auto'
               : 'w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]'
@@ -1975,7 +2094,7 @@ export default function AiAssistant() {
           <button
             type="button"
             onClick={() => setView('settings')}
-            className="w-full px-3 py-2 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
+            className="tap-primary w-full px-3 py-2 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
           >
             {lang === 'zh' ? '我同意并继续 →' : 'I agree and continue →'}
           </button>
@@ -1983,7 +2102,7 @@ export default function AiAssistant() {
         </div>
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3 text-sm serif-font">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-0 space-y-3 text-sm serif-font">
           {/* 服务商预设 */}
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -2037,7 +2156,7 @@ export default function AiAssistant() {
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
                 aria-label={showKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--fg)]"
+                className="tap-icon absolute right-2 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--fg)]"
               >
                 {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -2086,7 +2205,7 @@ export default function AiAssistant() {
                   title={liveModels.length > 0
                     ? (lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list')
                     : (lang === 'zh' ? '先点「获取模型」拉取可用列表' : 'Click "Fetch models" first')}
-                  className="absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="tap-icon absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
@@ -2101,10 +2220,10 @@ export default function AiAssistant() {
                         key={m}
                         type="button"
                         role="option"
-                        aria-selected={m === model}
+                        aria-selected={modelMatches(m)}
                         onClick={() => { setModel(m); setModelMenuOpen(false); }}
                         className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                          m === model
+                          modelMatches(m)
                             ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
                             : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
                         }`}
@@ -2152,8 +2271,8 @@ export default function AiAssistant() {
                     key={m}
                     type="button"
                     onClick={() => setModel(m)}
-                    aria-pressed={m === model}
-                    className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${m === model
+                    aria-pressed={modelMatches(m)}
+                    className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
                       ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
                   >
@@ -2195,8 +2314,8 @@ export default function AiAssistant() {
             <p className="text-[0.625rem] mono-font text-[var(--fg)] mt-1 leading-snug">
               {sentDesc
                 ? (lang === 'zh'
-                    ? `当前：${tierLabel(selectedEffort, 'zh')} · 本次下发 ${sentDesc}`
-                    : `Active: ${tierLabel(selectedEffort, 'en')} · sending ${sentDesc}`)
+                    ? `当前：${tierLabel(dispatch.effort ?? selectedEffort, 'zh')} · 本次下发 ${sentDesc}`
+                    : `Active: ${tierLabel(dispatch.effort ?? selectedEffort, 'en')} · sending ${sentDesc}`)
                 : (lang === 'zh'
                     ? '当前模型本次不下发任何思考参数。'
                     : 'No thinking parameter is sent for this model.')}
@@ -2287,28 +2406,30 @@ export default function AiAssistant() {
             </p>
           </div>
 
-          {/* 操作 */}
-          <div className="flex items-center gap-2 pt-1">
+          {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
+          <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
+            <div className="flex items-center gap-2">
             {config ? (
-              <button type="button" onClick={() => setView('chat')} className="px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+              <button type="button" onClick={() => setView('chat')} className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
                 {lang === 'zh' ? '返回对话' : 'Back to chat'}
               </button>
             ) : (
-              <button type="button" onClick={() => setOpen(false)} className="px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+              <button type="button" onClick={() => setOpen(false)} className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>
             )}
-            <button type="button" onClick={save} className="px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--card-bg)]">
+            <button type="button" onClick={save} className="tap-primary px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--card-bg)]">
               {lang === 'zh' ? '保存' : 'Save'}
             </button>
-            <button type="button" onClick={clearAll} className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
+            <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
               <Trash2 className="w-3 h-3" />
-              {lang === 'zh' ? '清除全部' : 'Clear all'}
+              {lang === 'zh' ? '清除 AI 配置与记录' : 'Clear AI data'}
             </button>
+            </div>
+            {testResult && (
+              <p className={`text-[0.6875rem] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
+            )}
           </div>
-          {testResult && (
-            <p className={`text-[0.6875rem] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
-          )}
         </div>
       ) : view === 'history' ? (
         /* ── 学习记录：问答历史 / 考考你记录（纯本地持久化）── */
@@ -2554,8 +2675,176 @@ export default function AiAssistant() {
                 >
                   {lang === 'zh' ? '全部' : 'All'}
                 </button>
+                {/* 导出错题卷：范围即当前筛选，忽略每页 8 条的浏览分页 */}
+                <button
+                  type="button"
+                  onClick={() => setPaperOpen(true)}
+                  disabled={filteredQuizHistory.length === 0}
+                  title={lang === 'zh' ? '把当前筛选的错题排成 A4 复习卷，可直接打印或另存为 PDF' : 'Lay out the current mistakes as an A4 sheet you can print or save as PDF'}
+                  className="tap-primary ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Printer className="w-3 h-3" aria-hidden="true" />
+                  {lang === 'zh' ? '导出错题卷' : 'Export paper'}
+                </button>
               </span>
             </div>
+            {/* 错题卷配置弹窗（方案 A：确认后生成快照并调起浏览器打印） */}
+            {paperOpen &&
+              createPortal(
+                <div
+                  className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label={lang === 'zh' ? '导出错题卷' : 'Export paper'}
+                >
+                  <div className="absolute inset-0 bg-black/45" onClick={() => setPaperOpen(false)} aria-hidden="true" />
+                  <div className="relative z-10 flex flex-col w-full max-w-sm max-h-[85dvh] bg-[var(--bg)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+                    <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                      <h2 className="text-xs font-bold mono-font tracking-widest">
+                        {lang === 'zh' ? '导出错题卷' : 'EXPORT PAPER'}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => setPaperOpen(false)}
+                        aria-label={lang === 'zh' ? '关闭' : 'Close'}
+                        title={lang === 'zh' ? '关闭' : 'Close'}
+                        className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
+                      <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
+                        {lang === 'zh'
+                          ? `将导出当前筛选的全部 ${filteredQuizHistory.length} 题（忽略每页 8 条的浏览分页）`
+                          : `Exports all ${filteredQuizHistory.length} records in the current filter (the 8-per-page view is ignored)`}
+                      </p>
+                      <label className="flex items-start gap-2 cursor-pointer text-xs serif-font">
+                        <input
+                          type="checkbox"
+                          checked={paperOpts.includeAnswers}
+                          onChange={(e) => setPaperOpts((o) => ({ ...o, includeAnswers: e.target.checked }))}
+                          className="mt-0.5"
+                        />
+                        <span>{lang === 'zh' ? '含答案与解析（文末独立起页）' : 'Include answers and explanations (own page at the end)'}</span>
+                      </label>
+                      <div>
+                        <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '演算留白' : 'Working space'}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {([
+                            ['compact', '紧凑', 'Compact'],
+                            ['standard', '标准 20mm', 'Standard 20mm'],
+                            ['roomy', '宽松 35mm', 'Roomy 35mm'],
+                          ] as [PaperBlankLevel, string, string][]).map(([id, zhLabel, enLabel]) => (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setPaperOpts((o) => ({ ...o, blankLevel: id }))}
+                              className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.blankLevel === id ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                            >
+                              {lang === 'zh' ? zhLabel : enLabel}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '排序方式' : 'Order'}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {([
+                            ['topic', '按知识点分组', 'By topic'],
+                            ['time', '按时间倒序', 'Newest first'],
+                          ] as [PaperSortMode, string, string][]).map(([id, zhLabel, enLabel]) => (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setPaperOpts((o) => ({ ...o, sortMode: id }))}
+                              className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.sortMode === id ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                            >
+                              {lang === 'zh' ? zhLabel : enLabel}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-[var(--border)]">
+                      <button
+                        type="button"
+                        onClick={() => setPaperOpen(false)}
+                        className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                      >
+                        {lang === 'zh' ? '取消' : 'Cancel'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => exportPaper(false)}
+                        disabled={filteredQuizHistory.length === 0}
+                        className="tap-primary ml-auto inline-flex items-center gap-1 px-3 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
+                      >
+                        <Printer className="w-3 h-3" aria-hidden="true" />
+                        {lang === 'zh' ? '直接打印' : 'Print now'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => exportPaper(true)}
+                        disabled={filteredQuizHistory.length === 0}
+                        className="tap-primary inline-flex items-center gap-1 px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--bg)] disabled:opacity-50"
+                      >
+                        <Eye className="w-3 h-3" aria-hidden="true" />
+                        {lang === 'zh' ? '预览' : 'Preview'}
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body,
+              )}
+            {/* 打印/预览卷面：仅在有快照时挂载（屏幕端由 CSS 控制显隐，打印时独占页面） */}
+            {paperData && (
+              <QuizPaperPrint
+                paper={paperData.paper}
+                lang={lang}
+                generatedAt={paperData.generatedAt}
+                preview={paperPreview}
+              />
+            )}
+            {/* 预览工具栏：屏幕端浮在底部；打印时作为 body 子元素被打印样式整体隐藏 */}
+            {paperData &&
+              paperPreview &&
+              createPortal(
+                <div className="exam-preview-bar" role="toolbar" aria-label={lang === 'zh' ? '打印预览' : 'Print preview'}>
+                  <span className="text-[0.6875rem] mono-font text-[var(--muted)]">
+                    {lang === 'zh'
+                      ? `预览 · 共 ${paperData.paper.total} 题${paperData.paper.includeAnswers ? ' · 含答案页' : ''}`
+                      : `Preview · ${paperData.paper.total} questions${paperData.paper.includeAnswers ? ' · with answers' : ''}`}
+                  </span>
+                  <span className="ml-auto flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={backToPaperOptions}
+                      className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
+                    >
+                      {lang === 'zh' ? '返回修改' : 'Back'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaperPreview(false)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[0.6875rem] mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--bg)]"
+                    >
+                      <Printer className="w-3 h-3" aria-hidden="true" />
+                      {lang === 'zh' ? '打印 / 另存为 PDF' : 'Print / Save as PDF'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closePaperPreview}
+                      aria-label={lang === 'zh' ? '关闭预览' : 'Close preview'}
+                      title={lang === 'zh' ? '关闭预览（Esc）' : 'Close preview (Esc)'}
+                      className="px-2 py-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                    >
+                      ×
+                    </button>
+                  </span>
+                </div>,
+                document.body,
+              )}
             {/* 学情概览 + AI 归纳（默认折叠；仅在有记录时显示） */}
             {filteredQuizHistory.length > 0 && (
               <div className="shrink-0 px-3 pt-2">
