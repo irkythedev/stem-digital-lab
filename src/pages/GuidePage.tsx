@@ -97,7 +97,7 @@ export default function GuidePage() {
           playsInline
           className="w-full border border-[var(--border)] bg-[var(--card-bg)]"
         >
-          <source src="/videos/stem-intro.mp4?v=40040fe8" type="video/mp4" />
+          <source src="/videos/stem-intro.mp4?v=1671fb4d" type="video/mp4" />
         </video>
       </div>
 
