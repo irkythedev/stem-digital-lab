@@ -63,14 +63,14 @@ const GROUPS: TtsGroup[] = [
   {
     label: '化学：化合物名称',
     cases: [
-      { tex: 'H_2O', label: '水' },
-      { tex: 'CO_2', label: '二氧化碳' },
-      { tex: 'NaOH', label: '氢氧化钠' },
-      { tex: 'NaCl', label: '氯化钠' },
-      { tex: 'H_2SO_4', label: '硫酸' },
-      { tex: 'CaCO_3', label: '碳酸钙' },
-      { tex: 'KMnO_4', label: '高锰酸钾' },
-      { tex: '2H_2+O_2', label: '反应式（系数+下标）' },
+      { tex: '\\mathrm{H_2O}', label: '水' },
+      { tex: '\\mathrm{CO_2}', label: '二氧化碳' },
+      { tex: '\\mathrm{NaOH}', label: '氢氧化钠' },
+      { tex: '\\mathrm{NaCl}', label: '氯化钠' },
+      { tex: '\\mathrm{H_2SO_4}', label: '硫酸' },
+      { tex: '\\mathrm{CaCO_3}', label: '碳酸钙' },
+      { tex: '\\mathrm{KMnO_4}', label: '高锰酸钾' },
+      { tex: '\\mathrm{2H_2+O_2}', label: '反应式（系数+下标）' },
     ],
   },
   {

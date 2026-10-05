@@ -39,8 +39,14 @@
  * Run: npx tsx src/smoke.test.ts
  */
 import { strict as assert } from 'node:assert';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { labs, labMap, labsForSubject } from './lib/labs';
+import { translations } from './lib/i18n';
+import { planTasks, formatSize, type PackManifest } from './lib/offline-pack';
+import {
+  AUDIO_CACHE, AUDIO_URL_PATTERN, DIAGRAM_CACHE, DIAGRAM_URL_PATTERN,
+  PHOTO_CACHE, PHOTO_URL_PATTERN,
+} from './lib/offline-media';
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
@@ -2299,3 +2305,94 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.match(header, /pt-\[calc\([^)]*env\(safe-area-inset-top/);
   });
 });
+
+// ---------- 离线教学包：清单映射 / 断点续下 / 文案分支 / 与 SW 路由一致性 ----------
+{
+  test('离线包按组写进 SW 既有缓存桶，已在本机的条目不再重复下载（断点续下）', () => {
+    const manifest: PackManifest = {
+      builtAt: 1,
+      groups: [
+        { id: 'photos', files: [{ url: '/element-images/1.jpg', bytes: 100 }, { url: '/element-images/2.jpg', bytes: 200 }] },
+        { id: 'audio', files: [{ url: '/audio/1.mp3', bytes: 50 }] },
+        { id: 'diagrams', files: [{ url: '/architecture-diagram-cn.jpg', bytes: 900 }] },
+      ],
+    };
+    const cached = new Map<string, Set<string>>([
+      [PHOTO_CACHE, new Set(['/element-images/1.jpg'])],
+      [AUDIO_CACHE, new Set()],
+      [DIAGRAM_CACHE, new Set()],
+    ]);
+    const tasks = planTasks(manifest, cached);
+    assert.equal(tasks.length, 4);
+    assert.deepEqual(tasks.map((t) => t.cache), [PHOTO_CACHE, PHOTO_CACHE, AUDIO_CACHE, DIAGRAM_CACHE]);
+    assert.deepEqual(tasks.map((t) => t.cached), [true, false, false, false], '已在本机的照片必须标记为已缓存，否则每次都会重下');
+    assert.equal(formatSize(1048576), '1.0 MB');
+    assert.equal(formatSize(0), '0 MB');
+  });
+
+  test('离线包桶名与 vite.config.ts 的运行时路由同源，且限额放得下全量包', () => {
+    const cfg = readFileSync('vite.config.ts', 'utf8');
+    assert.ok(cfg.includes('cacheName: PHOTO_CACHE') && cfg.includes('cacheName: AUDIO_CACHE') && cfg.includes('cacheName: DIAGRAM_CACHE'), '桶名必须来自 offline-cache-names.ts 单一来源');
+    assert.match(cfg, /maxEntries:\s*120/, '照片上限须 ≥ 全量照片数，否则 LRU 会把离线包自己淘汰');
+    assert.match(cfg, /maxEntries:\s*500/, '音频上限须 ≥ 全量音频数（118 元素 × 4 种读音）');
+    assert.equal(PHOTO_CACHE, 'element-photos');
+    assert.equal(AUDIO_CACHE, 'element-audio');
+    assert.equal(DIAGRAM_CACHE, 'architecture-assets');
+  });
+
+  test('离线包清单构建期扫盘生成并进预缓存，数量与体积不写死', () => {
+    const cfg = readFileSync('vite.config.ts', 'utf8');
+    assert.match(cfg, /writeOfflineManifest/, '清单须由构建期插件生成');
+    assert.ok(cfg.includes("'offline-manifest.json'"), '清单须进预缓存，否则断网读不到状态');
+    assert.ok(!/element-images\/105|472\s*个/.test(cfg), '数量不得硬编码');
+  });
+
+  test('离线媒体规则必须覆盖 public/ 下的每一个真实文件（下好了却打不开就是规则漏了）', () => {
+    const audio = readdirSync('public/audio');
+    const photos = readdirSync('public/element-images');
+    const diagrams = readdirSync('public').filter((f) => f.startsWith('architecture-diagram-'));
+    const missAudio = audio.filter((f) => !AUDIO_URL_PATTERN.test('/audio/' + f));
+    const missPhoto = photos.filter((f) => !PHOTO_URL_PATTERN.test('/element-images/' + f));
+    const missDiagram = diagrams.filter((f) => !DIAGRAM_URL_PATTERN.test('/' + f));
+    assert.deepEqual(missAudio, [], '有音频文件没被 SW 路由接住：断网时下过也打不开（曾漏掉 -em 变体）');
+    assert.deepEqual(missPhoto, [], '有照片文件没被 SW 路由接住');
+    assert.deepEqual(missDiagram, [], '有架构图没被 SW 路由接住');
+    assert.equal(audio.length, 118 * 4, '读音应为 118 元素 × 4 种变体');
+    assert.ok(photos.length >= 100, '元素照片数量异常');
+  });
+
+  test('非安全上下文必须按真实原因说明，不是笼统一句「浏览器不支持」', () => {
+    const lib = readFileSync('src/lib/offline-pack.ts', 'utf8');
+    assert.match(lib, /window\.isSecureContext === false/, '须用 isSecureContext 区分「不是 https」与「浏览器真没有」');
+    assert.ok(lib.includes("return insecure ? 'insecure' : 'unsupported'"), '须分流为 insecure / unsupported');
+    const panel = readFileSync('src/components/feedback/OfflinePackPanel.tsx', 'utf8');
+    assert.match(panel, /status\.reason === 'insecure' \? c\.insecure : c\.unsupported/, '面板须按原因选择文案');
+    const zh = translations.zh.offlinePack as unknown as Record<string, string>;
+    const en = (translations.en as unknown as typeof translations.zh).offlinePack as unknown as Record<string, string>;
+    assert.ok(zh.insecure.includes('HTTPS') && en.insecure.includes('HTTPS'), '文案须点明 HTTPS 这个原因');
+    assert.match(readFileSync('src/pages/PeriodicTable.tsx', 'utf8'), /packStatus\.supported \?/, '未支持时入口不得显示 0/总数');
+  });
+
+  test('离线教学包与断网提示文案：中英对称、大白话、三态齐全', () => {
+    const zhPack = translations.zh.offlinePack as unknown as Record<string, string>;
+    const enPack = (translations.en as unknown as typeof translations.zh).offlinePack as unknown as Record<string, string>;
+    const zhAi = translations.zh.offlineAi as unknown as Record<string, string>;
+    const enAi = (translations.en as unknown as typeof translations.zh).offlineAi as unknown as Record<string, string>;
+    assert.equal(zhPack.entry, '离线教学包');
+    assert.equal(zhPack.start, '存到本机');
+    assert.ok(zhPack.readyTitle.includes('无网也能照常上课'));
+    for (const key of ['entry', 'entryHint', 'title', 'sizeLabel', 'lead', 'excluded', 'start', 'cancel', 'progress', 'stop', 'resume', 'readyTitle', 'readyLead', 'clear', 'clearConfirm', 'cleared', 'unsupported', 'insecure', 'partial', 'outdated']) {
+      assert.ok(zhPack[key], `zh.offlinePack.${key} 缺失`);
+      assert.ok(enPack[key], `en.offlinePack.${key} 缺失`);
+    }
+    for (const key of ['badge', 'publicApi', 'localApi', 'sendBlocked', 'failed', 'hint']) {
+      assert.ok(zhAi[key] && enAi[key], `offlineAi.${key} 中英缺一`);
+    }
+    // 断网两种口吻必须分开：公网版讲「本地功能照常」，局域网版讲「仍可一试」
+    assert.ok(zhAi.publicApi.includes('照常可用'));
+    assert.ok(zhAi.localApi.includes('仍然可以继续对话'));
+    assert.ok(!zhPack.entryHint.includes('缓存'), '入口说明用大白话，不写「缓存」这类工程词');
+    assert.match(readFileSync('src/components/ai/AskAiButton.tsx', 'utf8'), /disabled=\{isOffline\}/, '断网时「问 AI」须温和阻断');
+    assert.match(readFileSync('src/components/ai/AiAssistant.tsx', 'utf8'), /offlineAi\.localApi/, 'AI 面板须按端点类型区分断网文案');
+  });
+}

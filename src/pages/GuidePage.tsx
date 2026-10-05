@@ -5,7 +5,7 @@
  * 使用说明：课堂与个人探究的简明操作指南。
  */
 import { Link } from 'react-router-dom';
-import { MessageSquare, Sparkles } from 'lucide-react';
+import { MessageSquare, NotebookPen, Sparkles } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { usePageMeta } from '../lib/use-page-meta';
 
@@ -37,6 +37,14 @@ const copy = {
       { title: '学习辅助声明', body: '本 AI 助手专为初中数学（人教版）、物理（苏科版）、化学（人教版）学习辅助设计。AI 生成的内容存在不准确的可能，仅供参考，请务必以学校教材和任课老师的讲解为准。未成年人请在监护人的指导下配置和使用。' },
       { title: '合规与责任限制', body: '请合法合规使用本工具，严禁用于生成或传播任何违法违规内容。由于网络环境或服务商跨域（CORS）限制导致的连接问题，本站无法干预。因使用本工具及所选 AI 服务产生的相关权责，由您与服务商自行承担。' },
     ],
+    mistakes: '错题集与复习卷',
+    mistakesList: [
+      '怎么收集：在 AI 面板「考考你」作答后，答错的题自动记入错题集，不需要手动收藏',
+      '学情概览：按薄弱知识点、错误类型与趋势汇总，并给出 AI 复习建议',
+      '怎么导出：错题集 → 按科目 / 知识点筛选 → 「导出错题卷」→ 选排序方式与演算留白 → 先「预览」核对 A4 版式 → 「直接打印」',
+      '卷面排版：按知识点分节、全卷连续编号、标注建议限时；勾选「含答案与解析」后，答案在文末独立起页；含公式的选项自动改为单列，避免长公式被挤压',
+      '打印与保存：直接连接打印机，或在系统打印窗口中选择「另存为 PDF」导出保存',
+    ],
   },
   en: {
     title: 'How to use',
@@ -64,6 +72,14 @@ const copy = {
       { title: 'Data and privacy', body: 'Your API key stays only in your browser\'s local storage. This site has no backend — it never collects, stores or relays keys or conversations. Chat data goes straight from your browser to your chosen provider. Keep your key safe.' },
       { title: 'Learning aid only', body: 'This assistant is limited to junior-high math (PEP), physics (Su-Ke) and chemistry (PEP) learning aid. AI output may be inaccurate — for reference; always defer to the textbook and your teacher. Minors should configure and use it under a guardian\'s guidance.' },
       { title: 'Compliance and liability', body: 'Use this tool lawfully; never generate or spread unlawful content. Connection issues caused by network or provider CORS restrictions are outside this site\'s control. Responsibility lies with you and your chosen provider.' },
+    ],
+    mistakes: 'Mistake book & revision sheet',
+    mistakesList: [
+      'How mistakes are collected: after answering in the panel\'s "Quiz me", wrong answers are saved to the mistake book automatically — no manual bookmarking',
+      'What the overview shows: weak topics, error patterns and trend, plus an AI review summary',
+      'How to export: mistake book → filter by subject / topic → "Export paper" → choose order and working space → "Preview" to check the A4 layout → "Print now"',
+      'How the sheet is laid out: sections by topic, continuous numbering across the sheet, a suggested time limit; tick "Include answers and explanations" to place them on their own page at the end; options containing formulas switch to a single column so long formulas are not squeezed',
+      'Printing and saving: print straight to a printer, or choose "Save as PDF" in the system print dialog to export a file',
     ],
   },
 };
@@ -134,6 +150,17 @@ export default function GuidePage() {
                   {t.body}
                 </span>
               </li>
+            ))}
+          </ul>
+        </section>
+        <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
+          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-4">
+            <NotebookPen className="w-3.5 h-3.5" aria-hidden="true" />
+            {c.mistakes}
+          </h2>
+          <ul className="space-y-2">
+            {c.mistakesList.map((item) => (
+              <li key={item} className="text-sm serif-font leading-relaxed text-[var(--muted)]">{item}</li>
             ))}
           </ul>
         </section>

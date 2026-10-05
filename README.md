@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v0.35.0-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
+![version](https://img.shields.io/badge/版本-v0.36.0-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
 ![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![katex](https://img.shields.io/badge/KaTeX-0.18-green)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：<a href="https://stem.irky.dev">https://stem.irky.dev</a></p>
@@ -50,7 +50,7 @@
 - 📱 响应式：手机 / 平板 / PC / 希沃大屏
 - 🎲 首页「随机探索」一键随机进入实验或工具
 - 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
-- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
+- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - 📦 可安装为应用离线使用（PWA）
 - 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
 
@@ -114,7 +114,7 @@ npm run test       # 运行测试
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
 - 支持数学公式排版（行内 / 块级 LaTeX），支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算，设置页可查看累计 token 用量与按日明细
-- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；「考考我」可让 AI 基于当前知识点出单选题或填空题（可选单选/填空/混合，支持 AI 辅助判分），作答后即时判分与讲解；答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议；不提供自由输入框，问答历史持久保存于本机浏览器
+- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；「考考我」可让 AI 基于当前知识点出单选题或填空题（可选单选/填空/混合，支持 AI 辅助判分），作答后即时判分与讲解；答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议；错题集可**按科目 / 知识点筛选后导出 A4 复习卷**：导出范围即当前筛选的全部错题（忽略每页 8 条的浏览分页），可选排序方式（按知识点分组 / 按时间倒序）、演算留白（紧凑 / 标准 20mm / 宽松 35mm）与是否附答案与解析（勾选后答案在文末独立起页）；**打印前可先按 A4 纸面预览**核对版式，含公式的选项自动改为单列避免挤压；直接连接打印机，或在系统打印窗口中选择「另存为 PDF」导出保存。不提供自由输入框，问答历史持久保存于本机浏览器
 
 ### 每日科学
 
@@ -187,7 +187,7 @@ src/
 - 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
 - 🎲 "Random explore" button on the homepage jumps into a random lab or tool
 - 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- 🤖 AI assistant (header entry): renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - 📦 Installable as an app for offline use (PWA)
 - 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
 
@@ -251,7 +251,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
 |- Math formulas are rendered properly (inline / block LaTeX); Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage, with cumulative usage and per-day details in settings
-|- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option; "Quiz me" generates single-choice or fill-in questions (choose single-choice/fill-in/mixed, with AI-assisted grading) and scores them instantly with an explanation — no free-text input, and history persists only in your local browser. Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary
+|- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option; "Quiz me" generates single-choice or fill-in questions (choose single-choice/fill-in/mixed, with AI-assisted grading) and scores them instantly with an explanation — no free-text input, and history persists only in your local browser. Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary. The mistake book can be **filtered by subject / topic and exported as an A4 revision sheet**: the export covers every record in the current filter (the 8-per-page browsing view is ignored), with selectable order (by topic / newest first), working space (compact / standard 20mm / roomy 35mm) and an optional answer-and-explanation section on its own page at the end; **preview the real A4 layout before printing**, options containing formulas switch to a single column so long formulas are not squeezed, and you can print straight to a printer or choose "Save as PDF" in the system print dialog to export a file
 
 ### Daily Science
 

@@ -46,8 +46,17 @@ window.addEventListener('orientationchange', setKeyboardVars);
 window.visualViewport?.addEventListener('resize', setKeyboardVars);
 window.visualViewport?.addEventListener('scroll', setKeyboardVars);
 
+// 刷新时机统一由 controllerchange 驱动（唯一的刷新入口）：
+// 插件默认会在 activated 阶段直接 reload，与手动点击形成两个刷新驱动 → 可能连刷两次。
+let hadController = !!navigator.serviceWorker?.controller;
+navigator.serviceWorker?.addEventListener('controllerchange', () => {
+  // 首次接管（clientsClaim 让首个 SW 接管本页）不算更新：不刷新
+  if (!hadController) { hadController = true; return; }
+  window.location.reload();
+});
+
 // 注册 Service Worker（PWA 离线可用 + 可安装）
-registerSW({ immediate: true });
+registerSW({ immediate: true, onNeedReload: () => { /* 统一交给上面的 controllerchange */ } });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

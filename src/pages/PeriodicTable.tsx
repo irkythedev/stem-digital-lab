@@ -14,8 +14,10 @@
  */
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2, X } from 'lucide-react';
+import { House, Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck} from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
+import OfflinePackPanel from '../components/feedback/OfflinePackPanel';
+import { useOfflinePack } from '../lib/use-offline-pack';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
@@ -90,6 +92,9 @@ export default function PeriodicTable() {
   usePageMeta(pageMeta);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
   useLockBodyScroll(!!selected);
+  // 离线教学包：素材就在这一页，把入口放在最贴近的地方
+  const [showPack, setShowPack] = useState(false);
+  const { status: packStatus } = useOfflinePack();
   const { setAiCtx } = useAiContext();
   // AI 上下文：选中元素时注入
   useEffect(() => {
@@ -532,6 +537,27 @@ export default function PeriodicTable() {
             </div>
           </div>
         </div>
+
+        {/* 离线教学包：把照片与读音存到本机，断网也能照常上课 */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowPack(true)}
+            title={t.offlinePack.entryHint}
+            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-2.5 py-1.5 text-xs mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
+          >
+            <HardDrive className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            {t.offlinePack.entry}
+            {packStatus?.isFull ? (
+              <CircleCheck className="w-3 h-3 shrink-0 text-green-600" aria-hidden="true" />
+            ) : (
+              <span className="text-[0.625rem] text-[var(--muted)]">
+                {!packStatus ? '' : packStatus.supported ? `${packStatus.cachedCount}/${packStatus.totalCount}` : '—'}
+              </span>
+            )}
+          </button>
+        </div>
+        {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
 
         {/* 预设选择 */}
         <div className="flex flex-wrap gap-2">

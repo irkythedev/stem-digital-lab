@@ -3,8 +3,14 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import { defineConfig, type Plugin } from 'vite';
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
+
+import {
+  AUDIO_CACHE, AUDIO_URL_PATTERN,
+  DIAGRAM_CACHE, DIAGRAM_URL_PATTERN,
+  PHOTO_CACHE, PHOTO_URL_PATTERN,
+} from './src/lib/offline-media';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +26,43 @@ function versionJson(): Plugin {
       const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
       const out = path.resolve(__dirname, 'dist/version.json');
       writeFileSync(out, JSON.stringify({ version: pkg.version, builtAt: Date.now() }, null, 2));
+    },
+  };
+}
+
+/**
+ * 离线教学包清单：构建时扫 public/ 下的媒体目录，产出 dist/offline-manifest.json。
+ * 文件数量与体积都由文件系统决定，代码里不写死；
+ * 清单本身很小（约 15KB）且进预缓存，这样断网时也能读到它、照常显示离线包状态。
+ */
+function writeOfflineManifest(): Plugin {
+  return {
+    name: 'write-offline-manifest',
+    generateBundle() {
+      const collect = (id: string, dir: string, match: (name: string) => boolean, base: string) => {
+        const abs = path.resolve(__dirname, dir);
+        if (!existsSync(abs)) return { id, files: [] as { url: string; bytes: number }[] };
+        const files = readdirSync(abs)
+          .filter(match)
+          .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+          .map((name) => ({ url: `${base}${name}`, bytes: statSync(path.join(abs, name)).size }));
+        return { id, files };
+      };
+      // 15MB 的宣传视频不进离线包：为它把整包体积翻倍不划算；架构页的 html 首次访问后由
+      // 运行时缓存按需留下（见下方 runtimeCaching），这里只带上它用的两张图。
+      const manifest = {
+        builtAt: Date.now(),
+        groups: [
+          collect('photos', 'public/element-images', (n) => n.endsWith('.jpg'), '/element-images/'),
+          collect('audio', 'public/audio', (n) => n.endsWith('.mp3'), '/audio/'),
+          collect('diagrams', 'public', (n) => /^architecture-diagram-.*\.jpg$/.test(n), '/'),
+        ],
+      };
+      this.emitFile({
+        type: 'asset',
+        fileName: 'offline-manifest.json',
+        source: JSON.stringify(manifest),
+      });
     },
   };
 }
@@ -148,6 +191,7 @@ export default defineConfig({
     tailwindcss(),
     versionJson(),
     seoAssets(),
+    writeOfflineManifest(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-dark.svg'],
@@ -168,7 +212,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}', 'offline-manifest.json'],
         // architecture.html 是重型查看器（约 735KB）：不预缓存，避免每个访客首装体积翻倍；
         // 改由下方 runtimeCaching 首次访问后按需缓存（离线仍可打开）。
         globIgnores: ['**/version.json', '**/audio/*.mp3', '**/architecture.html'],
@@ -198,6 +242,38 @@ export default defineConfig({
               cacheName: 'architecture-page',
               networkTimeoutSeconds: 3,
               expiration: { maxEntries: 3, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // 元素实物照片：按需缓存（访问过就留下来），不塞进首装预缓存
+            urlPattern: PHOTO_URL_PATTERN,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: PHOTO_CACHE,
+              // 上限按「全量离线包」定（照片约 104 张），否则 LRU 会把刚下好的包自己淘汰掉
+              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // 架构图两张：离线教学包会写进来，平时访问架构页也顺手留下
+            urlPattern: DIAGRAM_URL_PATTERN,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: DIAGRAM_CACHE,
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // 元素读音音频：听过就不再走网络（单文件十几 KB，CacheFirst 最省流量）
+            urlPattern: AUDIO_URL_PATTERN,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: AUDIO_CACHE,
+              // 上限按「全量离线包」定（118 元素 × 4 种读音 = 472 段）
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

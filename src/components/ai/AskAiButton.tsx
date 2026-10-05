@@ -19,13 +19,15 @@ interface AskAiButtonProps {
 }
 
 export default function AskAiButton({ question, label, className = '' }: AskAiButtonProps) {
-  const { lang } = useApp();
+  const { lang, t, isOffline } = useApp();
   const { askAi } = useAiContext();
   return (
     <button
       type="button"
       onClick={() => askAi(question)}
-      className={`inline-flex items-center gap-1 text-xs mono-font underline hover:text-[var(--fg)] transition-colors ${className}`}
+      disabled={isOffline}
+      title={isOffline ? t.offlineAi.sendBlocked : undefined}
+      className={`inline-flex items-center gap-1 text-xs mono-font underline hover:text-[var(--fg)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--muted)] ${className}`}
     >
       <Sparkles className="w-3 h-3" />
       {label ?? (lang === 'zh' ? '问 AI' : 'Ask AI')}

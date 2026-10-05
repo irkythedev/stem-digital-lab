@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -204,7 +204,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
 }
 
 export default function AiAssistant() {
-  const { lang } = useApp();
+  const { lang, t, isOffline } = useApp();
   const { state: speakState, errorMsg, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
@@ -296,6 +296,10 @@ export default function AiAssistant() {
   );
   };
   const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
+  // 局域网/本机端点：断网时仍值得一试（这类推理服务不依赖外网）
+  const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(
+    (config?.baseUrl ?? '').trim(),
+  );
   const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
@@ -671,8 +675,10 @@ export default function AiAssistant() {
       const msg = (e as Error).message;
       const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
       setQuizSummaryError(
-        isNetworkError(msg)
-          ? (lang === 'zh' ? '网络无法访问该端点，请检查网络或改用预设服务商' : 'Cannot reach the endpoint. Check network or use a preset provider')
+        isOffline
+          ? t.offlineAi.failed
+          : isNetworkError(msg)
+          ? msg
           : authFailed
             ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
             : (lang === 'zh' ? '生成失败：' : 'Failed: ') + msg,
@@ -869,7 +875,7 @@ export default function AiAssistant() {
       const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
       setQuizError(
         isNetworkError(msg)
-          ? (lang === 'zh' ? '网络无法访问该端点，请检查网络或改用预设服务商' : 'Cannot reach the endpoint. Check network or use a preset provider')
+          ? msg
           : authFailed
             ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
             : (lang === 'zh' ? '出题失败：' : 'Failed: ') + msg,
@@ -1374,11 +1380,14 @@ export default function AiAssistant() {
 
   // pending 就绪后自动发送（已配置时）
   useEffect(() => {
-    if (pending && config) {
+    if (!pending) return;
+    if (config) {
       void sendQuestion(pending, false);
       setPending(null);
+    } else if (!open) {
+      setOpen(true); // 未配置就把面板打开去配；问题保留，保存后自动发出
     }
-  }, [pending, config]);
+  }, [pending, config, open, setOpen]);
 
   // 回答区自动滚底（流式增量 + 新轮入历史时都滚到底部）
   useEffect(() => {
@@ -1400,6 +1409,19 @@ export default function AiAssistant() {
   };
 
   /** 取端点（自定义用输入值，预设用服务商地址），返回 null 表示地址无效 */
+  // 表单与「已保存配置」是否一致：不一致就明说，避免测试过了、提问却用旧配置
+  const formMatchesSaved = useMemo(() => {
+    if (!config) return false;
+    const formUrl = normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl);
+    return (
+      config.providerId === providerId &&
+      config.baseUrl === formUrl &&
+      config.apiKey === apiKey.trim() &&
+      config.model === model.trim() &&
+      (config.thinkingEffort ?? 'standard') === thinkingEffort
+    );
+  }, [config, providerId, customUrl, provider.baseUrl, apiKey, model, thinkingEffort]);
+
   const resolveBaseUrl = (): string | null =>
     normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl) || null;
 
@@ -1432,9 +1454,7 @@ export default function AiAssistant() {
       setLiveModels([]);
       setTestResult({
         ok: false,
-        msg: isNetworkError(msg)
-          ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
-          : msg.slice(0, 80),
+        msg: msg.slice(0, 80),
       });
       flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
     } finally {
@@ -1476,9 +1496,7 @@ export default function AiAssistant() {
       const msg = (e as Error).message;
       setTestResult({
         ok: false,
-        msg: isNetworkError(msg)
-          ? (lang === 'zh' ? '无法访问该端点（网络不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
-          : msg.slice(0, 80),
+        msg: msg.slice(0, 80),
       });
       flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
     } finally {
@@ -1614,7 +1632,12 @@ export default function AiAssistant() {
   const sendQuestion = async (text: string, followUp = false) => {
     expandFromCapsule(); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
-    if (!q || busy || !config) return;
+    if (!q || busy) return;
+    if (!config) {
+      setOpen(true);
+      flashToast(false, lang === 'zh' ? '请先在 AI 设置里保存配置' : 'Save your AI settings first');
+      return;
+    }
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
     setAnswer('');
     setReasoning('');
@@ -1726,8 +1749,10 @@ export default function AiAssistant() {
         const msg = (e as Error).message;
         const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
         setError(
-          isNetworkError(msg)
-            ? (lang === 'zh' ? '网络无法访问该端点（不可达或浏览器直连被限制），请改用预设服务商或自建代理' : 'Cannot reach this endpoint (network or browser-direct restriction). Use a preset provider or your own proxy')
+          isOffline
+            ? t.offlineAi.failed
+            : isNetworkError(msg)
+            ? msg
             : authFailed
               ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired — open Settings to reconfigure')
               : (lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg,
@@ -1990,6 +2015,14 @@ export default function AiAssistant() {
         </div>
       </div>
 
+            {/* 断网提示：公网接口要联网，局域网推理服务仍可一试（两种口吻分开写） */}
+      {isOffline && (
+        <p className="mx-4 mt-3 flex items-start gap-2 border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[0.6875rem] serif-font leading-relaxed text-[var(--fg)]">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
+          <span>{localEndpoint ? t.offlineAi.localApi : t.offlineAi.publicApi}</span>
+        </p>
+      )}
+
       {view === 'terms' ? (
         /* ── 第一步：使用须知（先同意才能进入设置） ── */
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -2138,6 +2171,11 @@ export default function AiAssistant() {
                 placeholder={lang === 'zh' ? 'https://your-proxy.example.com/v1 或完整端点 /chat/completions' : 'https://your-proxy.example.com/v1 or full endpoint /chat/completions'}
                 className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
+              <p className="mt-1 text-[0.625rem] leading-snug text-[var(--muted)]">
+                {lang === 'zh'
+                  ? '支持任意兼容 OpenAI 接口的端点。若连接局域网私有模型，请确保该服务端已开启 CORS 跨域访问。'
+                  : 'Works with any OpenAI-compatible endpoint. For a private model on your LAN, make sure that server has CORS enabled.'}
+              </p>
             </div>
           )}
 
@@ -2406,7 +2444,15 @@ export default function AiAssistant() {
             </p>
           </div>
 
-          {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
+          {/* 配置是否已生效：未保存时明说，提问用的永远是已保存的那份 */}
+        {!formMatchesSaved && (
+          <p className="text-[0.625rem] leading-snug text-[var(--muted)] border border-[var(--border)] px-2 py-1.5">
+            {config
+              ? (lang === 'zh' ? '当前填写尚未保存：请点「保存」，否则提问仍使用上一次保存的配置。' : 'Unsaved changes: press Save, or asking will use the previously saved config.')
+              : (lang === 'zh' ? '还没有保存过配置：先「测试连接」，确认可用后点「保存」。' : 'Nothing saved yet: run Test connection, then press Save.')}
+          </p>
+        )}
+        {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
           <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
             {config ? (

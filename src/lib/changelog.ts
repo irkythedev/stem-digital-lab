@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.35.0';
+export const APP_VERSION = '0.36.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,38 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 离线教学包：一键把 104 张元素实物照片、472 段读音和 2 张架构图存到本机（约 13.6 MB），教室断网也能照常上课；下载中有进度、可暂停、之后接着存',
+      '[修复] 有新版本时点一次就能更新到最新版本，不必连点好几次；更新过程中也不会再跳回旧版',
+      '[新增] 断网会明确提示：AI 助手需要联网才能用（若你配置的是本机或局域网的模型服务，仍然可以继续对话），本地实验、公式手册与错题复习卷照常可用',
+      '[优化] 元素照片与读音看过一次就留在本机，之后再打开更快，弱网下也还能看',
+    ],
+    en: [
+      '[New] Offline teaching pack: save 104 element photos, 472 audio clips and 2 diagrams to this device (about 13.6 MB) with one tap, so class still works when the internet is down; progress is visible, and you can pause and resume',
+      '[Fixed] When a new version is available, one tap is enough to update; the page no longer falls back to the old version mid-update',
+      '[New] Going offline is clearly explained: the AI assistant needs the internet (a local or LAN model service still works), while local experiments, formula sheets and the revision sheet keep working',
+      '[Improved] Element photos and audio stay on this device once viewed, so pages open faster and still work on a weak connection',
+    ],
+  },
+  {
+    version: '0.35.1',
+    date: '2026-10',
+    zh: [
+      '[新增] 使用说明新增「错题集与复习卷」一节：从错题筛选到排成 A4 复习卷、打印或存成 PDF 的完整流程都写清楚了',
+      '[修复] AI 讲解里的公式书写更贴近教材：化学式与元素符号用正体，单位不再当成变量排成斜体，核素与下标也按规范书写',
+      '[优化] 自定义接口的提示改直白：连不上时如实说明原因，不再给多余的推测；改了地址还没保存会提醒先保存',
+      '[优化] 顶栏各项文字与图标对齐，英文长标签下也不再错位',
+    ],
+    en: [
+      '[New] The guide gains a "Mistake book & revision sheet" section: the full path from filtering mistakes to an A4 sheet, printing it or saving it as PDF',
+      '[Fixed] Formulas in AI explanations now read like a textbook: chemical formulas and element symbols upright, units no longer italicised as variables, nuclides and subscripts written the standard way',
+      '[Improved] Custom endpoint messages are plainer: when it cannot connect you get the real reason instead of a guess, and unsaved address changes are pointed out before sending',
+      '[Improved] Top-bar labels and icons line up, including with longer English labels',
+    ],
+  },
   {
     version: '0.35.0',
     date: '2026-10',

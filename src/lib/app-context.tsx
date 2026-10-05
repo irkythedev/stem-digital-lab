@@ -23,6 +23,8 @@ interface AppContextValue {
   t: Translation;
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
+  /** 设备是否断网：离线时 AI 入口给出提示，本地实验与查表照常可用 */
+  isOffline: boolean;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -51,6 +53,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
 
+  // 断网感知：只反映「有没有网络」，局域网里没外网也算在线（此时 AI 仍值得一试）
+  const [isOffline, setIsOffline] = useState(
+    () => typeof navigator !== 'undefined' && navigator.onLine === false,
+  );
+  useEffect(() => {
+    const goOnline = () => setIsOffline(false);
+    const goOffline = () => setIsOffline(true);
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
   // 应用主题类到 <html>，并监听系统主题变化
   useEffect(() => {
     const root = document.documentElement;
@@ -78,8 +95,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       t: translations[lang] as Translation,
       themeMode,
       setThemeMode,
+      isOffline,
     }),
-    [lang, themeMode],
+    [lang, themeMode, isOffline],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
