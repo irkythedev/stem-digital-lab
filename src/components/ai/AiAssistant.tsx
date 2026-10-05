@@ -1108,7 +1108,7 @@ export default function AiAssistant() {
     }
   });
 
-  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；200–720px）
+  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；200–960px）
   const [height, setHeight] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     try {
@@ -1116,7 +1116,8 @@ export default function AiAssistant() {
       const h = raw ? parseInt(raw, 10) : 0;
       // 0 = 没有记忆：不设显式上限，交给外层视口上限兜底（旧写法把 0 夹成 200，会裁掉页脚）
       if (!Number.isFinite(h) || h <= 0) return 0;
-      return Math.min(720, Math.max(200, h));
+      // 记忆值同样是 200–960（与 maxPanelHeight 对齐，否则拖到 960 下次加载会被截回 720）
+      return Math.min(960, Math.max(200, h));
     } catch {
       return 0;
     }
@@ -1170,7 +1171,8 @@ export default function AiAssistant() {
     y: Math.max(8, Math.min(y, Math.max(8, window.innerHeight - 60))),
   });
   /** 尺寸上限：既服从用户记忆值，也不超过视口（否则面板底部会沉到屏幕外） */
-  const maxPanelHeight = (want: number) => Math.max(200, Math.min(720, want, window.innerHeight - 72));
+  // 上限交给视口（原 720 硬顶在 1080p 上白白少给 288px）；留 960 只作超大屏的阅读行数约束
+  const maxPanelHeight = (want: number) => Math.max(200, Math.min(960, want, window.innerHeight - 72));
   const maxPanelWidth = (want: number) => Math.max(280, Math.min(720, want, window.innerWidth - 16));
 
   /** 纯 DOM 写入：拖拽期间唯一改样式的地方（不碰 React state） */
@@ -1877,10 +1879,11 @@ export default function AiAssistant() {
         ref={panelRef}
         className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
           isMobile
-            ? 'inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
             : collapsed
               ? 'w-auto'
-              : 'w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]'
+              // 空会话也保底 62dvh，面板不再塌到 221px；只在用户拖过高度时让位（见下方 style 里的 maxHeight）
+              : `w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]${height > 0 && view === 'chat' ? '' : ' min-h-[min(62dvh,calc(100dvh-4.5rem))]'}`
         }`}
         style={{
           ...(!isMobile
@@ -3603,7 +3606,8 @@ export default function AiAssistant() {
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
-          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-[60dvh] sm:max-h-none p-3 space-y-2.5 text-sm serif-font">
+          {/* 移动端内层原 60dvh 会先于抽屉的 85dvh 到顶，白白浪费约 25% 的高度配额 */}
+          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-none p-3 space-y-2.5 text-sm serif-font">
             {history.length > 0 || answer || pending || busy || error ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}

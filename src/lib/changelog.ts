@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.0';
+export const APP_VERSION = '0.36.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,16 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.1',
+    date: '2026-10',
+    zh: [
+      '[优化] AI 助手窗口更舒展：刚打开、还没提问时不再是一条窄缝；手机上连续追问时能多看几段内容再滚动',
+    ],
+    en: [
+      '[Improved] The AI assistant panel opens taller: a fresh panel is no longer a narrow strip, and on phones you can read more of a longer conversation before scrolling',
+    ],
+  },
   {
     version: '0.36.0',
     date: '2026-10',
