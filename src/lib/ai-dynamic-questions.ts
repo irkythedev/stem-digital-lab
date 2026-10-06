@@ -60,8 +60,8 @@ export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> =
     return [
       {
         values: { u, i, element: isBulb ? 'bulb' : 'resistor' },
-        zh: `我把电压调到 ${f2(u)}V，${part}的电流读数是 ${f2(i)}A，${tailZh}`,
-        en: `With the voltage at ${f2(u)}V the ${partEn} current reads ${f2(i)}A. ${tailEn}`,
+        zh: `<当前读数>电压 ${f2(u)}V，${part}电流 ${f2(i)}A</当前读数>${tailZh}`,
+        en: `<current_reading>voltage ${f2(u)}V, ${partEn} current ${f2(i)}A</current_reading> ${tailEn}`,
         requires: 'compare',
       },
     ];
@@ -76,8 +76,8 @@ export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> =
     return [
       {
         values: { u, f, v },
-        zh: `物距 ${f2(u)}cm、焦距 ${f2(f)}cm 时像距是 ${f2(v)}cm，我把物体再往透镜靠近一点，像距为什么会变大？`,
-        en: `With object distance ${f2(u)}cm and focal length ${f2(f)}cm the image distance is ${f2(v)}cm. Why does the image distance grow when I move the object closer to the lens?`,
+        zh: `<当前读数>物距 ${f2(u)}cm、焦距 ${f2(f)}cm、像距 ${f2(v)}cm</当前读数>我把物体再往透镜靠近一点，像距为什么会变大？`,
+        en: `<current_reading>object distance ${f2(u)}cm, focal length ${f2(f)}cm, image distance ${f2(v)}cm</current_reading> Why does the image distance grow when I move the object closer to the lens?`,
         requires: 'trend',
       },
     ];
@@ -94,8 +94,8 @@ export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> =
     return [
       {
         values: { m1, d1, m2, d2, balanced: balanced ? 1 : 0 },
-        zh: `现在左边 ${m1}×${d1}、右边 ${m2}×${d2}，杠杆${balanced ? '刚好平衡' : '往重的一边倾'}，为什么比较这两个乘积就能判断平衡？`,
-        en: `Right now the left is ${m1}×${d1} and the right is ${m2}×${d2}, and the lever ${balanced ? 'balances' : 'tilts to the heavier side'}. Why does comparing those two products tell us whether it balances?`,
+        zh: `<当前读数>左 ${m1}×${d1}，右 ${m2}×${d2}，杠杆${balanced ? '刚好平衡' : '往重的一边倾'}</当前读数>为什么比较这两个乘积就能判断平衡？`,
+        en: `<current_reading>left ${m1}×${d1}, right ${m2}×${d2}, lever ${balanced ? 'balances' : 'tilts to the heavier side'}</current_reading> Why does comparing those two products tell us whether it balances?`,
         requires: 'compare',
       },
     ];

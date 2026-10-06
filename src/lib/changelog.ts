@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.1';
+export const APP_VERSION = '0.36.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.2',
+    date: '2026-10',
+    zh: [
+      '[新增] 「考考你」入口铺到全部实验与工具页：每个实验、元素周期表、公式与常量页都能一键出题练习（此前只有二次函数实验有页面入口）',
+      '[优化] 出题更稳、更贴课：AI 把答案写成加粗、带引号、以「答案：」开头或用代码块包起来时也能正确判对；并新增约束让题目不超纲、不泄露你的设置、紧扣页面上当前显示的读数',
+      '[优化] 题面更干净：模型偶尔带上的 Markdown 装饰（星号、反引号、代码围栏）会被自动清除，题目里不再夹带符号',
+    ],
+    en: [
+      '[New] "Quiz" is now on every lab and tool page: each experiment, the periodic table, and the formula and constant pages can start a quiz in one tap (previously only the quadratic lab had a page-level entry)',
+      '[Improved] More reliable, more classroom-aligned quizzes: answers written in bold, wrapped in quotes, starting with "Answer:", or fenced in code blocks are now recognised correctly, and new constraints keep questions within the syllabus, stay away from your settings, and follow the readings shown on screen',
+      '[Improved] Cleaner questions: Markdown decorations the model sometimes adds (asterisks, backticks, code fences) are stripped automatically, so questions no longer carry stray symbols',
+    ],
+  },
   {
     version: '0.36.1',
     date: '2026-10',

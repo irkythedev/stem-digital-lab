@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -458,8 +459,11 @@ export default function Lens() {
           </button>
         </div>
       </div>
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={aiQuestion} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={aiQuestion} />
+        <AskQuizButton />
+      </div>
 
 
       {/* ── 光具座 ── */}

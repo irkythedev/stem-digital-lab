@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
@@ -299,8 +300,11 @@ export default function MetalActivity() {
           </button>
         </div>
       </div>
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag'} />
+        <AskQuizButton />
+      </div>
 
 
       {/* ── 反应卡切换 ── */}

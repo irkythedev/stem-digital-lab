@@ -51,8 +51,34 @@ function extractOptions(lines: string[], from: number): { options: string[]; nex
 }
 
 /** 判断答案文本是否为「选项字母」形式（A/B/C/D 单字母） */
+function choiceLetter(text: string): string {
+  // 模型输出形态极不稳定：**B**、`B`、"B"、B.、B。、B（正确答案）、答案：B 都应认成选项字母。
+  // 先去掉括号注释与「答案：」前缀，再去掉 Markdown/引号/中英标点与空白，最后取唯一字母。
+  // 注意：调用方必须用本函数的返回值取字母——拿原始串取首字符会在 **B** 这类形态上算错。
+  const t = text
+    .trim()
+    .replace(/^答案\s*[:：]\s*/, '')
+    .replace(/[（(][^）)]*[）)]/g, '')
+    .replace(/[`*_"'「」『』【】\[\]{}().,。，、；;:：!！?？\s]/g, '');
+  return /^[A-Da-d]$/.test(t) ? t.toUpperCase() : '';
+}
+
 function isChoiceLetter(text: string): boolean {
-  return /^[A-Da-d]$/.test(text.trim());
+  return choiceLetter(text) !== '';
+}
+
+/**
+ * 剥离模型爱加的包裹：整段被 ``` / ~~~ 围起来时，【答案】行尾会挂上围栏字符，
+ * 导致选项字母识别失败、单选被误判成填空。独立行的围栏与行内残片都要清掉。
+ */
+export function stripModelDecorations(raw: string): string {
+  return (raw || '')
+    .replace(/^[ \t]*(?:```|~~~)[a-zA-Z0-9_-]*[ \t]*$/gm, '')
+    .split('```')
+    .join('')
+    .split('~~~')
+    .join('')
+    .replace(/\r\n?/g, '\n');
 }
 
 /**
@@ -60,10 +86,11 @@ function isChoiceLetter(text: string): boolean {
  * 答案段为 A-D 单字母 → 选择题；否则 → 填空题（fillAnswers 按「或/or」拆分）。
  */
 export function parseQuizQuestion(raw: string): QuizQuestion {
-  if (!raw || !raw.trim()) {
+  const src = stripModelDecorations(raw);
+  if (!src || !src.trim()) {
     return { question: '', options: [], answerIdx: -1, explanation: '', type: 'choice', fillAnswers: [] };
   }
-  const text = raw.trim();
+  const text = src.trim();
   // 按字段名切分（支持中文【】）
   const parts = text.split(/\n(?=【题目】|【答案】|【解析】|【类型】)/);
   let question = '';
@@ -101,7 +128,7 @@ export function parseQuizQuestion(raw: string): QuizQuestion {
   question = qLines.join('\n').trim();
 
   // 题型判定：显式【类型】优先；否则按答案形态回退
-  const answerLetter = isChoiceLetter(answerRaw) ? answerRaw.toUpperCase() : '';
+  const answerLetter = choiceLetter(answerRaw);
   const type: QuizType =
     (typeRaw || '').toLowerCase().includes('填') || /fill/i.test(typeRaw)
       ? 'fill'
@@ -135,8 +162,9 @@ export function parseQuizQuestion(raw: string): QuizQuestion {
  * 选择题要求 options≥2 且 answerIdx≥0；填空题要求 fillAnswers 非空。
  */
 export function parseQuizBatch(raw: string, expectedCount?: number): QuizQuestion[] {
-  if (!raw || !raw.trim()) return [];
-  const text = raw.trim();
+  const cleaned = stripModelDecorations(raw);
+  if (!cleaned || !cleaned.trim()) return [];
+  const text = cleaned.trim();
   // 1) 按【第N题】显式分组
   const marked = text.split(/\n(?=【第\d+题】)/).filter((s) => s.includes('【第'));
   // 2) 无显式标记时按空行分组（AI 可能省略编号）

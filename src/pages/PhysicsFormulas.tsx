@@ -22,6 +22,7 @@ import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
+import AskQuizButton from '../components/ai/AskQuizButton';
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
 
 const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
@@ -332,8 +333,9 @@ export default function PhysicsFormulas() {
                   </div>
                 )}
                 {/* 问 AI：看完内容后可一键讲解当前公式 */}
-                <div className="px-0.5 pt-1">
+                <div className="px-0.5 pt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                   <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理、适用条件与易错点` : `Explain the formula "${selected.name.en}" — principle, conditions and common pitfalls`} />
+                  <AskQuizButton />
                 </div>
               </div>
             </div>

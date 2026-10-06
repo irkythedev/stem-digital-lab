@@ -17,6 +17,7 @@
 import { useMemo, useState, type MouseEvent } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -365,8 +366,11 @@ export default function Circuits() {
           conclude: conclusionComplete,
         }}
       />
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别' : 'Compare how current and voltage distribute in series vs parallel circuits'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别' : 'Compare how current and voltage distribute in series vs parallel circuits'} />
+        <AskQuizButton />
+      </div>
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

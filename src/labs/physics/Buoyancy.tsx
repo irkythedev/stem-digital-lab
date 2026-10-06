@@ -12,6 +12,7 @@
  */
 import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -267,8 +268,11 @@ export default function Buoyancy() {
           conclude: concludeComplete,
         }}
       />
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解阿基米德原理：浮力与排开液体体积、液体密度有什么关系' : "Explain Archimedes' principle: how buoyancy depends on displaced volume and fluid density"} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解阿基米德原理：浮力与排开液体体积、液体密度有什么关系' : "Explain Archimedes' principle: how buoyancy depends on displaced volume and fluid density"} />
+        <AskQuizButton />
+      </div>
 
 
       {/* ── 实验示意 ── */}

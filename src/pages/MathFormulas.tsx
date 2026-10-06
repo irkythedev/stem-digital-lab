@@ -18,6 +18,7 @@ import { labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
+import AskQuizButton from '../components/ai/AskQuizButton';
 import FormulaDiagram from '../components/ui/FormulaDiagram';
 import FunctionDiagram from '../components/ui/FunctionDiagram';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
@@ -286,8 +287,9 @@ export default function MathFormulas() {
                 </div>
 
                 {/* 问 AI：看完内容后可一键讲解当前公式 */}
-                <div className="px-0.5 pt-1">
+                <div className="px-0.5 pt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                   <AskAiButton question={lang === 'zh' ? `请讲解公式「${selected.name.zh}」的原理与易错点` : `Explain the formula "${selected.name.en}" — its principle and common pitfalls`} />
+                  <AskQuizButton />
                 </div>
               </div>
             </div>

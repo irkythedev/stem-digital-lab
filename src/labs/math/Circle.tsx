@@ -13,6 +13,7 @@
  */
 import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import InteractiveCircle, { type CircleMode } from '../../components/lab/InteractiveCircle';
@@ -421,8 +422,11 @@ export default function Circle() {
           </button>
         </div>
       </div>
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解垂径定理、圆周角定理与直径所对圆周角是直角这三个圆的性质' : 'Explain the chord theorem, inscribed angle theorem and the angle in a semicircle'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解垂径定理、圆周角定理与直径所对圆周角是直角这三个圆的性质' : 'Explain the chord theorem, inscribed angle theorem and the angle in a semicircle'} />
+        <AskQuizButton />
+      </div>
 
 
       {/* ── 交互圆 ── */}

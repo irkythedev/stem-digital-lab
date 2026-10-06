@@ -17,6 +17,7 @@ import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
+import AskQuizButton from '../components/ai/AskQuizButton';
 import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
@@ -249,8 +250,9 @@ export default function PhysicalConstants() {
                 </div>
 
                 {/* 问 AI：看完内容后可一键讲解当前常量 */}
-                <div className="px-0.5 pt-1">
+                <div className="px-0.5 pt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                   <AskAiButton question={lang === 'zh' ? `请讲解常量「${selected.name.zh}」的物理意义与应用` : `Explain the constant "${selected.name.en}" — its physical meaning and usage`} />
+                  <AskQuizButton />
                 </div>
                 {/* 用于公式（双向关联：点击跳公式页并聚焦） */}
                 {formulasUsing(selected.symbol).length > 0 && (

@@ -12,6 +12,7 @@
  */
 import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -235,8 +236,11 @@ export default function Pressure() {
           <button type="button" onClick={redoAll} className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95">{c.redoLabel}</button>
         </div>
       </div>
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it'} />
+        <AskQuizButton />
+      </div>
 
 
       {/* ── 压强示意 ── */}

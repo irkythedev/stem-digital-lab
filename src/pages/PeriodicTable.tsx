@@ -21,6 +21,7 @@ import { useOfflinePack } from '../lib/use-offline-pack';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
+import AskQuizButton from '../components/ai/AskQuizButton';
 import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
@@ -465,6 +466,7 @@ export default function PeriodicTable() {
             question={lang === 'zh' ? '请介绍元素周期表的使用方法：如何检索元素、查看详情、听读音，以及中考跟读功能怎么用？' : 'Explain how to use the periodic table: how to search elements, view details, hear pronunciation, and use the exam recite mode.'}
             className="ml-3"
           />
+          <AskQuizButton />
           <ShareInline
             title={lang === 'zh' ? '元素周期表 · 数理化数字实验室' : 'Periodic Table · STEM Digital Lab'}
             text={
@@ -1087,8 +1089,9 @@ export default function PeriodicTable() {
               )}
 
               {/* 问 AI：看完元素详情后可一键提问 */}
-              <div className="pt-2 pb-1">
+              <div className="pt-2 pb-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <AskAiButton question={lang === 'zh' ? `请讲解元素「${selected.zh}」的性质与用途` : `Explain the element "${selected.en}" — its properties and uses`} />
+                <AskQuizButton />
               </div>
             </div>
           </div>

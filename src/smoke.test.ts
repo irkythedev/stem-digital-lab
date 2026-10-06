@@ -55,15 +55,13 @@ import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedba
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
 import {
   parseQuizBatch, judgeFillAnswer, parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions,
-  parseJudgeVerdict, type QuizQuestion,
-} from './lib/ai-quiz';
+  parseJudgeVerdict, type QuizQuestion, parseQuizQuestion, stripModelDecorations} from './lib/ai-quiz';
 import {
   buildSystemPrompt, buildQuizPrompt, buildFillJudgePrompt, QUIZ_SENTINEL, PROMPT_VERSION,
   extractStreamDelta, createInlineThinkSplitter, streamChat,
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
   resolveThinkingDispatch, describeThinkingParams,
-  type ThinkingEffort,
-} from './lib/ai-config';
+  type ThinkingEffort, estimateTokens} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS } from './lib/elements';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
@@ -2394,5 +2392,97 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.ok(!zhPack.entryHint.includes('缓存'), '入口说明用大白话，不写「缓存」这类工程词');
     assert.match(readFileSync('src/components/ai/AskAiButton.tsx', 'utf8'), /disabled=\{isOffline\}/, '断网时「问 AI」须温和阻断');
     assert.match(readFileSync('src/components/ai/AiAssistant.tsx', 'utf8'), /offlineAi\.localApi/, 'AI 面板须按端点类型区分断网文案');
+  });
+}
+
+// ---------- AI 出题解析：宽松选项识别与围栏清洗（依实测的恶劣输出形态建立） ----------
+{
+  const quizOne = (ans: string) =>
+    parseQuizQuestion(`【第1题】\n【类型】单选\n【题目】下列关于电阻的说法正确的是（　）\nA. 甲\nB. 乙\nC. 丙\nD. 丁\n【答案】${ans}\n【解析】略`);
+
+  test('选项字母识别：容忍加粗/反引号/引号/句读/括号注释与「答案：」前缀', () => {
+    const forms = ['B', 'b', 'B.', '**B**', '`B`', '"B"', 'B。', 'B（正确答案）', '答案：B', 'B（解析见教材）'];
+    for (const f of forms) {
+      const r = quizOne(f);
+      assert.equal(r.type, 'choice', `"${f}" 应识别为选择题`);
+      assert.equal(r.answerIdx, 1, `"${f}" 应解析为 B（下标 1）`);
+    }
+    // 反例：非字母答案不得被误认成选项
+    const numeric = parseQuizQuestion('【题目】通过它的电流是 ____ A\n【答案】20 欧姆\n【解析】略');
+    assert.equal(numeric.type, 'fill', '数值答案不应被认成选项字母');
+    assert.equal(numeric.answerIdx, -1);
+  });
+
+  test('围栏清洗：整段被 ``` / ~~~ 包裹时单选仍能正确解析（此前会被误判成填空）', () => {
+    const fenced = '```\n【第1题】\n【类型】单选\n【题目】题干\nA. 甲\nB. 乙\nC. 丙\nD. 丁\n【答案】C\n【解析】略\n```';
+    assert.equal(stripModelDecorations(fenced).includes('```'), false, '清洗后不应残留围栏');
+    const one = parseQuizQuestion(fenced);
+    assert.equal(one.type, 'choice');
+    assert.equal(one.answerIdx, 2);
+    const batch = parseQuizBatch('~~~json\n【第1题】\n【类型】单选\n【题目】题干\nA. 甲\nB. 乙\nC. 丙\nD. 丁\n【答案】D\n【解析】略\n~~~', 1);
+    assert.equal(batch.length, 1);
+    assert.equal(batch[0].answerIdx, 3);
+  });
+
+  test('动态问题：读数独立成槽（<当前读数> / <current_reading>）', () => {
+    const zh = getDynamicQuestions('ohm', { u: 6, i: 0.48, element: 'bulb' }, 'zh', '静态')[0];
+    assert.ok(zh.includes('<当前读数>') && zh.includes('</当前读数>'), '读数应独立于提问成槽');
+    assert.ok(zh.includes('6.00V') && zh.includes('0.48A'), '读数本身仍要保留');
+    const en = getDynamicQuestions('lens', { u: 25, f: 10, v: 16.67 }, 'en', 'static')[0];
+    assert.ok(en.includes('<current_reading>') && en.includes('</current_reading>'));
+  });
+
+  test('提示词红线：超纲方法与配置回显两条约束中英齐备，且说明读数槽位语义', () => {
+    const zh = buildSystemPrompt('zh', '欧姆定律实验', '', '', true);
+    const en = buildSystemPrompt('en', 'Ohm lab', '');
+    assert.ok(zh.includes('方法不超纲'), '中文须禁止超纲方法');
+    assert.ok(zh.includes('不回显配置'), '中文须禁止回显配置');
+    assert.ok(en.includes('No out-of-syllabus methods') && en.includes('Never echo configuration'), '英文须逐条对齐');
+    assert.ok(zh.includes('<当前读数>') && en.includes('<current_reading>'), '须说明读数槽位语义');
+  });
+
+  test('出题模板：序号不重复、含完整示范、物理页读法豁免', () => {
+    const zh = buildQuizPrompt('zh', '欧姆定律实验', '', 3, 'basic', 0, 'choice');
+    const nums = [...zh.matchAll(/^(\d+)\. /gm)].map((m) => m[1]);
+    assert.equal(new Set(nums).size, nums.length, '模板序号不得重复：' + nums.join(','));
+    assert.ok(zh.includes('【答案】C') && zh.includes('【解析】'), '须给出完整示范');
+    assert.ok(zh.includes('若当前主题属于物理学科，则省略读法'), '物理页须豁免口语读法');
+    const en = buildQuizPrompt('en', 'Ohm lab', '', 3, 'basic', 0, 'fill');
+    assert.ok(en.includes('national symbol standard'), '英文须含符号规范条');
+    assert.ok(en.includes('On physics topics, omit the reading'));
+  });
+
+  test('Token 估算：CJK 与西文分别计价（原 len/1.8 中文低估、英文高估）', () => {
+    assert.equal(estimateTokens('汉字'), 2);
+    assert.equal(estimateTokens('abcd'), 1);
+    assert.equal(estimateTokens('汉字abcd'), 3);
+  });
+
+  test('考考你入口：凡挂载「问 AI」的实验与工具页必须成对挂载「考考你」', () => {
+    const roots = ['src/labs', 'src/pages'];
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const q = dir + '/' + e.name;
+        if (e.isDirectory()) walk(q);
+        else if (/\.tsx$/.test(e.name)) files.push(q);
+      }
+    };
+    roots.forEach(walk);
+    const paired = files.filter((f) => readFileSync(f, 'utf8').includes('<AskAiButton'));
+    assert.ok(paired.length >= 19, '须覆盖全部实验与工具页，当前 ' + paired.length + ' 个文件');
+    for (const f of paired) {
+      const src = readFileSync(f, 'utf8');
+      assert.ok(/import AskQuizButton from/.test(src), f + ' 须引入 AskQuizButton');
+      assert.ok(src.includes('<AskQuizButton'), f + ' 须挂载 AskQuizButton');
+      const ai = (src.match(/<AskAiButton/g) || []).length;
+      const quiz = (src.match(/<AskQuizButton/g) || []).length;
+      assert.ok(quiz >= ai, f + ' 考考你与问 AI 须成对：' + ai + ' vs ' + quiz);
+    }
+    for (const f of files) {
+      const src = readFileSync(f, 'utf8');
+      if (/import AskAiButton from/.test(src)) assert.ok(src.includes('<AskAiButton'), f + ' 存在未使用的 AskAiButton 死导入');
+      if (/import AskQuizButton from/.test(src)) assert.ok(src.includes('<AskQuizButton'), f + ' 存在未使用的 AskQuizButton 死导入');
+    }
   });
 }

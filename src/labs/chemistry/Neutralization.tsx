@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
@@ -431,8 +432,11 @@ export default function Neutralization() {
           conclude: conclusionComplete,
         }}
       />
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint'} />
+        <AskQuizButton />
+      </div>
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

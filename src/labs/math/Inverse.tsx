@@ -13,6 +13,7 @@
 import { useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
+import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
@@ -372,8 +373,11 @@ export default function Inverse() {
           conclude: conclusionComplete,
         }}
       />
-      {/* 问 AI：讲解本实验的原理与操作要点 */}
-      <AskAiButton className="mt-2" question={lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义，以及双曲线图像有什么特征' : 'Explain the meaning of k in y=k/x and the features of its hyperbola graph'} />
+      {/* AI 工具行：问 AI + 考考你 并排 */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        <AskAiButton question={lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义，以及双曲线图像有什么特征' : 'Explain the meaning of k in y=k/x and the features of its hyperbola graph'} />
+        <AskQuizButton />
+      </div>
 
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">

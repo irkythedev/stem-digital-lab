@@ -13,7 +13,6 @@ import { useApp } from '../lib/app-context';
 import { translations } from '../lib/i18n';
 import { labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
-import AskAiButton from '../components/ai/AskAiButton';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
