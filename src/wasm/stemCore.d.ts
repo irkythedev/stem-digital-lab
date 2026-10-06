@@ -4,7 +4,7 @@
  *
  * src/wasm/stemCore.js 的类型声明（仅类型，不假装有 glue）。
  *
- * 产物由 `bash scripts/build-wasm.sh`（em++ -s SINGLE_FILE -s EXPORT_ES6 -s MODULARIZE）
+ * 产物由 em++ 直接编译（-s SINGLE_FILE -s EXPORT_ES6 -s MODULARIZE）
  * 生成：单文件 ESM，默认导出一个 factory，调用后返回 Embind 导出的标量函数集合。
  * 本机无 em++ / 未生成产物时，stem-engine.ts 的动态 import 会失败并静默回退 JS。
  *

@@ -4847,7 +4847,7 @@
 #btn-lang[aria-pressed="true"] { color: var(--accent,#5b9bd5); }
 </style>
 <style id="stem-theme-override">
-/* ═══ stem 项目主题对齐（档位B：黑白灰层次 + 单一强调红）═══ */
+/* ═══ stem 项目主题（档位B：黑白灰层次 + 单一强调红）═══ */
 [data-preset="editorial"][data-theme="dark"] {
   --bg: #161613;
   --grid: #2e2e28;
@@ -5045,7 +5045,7 @@ svg .m-amber    { fill: var(--line-amber); }
   --line-blue:      #1e88e5;  /* 数据交付: 明亮天蓝, 浅屏可辨 */
   --line-amber:     #e08a2c;  /* 异步外部: 暖琥珀, 浅屏可辨 */
 }
-/* 数据交付(前端内部闭环): 蓝 */
+/* 数据交付(全部在浏览器里完成): 蓝 */
 [data-preset="editorial"] svg path[data-edge-id="deliver-static"],
 [data-preset="editorial"] svg path[data-edge-id="seo-to-static"] {
   stroke: var(--line-blue); stroke-dasharray: 4,4;
@@ -5208,7 +5208,7 @@ html[data-present="true"] #stem-back-home { display: none; }
         <span id="brand-chip" style="display:inline-flex;flex:none;width:26px;height:26px;margin:0;padding:0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(255,255,255,0.18),0 2px 6px rgba(0,0,0,0.25);"><svg viewBox="0 0 512 512" preserveAspectRatio="xMidYMid meet" aria-hidden="true" style="width:100%;height:100%;display:block;"><rect width="512" height="512" rx="112" fill="#ffffff"/><path d="M256 84 L332 216 L180 216 Z" fill="none" stroke="#111210" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/><rect x="80" y="281" width="152" height="152" rx="16" fill="none" stroke="#111210" stroke-width="24" stroke-linejoin="round"/><circle cx="352" cy="357" r="76" fill="none" stroke="#111210" stroke-width="24"/></svg></span>
         <h1>数理化数字实验室 · 运行架构</h1>
       </div>
-      <p class="subtitle">纯前端 SPA · 无后端 · 业务逻辑浏览器闭环</p>
+      <p class="subtitle">纯前端 SPA · 没有后端 · 全部计算在浏览器里完成</p>
     </div>
 
     <script id="archify-guided-views-data" type="application/json">[{"id":"user-flow","label":"用户主流程","focus":["user","browser","router","labpage","staticplatform"],"note":"用户打开页面 → 加载静态产物 → 浏览器本地完成全部实验计算。"}]</script>
@@ -5258,7 +5258,7 @@ html[data-present="true"] #stem-back-home { display: none; }
          data-preset-badge-editorial-plate="运行架构 / 图版 04">
       <svg viewBox="0 0 1120 760" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="editorial" data-quality-profile="showcase">
         <title id="archify-diagram-title">数理化数字实验室 · 运行架构</title>
-        <desc id="archify-diagram-description">纯前端 SPA · 无后端 · 业务逻辑浏览器闭环</desc>
+        <desc id="archify-diagram-description">纯前端 SPA · 没有后端 · 全部计算在浏览器里完成</desc>
         <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -5811,7 +5811,7 @@ html[data-present="true"] #stem-back-home { display: none; }
       <div class="card">
         <div class="card-header">
           <div class="card-dot cyan"></div>
-          <h3>无后端 · 业务逻辑浏览器闭环</h3>
+          <h3>没有后端 · 全部计算在浏览器里完成</h3>
         </div>
         <ul>
           <li>&bull; KaTeX 公式 + SVG 图形全部浏览器本地计算，无需服务器算力</li>
@@ -15249,7 +15249,7 @@ html[data-present="true"] #stem-back-home { display: none; }
   
 
 var ARCHIFY_LANG_TEXT = {"用户": "User", "浏览器（SPA）": "Browser (SPA)", "路由 Shell": "Router Shell", "实验页 / 工具页": "Lab / Tool Pages", "静态托管平台": "Static Hosting", "实验注册表": "Lab Registry", "Vite 构建": "Vite Build", "GEO / SEO": "GEO / SEO", "PWA · SW": "PWA · Service Worker", "反馈收集": "Feedback", "本地队列": "Local Queue", "AI 学习助手": "AI Study Helper", "TTS 朗读": "TTS Read-aloud", "异步上行（可选）": "Async Upsert (optional)", "用户 AI 服务端": "User AI Endpoint", "TTS 云函数": "TTS Cloud Function", "多端设备 · 移动端 / PC / 希沃": "Multi-device · Mobile / PC / Seewo", "React 19 + react-router 7": "React 19 + react-router 7", "BrowserRouter": "BrowserRouter", "三幕式：预测→探索→结论": "3-act: Predict → Explore → Conclude", "SPA 静态站点": "SPA static site", "labs.ts 注册 · parseLabs→GEO": "labs.ts registry · parseLabs→GEO", "react + tailwind + pwa": "react + tailwind + pwa", "llms.txt · sitemap": "llms.txt · sitemap", "registerSW autoUpdate": "registerSW autoUpdate", "按钮 + 本地暂存": "Button + local staging", "localStorage": "localStorage", "BYOK · 自定义端点可选": "BYOK · custom endpoint", "LaTeX→口语 · SCF 合成": "LaTeX→speech · SCF synth", "异步投递 · 无自建后端": "Async delivery · no backend", "任意 OpenAI 兼容端点": "Any OpenAI-compatible endpoint", "SCF · edge-tts 代理": "SCF · edge-tts proxy", "PWA": "PWA", "15 实验 + 4 查表工具": "15 labs + 4 lookup tools", "平台无关": "Platform-agnostic", "新增实验 = 组件 + 登记": "New lab = component + registry", "closeBundle": "closeBundle", "实验页/AI 回答": "Lab page / AI answer", "语音合成": "Speech synthesis", "HTTPS": "HTTPS", "mount": "mount", "render": "render", "分发 js/css/html": "Deliver js/css/html", "产物": "Artifacts", "sitemap/llms.txt": "sitemap/llms.txt", "save": "save", "异步投递（可选）": "Async deliver (optional)", "stream /chat/completions": "stream /chat/completions", "朗读": "Read aloud", "合成语音": "Synthesize speech", "音频回放": "Audio playback", "注册 → 自动接 /lab/:id": "Registry → auto-route /lab/:id", "parseLabs 扫描 → 生成 GEO": "parseLabs scan → GEO", "客户端浏览器（无后端存储）": "Client-side (no backend storage)", "构建期（非运行时）": "Build-time (not runtime)", "图例": "Legend", "前端": "Frontend", "云服务": "Cloud", "消息总线": "Message bus", "外部系统": "External"};
-var ARCHIFY_LANG_COLL = {"数理化数字实验室 · 运行架构": "STEM Digital Lab · Runtime Architecture", "纯前端 SPA · 无后端 · 业务逻辑浏览器闭环": "Pure-frontend SPA · No backend · Logic closed in browser", "无后端 · 业务逻辑浏览器闭环": "No backend · Browser-closed logic", "数据面极小 · AI 隐私主动设计": "Minimal data · AI privacy by design", "部署平台无关": "Platform-agnostic deployment"};
+var ARCHIFY_LANG_COLL = {"数理化数字实验室 · 运行架构": "STEM Digital Lab · Runtime Architecture", "纯前端 SPA · 没有后端 · 全部计算在浏览器里完成": "Pure-frontend SPA · No backend · Everything runs in your browser", "无后端 · 全部计算在浏览器里完成": "No backend · Browser-closed logic", "数据面极小 · AI 隐私主动设计": "Minimal data · AI privacy by design", "部署平台无关": "Platform-agnostic deployment"};
 var ARCHIFY_LANG_CARD = {"KaTeX 公式 + SVG 图形全部浏览器本地计算，无需服务器算力": "KaTeX formulas + SVG graphics all computed locally in the browser; no server compute.", "15 实验 + 4 查表工具 · 三幕式探究 · 免登录即用 · PWA 离线": "15 labs + 4 lookup tools · 3-act inquiry · no login · PWA offline.", "实验框架可拓展：集中注册表 + 三幕式共享组件，构建/GEO 亦为前端侧产物，新增实验两步接入": "Extensible framework: central registry + shared 3-act components; build/GEO are frontend-side artifacts; add a lab in two steps.", "反馈仅本地队列异步上行，无账号无云存储": "Feedback is staged locally and uploaded async; no account, no cloud storage.", "AI Key 用户自带仅存本机，浏览器直连，本站零中转零存储": "AI key is user-supplied and stored locally; browser connects directly; this site relays or stores nothing.", "问答历史仅存本机（localStorage，可随时清除）": "Q&A history is stored only on this device (localStorage, clearable anytime).", "任意 SPA 静态托管可承载 · 当前 CDN 静态托管 · 同类平台可平滑迁移": "Runs on any SPA static hosting · currently CDN static hosting · portable across other providers."};
 
 /* ==========================================================================

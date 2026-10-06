@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 物理公式数据（初中苏科版）。
- * 依据：physics_kb references/formula_sheet.md（苏科版八下+九上）逐章提炼，
+ * 依据物理公式手册（苏科版八下+九上）逐章提炼，
  * 公式、单位、适用条件对照教材；relatedConstants 关联常量页符号（双向跳转）。
  * category: mech 力学 / thermal 热学 / optics 光学 / sound 声学 / elec 电学（与常量页一致）。
  */

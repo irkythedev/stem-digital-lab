@@ -13,7 +13,7 @@
  *   - image_v 的 u≈f 阈值在 C++ 内判定（返回 NaN 哨兵），归一 null 由 TS facade 完成；
  *   - bool 适配（is_bulb）只允许发生在 TS 侧，C++ 侧用原生 bool。
  *
- * 编译：bash scripts/build-wasm.sh（需要 em++ / Emscripten）
+ * 编译：见 cpp/README.md（需要 em++ / Emscripten）
  */
 
 #include <emscripten/bind.h>

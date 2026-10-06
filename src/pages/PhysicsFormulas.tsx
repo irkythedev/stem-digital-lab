@@ -7,7 +7,7 @@
  * 参考数学公式速查的交互方式：分类筛选 + 检索 + 卡片墙 + 点开详情卡。
  * 与物理常量速查双向关联：公式卡显示「相关常量」（带数值，点击跳常量页），
  * 常量卡显示「用于公式」（点击跳回本页）。数据来自 src/lib/physics-formulas.ts
- * （依据 physics_kb formula_sheet，苏科版章节对齐）。
+ * （依据物理公式手册整理，按苏科版章节编排）。
  */
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';

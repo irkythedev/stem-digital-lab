@@ -6,7 +6,7 @@
  *
  * ── 通道一：钉钉群机器人（经腾讯云 SCF 云函数转发）──────────
  * 钉钉 webhook 只接受服务端调用（浏览器直连被 CORS + Content-Type 封锁），
- * 需先部署 docs/dingtalk-feedback-function.js 到 SCF（部署步骤见文件头），
+ * 需先在云函数里部署一个转发函数（把钉钉 webhook 转出去），
  * 然后把「函数 URL」填到下方 DINGTALK_PROXY.apiBase。
  * 免费额度：SCF 每月 40 万次调用；钉钉群机器人无限量、手机实时通知。
  *
@@ -24,7 +24,7 @@ export const SERVERCHAN_CONFIG = {
   title: '数理化数字实验室 · 反馈',
 } as const;
 
-/** 钉钉通道：SCF 云函数转发地址（部署 docs/dingtalk-feedback-function.js 后填写，形如 https://xxx.service.tcloudbase.com/ding-feedback） */
+/** 钉钉通道：云函数转发地址 */
 export const DINGTALK_PROXY = {
   apiBase: 'https://1307683613-c6djcnfpz2.ap-shanghai.tencentscf.com',
   /** 推送标题（钉钉 markdown 首行标题） */

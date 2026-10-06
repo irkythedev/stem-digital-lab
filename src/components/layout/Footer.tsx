@@ -23,7 +23,7 @@ export default function Footer() {
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
 
-  // 运行架构页（docs/architecture 的脱敏成品，见 scripts/sync-architecture-page.sh）：
+  // 运行架构页（public 下的静态页，线上路径 /architecture.html）：
   // 新标签打开完整查看器；带上当前主题，避免点开时明暗跳变。
   const archTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   const archUrl = `/architecture.html?theme=${archTheme}`;

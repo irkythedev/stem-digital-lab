@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 物理常量数据（初中苏科版）。
- * 依据：physics_kb references/formula_sheet.md + key_concepts.md 提炼，
+ * 依据物理公式手册与重点概念提炼，按苏科版章节编排；
  * 数值对照教材附录。category: mech 力学 / thermal 热学 / optics 光学 /
  * elec 电学 / sound 声学。
  */

@@ -30,7 +30,7 @@ u≈f 阈值在 C++ 内判定（NaN 哨兵），归一 null 由 TS facade 完成
 
 ## 编译 WebAssembly（需要 Emscripten）
 
-完整命令（与 `scripts/build-wasm.sh` 完全一致）：
+完整命令（可直接复制执行；项目内的构建脚本未随本仓提供）：
 
 ```bash
 mkdir -p src/wasm

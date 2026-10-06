@@ -3715,7 +3715,7 @@ export default function AiAssistant() {
               <div className="pt-6 text-center space-y-2.5">
                 <p className="text-xs text-[var(--muted)] italic">
                   {lang === 'zh'
-                    ? '点击页面上的「问 AI」按钮，AI 会结合当前内容为您讲解'
+                    ? '点击页面上的「问 AI」按钮，AI 会结合当前内容讲解'
                     : 'Tap "Ask AI" on a page — the assistant explains the current content'}
                 </p>
                 {/* 空状态快捷提问：当前在实验/工具页时一键发起（免去页面按钮跳转；按页面类型贴合措辞） */}

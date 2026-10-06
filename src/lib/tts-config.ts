@@ -6,7 +6,7 @@
  * 部署 SCF 后，将 PRODUCTION_URL 改为你的 API 网关地址。
  */
 export const TTS_CONFIG = {
-  /** 生产环境云函数 URL（部署腾讯云 SCF 后替换；当前临时指向本地 3100 便于预览测试） */
+  /** 生产环境云函数 URL（部署腾讯云 SCF 后填写） */
   PRODUCTION_URL: 'https://1307683613-fg2n0ky3me.ap-shanghai.tencentscf.com',
   /** 默认语音 */
   DEFAULT_VOICE: 'zh-CN-XiaoxiaoNeural',

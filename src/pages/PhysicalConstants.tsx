@@ -5,7 +5,7 @@
  * 物理工具页 · 物理常量速查
  *
  * 参考元素周期表的交互方式：分类筛选 + 检索 + 网格卡片墙 + 点开详情卡。
- * 数据来自 src/lib/constants.ts（依据 physics_kb 提炼，数值对照教材附录）。
+ * 数据来自 src/lib/constants.ts（依据物理公式手册提炼，数值对照教材附录）。
  */
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';
