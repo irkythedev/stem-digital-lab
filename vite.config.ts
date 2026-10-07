@@ -212,7 +212,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2,ttf}', 'offline-manifest.json'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webp,woff,woff2,ttf}', 'offline-manifest.json'],
         // architecture.html 是重型查看器（约 735KB）：不预缓存，避免每个访客首装体积翻倍；
         // 改由下方 runtimeCaching 首次访问后按需缓存（离线仍可打开）。
         globIgnores: ['**/version.json', '**/audio/*.mp3', '**/architecture.html'],

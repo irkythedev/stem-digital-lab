@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.3';
+export const APP_VERSION = '0.36.4';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.4',
+    date: '2026-10',
+    zh: [
+      '[优化] AI 助教交互升级：优化流式对话吸底体验，主动上滑查看历史不再被强制拽回，新增生成状态呼吸光标与打字指示',
+      '[优化] 异常与中断保全：优化 AI 对话停止响应机制，中途中断时自动保留已收文本与上下文，新增 20s 响应超时保护',
+      '[优化] 使用说明视频体验：重构视频容器为 16:9 响应式比例并消除加载回跳（CLS），新增 1440P 超清离线海报封面',
+      '[新增] 顶栏使用说明入口新增媒体播放状态指示，快速直达实验演示与讲解视频',
+    ],
+    en: [
+      '[Improved] AI Assistant Ergonomics: Optimized stream scroll anchoring to prevent unwanted snaps when reading history; added pulsing typing cursor',
+      '[Improved] Stream Resilience: Preserved partial answers and context upon user abort or interruption; added a 20s response timeout fallback',
+      '[Improved] Guide Video Frame: Re-architected video frame to a locked 16:9 aspect ratio eliminating CLS; added an offline 1440P WebP poster',
+      '[Added] Media indicator on the Header Guide link for instant discovery of video walkthroughs',
+    ],
+  },
   {
     version: '0.36.3',
     date: '2026-10',

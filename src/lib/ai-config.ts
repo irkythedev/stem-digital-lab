@@ -53,9 +53,14 @@ export const AI_PROVIDERS: AiProvider[] = [
 
 /** 估算 token：汉字/全角符号按 1 字≈1 token，其余按 4 字符≈1 token。
  *  （原先统一按 len/1.8 会让中文低估约 20%、英文高估约 120%——实测中文系统提示 1528 字/1066 token） */
+/** CJK / 全角字符计数：estimateTokens 与流式增量统计共用，避免每帧重扫整段正文 */
+export function countCjk(text: string): number {
+  return (text.match(/[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]/g) || []).length;
+}
+
 export function estimateTokens(text: string | number): number {
   const s = String(text);
-  const cjk = (s.match(/[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uff00-\uffef]/g) || []).length;
+  const cjk = countCjk(s);
   return Math.round(cjk + (s.length - cjk) / 4) || 0;
 }
 
@@ -811,6 +816,9 @@ export function resolveThinkingDispatch(
   return { params, summaryText: describeThinkingParams(params), effort };
 }
 
+/** 流式请求的首包超时：连上了却一个 token 都不吐时，学生只能干等（服务商拥塞或被中间设备挂起） */
+export const FIRST_PACKET_TIMEOUT_MS = 20000;
+
 /** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
 export async function streamChat(
   cfg: AiConfig,
@@ -821,6 +829,30 @@ export async function streamChat(
   onReasoning?: (text: string) => void,
 ): Promise<string> {
   const url = `${normalizeBaseUrl(cfg.baseUrl)}/chat/completions`;
+  // 首包超时：用一个内部 controller 与外层 signal 联动 —— 既能超时中断，又不越权去
+  // abort 调用方自己的 controller（调用方要靠它区分「学生点了停止」与「真失败」）。
+  const ctrl = new AbortController();
+  const onOuterAbort = () => ctrl.abort();
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener('abort', onOuterAbort, { once: true });
+  }
+  let firstPacket = false;
+  let firstPacketTimedOut = false;
+  const firstPacketTimer = setTimeout(() => {
+    if (firstPacket) return;
+    firstPacketTimedOut = true;
+    ctrl.abort();
+  }, FIRST_PACKET_TIMEOUT_MS);
+  const markFirstPacket = () => {
+    if (firstPacket) return;
+    firstPacket = true;
+    clearTimeout(firstPacketTimer);
+  };
+  const detach = () => {
+    clearTimeout(firstPacketTimer);
+    signal?.removeEventListener('abort', onOuterAbort);
+  };
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
@@ -834,7 +866,10 @@ export async function streamChat(
       // （resolveThinkingDispatch），因此界面承诺什么，这里就发什么。
       ...resolveThinkingDispatch(cfg).params,
     }),
-    signal,
+    signal: ctrl.signal,
+  }).catch((e: unknown) => {
+    detach();
+    throw firstPacketTimedOut ? new Error(`no response in ${Math.round(FIRST_PACKET_TIMEOUT_MS / 1000)}s`) : e;
   });
   if (!res.ok) {
     let detail = '';
@@ -844,10 +879,14 @@ export async function streamChat(
     } catch {
       /* ignore */
     }
+    detach();
     throw new Error(detail || `HTTP ${res.status}`);
   }
   const reader = res.body?.getReader();
-  if (!reader) throw new Error('no stream');
+  if (!reader) {
+    detach();
+    throw new Error('no stream');
+  }
   const decoder = new TextDecoder();
   let full = '';
   let buf = '';
@@ -860,26 +899,43 @@ export async function streamChat(
       onDelta(text);
     }
   });
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop() ?? '';
-    for (const line of lines) {
-      const t = line.trim();
-      if (!t.startsWith('data:')) continue;
-      const payload = t.slice(5).trim();
-      if (payload === '[DONE]') continue;
-      try {
-        const { content, reasoning } = extractStreamDelta(JSON.parse(payload));
-        if (reasoning) onReasoning?.(reasoning);
-        if (content) splitter.push(content);
-      } catch {
-        /* skip keep-alive or partial */
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop() ?? '';
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t.startsWith('data:')) continue;
+        const payload = t.slice(5).trim();
+        markFirstPacket(); // 收到事件流即说明模型已开始响应，撤掉首包超时闸
+        if (payload === '[DONE]') continue;
+        try {
+          const { content, reasoning } = extractStreamDelta(JSON.parse(payload));
+          if (reasoning) onReasoning?.(reasoning);
+          if (content) splitter.push(content);
+        } catch {
+          /* skip keep-alive or partial */
+        }
       }
     }
+    splitter.flush();
+    return full;
+  } finally {
+    detach();
+    // 收口：正常结束、首包超时、调用方 abort 三条路径都要显式释放读取器，
+    // 否则流被中断时连接与锁会悬着（旧实现没有这层，靠浏览器回收）。
+    try {
+      await reader.cancel();
+    } catch {
+      /* 流已结束或已取消：忽略 */
+    }
+    try {
+      reader.releaseLock();
+    } catch {
+      /* 仍有未决读取时释放会抛：忽略 */
+    }
   }
-  splitter.flush();
-  return full;
 }

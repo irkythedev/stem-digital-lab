@@ -9,7 +9,7 @@
  *   - 渲染失败的公式退回原文（KaTeX throwOnError:false），绝不崩溃
  * 复用现有 Formula 组件（KaTeX 全局 CSS 已在 main.tsx 引入）。
  */
-import { memo, useMemo, type ReactNode } from 'react';
+import { cloneElement, isValidElement, memo, useMemo, type ReactElement, type ReactNode } from 'react';
 import Formula from '../ui/Formula';
 
 /** 块级公式：$$...$$ 或 \[...\]（可跨行） */
@@ -114,8 +114,42 @@ function renderBlock(text: string, keyBase: number): ReactNode[] {
   return out;
 }
 
+/**
+ * 流式呼吸光标：1.5px 竖条，取主题强调色。
+ * 关键在「贴住最后一行」：它作为最后一个文本段落的行内子节点渲染，
+ * 而不是另起一个块级元素 —— 否则会掉到段落下面去。
+ */
+function StreamCaret({ fading }: { fading: boolean; /** 列表渲染 key（只在类型里声明以放行 JSX key，与 Formula 同款处理） */ key?: string | number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block ml-0.5 rounded-full bg-[var(--accent)]"
+      style={{
+        width: '1.5px',
+        height: '1em',
+        verticalAlign: '-0.15em',
+        opacity: fading ? 0 : 1,
+        transition: 'opacity 200ms ease-out',
+      }}
+    />
+  );
+}
+
+/** 把光标挂到最后一个文本段落末尾；最后一块不是段落（分隔线 / 块级公式）就自己另起一行 */
+function withCaret(nodes: ReactNode[], caret: boolean, caretFading: boolean): ReactNode[] {
+  if (!caret) return nodes;
+  const mark = <StreamCaret key="stream-caret" fading={caretFading} />;
+  const last = nodes.length > 0 ? nodes[nodes.length - 1] : null;
+  if (isValidElement(last) && last.type === 'p') {
+    const el = last as ReactElement<{ children?: ReactNode }>;
+    const kids = Array.isArray(el.props.children) ? el.props.children : [el.props.children];
+    return [...nodes.slice(0, -1), cloneElement(el, {}, ...kids, mark)];
+  }
+  return [...nodes, mark];
+}
+
 /** AI 回答富文本渲染入口 */
-function AnswerRich({ text }: { text: string }) {
+function AnswerRich({ text, caret = false, caretFading = false }: { text: string; caret?: boolean; caretFading?: boolean }) {
   const nodes = useMemo(() => {
     const parts = text.split(BLOCK_RE);
     const out: ReactNode[] = [];
@@ -132,7 +166,7 @@ function AnswerRich({ text }: { text: string }) {
     });
     return out;
   }, [text]);
-  return <>{nodes}</>;
+  return <>{withCaret(nodes, caret, caretFading)}</>;
 }
 
 /**

@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
+import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -27,7 +27,8 @@ import { useAiContext } from '../../lib/ai-context';
 import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
 import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
 import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
-import { clearHistory, listHistory, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
+import { clearHistory, listHistory, markStopped, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
+import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
@@ -36,7 +37,7 @@ import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageModelTotal, t
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
+  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat, FIRST_PACKET_TIMEOUT_MS,
   effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
 } from '../../lib/ai-config';
@@ -1085,6 +1086,16 @@ export default function AiAssistant() {
     }
   }, [aiCtx.topic]);
   const answerRef = useRef<HTMLDivElement | null>(null);
+  // 吸底状态：ref 供滚动副作用即时读取（避免闭包过期），state 只负责「↓」按钮显隐
+  const stickRef = useRef(true);
+  const [showJump, setShowJump] = useState(false);
+  const syncStick = (next: boolean) => {
+    if (stickRef.current === next) return;
+    stickRef.current = next;
+    setShowJump(!next);
+  };
+  // 流式光标相位：流式中显示；结束后留 220ms 让 200ms 淡出跑完再卸载
+  const [caretPhase, setCaretPhase] = useState<'off' | 'on' | 'fading'>('off');
   const panelRef = useRef<HTMLDivElement | null>(null);
   // 面板位置（标题栏拖动，localStorage 记忆 UI 偏好——非对话内容）
   const [pos, setPos] = useState<{ x: number; y: number } | null>(() => {
@@ -1391,10 +1402,58 @@ export default function AiAssistant() {
     }
   }, [pending, config, open, setOpen]);
 
-  // 回答区自动滚底（流式增量 + 新轮入历史时都滚到底部）
+  // 回答区自动滚底：只在「贴着底部」时跟随；用 auto 而不是 smooth ——
+  // 流式每个 delta 都会滚一次，smooth 动画会被不断打断重启，反而更抖。
   useEffect(() => {
-    answerRef.current?.scrollTo({ top: answerRef.current.scrollHeight, behavior: 'smooth' });
-  }, [answer, history]);
+    const el = answerRef.current;
+    if (!el || !stickRef.current) return;
+    el.scrollTop = el.scrollHeight;
+  }, [answer, history, caretPhase]);
+
+  // 流式光标相位：流式中显示，结束后留 220ms 让淡出跑完
+  useEffect(() => {
+    if (busy && answer) {
+      setCaretPhase('on');
+      return;
+    }
+    if (!answer) {
+      setCaretPhase('off');
+      return;
+    }
+    setCaretPhase('fading');
+    const t = window.setTimeout(() => setCaretPhase('off'), 220);
+    return () => window.clearTimeout(t);
+  }, [busy, answer]);
+
+  // 用户主动上滑（滚轮 / 触屏 / 键盘）立刻解锁吸底：必须抢在下一批 delta 之前，
+  // 否则程序化滚底会把这一下手势吃掉——表现就是「怎么划都被拽回底部」。
+  useEffect(() => {
+    const el = answerRef.current;
+    if (!el) return;
+    let touchTop = 0;
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) syncStick(false);
+    };
+    const onTouchStart = () => {
+      touchTop = el.scrollTop;
+    };
+    const onTouchMove = () => {
+      if (el.scrollTop < touchTop - 2) syncStick(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'PageUp' || e.key === 'ArrowUp' || e.key === 'Home') syncStick(false);
+    };
+    el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('keydown', onKey);
+    };
+  }, [open, view]);
 
   // 切换预设
   const selectProvider = (id: string) => {
@@ -1665,6 +1724,9 @@ export default function AiAssistant() {
     const baseTokens = usage?.tokens ?? 0;
     const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
     let received = 0;
+    let accLen = 0;   // 已收正文 + 思考的字符总数（增量累计，替代每 chunk 重扫全文）
+    let accCjk = 0;   // 其中的 CJK / 全角字符数
+    let accText = ''; // 已收正文（不含思考段）：中断时用它保全局部回答
     let firstContentAt = 0; // 首个正文 token 的时刻（用来算「思考了几秒」并自动折叠）
     let reasoningText = '';   // 本轮思考全文（闭包内累积，结束后挂到本轮问答对上）
     let reasoningSecLocal = 0;
@@ -1680,9 +1742,13 @@ export default function AiAssistant() {
             setOpenReasoningId(null); // 正文开始 → 思考区自动折叠（默认不看）
           }
           setAnswer((a) => a + delta);
+          accText += delta;
           received += delta.length;
+          accLen += delta.length;
+          accCjk += countCjk(delta);
           const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-          const outTokens = estimateTokens(received);
+          // 增量计数与 estimateTokens(全文) 完全等价，但每 chunk 只扫新增片段（旧实现 O(n²)）
+          const outTokens = Math.round(accCjk + (accLen - accCjk) / 4);
           setUsage({
             tokens: baseTokens + promptTokens + outTokens,
             speed: Math.round(outTokens / elapsedSec),
@@ -1693,12 +1759,14 @@ export default function AiAssistant() {
         (r) => {
           // 思考增量：也算学生付费的输出，计入本轮用量（想得多=花得多，学生看得见）
           received += r.length;
+          accLen += r.length;
+          accCjk += countCjk(r);
           reasoningText += r;
           setReasoning((x) => x + r);
         },
       );
       // 跨会话累计 token（本次请求 = prompt + 实际输出 + 思考增量：想得多花得多，口径与本轮显示一致）
-      addTokenUsage(config?.model, promptTokens + estimateTokens(received));
+      addTokenUsage(config?.model, promptTokens + Math.round(accCjk + (accLen - accCjk) / 4));
       refreshTokenUsage();
       const { body, recs: parsedRecs } = parseRecQuestions(full);
       setAnswer(body);
@@ -1740,18 +1808,42 @@ export default function AiAssistant() {
       setAnswer('');
       // 最终定格（与实时滚动值对齐，避免浮点误差；含思考增量，避免完成瞬间数字回落）
       const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-      const outTokens = estimateTokens(received);
+      const outTokens = Math.round(accCjk + (accLen - accCjk) / 4);
       setUsage({
         tokens: baseTokens + promptTokens + outTokens,
         speed: Math.round(outTokens / elapsedSec),
       });
     } catch (e) {
+      // 中断也要保住成果：无论是点了「停止」还是网络断掉，只要已经收到正文，就把它
+      // 当作一次「未完成」的问答留下来（标 [已停止]）——否则学生刚看到一半的内容
+      // 会随面板关闭一起消失，追问也接不上。
+      const kept = markStopped(accText, lang);
+      if (kept) {
+        lastExchange.current = { user: q, assistant: kept };
+        setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: kept }]);
+        saveHistory({
+          path: location.pathname + location.search,
+          subject: pageSubject(location.pathname, lang),
+          topic: aiCtx.topic ?? pageSubject(location.pathname, lang),
+          question: q,
+          answer: kept,
+          model: config.model,
+        });
+        setPersistHistory(listHistory());
+        setAnswer(''); // 已入历史：清空当前轮，避免同一内容在历史区与当前轮显示两遍
+      }
       // 使用 signal.aborted 判断（比字符串匹配可靠，兼容不同浏览器错误消息）
       if (abortRef.current && !abortRef.current.signal.aborted) {
         const msg = (e as Error).message;
         const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
+        const timeoutSec = Math.round(FIRST_PACKET_TIMEOUT_MS / 1000);
+        const noFirstPacket = msg.includes(`no response in ${timeoutSec}s`);
         setError(
-          isOffline
+          noFirstPacket
+            ? (lang === 'zh'
+              ? `${timeoutSec} 秒内没有收到任何内容：可能是服务商拥塞或网络受限，可以再试一次`
+              : `No content within ${timeoutSec}s — the provider may be congested; please try again`)
+            : isOffline
             ? t.offlineAi.failed
             : isNetworkError(msg)
             ? msg
@@ -3607,7 +3699,35 @@ export default function AiAssistant() {
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
           {/* 移动端内层原 60dvh 会先于抽屉的 85dvh 到顶，白白浪费约 25% 的高度配额 */}
-          <div ref={answerRef} className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-none p-3 space-y-2.5 text-sm serif-font">
+          <div
+            ref={answerRef}
+            onScroll={() => {
+              const el = answerRef.current;
+              if (!el) return;
+              // 用户主动滚离底部 → 解锁；自己滚回底部 → 自动恢复跟随
+              syncStick(isNearBottom(el.scrollTop, el.clientHeight, el.scrollHeight, STICK_THRESHOLD));
+            }}
+            className="flex-1 overflow-y-auto overscroll-contain min-h-[150px] max-h-none p-3 space-y-2.5 text-sm serif-font"
+          >
+            {/* 离底恢复入口：sticky + 零高度包裹 —— 悬浮在可视区右下角，不占布局、不遮正文 */}
+            {showJump && (
+              <div className="sticky bottom-0 z-10 flex h-0 justify-end pointer-events-none">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = answerRef.current;
+                    if (!el) return;
+                    el.scrollTop = el.scrollHeight;
+                    syncStick(true);
+                  }}
+                  title={lang === 'zh' ? '回到最新内容' : 'Jump to latest'}
+                  aria-label={lang === 'zh' ? '回到最新内容' : 'Jump to latest'}
+                  className="pointer-events-auto mb-1 mr-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-colors hover:bg-[var(--accent-light)] tap-area"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             {history.length > 0 || answer || pending || busy || error ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
@@ -3642,7 +3762,7 @@ export default function AiAssistant() {
                       <div className={`inline-block max-w-[95%] px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
                         {answer ? (
                           <div style={{ animation: 'answer-fade-in 0.2s ease' }}>
-                            <AnswerRich text={answer} />
+                            <AnswerRich text={answer} caret={caretPhase !== 'off'} caretFading={caretPhase === 'fading'} />
                           </div>
                         ) : reasoning ? null : (
                           <div className="flex justify-center" aria-label={lang === 'zh' ? '思考中' : 'Thinking'}>

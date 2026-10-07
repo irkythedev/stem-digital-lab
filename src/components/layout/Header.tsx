@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
 import { APP_VERSION } from '../../lib/changelog';
@@ -225,8 +225,14 @@ export default function Header() {
         {/* Guide link */}
         <Link
           to="/guide"
-          className="inline-flex items-center justify-center leading-none px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
+          title={t.guideHint}
+          className="group/guide inline-flex items-center justify-center gap-1.5 leading-none px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
+          {/* 媒体指示：说明页顶部就是项目介绍视频；图标与文字同属一个链接，触屏上常驻可见 */}
+          <CirclePlay
+            className="w-3.5 h-3.5 shrink-0 motion-safe:transition-transform motion-safe:duration-[var(--dur-base)] motion-safe:group-hover/guide:scale-[1.06]"
+            aria-hidden="true"
+          />
           {t.guide}
         </Link>
       </div>

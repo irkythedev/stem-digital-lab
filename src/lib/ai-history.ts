@@ -70,6 +70,19 @@ export function saveHistory(entry: Omit<AiHistoryEntry, 'id' | 'ts'>): void {
   }
 }
 
+/**
+ * 「停止」/中断后的局部回答标记。
+ *
+ * 学生点了停止（或网络断掉）时，已经收到的正文不该被默默丢掉；但也不能看起来像
+ * 一份完整答案，所以要显式标注。重复调用不会叠加标记（幂等），避免重试路径出现两个。
+ */
+export function markStopped(text: string, lang: 'zh' | 'en'): string {
+  const body = text.trim();
+  if (!body) return '';
+  const mark = lang === 'zh' ? '[已停止]' : '[stopped]';
+  return body.includes(mark) ? body : `${body}\n\n${mark}`;
+}
+
 /** 清空全部历史（只清历史，不动配置与当前会话） */
 export function clearHistory(): void {
   if (typeof window === 'undefined') return;

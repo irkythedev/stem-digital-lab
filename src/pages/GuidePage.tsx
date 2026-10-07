@@ -106,12 +106,16 @@ export default function GuidePage() {
           回访者的浏览器不会回源，会长期看到旧片；改了查询串即换缓存键。
           路径本身保持不变——public/qr-intro-video.png 二维码编码的就是
           https://stem.irky.dev/videos/stem-intro.mp4，改名会让二维码失效。 */}
-      <div className="mb-10 max-w-2xl">
+      {/* 外层锁 16:9：比例由容器决定，不再等媒体元数据 —— 否则未加载时浏览器按 UA 默认
+          300×150（2:1）排布，元数据到位后回跳（实测桌面 41px / 移动端 19px 的布局抖动）。
+          封面（poster）同时给出视觉锚点，离线/未点播时不再是一块黑方块。 */}
+      <div className="mb-10 max-w-2xl w-full relative aspect-video overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-14px_rgba(0,0,0,0.20)]">
         <video
           controls
           preload="none"
           playsInline
-          className="w-full border border-[var(--border)] bg-[var(--card-bg)]"
+          poster="/videos/stem-intro-poster.webp?v=1"
+          className="h-full w-full object-cover"
         >
           <source src="/videos/stem-intro.mp4?v=37fa592c" type="video/mp4" />
         </video>

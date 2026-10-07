@@ -50,7 +50,8 @@ import {
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
-import { clearHistory, listHistory, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
+import { clearHistory, listHistory, markStopped, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
+import { isNearBottom, STICK_THRESHOLD } from './lib/ai-scroll';
 import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
 import {
@@ -61,7 +62,7 @@ import {
   extractStreamDelta, createInlineThinkSplitter, streamChat,
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
   resolveThinkingDispatch, describeThinkingParams,
-  type ThinkingEffort, estimateTokens} from './lib/ai-config';
+  type ThinkingEffort, estimateTokens, countCjk} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS } from './lib/elements';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
@@ -2319,6 +2320,22 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.ok(!/pt-\[env\(safe-area-inset-top/.test(header), 'pt-[env(...)] 会覆盖 py 的上内边距，造成上下不对称');
     assert.match(header, /pt-\[calc\([^)]*env\(safe-area-inset-top/);
   });
+
+  test('顶栏「使用说明」媒体图标：须与文字同属一个链接，且右组只有一个 /guide 入口', () => {
+    const header = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    assert.match(header, /import \{[^}]*\bCirclePlay\b[^}]*\} from 'lucide-react'/, '须从 lucide-react 引入 CirclePlay');
+    const entries = (header.match(/to="\/guide"/g) || []).length;
+    assert.equal(entries, 1, `顶栏只能有一个 /guide 入口（实际 ${entries}）——相邻双目标既新增可聚焦元素，也会在 360px 上把右组挤爆`);
+    const link = header.match(/<Link\s+to="\/guide"[\s\S]*?<\/Link>/)?.[0] ?? '';
+    assert.ok(link.includes('title={t.guideHint}'), '须给出桌面悬停提示，说明此处含演示视频');
+    assert.ok(link.includes('<CirclePlay'), '图标必须放在同一个 <Link> 内：独立按钮会破坏 44px 中心距并抢点击');
+    assert.ok(link.includes('aria-hidden="true"'), '图标是装饰，文字已表意，须 aria-hidden 以免读屏重复播报');
+    assert.match(link, /w-3\.5 h-3\.5/, '图标视觉尺寸须 14px，与同组 AI / 主题图标同级');
+    assert.match(link, /motion-safe:group-hover\/guide:scale-\[1\.06\]/, '微缩放须包在 motion-safe 内，尊重 prefers-reduced-motion');
+    assert.match(link, /gap-1\.5/, '图标与文字间距须显式给出：右组小屏 gap 只有 6px，靠容器间距会粘在一起');
+    const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    assert.equal((i18n.match(/guideHint:/g) || []).length, 2, 'guideHint 必须中英各一条，否则切到英文会露出 undefined');
+  });
 });
 
 // ---------- 离线教学包：清单映射 / 断点续下 / 文案分支 / 与 SW 路由一致性 ----------
@@ -2501,5 +2518,105 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
       if (/import AskAiButton from/.test(src)) assert.ok(src.includes('<AskAiButton'), f + ' 存在未使用的 AskAiButton 死导入');
       if (/import AskQuizButton from/.test(src)) assert.ok(src.includes('<AskQuizButton'), f + ' 存在未使用的 AskQuizButton 死导入');
     }
+  });
+}
+
+// ---------- AI 流式交互：吸底判据 / 中断保全 / 增量计数 / 首包超时 ----------
+{
+  test('吸底判据：阈值边界与「内容不足一屏」都要判为贴底', () => {
+    const CH = 300;
+    assert.equal(isNearBottom(0, CH, CH), true, '内容不足一屏（无需滚动）必须算贴底');
+    assert.equal(isNearBottom(CH * 3 - CH - STICK_THRESHOLD, CH, CH * 3), true, '距底恰好等于阈值仍算贴底');
+    assert.equal(isNearBottom(CH * 3 - CH - STICK_THRESHOLD - 1, CH, CH * 3), false, '超出阈值 1px 即算离底');
+    assert.equal(isNearBottom(0, CH, CH * 3), false, '滚到顶部当然不是贴底');
+    assert.equal(isNearBottom(0, CH, CH * 3, 10 ** 6), true, '阈值可覆盖');
+  });
+
+  test('中断保全：空白不生成记录，非空加标记且幂等', () => {
+    assert.equal(markStopped('', 'zh'), '', '空回答不该被当成一轮问答存进历史');
+    assert.equal(markStopped('   \n  ', 'zh'), '', '只有空白也不该入历史');
+    const zh = markStopped('串联电路电流相等', 'zh');
+    assert.ok(zh.startsWith('串联电路电流相等') && zh.endsWith('[已停止]'), '中文须带 [已停止] 标记');
+    assert.equal(markStopped(zh, 'zh'), zh, '重复标记必须幂等，否则重试路径会叠出两个 [已停止]');
+    assert.ok(markStopped('current is equal', 'en').endsWith('[stopped]'), '英文用 [stopped]');
+  });
+
+  test('增量 token 计数与 estimateTokens(全文) 等价（去掉 O(n²) 后口径不变）', () => {
+    const chunks = ['串联电路中', ' I=U/R ', '由 $I=U/R$ 得', '出电流约为', ' 0.2A。', '\n- 注意 $R_{总}$'];
+    let len = 0;
+    let cjk = 0;
+    for (const c of chunks) { len += c.length; cjk += countCjk(c); }
+    assert.equal(Math.round(cjk + (len - cjk) / 4), estimateTokens(chunks.join('')), '增量累计必须与整段估算逐值一致');
+    assert.equal(countCjk('abc中文123'), 2, 'CJK 计数只数汉字与全角符号');
+  });
+
+  test('流式滚动：只用 auto 跟随、仅贴底时跟随，并提供离底解锁与恢复入口', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.ok(!/behavior:\s*'smooth'/.test(ai), "流式滚动不得再用 smooth：每 delta 重启平滑动画会抖，也会吃掉用户手势");
+    assert.match(ai, /if \(!el \|\| !stickRef\.current\) return;/, '仅吸底状态才跟随滚动');
+    assert.match(ai, /onScroll=\{/, '滚动容器须带 onScroll 才能判定用户是否离底');
+    assert.match(ai, /isNearBottom\(/, '离底判定须复用 ai-scroll 的纯函数（阈值单一口径）');
+    assert.match(ai, /addEventListener\('wheel'/, '需监听滚轮主动上滑并解锁吸底');
+    assert.match(ai, /addEventListener\('touchmove'/, '需监听触屏上滑并解锁吸底');
+    assert.match(ai, /'回到最新内容'/, '离底后须给出回到底部的入口');
+  });
+
+  test('中断保全与首包超时：停止后成果入历史与上下文，20s 首包闸，reader 收口', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /const kept = markStopped\(accText, lang\)/, '中断时须用已收正文生成可保留内容');
+    assert.match(ai, /lastExchange\.current = \{ user: q, assistant: kept \}/, '中断的那一轮也要写进追问上下文，否则「继续问」接不上');
+    assert.match(ai, /answer: kept,/, '中断的内容须落盘到本地历史');
+    const cfg = readFileSync('src/lib/ai-config.ts', 'utf8');
+    assert.match(cfg, /FIRST_PACKET_TIMEOUT_MS = 20000/, '首包超时阈值须显式为 20s');
+    assert.match(cfg, /firstPacketTimedOut = true/, '超时必须真的中断请求');
+    assert.match(cfg, /markFirstPacket\(\);/, '收到事件流后必须撤掉首包闸，否则长回答会被自己掐断');
+    assert.match(cfg, /await reader\.cancel\(\)/, '退出路径须显式释放读取器');
+    assert.match(cfg, /reader\.releaseLock\(\)/, '并释放锁，避免连接与锁悬着');
+  });
+}
+
+// ---------- Guide 页视频容器与封面：防抖动 + 离线封面 ----------
+/** 读 WebP 头拿真实宽高（零依赖）：RIFF/WEBP + VP8(有损) / VP8L(无损) / VP8X(扩展) */
+function webpSize(buf: Buffer): { w: number; h: number } | null {
+  if (buf.length < 30) return null;
+  if (buf.toString('ascii', 0, 4) !== 'RIFF' || buf.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const fmt = buf.toString('ascii', 12, 16);
+  if (fmt === 'VP8 ') return { w: buf.readUInt16LE(26) & 0x3fff, h: buf.readUInt16LE(28) & 0x3fff };
+  if (fmt === 'VP8L') {
+    const bits = buf.readUInt32LE(21);
+    return { w: (bits & 0x3fff) + 1, h: ((bits >> 14) & 0x3fff) + 1 };
+  }
+  if (fmt === 'VP8X') return { w: 1 + buf.readUIntLE(24, 3), h: 1 + buf.readUIntLE(27, 3) };
+  return null;
+}
+
+{
+  test('Guide 视频：容器锁 16:9 + WebP 封面，彻底消除未加载时的比例回跳', () => {
+    const page = readFileSync('src/pages/GuidePage.tsx', 'utf8');
+    const wrap = page.match(/<div className="([^"]*aspect-video[^"]*)"/)?.[1] ?? '';
+    assert.ok(wrap.includes('aspect-video'),
+      '容器必须锁 16:9：否则未加载时浏览器按 UA 默认 300×150（2:1）排布，元数据到位后回跳（实测桌面 41px / 移动端 19px）');
+    assert.ok(wrap.includes('overflow-hidden') && wrap.includes('rounded-lg'), '圆角需配 overflow-hidden 才能裁切封面与首帧');
+    assert.ok(wrap.includes('max-w-2xl'), '保持既有版心宽度');
+
+    const video = page.match(/<video[\s\S]*?>/)?.[0] ?? '';
+    assert.ok(/poster="\/videos\/[^"]+\.webp(\?v=\d+)?"/.test(video),
+      'video 必须挂 WebP 封面：没有封面时未点播的播放器是一块黑方块');
+    assert.ok(/className="[^"]*h-full w-full object-cover/.test(video), '视频须铺满容器（比例由容器决定）');
+    assert.ok(video.includes('controls') && video.includes('playsInline'), '保持原生控件与 iOS 内联播放，零自定义遮挡');
+    assert.ok(video.includes('preload="none"'), '首屏不得预载 17.6MB 片源');
+
+    const posterPath = video.match(/poster="(\/videos\/[^"?]+)/)?.[1] ?? '';
+    assert.ok(posterPath, '未能从 poster 属性解析出封面路径');
+    const file = 'public' + posterPath;
+    assert.ok(existsSync(file), `封面文件不存在：${file}`);
+    const size = webpSize(readFileSync(file));
+    assert.ok(size, `封面须是可解析的 WebP：${file}`);
+    assert.ok(Math.abs(size!.w / size!.h - 16 / 9) < 0.01, `封面须为 16:9（否则容器内会留边或裁切），实际 ${size!.w}×${size!.h}`);
+    assert.ok(size!.w >= 1440, `封面宽度须 ≥1440：桌面 DPR2（2K/4K）容器需 1344 设备像素，1280 只有 95.2% 覆盖，实际 ${size!.w}`);
+    assert.ok(readFileSync(file).length < 60 * 1024, '封面须 <60KB（轻量静态资源，可进预缓存）');
+
+    const cfg = readFileSync('vite.config.ts', 'utf8');
+    assert.ok(/globPatterns:[^\]]*webp/.test(cfg), 'globPatterns 须含 webp：否则封面不进预缓存，离线打开 /guide 会掉回黑块');
   });
 }
