@@ -2,8 +2,8 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v0.36.3-111111?style=flat) ![license](https://img.shields.io/badge/许可-AGPL--3.0-111111?style=flat)
-![stack](https://img.shields.io/badge/技术栈-React%2019%20%2B%20Vite%206%20%2B%20Tailwind%204-6b6b6b?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-6b6b6b?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-6b6b6b?style=flat)
+![version](https://img.shields.io/badge/v0.36.3-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
+![stack](https://img.shields.io/badge/React%20%2B%20Vite%20%2B%20KaTeX-087ea4?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
 15 个交互实验 + 4 个查表工具　·　纯前端 · 无需登录 · 中英双语 · 深浅主题 · 可离线使用</p>
