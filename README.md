@@ -2,10 +2,15 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/版本-v0.36.3-blue) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599C) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0)
-![typescript](https://img.shields.io/badge/TypeScript-5.9-3178c6) ![katex](https://img.shields.io/badge/KaTeX-0.18-green)
+![version](https://img.shields.io/badge/版本-v0.36.3-111111?style=flat) ![license](https://img.shields.io/badge/许可-AGPL--3.0-111111?style=flat)
+![stack](https://img.shields.io/badge/技术栈-React%2019%20%2B%20Vite%206%20%2B%20Tailwind%204-6b6b6b?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-6b6b6b?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-6b6b6b?style=flat)
 
-<p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>本地运行 · 无需登录 · 中英双语 · 深浅主题 · 在线访问：<a href="https://stem.irky.dev">https://stem.irky.dev</a></p>
+<p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
+15 个交互实验 + 4 个查表工具　·　纯前端 · 无需登录 · 中英双语 · 深浅主题 · 可离线使用</p>
+
+<p><b><a href="https://stem.irky.dev">▶ 在线体验：https://stem.irky.dev</a></b></p>
+
+<p><a href="#中文说明">中文说明</a>　·　<a href="#english">English</a></p>
 
 <table align="center">
   <thead>
@@ -13,8 +18,8 @@
   </thead>
   <tbody>
     <tr>
-      <td align="center"><img src="public/qr-stem.png" width="120" alt="扫码访问" title="手机扫码访问" /><br/>手机扫码访问</td>
-      <td align="center"><img src="public/qr-intro-video.png" width="120" alt="扫码观看介绍视频" title="手机扫码观看项目介绍视频" /><br/>手机扫码观看介绍视频</td>
+      <td align="center"><img src="public/qr-stem.png" width="120" alt="扫码访问本站" title="手机扫码访问" /></td>
+      <td align="center"><img src="public/qr-intro-video.png" width="120" alt="扫码观看介绍视频" title="手机扫码观看项目介绍视频" /></td>
     </tr>
   </tbody>
 </table>
@@ -23,12 +28,11 @@
 
 ---
 
-**[中文](#中文说明) · [English](#english)**
-
 ## 中文说明
 
 - [简介](#简介)
 - [实验与工具清单](#实验与工具清单)
+- [路线图（探索中）](#路线图探索中)
 - [运行架构](#运行架构)
 - [快速开始](#快速开始)
 - [三幕式探究](#三幕式探究)
@@ -56,26 +60,51 @@
 
 ### 实验与工具清单
 
-| 科目 | 年级 | 内容 |
-|---|---|---|
-| 数学 | 7-9 | 一次函数 · 二次函数 · 反比例函数 · 圆的性质 |
-| 物理 | 8-9 | 欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮 |
-| 化学 | 9 | 质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性 |
-| 工具 | — | 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读） · 物理常量速查 · 物理公式速查 · 数学公式速查 |
+**数学** `7-9`　一次函数 · 二次函数 · 反比例函数 · 圆的性质
+
+**物理** `8-9`　欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮
+
+**化学** `9`　质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性
+
+**工具**　元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
+
+> 15 个实验与 4 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
+
+### 路线图（探索中）
+
+**目录：** [前端内置轻量 Agent 与端侧纯离线推理](#前端内置轻量-agent-与端侧纯离线推理) · [校园学情收集与教学分析对接](#校园学情收集与教学分析对接) · [回到顶部 ↑](#数理化数字实验室)
+
+#### 前端内置轻量 Agent 与端侧纯离线推理
+
+- **离网自愈**：探索通过规则引擎与端侧超轻量模型（WebGPU / Wasm），在完全物理断网环境下依然提供基础的出题、判分与实验启发能力。
+- **保护隐私与零算力成本**：充分利用终端本地算力，敏感学习过程数据不出浏览器，没有持续的 API 账单焦虑。
+- **可选加载机制**：保持初始安装包轻盈极速，端侧模型权重作为可选的离线扩展按需下载。
+
+#### 校园学情收集与教学分析对接
+
+- **教学偏误透视**：支持可选对接轻量校园服务端，帮助教研组与任课教师归纳班级高频错题分布、易混淆考点与实验高频提问。
+- **极简与隐私优先**：无需复杂账号与密码体系，基于班级代号 / 机位号匿名化流转，不采集任何个人隐私。
+- **纯静态底色不妥协**：核心功能始终保持 100% 独立离线可用，学情同步仅作为可插拔的外设通道。
+
+> 两项都在探索中，且都属于**可选接入**：核心功能保持纯静态、无需登录、离网可用；端侧模型权重与校园学情对接都不会成为必需依赖。
+
+[回到顶部 ↑](#数理化数字实验室)
 
 ### 运行架构
 
-本项目为**纯前端 SPA**（React 19 + react-router + Tailwind 4），**无自建后端与数据库**，发布为静态站点托管（EdgeOne Pages）。运行架构如下图所示：
+本项目为**纯前端 SPA**（React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18），**无自建后端与数据库**，发布为静态站点托管（CDN 静态托管）。运行架构如下图所示：
 
 <div align="center">
   <img src="public/architecture-diagram-cn.jpg" alt="运行架构图" title="数理化数字实验室运行架构" width="100%" />
 </div>
 
-- **静态托管平台**：承接 Vite 构建产物并分发，托管 /s/.../html 路径
+- **静态托管平台**：承接 Vite 构建产物并分发到 CDN 边缘节点
 - **AI 学习助手**（BYOK）：浏览器直连您自己的 AI 服务商（兼容 OpenAI 端点，流式 /chat/completions），Key 仅存本机、本站无记录
 - **TTS 朗读**：LaTeX 口语化格式化 → SCF 云函数代理 edge-tts 合成语音并回放
+- **预览即可用、可安装**：Service Worker 预缓存应用外壳，页面二次打开与断网后仍可运行；也可安装为桌面 / 手机应用
+- **离线教学包（可选下载）**：把元素实物照片、读音音频与结构示意图存到本机，无网也能照常上课；断网时本地实验、公式手册与错题复习卷照常可用，AI 助手需联网（若使用本机 / 局域网推理服务则不受影响）
 - **反馈收集**：按钮触发 → 本地队列（localStorage）暂存 →（可选）异步上报，无自建后端、离线可存
-- **PWA / SEO**：Service Worker 注册离线更新；构建期生成 sitemap 供搜索引擎抓取
+- **SEO**：构建期生成 sitemap 供搜索引擎抓取
 
 ### 快速开始
 
@@ -114,7 +143,10 @@ npm run test       # 运行测试
 - 首次使用先阅读并同意使用须知；Key 仅存本机浏览器，对话直连您所选的服务商，本站无后端、不记录任何内容
 - 模型列表在连接成功后自动获取；AI 生成内容仅供参考，请以教材和老师讲解为准
 - 支持数学公式排版（行内 / 块级 LaTeX），支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），面板尺寸可自由调整（右缘拖宽、右下角斜拉），底部显示当前模型与 token 用量估算，设置页可查看累计 token 用量与按日明细
-- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」；「考考我」可让 AI 基于当前知识点出单选题或填空题（可选单选/填空/混合，支持 AI 辅助判分），作答后即时判分与讲解；答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议；错题集可**按科目 / 知识点筛选后导出 A4 复习卷**：导出范围即当前筛选的全部错题（忽略每页 8 条的浏览分页），可选排序方式（按知识点分组 / 按时间倒序）、演算留白（紧凑 / 标准 20mm / 宽松 35mm）与是否附答案与解析（勾选后答案在文末独立起页）；**打印前可先按 A4 纸面预览**核对版式，含公式的选项自动改为单列避免挤压；直接连接打印机，或在系统打印窗口中选择「另存为 PDF」导出保存。不提供自由输入框，问答历史持久保存于本机浏览器
+- 点击页面「问 AI」按钮提问，回答末尾会推荐 3 个可继续点击了解的问题并支持「换一批」
+- 「考考我」可让 AI 基于当前知识点出单选题或填空题（可选单选/填空/混合，支持 AI 辅助判分），作答后即时判分与讲解；不提供自由输入框
+- 答错的题自动收集到错题集，提供学情概览（薄弱知识点、错误类型、趋势）与 AI 总结复习建议
+- 错题集可**按科目 / 知识点筛选后导出 A4 复习卷**：导出范围即当前筛选的全部错题（忽略每页 8 条的浏览分页），可选排序方式（按知识点分组 / 按时间倒序）、演算留白（紧凑 / 标准 20mm / 宽松 35mm）与是否附答案与解析（勾选后答案在文末独立起页）；**打印前可先按 A4 纸面预览**核对版式，含公式的选项自动改为单列避免挤压；直接连接打印机，或在系统打印窗口中选择「另存为 PDF」导出保存
 
 ### 每日科学
 
@@ -139,28 +171,12 @@ src/
 │   │   └── circuit/   # 电路部件（电阻/灯泡/变阻器/电表等 SVG）
 │   ├── layout/        # 外壳（Header / Footer）
 │   ├── ai/            # AI 学习助手（面板/问 AI 按钮）
-│   ├── feedback/      # 反馈气泡与面板 / 分享对话框
+│   ├── feedback/      # 反馈气泡与面板 / 分享对话框 / 离线教学包
 │   ├── share/         # 标题内嵌分享按钮
 │   └── ui/            # 通用 UI（科目/实验图标、公式、占位页）
 ├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 元素数据 / 全局状态
-└── pages/             # 首页 / 科目 / 实验 / 周期表 / 使用说明
+└── pages/             # 首页 / 科目 / 实验 / 周期表 / 常量与公式速查 / 使用说明 / 许可
 ```
-
-### 路线图（探索中）
-
-#### 前端内置轻量 Agent 与端侧纯离线推理
-
-- **离网自愈**：探索通过规则引擎与端侧超轻量模型（WebGPU / Wasm），在完全物理断网环境下依然提供基础的出题、判分与实验启发能力。
-- **保护隐私与零算力成本**：充分利用终端本地算力，敏感学习过程数据不出浏览器，没有持续的 API 账单焦虑。
-- **可选加载机制**：保持初始安装包轻盈极速，端侧模型权重作为可选的离线扩展按需下载。
-
-#### 校园学情收集与教学分析对接
-
-- **教学偏误透视**：支持可选对接轻量校园服务端，帮助教研组与任课教师归纳班级高频错题分布、易混淆考点与实验高频提问。
-- **极简与隐私优先**：无需复杂账号与密码体系，基于班级代号 / 机位号匿名化流转，不采集任何个人隐私。
-- **纯静态底色不妥协**：核心功能始终保持 100% 独立离线可用，学情同步仅作为可插拔的外设通道。
-
-> 两项都在探索中，且都属于**可选接入**：核心功能保持纯静态、无需登录、离网可用；端侧模型权重与校园学情对接都不会成为必需依赖。
 
 ### 反馈
 
@@ -182,6 +198,7 @@ src/
 
 - [Overview](#overview)
 - [Labs & Tools](#labs--tools)
+- [Roadmap (experimental)](#roadmap-experimental)
 - [Running Architecture](#running-architecture)
 - [Getting Started](#getting-started)
 - [Three-Act Inquiry](#three-act-inquiry)
@@ -209,26 +226,51 @@ src/
 
 ### Labs & Tools
 
-| Subject | Grades | Content |
-|---|---|---|
-| Math | 7–9 | Linear · Quadratic · Inverse Variation · Circle Properties |
-| Physics | 8–9 | Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys |
-| Chemistry | 9 | Conservation of Mass · Titration · Electrolysis · Metal Activity |
-| Tool | — | Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas |
+**Math** `7–9`　Linear · Quadratic · Inverse Variation · Circle Properties
+
+**Physics** `8–9`　Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys
+
+**Chemistry** `9`　Conservation of Mass · Titration · Electrolysis · Metal Activity
+
+**Tool**　Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
+
+> All 15 labs and all 4 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
+
+### Roadmap (experimental)
+
+**Jump to:** [On-Device Lightweight Agent & Offline Inference](#on-device-lightweight-agent--offline-inference) · [Classroom Telemetry & Pedagogical Insights](#classroom-telemetry--pedagogical-insights) · [Back to top ↑](#数理化数字实验室)
+
+#### On-Device Lightweight Agent & Offline Inference
+
+- **Offline resilience**: Exploring deterministic rule engines and ultra-lightweight client-side models (WebGPU / Wasm) to keep basic quiz generation, grading and experiment hints working even in a fully air-gapped classroom.
+- **Privacy & zero compute cost**: Uses the compute already on the device, so interaction data never leaves the browser and there is no ongoing API bill.
+- **Modular loading**: The initial install stays small and fast; local model weights ship as an optional offline package downloaded on demand.
+
+#### Classroom Telemetry & Pedagogical Insights
+
+- **Learning diagnostics**: Optional integration with a lightweight school-side service that helps teachers and teaching-research groups spot the most frequent wrong answers, confused concepts and repeated experiment questions in a class.
+- **Privacy first**: No account or password system; everything travels under a class code and seat alias, and no personal information is collected.
+- **Standalone by default**: The core app stays 100% usable offline; classroom telemetry is only a pluggable peripheral channel.
+
+> Both items are experimental and strictly opt-in: the app stays static, login-free and offline-first, and neither local model weights nor classroom telemetry ever become hard dependencies.
+
+[Back to top ↑](#数理化数字实验室)
 
 ### Running Architecture
 
-This is a **pure front-end SPA** (React 19 + react-router + Tailwind 4) with **no self-hosted backend or database**, published as a static site (EdgeOne Pages). The runtime architecture is shown below:
+This is a **pure front-end SPA** (React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18) with **no self-hosted backend or database**, published as a static site (CDN static hosting). The runtime architecture is shown below:
 
 <div align="center">
   <img src="public/architecture-diagram-en.jpg" alt="Running architecture" title="STEM Digital Lab running architecture" width="100%" />
 </div>
 
-- **Static host**: serves the Vite build and distributes /s/.../html paths
+- **Static host**: serves the Vite build artifacts from CDN edge nodes
 - **AI assistant** (BYOK): the browser talks directly to your own AI provider (OpenAI-compatible endpoint, streaming /chat/completions); key stays on-device, nothing is logged
 - **TTS read-aloud**: LaTeX is formatted for speech → a SCF cloud function proxies edge-tts to synthesize and play back audio
+- **Works on reopen, installable**: the Service Worker precaches the app shell, so a second visit — or a lost connection — still runs; the app can also be installed on desktop or phone
+- **Offline teaching pack (opt-in download)**: stores element photos, pronunciation audio and structure diagrams on the device for a fully offline lesson; offline, local labs, formula sheets and the mistake book keep working, while the AI assistant needs a network (a local / LAN inference service still works)
 - **Feedback**: button click → local queue (localStorage) → (optional) async report; no self-hosted backend, works offline
-- **PWA / SEO**: Service Worker registers offline updates; sitemap generated at build time for search engines
+- **SEO**: sitemap generated at build time for search engines
 
 ### Getting Started
 
@@ -266,8 +308,11 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 - Use your own API key: presets for DeepSeek / Qwen / Kimi / Zhipu GLM / Doubao plus a custom endpoint; this site provides no key, sells nothing, charges nothing
 - Read and accept the terms first; your key stays in your browser, chats go straight to your chosen provider, and this site has no backend and logs nothing
 - The model list is fetched after a successful connection; AI output is for reference — trust the textbook and your teacher
-|- Math formulas are rendered properly (inline / block LaTeX); Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage, with cumulative usage and per-day details in settings
-|- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option; "Quiz me" generates single-choice or fill-in questions (choose single-choice/fill-in/mixed, with AI-assisted grading) and scores them instantly with an explanation — no free-text input, and history persists only in your local browser. Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary. The mistake book can be **filtered by subject / topic and exported as an A4 revision sheet**: the export covers every record in the current filter (the 8-per-page browsing view is ignored), with selectable order (by topic / newest first), working space (compact / standard 20mm / roomy 35mm) and an optional answer-and-explanation section on its own page at the end; **preview the real A4 layout before printing**, options containing formulas switch to a single column so long formulas are not squeezed, and you can print straight to a printer or choose "Save as PDF" in the system print dialog to export a file
+- Math formulas are rendered properly (inline / block LaTeX); Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; panel size is adjustable (drag the right edge, or the corner for both dimensions); the footer shows the current model and estimated token usage, with cumulative usage and per-day details in settings
+- Single-turn Q&A: ask via the "Ask AI" button on the page; each answer suggests 3 follow-up questions to tap with a "refresh" option
+- "Quiz me" generates single-choice or fill-in questions (choose single-choice/fill-in/mixed, with AI-assisted grading) and scores them instantly with an explanation; no free-text input is provided
+- Wrong answers are collected into a mistake book with a learning overview (weak topics, error patterns, trend) and an AI review summary
+- The mistake book can be **filtered by subject / topic and exported as an A4 revision sheet**: the export covers every record in the current filter (the 8-per-page browsing view is ignored), with selectable order (by topic / newest first), working space (compact / standard 20mm / roomy 35mm) and an optional answer-and-explanation section on its own page at the end; **preview the real A4 layout before printing**, options containing formulas switch to a single column so long formulas are not squeezed, and you can print straight to a printer or choose "Save as PDF" in the system print dialog to export a file
 
 ### Daily Science
 
@@ -292,28 +337,12 @@ src/
 │   │   └── circuit/   # Circuit parts (resistor / bulb / rheostat / meters)
 │   ├── layout/        # Shell (Header / Footer)
 │   ├── ai/            # AI assistant (panel / ask buttons)
-│   ├── feedback/      # Feedback FAB & panel / share dialog
+│   ├── feedback/      # Feedback FAB & panel / share dialog / offline pack
 │   ├── share/         # Inline share button
 │   └── ui/            # Generic UI (subject/lab icons, formula, placeholders)
 ├── lib/               # Registry / subjects / i18n / feedback storage / elements / global state
-└── pages/             # Home / subject / lab / periodic table / guide
+└── pages/             # Home / subject / lab / periodic table / constants & formulas / guide / license
 ```
-
-### Roadmap (experimental)
-
-#### On-Device Lightweight Agent & Offline Inference
-
-- **Offline resilience**: Exploring deterministic rule engines and ultra-lightweight client-side models (WebGPU / Wasm) to keep basic quiz generation, grading and experiment hints working even in a fully air-gapped classroom.
-- **Privacy & zero compute cost**: Uses the compute already on the device, so interaction data never leaves the browser and there is no ongoing API bill.
-- **Modular loading**: The initial install stays small and fast; local model weights ship as an optional offline package downloaded on demand.
-
-#### Classroom Telemetry & Pedagogical Insights
-
-- **Learning diagnostics**: Optional integration with a lightweight school-side service that helps teachers and teaching-research groups spot the most frequent wrong answers, confused concepts and repeated experiment questions in a class.
-- **Privacy first**: No account or password system; everything travels under a class code and seat alias, and no personal information is collected.
-- **Standalone by default**: The core app stays 100% usable offline; classroom telemetry is only a pluggable peripheral channel.
-
-> Both items are experimental and strictly opt-in: the app stays static, login-free and offline-first, and neither local model weights nor classroom telemetry ever become hard dependencies.
 
 ### Feedback
 
