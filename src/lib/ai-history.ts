@@ -83,6 +83,19 @@ export function markStopped(text: string, lang: 'zh' | 'en'): string {
   return body.includes(mark) ? body : `${body}\n\n${mark}`;
 }
 
+/**
+ * 剥掉「中断标记」：发给模型的文本必须是干净正文。
+ * 标记只给学生看（提示这不是完整答案），回灌进上下文会让模型把标记当内容读。
+ */
+export function stripStoppedMark(text: string): string {
+  return text.replace(/\n*\s*\[(?:已停止|stopped)\]\s*$/u, '').trim();
+}
+
+/** 这轮回答是否「被中断」且仍有有效残句 —— 只有这种才值得给「继续生成」入口 */
+export function isStoppedAnswer(text: string): boolean {
+  return /\[(?:已停止|stopped)\]\s*$/u.test(text) && stripStoppedMark(text).length > 0;
+}
+
 /** 清空全部历史（只清历史，不动配置与当前会话） */
 export function clearHistory(): void {
   if (typeof window === 'undefined') return;

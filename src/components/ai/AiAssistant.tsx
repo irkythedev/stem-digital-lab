@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
+import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -27,7 +27,7 @@ import { useAiContext } from '../../lib/ai-context';
 import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
 import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
 import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
-import { clearHistory, listHistory, markStopped, saveHistory, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, saveHistory, relativeTime, stripStoppedMark, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
@@ -37,10 +37,28 @@ import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageModelTotal, t
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, isNetworkError, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat, FIRST_PACKET_TIMEOUT_MS,
+  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
+  classifyChatFailure, type ChatFailure,
   effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
 } from '../../lib/ai-config';
+
+/** 面板内的失败态：分类结果 + 本轮累计失败次数（≥3 时追加「检查网络」提示） */
+type FailureState = ChatFailure & { attempts: number };
+
+/**
+ * 行内对错标记：面板统一用 Lucide 图标，不再用对勾 / 叉号的文本符号。
+ * 正确沿用所在段落的常规色（或 accent），错误固定用 --error；对齐用 align-[-2px] 压到基线。
+ */
+function Mark({ ok, className = '' }: { ok: boolean; className?: string }) {
+  const Icon = ok ? Check : X;
+  return (
+    <Icon
+      className={`inline-block h-3.5 w-3.5 align-[-2px] ${ok ? '' : 'text-[var(--error)]'} ${className}`}
+      aria-hidden="true"
+    />
+  );
+}
 
 /** 思考强度三档（顺序即界面顺序）。「标准」不再标注「默认」：它现在会显式下发较低力度值，
  *  与部分服务商的默认（DeepSeek/百炼默认即高强度）并不相同。 */
@@ -350,7 +368,7 @@ export default function AiAssistant() {
     if (actToastTimer.current) window.clearTimeout(actToastTimer.current);
     actToastTimer.current = window.setTimeout(() => setActToast(null), 2600);
   };
-  // 复制状态：成功按钮上显示「已复制 ✓」，失败显示「复制失败」；2 秒后恢复
+  // 复制状态：成功按钮上显示「已复制」+ 对勾图标，失败显示「复制失败」；2 秒后恢复
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
   const copiedIdTimer = useRef<number | null>(null);
@@ -673,17 +691,9 @@ export default function AiAssistant() {
       setQuizSummaryText(full);
     } catch (e) {
       if (quizSummaryAbortRef.current && quizSummaryAbortRef.current.signal.aborted) return;
-      const msg = (e as Error).message;
-      const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
-      setQuizSummaryError(
-        isOffline
-          ? t.offlineAi.failed
-          : isNetworkError(msg)
-          ? msg
-          : authFailed
-            ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
-            : (lang === 'zh' ? '生成失败：' : 'Failed: ') + msg,
-      );
+      const classified = classifyChatFailure(e, { offline: isOffline });
+      if (classified.raw) logPromptIssue('quiz-summary-error', classified.raw);
+      setQuizSummaryError(t.aiError[classified.kind]);
     } finally {
       setQuizSummaryLoading(false);
     }
@@ -862,7 +872,7 @@ export default function AiAssistant() {
       // 去重（重试最容易产出重复题）+ 选项洗牌（正确项位置交给代码，不交给模型）
       const items = dedupeQuizQuestions(parsed.items).slice(0, count).map((q) => shuffleOptions(q));
       if (items.length === 0) {
-        setQuizError(lang === 'zh' ? '出题失败，请重试' : 'Failed to create questions, please retry');
+        setQuizError(t.aiError.other); // 模型没给出可用题目：按普通失败处理，给「重试」
         setQuizQuestions([]);
         setQuizLoading(false);
         return;
@@ -872,15 +882,10 @@ export default function AiAssistant() {
       setQuizLoading(false);
     } catch (e) {
       if (quizAbortRef.current && quizAbortRef.current.signal.aborted) return;
-      const msg = (e as Error).message;
-      const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
-      setQuizError(
-        isNetworkError(msg)
-          ? msg
-          : authFailed
-            ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired, open Settings to reconfigure')
-            : (lang === 'zh' ? '出题失败：' : 'Failed: ') + msg,
-      );
+      // 与对话链路同一套分类：英文原文只进开发者日志，学生看到的是中文分类文案
+      const classified = classifyChatFailure(e, { offline: isOffline });
+      if (classified.raw) logPromptIssue('quiz-error', classified.raw);
+      setQuizError(t.aiError[classified.kind]);
       setQuizLoading(false);
     }
   };
@@ -1025,7 +1030,14 @@ export default function AiAssistant() {
   const [pending, setPending] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<FailureState | null>(null);
+  // 本轮请求快照：重试必须「重放同一份 messages」，而不是按当前页面重新拼装
+  // （否则学生失败后拖了滑块，重试会悄悄换成另一个问题）
+  const attemptRef = useRef<{ q: string; followUp: boolean; messages: { role: 'system' | 'user' | 'assistant'; content: string }[] } | null>(null);
+  // 同一轮连续失败次数（≥3 追加「检查网络」提示）
+  const attemptsRef = useRef(0);
+  // 429 倒计时（秒）：>0 时「重试」进入禁用态，倒计时结束仍需学生手动点
+  const [retryCountdown, setRetryCountdown] = useState(0);
   // AI 思考等待秒数（仅用于「等待太久」的视觉变色提示，不显示数字；阈值与朗读一致 4s）
   const [aiElapsed, setAiElapsed] = useState(0);
   useEffect(() => {
@@ -1059,7 +1071,10 @@ export default function AiAssistant() {
     setAnswer('');
     setRecs([]);
     setCurrentQuestion('');
-    setError(null);
+    setFailure(null);
+    setRetryCountdown(0);
+    attemptsRef.current = 0;
+    attemptRef.current = null; // 切页/关面板后旧快照作废：不允许重试上一页的问题
     setUsage(null);
     setBusy(false);
     setHistory([]);
@@ -1502,7 +1517,7 @@ export default function AiAssistant() {
         setLiveModels(ids);
         setModel(ids[0]);
         setModelNote(lang === 'zh' ? `已获取 ${ids.length} 个可用模型` : `${ids.length} models available`);
-        setTestResult({ ok: true, msg: lang === 'zh' ? `已列出 ${ids.length} 个模型 ✓ 请再点「测试连接」确认能否对话` : `${ids.length} models listed ✓ now use "Test connection"` });
+        setTestResult({ ok: true, msg: lang === 'zh' ? `已列出 ${ids.length} 个模型，请再点「测试连接」确认能否对话` : `${ids.length} models listed — now use "Test connection"` });
         flashToast(true, lang === 'zh' ? `已获取 ${ids.length} 个模型` : `${ids.length} models fetched`);
       } else {
         setLiveModels([]);
@@ -1545,8 +1560,8 @@ export default function AiAssistant() {
         body: JSON.stringify({ model: probeModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
       });
       if (res.ok) {
-        setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功 ✓ 模型 ${probeModel} 可正常对话` : `Connected ✓ ${probeModel} responds` });
-        flashToast(true, lang === 'zh' ? '连接成功 ✓' : 'Connected ✓');
+        setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功：模型 ${probeModel} 可正常对话` : `Connected — ${probeModel} responds` });
+        flashToast(true, lang === 'zh' ? '连接成功' : 'Connected');
       } else {
         const j = await res.json().catch(() => null);
         const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
@@ -1640,7 +1655,7 @@ export default function AiAssistant() {
     }
   };
 
-  // 复制历史回答：成功显示「已复制 ✓」，失败显示「复制失败」；2 秒后恢复
+  // 复制历史回答：成功显示「已复制」+ 对勾图标，失败显示「复制失败」；2 秒后恢复
   const copyAnswer = async (id: string, text: string) => {
     const ok = await copyToClipboard(text);
     if (copiedIdTimer.current) window.clearTimeout(copiedIdTimer.current);
@@ -1690,7 +1705,13 @@ export default function AiAssistant() {
   };
 
   // 发送单轮问题（followUp=true 时携带上一轮问答作为上下文）
-  const sendQuestion = async (text: string, followUp = false) => {
+  // pinned = 重试时重放的快照：直接用当时那份 messages，不重新拼装
+  // （学生失败后若又拖了滑块，重新拼装会悄悄换成另一个问题）
+  const sendQuestion = async (
+    text: string,
+    followUp = false,
+    pinned?: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  ) => {
     expandFromCapsule(); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
     if (!q || busy) return;
@@ -1705,19 +1726,26 @@ export default function AiAssistant() {
     setOpenReasoningId('live');
     setReasoningSec(0);
     setRecs([]);
-    setError(null);
+    setFailure(null);
+    setRetryCountdown(0);
+    if (!pinned) attemptsRef.current = 0; // 新问题重新计数；重试沿用本轮计数
     setBusy(true);
-    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-      { role: 'system', content: systemPromptForPage() },
-    ];
-    if (followUp && lastExchange.current) {
+    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = pinned
+      ? pinned.map((m) => ({ ...m }))
+      : [{ role: 'system', content: systemPromptForPage() }];
+    if (!pinned && followUp && lastExchange.current) {
       messages.push({ role: 'user', content: lastExchange.current.user });
-      messages.push({ role: 'assistant', content: lastExchange.current.assistant });
+      // 中断过的回答在本地带 [已停止]/[stopped] 标记：发给模型前必须剥掉，
+      // 否则人造标记会被当成正文回灌进上下文
+      messages.push({ role: 'assistant', content: stripStoppedMark(lastExchange.current.assistant) });
     }
-    messages.push({
-      role: 'user',
-      content: lang === 'zh' ? `<学生提问>${q}</学生提问>` : `<student_question>${q}</student_question>`,
-    });
+    if (!pinned) {
+      messages.push({
+        role: 'user',
+        content: lang === 'zh' ? `<学生提问>${q}</学生提问>` : `<student_question>${q}</student_question>`,
+      });
+    }
+    attemptRef.current = { q, followUp, messages: messages.map((m) => ({ ...m })) };
     abortRef.current = new AbortController();
     const t0 = performance.now();
     // 用量实时统计：会话基准（本轮之前的累计）固定，prompt 一次计入，输出随流式滚动增长
@@ -1834,27 +1862,47 @@ export default function AiAssistant() {
       }
       // 使用 signal.aborted 判断（比字符串匹配可靠，兼容不同浏览器错误消息）
       if (abortRef.current && !abortRef.current.signal.aborted) {
-        const msg = (e as Error).message;
-        const authFailed = /authentication|invalid.*api|api key|401|403/i.test(msg);
-        const timeoutSec = Math.round(FIRST_PACKET_TIMEOUT_MS / 1000);
-        const noFirstPacket = msg.includes(`no response in ${timeoutSec}s`);
-        setError(
-          noFirstPacket
-            ? (lang === 'zh'
-              ? `${timeoutSec} 秒内没有收到任何内容：可能是服务商拥塞或网络受限，可以再试一次`
-              : `No content within ${timeoutSec}s — the provider may be congested; please try again`)
-            : isOffline
-            ? t.offlineAi.failed
-            : isNetworkError(msg)
-            ? msg
-            : authFailed
-              ? (lang === 'zh' ? 'API Key 无效或已失效，请点击右上角「设置」重新配置' : 'API key invalid or expired — open Settings to reconfigure')
-              : (lang === 'zh' ? '请求失败：' : 'Request failed: ') + msg,
-        );
+        // 分类归一：文案、是否给「重试」、429 是否先倒计时，全部由 kind 决定
+        const classified = classifyChatFailure(e, { offline: isOffline });
+        attemptsRef.current += 1;
+        setFailure({ ...classified, attempts: attemptsRef.current });
       }
     }
     setBusy(false);
   };
+
+  /**
+   * 重试上一轮：重放当时的 messages 快照（原地覆盖，不追加新轮次）。
+   *
+   * 失败轮从来不入 history / lastExchange，所以「原地覆盖」是天然的：
+   * 清掉失败态、用同一份请求重发即可 —— 不会在历史里留下重复问答。
+   */
+  const retryLastAttempt = () => {
+    const a = attemptRef.current;
+    if (!a || busy) return;
+    void sendQuestion(a.q, a.followUp, a.messages);
+  };
+
+  // 离线：联网恢复后自动重试一次（仅一次 —— 自动路径绝不无限重发，免得白烧 token）
+  useEffect(() => {
+    if (!failure || failure.kind !== 'offline') return;
+    const onOnline = () => retryLastAttempt();
+    window.addEventListener('online', onOnline, { once: true });
+    return () => window.removeEventListener('online', onOnline);
+  }, [failure]);
+
+  // 429：按 Retry-After（缺省 5s）倒计时；倒计时结束仍需学生手动点，不自动发
+  useEffect(() => {
+    if (!failure || failure.kind !== 'rate_limit') {
+      setRetryCountdown(0);
+      return;
+    }
+    setRetryCountdown(failure.retryAfterSec && failure.retryAfterSec > 0 ? failure.retryAfterSec : 5);
+    const timer = window.setInterval(() => {
+      setRetryCountdown((c) => (c <= 1 ? 0 : c - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [failure]);
 
   // 点击 AI 推荐的问题：携带上下文继续追问
   const askRecommended = (q: string) => {
@@ -2039,7 +2087,8 @@ export default function AiAssistant() {
       {savedToast && (
         <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
-          {lang === 'zh' ? '已保存 ✓' : 'Saved ✓'}
+          {lang === 'zh' ? '已保存' : 'Saved'}
+          <Mark ok className="ml-1" />
         </div>
       )}
       {/* 动作结果轻量 Toast（获取模型 / 测试连接）：放第二行，避免与「已保存」重叠 */}
@@ -3238,7 +3287,7 @@ export default function AiAssistant() {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
                             <span className={`inline-flex items-center gap-0.5 text-[0.6875rem] mono-font font-bold ${e.correct ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
-                              {e.correct ? '✓' : '✗'}
+                              <Mark ok={e.correct} />
                             </span>
                             <span className="block text-xs serif-font leading-snug line-clamp-2"><InlineAnswer text={e.question} /></span>
                           </span>
@@ -3266,7 +3315,7 @@ export default function AiAssistant() {
                                   <p key={idx} className={`text-xs serif-font leading-relaxed ${cls}`}>
                                     <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
                                     <InlineAnswer text={opt} />
-                                    {isAnswer && <span className="ml-1 text-[0.625rem] mono-font text-[var(--success)]">{lang === 'zh' ? '✓ 正确答案' : '✓ Answer'}</span>}
+                                    {isAnswer && <span className="ml-1 inline-flex items-center gap-0.5 text-[0.625rem] mono-font text-[var(--success)]"><Mark ok />{lang === 'zh' ? '正确答案' : 'Answer'}</span>}
                                     {isPicked && !e.correct && <span className="ml-1 text-[0.625rem] mono-font text-[var(--error)]">{lang === 'zh' ? '← 你的选择' : '← Your pick'}</span>}
                                   </p>
                                 );
@@ -3498,8 +3547,9 @@ export default function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => void loadQuizBatch()}
-                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                  className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors tap-area"
                 >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {lang === 'zh' ? '重试' : 'Retry'}
                 </button>
               </div>
@@ -3547,7 +3597,7 @@ export default function AiAssistant() {
                   </span>
                   {timeLeft !== null && timeLeft > 0 && (
                     <span className={timeLeft <= 5 ? 'text-[var(--error)] font-bold' : ''}>
-                      ⏱ {timeLeft}s
+                      <Timer className="mr-0.5 inline-block h-3 w-3 align-[-2px]" aria-hidden="true" />{timeLeft}s
                     </span>
                   )}
                 </div>
@@ -3582,10 +3632,10 @@ export default function AiAssistant() {
                       <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
                         <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                           {quizSelected === -1
-                            ? (lang === 'zh' ? '⏱ 超时未作答' : '⏱ Timed out')
+                            ? <><Timer className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{lang === 'zh' ? '超时未作答' : 'Timed out'}</>
                             : quizSelected === 0
-                              ? (lang === 'zh' ? '✓ 回答正确' : '✓ Correct')
-                              : (lang === 'zh' ? `✗ 正确答案：${quizQ.fillAnswers.join(' 或 ')}` : `✗ Correct answer: ${quizQ.fillAnswers.join(' or ')}`)}
+                              ? <><Mark ok className="mr-1" />{lang === 'zh' ? '回答正确' : 'Correct'}</>
+                              : <><Mark ok={false} className="mr-1" />{lang === 'zh' ? `正确答案：${quizQ.fillAnswers.join(' 或 ')}` : `Correct answer: ${quizQ.fillAnswers.join(' or ')}`}</>}
                         </p>
                         {quizSelected !== -1 && quizFillInput && quizSelected !== 0 && (
                           <p className="text-[0.625rem] mono-font text-[var(--muted)]">
@@ -3633,10 +3683,10 @@ export default function AiAssistant() {
                   <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
                     <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === quizQ.answerIdx ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                       {quizSelected === -1
-                        ? (lang === 'zh' ? '⏱ 超时未作答' : '⏱ Timed out')
+                        ? <><Timer className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{lang === 'zh' ? '超时未作答' : 'Timed out'}</>
                         : quizSelected === quizQ.answerIdx
-                          ? (lang === 'zh' ? '✓ 回答正确' : '✓ Correct')
-                          : (lang === 'zh' ? `✗ 正确答案是 ${String.fromCharCode(65 + quizQ.answerIdx)}` : `✗ Correct answer: ${String.fromCharCode(65 + quizQ.answerIdx)}`)}
+                          ? <><Mark ok className="mr-1" />{lang === 'zh' ? '回答正确' : 'Correct'}</>
+                          : <><Mark ok={false} className="mr-1" />{lang === 'zh' ? `正确答案是 ${String.fromCharCode(65 + quizQ.answerIdx)}` : `Correct answer: ${String.fromCharCode(65 + quizQ.answerIdx)}`}</>}
                     </p>
                     {quizQ.explanation && (
                       <div className="text-xs serif-font leading-relaxed">
@@ -3728,7 +3778,7 @@ export default function AiAssistant() {
                 </button>
               </div>
             )}
-            {history.length > 0 || answer || pending || busy || error ? (
+            {history.length > 0 || answer || pending || busy || failure ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
                 {history.map((h, i) => (
@@ -3749,10 +3799,27 @@ export default function AiAssistant() {
                         {renderSpeakControls(h.assistant, aiCtx.topic)}
                       </div>
                     </div>
+                    {/* 被中断的回答：给一个「继续生成」入口（复用 followUp 链路续写） */}
+                    {isStoppedAnswer(h.assistant) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // 把上下文钉在这一轮（lastExchange 可能已指向别的轮次），
+                          // 并剥掉中断标记，保证发给模型的正文是干净的
+                          lastExchange.current = { user: h.user, assistant: stripStoppedMark(h.assistant) };
+                          void sendQuestion(t.aiContinue.ask, true);
+                        }}
+                        disabled={busy}
+                        className="mt-1 inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--fg)] transition-colors hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                      >
+                        <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
+                        {t.aiContinue.label}
+                      </button>
+                    )}
                   </div>
                 ))}
                 {/* 当前轮（流式显示中） */}
-                {(answer || pending || busy || error) && (
+                {(answer || pending || busy || failure) && (
                   <>
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
                     {(answer || pending || busy) && (
@@ -3784,19 +3851,49 @@ export default function AiAssistant() {
                     )}
                   </>
                 )}
-                {error && (
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="text-[0.6875rem] text-[var(--error)] mono-font">{error}</p>
-                    {/* 认证类错误：一键回设置修改配置 */}
-                    {/authentication|invalid.*api|api key|401|403/i.test(error) && (
-                      <button
-                        type="button"
-                        onClick={() => { setView('settings'); setError(null); }}
-                        className="text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] shrink-0"
-                      >
-                        {lang === 'zh' ? '修改配置' : 'Fix config'}
-                      </button>
-                    )}
+                {failure && (
+                  <div className="mt-1 border border-[var(--border)] bg-[var(--card-bg)]/50 px-2.5 py-2 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      {failure.kind === 'offline' ? (
+                        <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
+                      ) : (
+                        <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
+                      )}
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="text-[0.6875rem] mono-font text-[var(--fg)]">{t.aiError[failure.kind]}</p>
+                        {failure.kind === 'offline' && (
+                          <p className="text-[0.625rem] mono-font text-[var(--muted)]">{t.aiError.offlineAuto}</p>
+                        )}
+                        {failure.raw && (
+                          <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all leading-snug">{failure.raw}</p>
+                        )}
+                        {failure.attempts >= 3 && (
+                          <p className="text-[0.625rem] mono-font text-[var(--muted)]">{t.aiError.checkNetwork}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {failure.retryable && (
+                        <button
+                          type="button"
+                          onClick={() => retryLastAttempt()}
+                          disabled={retryCountdown > 0 || busy}
+                          className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--fg)] transition-colors hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                          {retryCountdown > 0 ? `${retryCountdown}${t.aiError.waiting}` : t.aiError.retry}
+                        </button>
+                      )}
+                      {failure.kind === 'auth' && (
+                        <button
+                          type="button"
+                          onClick={() => { setView('settings'); setFailure(null); }}
+                          className="inline-flex min-h-10 items-center text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+                        >
+                          {lang === 'zh' ? '修改配置' : 'Fix config'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {/* AI 推荐的追问（由 prompt 约束生成，内容可控；可翻页换一批） */}

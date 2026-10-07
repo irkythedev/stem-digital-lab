@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.4';
+export const APP_VERSION = '0.36.5';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.5',
+    date: '2026-10',
+    zh: [
+      '[优化] 异常与重试机制：实现网络断开、429 与服务异常的智能重试状态机，新增 30s 传输停滞超时保护',
+      '[新增] 助教断点续写：中途中断或停止生成的回答支持一键「继续生成」，上下文自动剥离标记平滑续写',
+      '[优化] 界面规范图标化：全面消除 Emoji 与字符符号，统一使用严谨的 Lucide 矢量图标，重试与交互热区达标 40px',
+    ],
+    en: [
+      '[Improved] Resilience & Smart Retry: Introduced stateful retry handling for offline, 429, and timeouts; added 30s stall watchdog',
+      '[Added] Continue Generation: Enabled resuming interrupted or stopped responses without context pollution',
+      '[Improved] Design System Iconification: Replaced all text/emoji symbols with precision Lucide icons; enforced 40px touch targets',
+    ],
+  },
   {
     version: '0.36.4',
     date: '2026-10',

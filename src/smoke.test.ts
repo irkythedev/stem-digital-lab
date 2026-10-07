@@ -50,7 +50,7 @@ import {
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
-import { clearHistory, listHistory, markStopped, saveHistory, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, saveHistory, stripStoppedMark, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
 import { isNearBottom, STICK_THRESHOLD } from './lib/ai-scroll';
 import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
@@ -62,7 +62,7 @@ import {
   extractStreamDelta, createInlineThinkSplitter, streamChat,
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
   resolveThinkingDispatch, describeThinkingParams,
-  type ThinkingEffort, estimateTokens, countCjk} from './lib/ai-config';
+  type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS } from './lib/elements';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
@@ -2618,5 +2618,114 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
 
     const cfg = readFileSync('vite.config.ts', 'utf8');
     assert.ok(/globPatterns:[^\]]*webp/.test(cfg), 'globPatterns 须含 webp：否则封面不进预缓存，离线打开 /guide 会掉回黑块');
+  });
+}
+
+// ---------- AI 失败分类与重试链路：文案归一 / 上下文纯净 / 触控与图标纪律 ----------
+{
+  test('失败分类：网络·认证·限流·服务端·超时·停滞各归其位，是否可重试判定正确', () => {
+    const net = classifyChatFailure(new TypeError('Failed to fetch'));
+    assert.equal(net.kind, 'offline', '浏览器原文 "Failed to fetch" 必须归到离线/网络类，不能直接端给学生');
+    assert.equal(net.retryable, true);
+    assert.equal(classifyChatFailure(new Error('boom'), { offline: true }).kind, 'offline', '面板已知离线时优先按离线处理');
+
+    const auth = classifyChatFailure(Object.assign(new Error('nope'), { status: 401 }));
+    assert.equal(auth.kind, 'auth');
+    assert.equal(auth.retryable, false, '认证失效重试必然再失败：只给「修改配置」，不给「重试」');
+
+    const rl = classifyChatFailure(Object.assign(new Error('slow down'), { status: 429, retryAfterSec: 7 }));
+    assert.equal(rl.kind, 'rate_limit');
+    assert.equal(rl.retryAfterSec, 7, 'Retry-After 必须透传到失败态，供倒计时使用');
+
+    assert.equal(classifyChatFailure(Object.assign(new Error('bad gateway'), { status: 503 })).kind, 'server');
+    assert.equal(classifyChatFailure(new Error('no response in 20s')).kind, 'timeout');
+    assert.equal(classifyChatFailure(new Error('stalled for 30s')).kind, 'stall');
+
+    const bad = classifyChatFailure(Object.assign(new Error('bad request'), { status: 400 }));
+    assert.equal(bad.retryable, false, '4xx 属请求/配置问题：给学生「重试」只是让他白点一次');
+    const other = classifyChatFailure(new Error('weird'));
+    assert.equal(other.kind, 'network');
+    assert.equal(other.raw, 'weird', '原文必须保留：作为灰色次要行供排查，但绝不作为主文案');
+  });
+
+  test('中断标记：只给学生看，发给模型前必须剥离（且与 markStopped 互逆）', () => {
+    assert.equal(stripStoppedMark('串联电路电流相等\n\n[已停止]'), '串联电路电流相等');
+    assert.equal(stripStoppedMark('current is equal\n\n[stopped]'), 'current is equal');
+    assert.equal(stripStoppedMark('干净的正文'), '干净的正文', '没有标记的文本不得被改动');
+    assert.equal(stripStoppedMark('   '), '', '纯空白归一为空串');
+    assert.equal(stripStoppedMark(markStopped('残句', 'zh')), '残句');
+    assert.equal(stripStoppedMark(markStopped('partial', 'en')), 'partial');
+  });
+
+  test('失败文案：每个分类在中英文里都有条目（漏一个就会露出 undefined）', () => {
+    const kinds: AiFailureKind[] = ['offline', 'network', 'timeout', 'stall', 'rate_limit', 'server', 'auth', 'other'];
+    for (const k of kinds) {
+      assert.ok(translations.zh.aiError[k], 'zh 缺 aiError.' + k);
+      assert.ok(translations.en.aiError[k], 'en 缺 aiError.' + k);
+    }
+    assert.ok(translations.zh.aiError.retry && translations.en.aiError.retry, '重试按钮文案必须有中英两版');
+    assert.ok(translations.zh.aiError.checkNetwork && translations.en.aiError.checkNetwork, '连续失败提示必须有中英两版');
+  });
+
+  test('重试链路源码守卫：快照重放 / 离线仅一次 / 429 倒计时 / 触控 40px', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /const attemptRef = useRef</, '必须保存本轮请求快照，重试才能重放同一份 messages');
+    assert.match(ai, /attemptRef\.current = \{ q, followUp, messages: messages\.map/, '发送时固化快照（messages 需深拷贝）');
+    assert.match(ai, /void sendQuestion\(a\.q, a\.followUp, a\.messages\)/, '重试必须走快照重放，而不是按当前页面重新拼装');
+    assert.match(ai, /stripStoppedMark\(lastExchange\.current\.assistant\)/, '中断内容回灌上下文前必须剥离人造标记');
+    assert.match(ai, /addEventListener\('online', onOnline, \{ once: true \}\)/, '离线恢复只允许自动重试一次：严禁无限自动重发烧 token');
+    assert.match(ai, /setRetryCountdown\(failure\.retryAfterSec/, '429 必须按 Retry-After 倒计时');
+    assert.match(ai, /retryCountdown > 0 \|\| busy/, '倒计时未走完时「重试」须禁用');
+    const chips = ai.match(/min-h-10[^"]*tap-area/g) || [];
+    assert.ok(chips.length >= 2, `对话重试 chip 与 Quiz 重试按钮都须 min-h-10（触控 ≥40px），实际 ${chips.length} 处`);
+    assert.match(ai, /<RotateCcw className="h-3\.5 w-3\.5" aria-hidden="true" \/>\s*\{lang === 'zh' \? '重试' : 'Retry'\}/, 'Quiz 重试按钮须用 RotateCcw 图标');
+  });
+
+  test('停滞看门狗：常量与重置点齐备（首包闸之外的第二道闸）', () => {
+    const cfg = readFileSync('src/lib/ai-config.ts', 'utf8');
+    assert.match(cfg, /STALL_TIMEOUT_MS = 30000/, '停滞超时须显式 30s');
+    assert.match(cfg, /armStall\(\); \/\/ 每收到一段就重置停滞闸/, '每收到一段增量都要重置停滞闸（按间隔判定，不看总时长）');
+    assert.match(cfg, /if \(stalled\) throw new Error\(`stalled for/, '停滞要换成可识别错误，供分类给出「内容传输停滞」');
+    assert.match(cfg, /httpErr\.status = res\.status/, 'HTTP 状态码必须挂到错误上：否则 429/5xx 无法区分');
+    assert.match(cfg, /httpErr\.retryAfterSec/, 'Retry-After 必须解析并透传');
+  });
+
+  test('错误卡与重试 chip：严禁 emoji（黑白灰单色 + Lucide 矢量图标）', () => {
+    // 只查真正的 emoji（含用户点名的 ⚠️❌🔄）：U+1F300–1FAFF、U+1F000–1F2FF、变体选择符 FE0F、
+    // 以及 ✅❌⚠⭐⭕ 这几个常见符号。中性的 ✓/✗（U+2713/2717）是文本符号，不在禁用之列。
+    const emoji = /[\u{1F000}-\u{1FAFF}\u{FE0F}\u{2705}\u{274C}\u{26A0}\u{2B50}\u{2B55}]/u;
+    for (const f of ['src/components/ai/AiAssistant.tsx', 'src/components/ai/AnswerRich.tsx', 'src/lib/i18n.ts']) {
+      const hit = readFileSync(f, 'utf8').match(emoji);
+      assert.equal(hit, null, `${f} 出现 emoji：${hit?.[0]}（错误卡、提示文案与重试 chip 一律用 Lucide 图标）`);
+    }
+  });
+
+  test('文本符号图标化：面板不再出现对勾 / 叉号 / 沙漏字符（一律 Lucide 图标）', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const glyph = ai.match(/[✓✗⏱]/);
+    assert.equal(glyph, null, `AiAssistant 仍有字符符号：${glyph?.[0]}（应改用 Lucide 的 Check / X / Timer）`);
+    assert.match(ai, /function Mark\(\{ ok, className = '' \}/, '必须保留统一的行内对错标记组件');
+    assert.match(ai, /const Icon = ok \? Check : X;/, '正确 / 错误一律走 Check 与 X 图标');
+    assert.match(ai, /text-\[var\(--error\)\]/, '错误标记须用 --error 语义色');
+  });
+
+  test('中断残句的续写判定：只有「带标记且仍有正文」才给继续生成入口', () => {
+    assert.equal(isStoppedAnswer('残句\n\n[已停止]'), true);
+    assert.equal(isStoppedAnswer('partial\n\n[stopped]'), true);
+    assert.equal(isStoppedAnswer('完整回答'), false, '正常回答不得出现「继续生成」');
+    assert.equal(isStoppedAnswer('[已停止]'), false, '只有标记没有正文时无可续写内容');
+    assert.equal(isStoppedAnswer(''), false);
+  });
+
+  test('继续生成链路：钉住本轮上下文 + 剥离标记 + 复用 followUp + 40px 触控', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /lastExchange\.current = \{ user: h\.user, assistant: stripStoppedMark\(h\.assistant\) \}/,
+      '续写必须把上下文钉在被中断的那一轮，且剥掉人造标记');
+    assert.match(ai, /void sendQuestion\(t\.aiContinue\.ask, true\)/, '续写必须走 followUp 链路（第二个参数 true）');
+    assert.match(ai, /isStoppedAnswer\(h\.assistant\)/, '入口只挂在「被中断且仍有残句」的回答上');
+    assert.match(ai, /min-h-10[^"]*tap-area"\s*>\s*<ChevronsDown/, '「继续生成」chip 须 min-h-10（触控 ≥40px）并内嵌 Lucide 图标');
+    for (const k of ['label', 'ask'] as const) {
+      assert.ok(translations.zh.aiContinue[k] && translations.en.aiContinue[k], `aiContinue.${k} 必须有中英两版`);
+    }
   });
 }

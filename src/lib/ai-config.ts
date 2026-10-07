@@ -69,6 +69,43 @@ export function isNetworkError(msg: string): boolean {
   return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg);
 }
 
+/** 失败分类：决定文案、是否给「重试」、以及 429 要不要先倒计时 */
+export type AiFailureKind = 'offline' | 'network' | 'timeout' | 'stall' | 'rate_limit' | 'server' | 'auth' | 'other';
+
+export interface ChatFailure {
+  kind: AiFailureKind;
+  /** 是否值得给「重试」：认证失效不给（重试必然再失败），其余客户端错误也不给 */
+  retryable: boolean;
+  /** 原生/服务商原文：只作为灰色次要行呈现，绝不直接当主文案 */
+  raw: string;
+  /** 429 的等待秒数：有值则「重试」先进入倒计时禁用态 */
+  retryAfterSec?: number;
+}
+
+/**
+ * 把各种失败归一到可决策的类别（纯函数，无副作用）。
+ *
+ * 文案与重试策略都由 kind 决定，组件里不再靠正则猜谜 ——
+ * 旧实现会把浏览器原文（"Failed to fetch"）或服务商英文原文直接端给初中生看。
+ */
+export function classifyChatFailure(e: unknown, opts: { offline?: boolean } = {}): ChatFailure {
+  const err = e as { message?: string; status?: number; retryAfterSec?: number } | null;
+  const raw = (err && typeof err.message === 'string' ? err.message : String(e)) || '';
+  const status = typeof err?.status === 'number' ? err.status : undefined;
+
+  if (opts.offline || isNetworkError(raw)) return { kind: 'offline', retryable: true, raw };
+  if (status === 401 || status === 403 || /authentication|invalid[^.]*api|api key/i.test(raw)) {
+    return { kind: 'auth', retryable: false, raw };
+  }
+  if (status === 429) return { kind: 'rate_limit', retryable: true, raw, retryAfterSec: err?.retryAfterSec };
+  if (status !== undefined && status >= 500) return { kind: 'server', retryable: true, raw };
+  if (/no response in \d+s/.test(raw)) return { kind: 'timeout', retryable: true, raw };
+  if (/stalled for \d+s/.test(raw)) return { kind: 'stall', retryable: true, raw };
+  // 其余 4xx 属于请求/配置问题：重试同样会失败，别让学生白点一次
+  if (status !== undefined && status >= 400 && status < 500) return { kind: 'other', retryable: false, raw };
+  return { kind: 'network', retryable: true, raw };
+}
+
 /**
  * 端点归一化：兼容 Base URL（…/v1）与完整端点（…/v1/chat/completions），用户无感。
  * 安全：仅允许 http/https 协议（拒绝 javascript:/data: 等危险协议），并剥离 query 片段
@@ -818,6 +855,8 @@ export function resolveThinkingDispatch(
 
 /** 流式请求的首包超时：连上了却一个 token 都不吐时，学生只能干等（服务商拥塞或被中间设备挂起） */
 export const FIRST_PACKET_TIMEOUT_MS = 20000;
+/** 中途停滞超时：首包已到、但这么久没有任何新增量（弱网/代理半死最常见的表现） */
+export const STALL_TIMEOUT_MS = 30000;
 
 /** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
 export async function streamChat(
@@ -844,13 +883,29 @@ export async function streamChat(
     firstPacketTimedOut = true;
     ctrl.abort();
   }, FIRST_PACKET_TIMEOUT_MS);
+  // 中途停滞看门狗：首包一到就撤掉首包闸，改由「停滞闸」盯增量之间的间隔
+  let stalled = false;
+  let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  const clearStall = () => {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = undefined;
+  };
+  const armStall = () => {
+    clearStall();
+    stallTimer = setTimeout(() => {
+      stalled = true;
+      ctrl.abort();
+    }, STALL_TIMEOUT_MS);
+  };
   const markFirstPacket = () => {
     if (firstPacket) return;
     firstPacket = true;
     clearTimeout(firstPacketTimer);
+    armStall();
   };
   const detach = () => {
     clearTimeout(firstPacketTimer);
+    clearStall();
     signal?.removeEventListener('abort', onOuterAbort);
   };
   const res = await fetch(url, {
@@ -880,7 +935,13 @@ export async function streamChat(
       /* ignore */
     }
     detach();
-    throw new Error(detail || `HTTP ${res.status}`);
+    // 把状态码与 Retry-After 挂在错误对象上：调用方要据此区分 429 限流 / 5xx / 认证，
+    // 光看文案分不出来（各服务商的 message 写法千奇百怪，直接透传会给学生看英文天书）。
+    const httpErr = new Error(detail || `HTTP ${res.status}`) as Error & { status?: number; retryAfterSec?: number };
+    httpErr.status = res.status;
+    const retryAfter = Number(res.headers.get('retry-after'));
+    if (Number.isFinite(retryAfter) && retryAfter > 0) httpErr.retryAfterSec = Math.min(300, Math.round(retryAfter));
+    throw httpErr;
   }
   const reader = res.body?.getReader();
   if (!reader) {
@@ -903,6 +964,7 @@ export async function streamChat(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      armStall(); // 每收到一段就重置停滞闸：停滞按「增量间隔」判定，与总时长无关
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop() ?? '';
@@ -923,6 +985,10 @@ export async function streamChat(
     }
     splitter.flush();
     return full;
+  } catch (e) {
+    // 停滞是「我们自己掐的」，要换成人能看懂的说明；其余原样上抛给调用方分类
+    if (stalled) throw new Error(`stalled for ${Math.round(STALL_TIMEOUT_MS / 1000)}s`);
+    throw e;
   } finally {
     detach();
     // 收口：正常结束、首包超时、调用方 abort 三条路径都要显式释放读取器，
