@@ -270,7 +270,7 @@ export default function AiAssistant() {
             : speakState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
             : (lang === 'zh' ? '朗读回答' : 'Read aloud')
         }
-        className={`inline-flex items-center justify-center transition-colors p-1.5 -m-1.5 ${
+        className={`tap-area inline-flex items-center justify-center transition-colors p-1.5 ${
           speakState === 'synthesizing'
             ? (waitingLong ? 'text-[#d97706]' : 'text-[var(--muted)]')
             : 'text-[var(--muted)] hover:text-[var(--fg)]'
@@ -301,7 +301,7 @@ export default function AiAssistant() {
           type="button"
           onClick={stopSpeak}
           title={lang === 'zh' ? '停止朗读' : 'Stop'}
-          className="inline-flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
+          className="tap-area inline-flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
         >
           <Square className="w-3.5 h-3.5" />
         </button>
@@ -1006,13 +1006,13 @@ export default function AiAssistant() {
   const renderReasoning = (text: string, sec: number, id: string) => {
     const open = openReasoningId === id;
     return (
-      <div className="inline-block max-w-[95%] mb-1 border border-[var(--border)]">
+      <div className="inline-block max-w-[95%] mb-1 rounded-md border border-[var(--border)]/60 bg-[var(--accent-light)]/40">
         <button
           type="button"
           onClick={() => setOpenReasoningId(open ? null : id)}
-          className="w-full text-left px-2.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="tap-area w-full text-left inline-flex items-center gap-1 px-2.5 py-1.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
-          {open ? '▾ ' : '▸ '}
+          <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
           {lang === 'zh'
             ? `思考过程（约 ${sec}s · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`
             : `Thinking (≈${sec}s · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`}
@@ -2777,18 +2777,18 @@ export default function AiAssistant() {
                       <div className="flex items-center gap-2 pt-1">
                         <button type="button" onClick={() => gotoHistoryPath(h.path)}
                           title={lang === 'zh' ? '回到来源页' : 'Back to source page'}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+                          className="tap-area rounded-md inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font leading-none border border-transparent bg-[var(--accent-light)]/50 transition-colors hover:bg-[var(--accent-light)]">
                           <ArrowLeft className="w-3 h-3" aria-hidden="true" />
                           {lang === 'zh' ? '回到来源页' : 'Back to source'}
                         </button>
                         <button type="button" onClick={() => void copyAnswer(h.id, h.answer)}
                           title={lang === 'zh' ? '复制回答' : 'Copy answer'}
-                          className={`inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border transition-colors ${
+                          className={`tap-area rounded-md inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font leading-none border border-transparent transition-colors ${
                             copiedId === h.id
-                              ? 'border-[var(--fg)] text-[var(--fg)]'
+                              ? 'bg-[var(--accent-light)] text-[var(--fg)]'
                               : copyFailedId === h.id
-                                ? 'border-[var(--error)] text-[var(--error)]'
-                                : 'border-[var(--border)] hover:border-[var(--fg)]'
+                                ? 'bg-[var(--error)]/10 text-[var(--error)]'
+                                : 'bg-[var(--accent-light)]/50 hover:bg-[var(--accent-light)]'
                           }`}>
                           {copiedId === h.id ? <Check className="w-3 h-3" aria-hidden="true" />
                             : copyFailedId === h.id ? <CircleX className="w-3 h-3" aria-hidden="true" />
@@ -2901,7 +2901,7 @@ export default function AiAssistant() {
                         onClick={() => setPaperOpen(false)}
                         aria-label={lang === 'zh' ? '关闭' : 'Close'}
                         title={lang === 'zh' ? '关闭' : 'Close'}
-                        className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none"
+                        className="tap-area p-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none"
                       >
                         ×
                       </button>
@@ -3550,7 +3550,7 @@ export default function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => void loadQuizBatch()}
-                  className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] tap-area"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] tap-area"
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {lang === 'zh' ? '重试' : 'Retry'}
@@ -3813,7 +3813,7 @@ export default function AiAssistant() {
                           void sendQuestion(t.aiContinue.ask, true);
                         }}
                         disabled={busy}
-                        className="mt-1 inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                        className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                       >
                         <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
                         {t.aiContinue.label}
@@ -3854,13 +3854,14 @@ export default function AiAssistant() {
                     )}
                   </>
                 )}
+                {/* 错误态：图标 + 文案 + 操作同处一行（横向流式），不再把重试另起一行留白 */}
                 {failure && (
-                  <div className="mt-1 rounded-md border border-[var(--border)]/60 bg-[var(--error)]/5 px-2.5 py-2 space-y-1.5">
-                    <div className="flex items-start gap-2">
+                  <div className="mt-1 rounded-md border border-[var(--border)]/60 bg-[var(--error)]/5 px-2.5 py-2">
+                    <div className="flex items-center gap-2">
                       {failure.kind === 'offline' ? (
-                        <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
+                        <WifiOff className="h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
                       ) : (
-                        <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
+                        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
                       )}
                       <div className="min-w-0 flex-1 space-y-0.5">
                         <p className="text-[0.6875rem] mono-font text-[var(--fg)]">{t.aiError[failure.kind]}</p>
@@ -3874,14 +3875,13 @@ export default function AiAssistant() {
                           <p className="text-[0.625rem] mono-font text-[var(--muted)]">{t.aiError.checkNetwork}</p>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
+                      {/* 操作与文案同行（右侧）：视觉胶囊 28px，触屏由 tap-area 兜到 40px */}
                       {failure.retryable && (
                         <button
                           type="button"
                           onClick={() => retryLastAttempt()}
                           disabled={retryCountdown > 0 || busy}
-                          className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                          className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                         >
                           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                           {retryCountdown > 0 ? `${retryCountdown}${t.aiError.waiting}` : t.aiError.retry}
@@ -3891,7 +3891,7 @@ export default function AiAssistant() {
                         <button
                           type="button"
                           onClick={() => { setView('settings'); setFailure(null); }}
-                          className="inline-flex min-h-10 items-center text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+                          className="shrink-0 inline-flex items-center px-1.5 py-1.5 text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
                         >
                           {lang === 'zh' ? '修改配置' : 'Fix config'}
                         </button>
@@ -3911,7 +3911,7 @@ export default function AiAssistant() {
                           key={i}
                           type="button"
                           onClick={() => askRecommended(q)}
-                          className="text-left text-[0.6875rem] serif-font px-2.5 py-1.5 border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                          className="tap-area rounded-md text-left text-[0.6875rem] serif-font leading-snug px-2.5 py-1.5 border border-transparent bg-[var(--accent-light)]/50 transition-colors hover:bg-[var(--accent-light)]"
                         >
                           <InlineAnswer text={q} />
                         </button>

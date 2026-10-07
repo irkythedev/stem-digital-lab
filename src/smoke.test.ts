@@ -2677,8 +2677,10 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
     assert.match(ai, /addEventListener\('online', onOnline, \{ once: true \}\)/, '离线恢复只允许自动重试一次：严禁无限自动重发烧 token');
     assert.match(ai, /setRetryCountdown\(failure\.retryAfterSec/, '429 必须按 Retry-After 倒计时');
     assert.match(ai, /retryCountdown > 0 \|\| busy/, '倒计时未走完时「重试」须禁用');
-    const chips = ai.match(/min-h-10[^"]*tap-area/g) || [];
-    assert.ok(chips.length >= 2, `对话重试 chip 与 Quiz 重试按钮都须 min-h-10（触控 ≥40px），实际 ${chips.length} 处`);
+    // 视觉实体与触控热区解耦：实体保持 ~28px 胶囊，触屏 40px 一律交给 .tap-area（禁止 min-h-10 硬撑实体）
+    const pills = ai.match(/py-1\.5[^"]*tap-area/g) || [];
+    assert.ok(pills.length >= 3, `对话重试 / Quiz 重试 / 继续生成 都须「紧凑胶囊 + tap-area」，实际 ${pills.length} 处`);
+    assert.doesNotMatch(ai, /min-h-10/, 'AI 面板内不得再用 min-h-10 硬撑次级控件视觉高度（应改用 py-1.5 + tap-area）');
     assert.match(ai, /<RotateCcw className="h-3\.5 w-3\.5" aria-hidden="true" \/>\s*\{lang === 'zh' \? '重试' : 'Retry'\}/, 'Quiz 重试按钮须用 RotateCcw 图标');
   });
 
@@ -2724,7 +2726,7 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
       '续写必须把上下文钉在被中断的那一轮，且剥掉人造标记');
     assert.match(ai, /void sendQuestion\(t\.aiContinue\.ask, true\)/, '续写必须走 followUp 链路（第二个参数 true）');
     assert.match(ai, /isStoppedAnswer\(h\.assistant\)/, '入口只挂在「被中断且仍有残句」的回答上');
-    assert.match(ai, /min-h-10[^"]*tap-area"\s*>\s*<ChevronsDown/, '「继续生成」chip 须 min-h-10（触控 ≥40px）并内嵌 Lucide 图标');
+    assert.match(ai, /py-1\.5[^"]*tap-area"\s*>\s*<ChevronsDown/, '「继续生成」chip 须紧凑胶囊（py-1.5）+ tap-area 触屏热区 + 内嵌 Lucide 图标');
     for (const k of ['label', 'ask'] as const) {
       assert.ok(translations.zh.aiContinue[k] && translations.en.aiContinue[k], `aiContinue.${k} 必须有中英两版`);
     }
@@ -2954,7 +2956,7 @@ describe('Token usage chart source guards (零第三方图表依赖)', () => {
     const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
     const pills = ai.match(/rounded-md border border-\[var\(--border\)\]\/80 bg-\[var\(--accent-light\)\] text-\[var\(--fg\)\]/g) ?? [];
     assert.ok(pills.length >= 3, `三处 chip 都要改成轻底色胶囊（实测 ${pills.length} 处）`);
-    assert.match(ai, /min-h-10[^"]*tap-area"\s*>\s*<ChevronsDown/, '继续生成仍保 40px 触控 + Lucide 图标');
+    assert.match(ai, /py-1\.5[^"]*tap-area"\s*>\s*<ChevronsDown/, '继续生成须为紧凑胶囊（py-1.5）+ tap-area 触屏热区 + Lucide 图标');
     assert.match(
       ai,
       /rounded-md border border-\[var\(--border\)\]\/60 bg-\[var\(--error\)\]\/5 px-2\.5 py-2/,
@@ -3038,5 +3040,58 @@ describe('AI settings panel layout & control polish', () => {
       /className="ml-auto tap-area inline-flex items-center gap-1 text-\[0\.6875rem\] mono-font text-\[var\(--muted\)\] transition-colors hover:text-\[var\(--fg\)\]"/,
       '清除入口必须保持文字链并补 tap-area（触屏 ≥40px）',
     );
+  });
+});
+
+/* ── AI 次级控件：视觉实体与触控热区解耦（去臃肿精修守卫） ── */
+
+describe('AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承托', () => {
+  const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+
+  test('全文件零 min-h-10：视觉高度不再被 40px 硬撑', () => {
+    assert.doesNotMatch(ai, /min-h-10/, '仍有 min-h-10：桌面端会撑出 40px 方块（应改 py-1.5 + tap-area）');
+  });
+
+  test('不再用负外边距伪造紧凑（-m-* 会吃掉 flex 间距，与历史事故同源）', () => {
+    assert.doesNotMatch(ai, /-m-[0-9.]+/, '朗读/停止按钮不得再用 -m-1.5 抵消 padding（会吃掉 flex 间距）');
+    assert.match(
+      ai,
+      /tap-area inline-flex items-center justify-center transition-colors p-1\.5/,
+      '朗读按钮须改挂 tap-area 兜触屏热区（视觉仍 17px 图标）',
+    );
+  });
+
+  test('错误卡片：图标 + 文案 + 操作同处一行（横向流式，不再另起一行留白）', () => {
+    assert.doesNotMatch(
+      ai,
+      /bg-\[var\(--error\)\]\/5 px-2\.5 py-2 space-y-1\.5/,
+      '错误卡容器不得再用 space-y 竖向堆叠',
+    );
+    assert.match(
+      ai,
+      /shrink-0 inline-flex items-center gap-1\.5 px-2\.5 py-1\.5[^"]*tap-area/,
+      '重试胶囊须与文案同行（shrink-0）且视觉紧凑',
+    );
+  });
+
+  test('操作栏 / Prompt chips / 思考折叠：去硬描边、微底色、各带触屏热区', () => {
+    const subtle = ai.match(/border border-transparent bg-\[var\(--accent-light\)\]\/50/g) ?? [];
+    assert.ok(subtle.length >= 2, `复制回答与推荐追问须改微底色（实测 ${subtle.length} 处）`);
+    assert.match(
+      ai,
+      /tap-area rounded-md text-left text-\[0\.6875rem\] serif-font leading-snug px-2\.5 py-1\.5/,
+      '推荐追问 chip 须紧凑且挂 tap-area',
+    );
+    assert.ok(!ai.includes("'▾ '") && !ai.includes("'▸ '"), '思考折叠不得再用 ▾/▸ 字符符号，应换 Lucide 图标');
+    assert.match(
+      ai,
+      /renderReasoning[\s\S]{0,900}<ChevronDown className=\{`h-3 w-3 shrink-0 transition-transform/,
+      '思考折叠须用 Lucide ChevronDown 表达展开态',
+    );
+  });
+
+  test('尺寸规范：主胶囊内边距统一 px-2.5 py-1.5 + leading-none（≈26–28px 视觉）', () => {
+    const pills = ai.match(/px-2\.5 py-1\.5 text-\[0\.6875rem\] mono-font leading-none/g) ?? [];
+    assert.ok(pills.length >= 3, `三处主胶囊须统一（实测 ${pills.length}）`);
   });
 });
