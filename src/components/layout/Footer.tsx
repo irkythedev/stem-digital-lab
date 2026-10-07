@@ -54,7 +54,7 @@ export default function Footer() {
             href="mailto:king4g@yeah.net"
             aria-label={t.emailAuthor}
             title={t.emailAuthor}
-            className="inline-flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
+            className="inline-flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
           >
             <Mail className="w-3.5 h-3.5" />
           </a>
@@ -73,7 +73,7 @@ export default function Footer() {
               aria-expanded={showWorks}
               title={t.moreWorks}
               aria-label={t.moreWorks}
-              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5 -m-1.5"
+              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
             >
               {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
               <span className="relative inline-flex">
@@ -105,7 +105,7 @@ export default function Footer() {
       </div>
 
       <div className="flex flex-col items-center gap-1.5 text-center">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5 sm:gap-4">
           {/* 分享：icon + hover 显示「分享」；二维码从按钮位置向上弹出（anchored popover，移动端/PC 一致） */}
           <span className="relative">
             <button
@@ -113,7 +113,7 @@ export default function Footer() {
               onClick={() => setShowShare(true)}
               title={t.share}
               aria-label={t.share}
-              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+              className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
@@ -127,7 +127,7 @@ export default function Footer() {
             rel="noopener noreferrer"
             title={t.architecture}
             aria-label={t.architecture}
-            className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
           >
             <Network className="w-3.5 h-3.5" />
           </a>
@@ -154,7 +154,7 @@ export default function Footer() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-2 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
           target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
@@ -162,7 +162,7 @@ export default function Footer() {
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}
           ariaLabel="Gitee project"
-          className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+          className="tap-icon flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors p-1.5"
         >
           <svg
             width="14"
@@ -181,7 +181,7 @@ export default function Footer() {
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}
           ariaLabel="GitHub project"
-          className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
         >
           <svg
             width="14"

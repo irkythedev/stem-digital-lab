@@ -288,7 +288,7 @@ export default function AiAssistant() {
         </button>
       )}
       {speakState === 'error' && errorMsg && (
-        <span className="text-[0.5625rem] text-[var(--error)] mono-font ml-1" role="alert">
+        <span className="text-[0.625rem] text-[var(--error)] mono-font ml-1" role="alert">
           {errorMsg}
         </span>
       )}
@@ -1870,7 +1870,7 @@ export default function AiAssistant() {
       {/* 移动端遮罩层：点击空白处安全关闭，同时给软键盘弹出提供稳定视口边界 */}
       {isMobile && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px]"
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-none sm:bg-black/40 sm:backdrop-blur-[1px]"
           onClick={() => { resetConversation(); setOpen(false); setPending(null); }}
           aria-hidden="true"
         />
@@ -1879,7 +1879,7 @@ export default function AiAssistant() {
         ref={panelRef}
         className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
           isMobile
-            ? 'inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
             : collapsed
               ? 'w-auto'
               // 空会话也保底 62dvh，面板不再塌到 221px；只在用户拖过高度时让位（见下方 style 里的 maxHeight）

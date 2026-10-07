@@ -2091,6 +2091,14 @@ describe('触屏命中区（hover:none + pointer:coarse）', () => {
     assert.ok(touchBlock.includes('.exam-preview-bar button'), '打印预览工具条同样属于底部主操作，需一并保底');
   });
 
+  test('筛选 chip 的 40px 触控基线不可依赖 Tailwind 工具类（会被未分层 button 规则压过）', () => {
+    assert.ok(/button\.chip-tap \{[^}]*min-height: 2\.5rem/.test(touchBlock),
+      'chip-tap 必须写在未分层的触屏块里：实测 min-h-10 在 button 上计算值为 0');
+    const table = readFileSync('src/pages/PeriodicTable.tsx', 'utf8');
+    const marked = (table.match(/className=(?:\{)?[`"]chip-tap/g) || []).length;
+    assert.ok(marked >= 5, `周期表搜索/发音/筛选 chip 需标满 chip-tap（实际 ${marked}）`);
+  });
+
   test('微型图标靠透明伪元素扩热区，图标本身不放大', () => {
     assert.ok(/\.tap-icon::after \{[\s\S]*?inset: -8px/.test(touchBlock), '图标热区必须外扩（视觉 14px → 热区 30px）');
     assert.ok(touchBlock.includes("content: ''"), '伪元素需要 content 才会生成，否则热区不存在');
@@ -2292,9 +2300,18 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.match(touchBlock, /\.tap-area\s*\{[^}]*min-height:\s*2\.5rem/);
   });
 
-  test('密集并排图标不得使用 tap-icon：扩区会互相压盖，出现点A触B', () => {
+  test('页脚独立图标：允许 tap-icon 扩区，但间距与视觉尺寸必须同时守住', () => {
     const footer = readFileSync('src/components/layout/Footer.tsx', 'utf8');
-    assert.ok(!footer.includes('tap-icon'), '页脚图标行彼此仅隔几像素，外扩热区会互相抢点击');
+    if (!footer.includes('tap-icon')) return; // 未扩区时无需约束
+    // 历史事故：页脚图标彼此仅隔几像素，+8px 外扩后热区互压，出现「点邮箱触发作品集」。
+    // 现在改为「先把间距拉开、再扩区」：间距被改小时本测试立刻失败。
+    assert.ok(/flex items-center gap-5/.test(footer), '作者行图标需保留 gap-5：26px 盒 + 20px 间隙 = 中心距 46px ≥ 44px');
+    assert.ok(/gap-x-5/.test(footer) && /gap-y-4/.test(footer), '底部图标行需保留 gap-x-5 / gap-y-4：横向中心距容得下两侧各 8px 扩区，换行后纵向也不撞');
+    const p15 = (footer.match(/p-1\.5(?! -m)/g) || []).length;
+    assert.ok(p15 >= 4, `扩区图标需用 p-1.5 把 14px 视觉盒撑到 26px 命中盒，实际 ${p15} 处`);
+    assert.ok(!footer.includes('-m-1\.5'), '扩区图标不得再用 -m-1.5：负外边距会吃掉 flex 间距 12px，中心距掉到 34px 后 42px 扩区必然互压');
+    assert.ok(/<Share2 className="w-3\.5 h-3\.5"/.test(footer) && /<Network className="w-3\.5 h-3\.5"/.test(footer),
+      '扩区只能靠伪元素：图标本身不得放大（视觉仍 14px）');
   });
 
   test('顶栏安全区不得清零上内边距：须为 calc 叠加（页脚同款写法）', () => {

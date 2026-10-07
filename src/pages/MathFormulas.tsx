@@ -30,7 +30,7 @@ function renderRich(text: string): ReactNode[] {
   const parts = text.split(/\$(.+?)\$/g);
   return parts.map((part, i) =>
     i % 2 === 1 ? (
-      <Formula key={i} tex={part} className="text-[0.8125rem] text-[var(--fg)]" />
+      <Formula key={i} tex={part} className="text-sm text-[var(--fg)]" />
     ) : (
       <span key={i}>{part}</span>
     ),
@@ -192,7 +192,7 @@ export default function MathFormulas() {
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
             <div className="w-full flex items-center justify-center overflow-x-auto min-h-0">
-              <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+              <Formula tex={f.formula} className="text-sm text-[var(--fg)]" />
             </div>
           </button>
         ))}

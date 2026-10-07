@@ -210,7 +210,7 @@ export default function PhysicsFormulas() {
               {lang === 'zh' ? f.name.zh : f.name.en}
             </span>
             <div className="w-full flex items-center justify-center overflow-x-auto min-h-0">
-              <Formula tex={f.formula} className="text-[0.8125rem] text-[var(--fg)]" />
+              <Formula tex={f.formula} className="text-sm text-[var(--fg)]" />
             </div>
           </button>
         ))}

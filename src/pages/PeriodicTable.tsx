@@ -425,7 +425,7 @@ export default function PeriodicTable() {
         style={{ borderColor: color.border, backgroundColor: color.bg }}
       >
         {/* 核电荷数（左上角） */}
-        <span className="absolute top-0.5 left-1 text-[0.5625rem] mono-font text-[var(--muted)] leading-none">
+        <span className="absolute top-0.5 left-1 text-[0.625rem] mono-font text-[var(--muted)] leading-none">
           {el.n}
         </span>
         {/* 符号（居中，醒目） */}
@@ -435,7 +435,7 @@ export default function PeriodicTable() {
         {/* 中文名 */}
         <span className="text-center text-[0.75rem] serif-font leading-none mb-0.5 font-medium">{el.zh}</span>
         {/* 相对原子质量（底部，调大调浅） */}
-        <span className="text-center text-[0.5625rem] mono-font text-[var(--muted)] leading-none mb-0.5 opacity-80">
+        <span className="text-center text-[0.625rem] mono-font text-[var(--muted)] leading-none mb-0.5">
           {el.mass ?? ''}
         </span>
       </button>
@@ -494,7 +494,7 @@ export default function PeriodicTable() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={lang === 'zh' ? '输入元素符号或中文名，如 H / 氢' : 'Type a symbol or name, e.g. H / Hydrogen'}
-            className="w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+            className="min-h-10 w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]"
           />
         </div>
         {/* 图例 */}
@@ -529,7 +529,7 @@ export default function PeriodicTable() {
                   type="button"
                   onClick={() => changeVoice(v)}
                   aria-pressed={voice === v}
-                  className={`px-2 py-1 text-xs mono-font border transition-colors ${
+                  className={`chip-tap px-2 py-1 text-xs mono-font border transition-colors ${
                     voice === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
                   }`}
                 >
@@ -546,7 +546,7 @@ export default function PeriodicTable() {
             type="button"
             onClick={() => setShowPack(true)}
             title={t.offlinePack.entryHint}
-            className="inline-flex items-center gap-1.5 border border-[var(--border)] px-2.5 py-1.5 text-xs mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
+            className="chip-tap inline-flex items-center gap-1.5 border border-[var(--border)] px-2.5 py-1.5 text-xs mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
           >
             <HardDrive className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
             {t.offlinePack.entry}
@@ -571,7 +571,7 @@ export default function PeriodicTable() {
                 if (recite?.presetId === p.id) stopRecite();
                 else setReciteSetup(p.id);
               }}
-              className={`px-3 py-1.5 text-xs mono-font border transition-colors ${
+              className={`chip-tap px-3 py-1.5 text-xs mono-font border transition-colors ${
                 recite?.presetId === p.id || reciteSetup === p.id
                   ? 'border-[var(--fg)] text-[var(--fg)]'
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
@@ -593,7 +593,7 @@ export default function PeriodicTable() {
                   key={r}
                   type="button"
                   onClick={() => setRepeat(r)}
-                  className={`px-2 py-1 text-xs mono-font border transition-colors ${
+                  className={`chip-tap px-2 py-1 text-xs mono-font border transition-colors ${
                     repeat === r ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
                   }`}
                 >
@@ -609,7 +609,7 @@ export default function PeriodicTable() {
                   key={g}
                   type="button"
                   onClick={() => setGapIdx(i)}
-                  className={`px-2 py-1 text-xs mono-font border transition-colors ${
+                  className={`chip-tap px-2 py-1 text-xs mono-font border transition-colors ${
                     gapIdx === i ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
                   }`}
                 >
@@ -716,14 +716,14 @@ export default function PeriodicTable() {
         <div
           ref={tableScrollRef}
           onScroll={checkTableScroll}
-          className="overflow-x-auto pt-3 -mt-1 touch-pan-x overscroll-x-contain pb-2 scrollbar-thin"
+          className="fade-r-x overflow-x-auto pt-3 -mt-1 touch-pan-x overscroll-x-contain pb-2 scrollbar-thin"
         >
           <div className="min-w-[720px] xl:min-w-[880px]">
             {/* 周期行 */}
             {[1, 2, 3, 4, 5, 6, 7].map((period) => (
               <div key={period} className="flex gap-1 mb-1">
                 {/* 周期号 */}
-                <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+                <span className="w-6 shrink-0 flex items-center justify-center text-[0.625rem] mono-font text-[var(--muted)]">
                   {period}
                 </span>
                 {Array.from({ length: 18 }, (_, i) => {
@@ -735,7 +735,7 @@ export default function PeriodicTable() {
                     return (
                       <div key={`ph-${period}-${col}`} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
                         <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '镧系' : 'La'}</span>
-                        <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
+                        <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '57–71' : '57–71'}</span>
                       </div>
                     );
                   }
@@ -743,7 +743,7 @@ export default function PeriodicTable() {
                     return (
                       <div key={`ph-${period}-${col}`} className="flex-1 h-[58px] flex flex-col items-center justify-center border border-[var(--border)] text-center leading-tight px-0.5">
                         <span className="text-[0.625rem] serif-font text-[var(--fg)]">{lang === 'zh' ? '锕系' : 'Ac'}</span>
-                        <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
+                        <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '89–103' : '89–103'}</span>
                       </div>
                     );
                   }
@@ -757,14 +757,14 @@ export default function PeriodicTable() {
 
             {/* 镧系 */}
             <div className="flex gap-1 mb-1">
-              <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+              <span className="w-6 shrink-0 flex items-center justify-center text-[0.625rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? '镧系' : 'La'}
               </span>
               {lanthanides.map((el) => renderCell(el))}
             </div>
             {/* 锕系 */}
             <div className="flex gap-1 mb-1">
-              <span className="w-6 shrink-0 flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+              <span className="w-6 shrink-0 flex items-center justify-center text-[0.625rem] mono-font text-[var(--muted)]">
                 {lang === 'zh' ? '锕系' : 'Ac'}
               </span>
               {actinides.map((el) => renderCell(el))}

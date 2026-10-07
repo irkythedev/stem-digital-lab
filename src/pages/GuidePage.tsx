@@ -98,7 +98,7 @@ export default function GuidePage() {
       </Link>
       <div className="mb-10 mt-5 max-w-2xl">
         <h1 className="t-h1 font-bold serif-font text-[var(--fg)] mb-4">{c.title}</h1>
-        <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.intro}</p>
+        <p className="text-sm serif-font leading-relaxed text-[var(--muted)] max-w-[36rem]">{c.intro}</p>
       </div>
 
       {/* 项目介绍视频：先看总览再读细节；preload="none" 不拖慢首屏 */}
@@ -132,14 +132,14 @@ export default function GuidePage() {
         </section>
         <section className="border-t border-[var(--border)] pt-4">
           <h2 className="text-xs font-bold tracking-widest uppercase mono-font mb-4">// {c.teaching}</h2>
-          <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.teachingText}</p>
+          <p className="text-sm serif-font leading-relaxed text-[var(--muted)] max-w-[36rem]">{c.teachingText}</p>
         </section>
         <section className="border-t border-[var(--border)] pt-4 md:col-span-2">
           <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase mono-font mb-2">
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             {c.ai}
           </h2>
-          <p className="text-sm serif-font leading-relaxed text-[var(--muted)] mb-3">{c.aiIntro}</p>
+          <p className="text-sm serif-font leading-relaxed text-[var(--muted)] mb-3 max-w-[36rem]">{c.aiIntro}</p>
           <p className="text-xs font-bold mono-font text-[var(--fg)] mb-1.5">{c.aiTermsTitle}</p>
           <ul className="space-y-1.5">
             {c.aiTerms.map((t, i) => (
@@ -160,7 +160,7 @@ export default function GuidePage() {
           </h2>
           <ul className="space-y-2">
             {c.mistakesList.map((item) => (
-              <li key={item} className="text-sm serif-font leading-relaxed text-[var(--muted)]">{item}</li>
+              <li key={item} className="text-sm serif-font leading-relaxed text-[var(--muted)] max-w-[36rem]">{item}</li>
             ))}
           </ul>
         </section>
@@ -169,7 +169,7 @@ export default function GuidePage() {
             <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
             {c.privacy}
           </h2>
-          <p className="text-sm serif-font leading-relaxed text-[var(--muted)]">{c.privacyText}</p>
+          <p className="text-sm serif-font leading-relaxed text-[var(--muted)] max-w-[36rem]">{c.privacyText}</p>
         </section>
 
       </div>

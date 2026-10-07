@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.2';
+export const APP_VERSION = '0.36.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.3',
+    date: '2026-10',
+    zh: [
+      '[优化] 移动端触控与工效学提升：周期表筛选与操作按钮补齐 40px 触控基线，页脚图标加大间距并消除触控重叠，窄屏下实验卡片展示空间更充裕',
+      '[修复] 解决 iOS 浏览器点击输入框时画面强制自动放大的问题，触屏输入体验更平滑',
+      '[优化] 优化小屏设备上的 AI 助教窗口：在较矮屏幕上自适应调低高度上限，始终保留上方实验现象与画布对照',
+      '[优化] 整理公开代码注释与说明，规范开源架构页表述，文案更自然亲切',
+    ],
+    en: [
+      '[Improved] Mobile Ergonomics: Raised Periodic Table filter chips to a 40px touch baseline, spaced footer icons to eliminate overlap, and expanded card canvas on narrow screens',
+      '[Fixed] Prevented unwanted auto-zoom on iOS Safari when focusing input fields',
+      '[Improved] Adaptive AI Sheet: Dynamically adjusted drawer height on short viewports to keep live experiment context visible',
+      '[Improved] Refined open-source code comments and plain-speak architectural docs',
+    ],
+  },
   {
     version: '0.36.2',
     date: '2026-10',

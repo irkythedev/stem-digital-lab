@@ -11,7 +11,7 @@
 :root {
   --bg: #fafafa;
   --fg: #111111;
-  --muted: #5f5f5f; /* 素底 ≈6.1、分类色底 ≈5.25 —— 全站文本均 ≥5.2（原 #737373 仅 4.54 压线） */
+  --muted: #5c5c5c; /* 素底 6.41、四类着色底最差 5.62 —— 全站次级文本 ≥5.5（#5f5f5f 在金属红着墨面只有 5.36） */
   --border: #d4d4d4;
   --card-bg: #ffffff;
   --accent: #000000;
@@ -167,6 +167,38 @@ html.dark {
   text-transform: uppercase;
 }
 
+html {
+  /* 画布层（body 之外：回弹区、短页留白）跟随主题；color-scheme 让滚动条、
+     原生表单控件与自动填充在暗色下也走暗色，不再突兀闪白 */
+  background-color: var(--bg);
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+  /* 暗色材质海拔：深底上黑色投影几乎不可见（Readout 卡 3% 黑、弹窗 18% 黑都糊掉），
+     改用 1px 半透明顶高光塑造「表面抬起」的实体感；:where 零特异性，不压任何组件类。 */
+/* 矮屏（≤700px 高）：AI 底部抽屉上限收到 74dvh，并至少给上方留 120px 画布上下文。
+   仅在移动端分支（<640px 宽）挂在 ai-sheet 类上，桌面面板不受影响。 */
+@media (max-height: 700px) {
+  .ai-sheet {
+    max-height: min(74dvh, calc(var(--vvh, 100dvh) - 120px));
+  }
+}
+
+/* 横向滚动容器的右缘渐隐：提示「右侧还有内容」，不新增任何 DOM。 */
+.fade-r-x {
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent 100%);
+}
+
+html.dark :where(.border, .border-t, .border-b, .border-l, .border-r, .border-x, .border-y,
+                 .border-2, .border-4) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg);
@@ -205,6 +237,14 @@ body {
    甲案：主操作按钮保底 44px 拇指命中区；微型图标用「透明伪元素」把热区向外扩，
    视觉字号与图标尺寸一律不变，服务商/模型气泡保持原紧凑排布，移动端一屏密度不受影响。 */
 @media (hover: none) and (pointer: coarse) {
+  /* iOS Safari 对字号 <16px 的输入框聚焦时会强制放大整页；此处保底 16px。
+     range/checkbox/radio 不触发缩放，排除在外。 */
+  input:not([type='range']):not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   /* v0.35.0：触屏命中区精准补齐（仅触屏生效，桌面完全不动）
      .tap-area 给「导航项 / 卡片式链接 / 顶栏与页脚控件」真实盒尺寸；
      .tap-icon 给「独立小图标」透明伪类扩区（视觉尺寸不变）。 */
@@ -223,6 +263,16 @@ body {
   .tap-primary,
   .exam-preview-bar button {
     min-height: 44px;
+  }
+
+  /* 工具条/筛选 chip 的 40px 触控基线：Tailwind 的 min-h-* 位于 @layer utilities，
+     被未分层的 button 规则压过（实测 min-h-10 计算值为 0）；此处用未分层命名类兜住。
+     只作用于触屏，桌面维持原有紧凑制表密度。 */
+  /* 注意：周期表工具条位于 .dialog-tabs 容器内，该容器的未分层规则
+     `.dialog-tabs button { min-height: 0 }`（特异性 0,1,1）会压过单独的类选择器，
+     `main button`（同为 0,1,1 但更早）也压不过它 → 这里用 0,1,2 才能生效。 */
+  main button.chip-tap {
+    min-height: 2.5rem;
   }
   /* 微型图标热区：视觉仍是 14px（w-3.5 h-3.5），四周各外扩 8px → 30×30。
      只用于四周留白充足、不会与相邻可点元素抢点击的孤立图标（密钥显示眼睛、模型下拉箭头）；

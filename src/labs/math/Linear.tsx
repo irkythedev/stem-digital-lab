@@ -406,7 +406,7 @@ export default function Linear() {
         {/* 左列：坐标系 + 读数 */}
         <div className="flex flex-col space-y-6">
           {stage === 'predict' && !revealed ? (
-            <div className="border border-[var(--border)] p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
+            <div className="border border-[var(--border)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
               <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
                 {t.predictTitle}
               </p>

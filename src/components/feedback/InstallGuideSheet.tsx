@@ -36,7 +36,7 @@ function TimelineStep({
   return (
     <li className="flex gap-3">
       <div className="flex flex-col items-center">
-        <span className="w-6 h-6 shrink-0 rounded-full border border-[var(--border)] flex items-center justify-center text-[0.5625rem] mono-font text-[var(--muted)]">
+        <span className="w-6 h-6 shrink-0 rounded-full border border-[var(--border)] flex items-center justify-center text-[0.625rem] mono-font text-[var(--muted)]">
           {no}
         </span>
         {!last && <span className="w-px flex-1 bg-[var(--border)] my-1" aria-hidden="true" />}
