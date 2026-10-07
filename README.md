@@ -146,6 +146,22 @@ src/
 └── pages/             # 首页 / 科目 / 实验 / 周期表 / 使用说明
 ```
 
+### 路线图（探索中）
+
+#### 前端内置轻量 Agent 与端侧纯离线推理
+
+- **离网自愈**：探索通过规则引擎与端侧超轻量模型（WebGPU / Wasm），在完全物理断网环境下依然提供基础的出题、判分与实验启发能力。
+- **保护隐私与零算力成本**：充分利用终端本地算力，敏感学习过程数据不出浏览器，没有持续的 API 账单焦虑。
+- **可选加载机制**：保持初始安装包轻盈极速，端侧模型权重作为可选的离线扩展按需下载。
+
+#### 校园学情收集与教学分析对接
+
+- **教学偏误透视**：支持可选对接轻量校园服务端，帮助教研组与任课教师归纳班级高频错题分布、易混淆考点与实验高频提问。
+- **极简与隐私优先**：无需复杂账号与密码体系，基于班级代号 / 机位号匿名化流转，不采集任何个人隐私。
+- **纯静态底色不妥协**：核心功能始终保持 100% 独立离线可用，学情同步仅作为可插拔的外设通道。
+
+> 两项都在探索中，且都属于**可选接入**：核心功能保持纯静态、无需登录、离网可用；端侧模型权重与校园学情对接都不会成为必需依赖。
+
 ### 反馈
 
 右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者（钉钉 / 微信）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
@@ -282,6 +298,22 @@ src/
 ├── lib/               # Registry / subjects / i18n / feedback storage / elements / global state
 └── pages/             # Home / subject / lab / periodic table / guide
 ```
+
+### Roadmap (experimental)
+
+#### On-Device Lightweight Agent & Offline Inference
+
+- **Offline resilience**: Exploring deterministic rule engines and ultra-lightweight client-side models (WebGPU / Wasm) to keep basic quiz generation, grading and experiment hints working even in a fully air-gapped classroom.
+- **Privacy & zero compute cost**: Uses the compute already on the device, so interaction data never leaves the browser and there is no ongoing API bill.
+- **Modular loading**: The initial install stays small and fast; local model weights ship as an optional offline package downloaded on demand.
+
+#### Classroom Telemetry & Pedagogical Insights
+
+- **Learning diagnostics**: Optional integration with a lightweight school-side service that helps teachers and teaching-research groups spot the most frequent wrong answers, confused concepts and repeated experiment questions in a class.
+- **Privacy first**: No account or password system; everything travels under a class code and seat alias, and no personal information is collected.
+- **Standalone by default**: The core app stays 100% usable offline; classroom telemetry is only a pluggable peripheral channel.
+
+> Both items are experimental and strictly opt-in: the app stays static, login-free and offline-first, and neither local model weights nor classroom telemetry ever become hard dependencies.
 
 ### Feedback
 
