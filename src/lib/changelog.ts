@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.5';
+export const APP_VERSION = '0.36.6';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.36.6',
+    date: '2026-10',
+    zh: [
+      '[新增] 用量明细升级：按模型分色的每日堆叠柱图，一眼看清每天用了哪些模型、各占多少，悬停或轻触柱体可在固定读数条中查看各模型绝对数值与占比',
+      '[优化] 用量窗口支持 7 / 14 / 30 天切换，并补上时间标尺与更清爽的图例；没有使用的日子改用极淡短标记，不再是一排小方框',
+      '[优化] 用量记录自动保留最近 90 天，长期使用也不会让本地数据无限增长',
+      '[优化] 设置面板与控件质感：面板高度随内容自适应，高分辨率屏幕下不再出现大片空白；天数与「思考强度」改为一体式滑槽，服务商改为柔和底色选项，保存改为实底主按钮',
+    ],
+    en: [
+      '[Added] Usage detail upgrade: per-model coloured daily stacked bars — see which models were used each day and how much, with instant breakdown of exact tokens and share on tap or hover',
+      '[Improved] Usage windows of 7 / 14 / 30 days with a time ruler and a cleaner legend; days without usage now show as a faint tick instead of a row of empty boxes',
+      '[Improved] Usage records are kept for the last 90 days, so local data cannot grow without bound',
+      '[Improved] Settings panel and control polish: the panel now fits its content on tall screens; day windows and thinking effort become one-piece segmented slots, providers use soft chips, and Save becomes a solid primary button',
+    ],
+  },
   {
     version: '0.36.5',
     date: '2026-10',

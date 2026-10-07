@@ -79,7 +79,8 @@ import {
   buildQuizRecordsForSummary,
   classifyErrorKind,
 } from './lib/quiz-summary';
-import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal } from './lib/token-usage';
+import { addTokenUsage, buildDailyBars, clearTokenUsage, loadTokenUsage, pruneTokenUsage, tokenUsageTotal, CHART_MODEL_LIMIT, RETENTION_DAYS, type TokenUsageData } from './lib/token-usage';
+import { OTHER_COLOR, segmentColor } from './components/ui/TokenUsageChart';
 import {
   currentOf as coreCurrentOf,
   elementResistance as coreElementResistance,
@@ -1945,11 +1946,11 @@ describe('思考参数下发 · 留痕与实发同源（resolveThinkingDispatch�
 describe('AI 配置 · Key 按服务商隔离', () => {
   test('历史配置（无 keyByProvider）把 Key 归到它自己的服务商，不外泄给其他家', () => {
     const legacy = {
-      providerId: 'deepseek', apiKey: 'sk-deepseek-only', baseUrl: 'https://api.deepseek.com',
+      providerId: 'deepseek', apiKey: 'sk-test-deepseek', baseUrl: 'https://api.deepseek.com',
       model: 'deepseek-chat', agreed: true,
     };
     const map = keysByProviderOf(legacy);
-    assert.equal(map.deepseek, 'sk-deepseek-only');
+    assert.equal(map.deepseek, 'sk-test-deepseek');
     assert.equal(map.dashscope, undefined, '不得把 DeepSeek 的 Key 带到通义千问');
     assert.equal(map.moonshot, undefined);
     assert.equal(map.custom, undefined);
@@ -1959,14 +1960,14 @@ describe('AI 配置 · Key 按服务商隔离', () => {
 
   test('多家各自保存，互不覆盖（切回原服务商能取回自己的 Key）', () => {
     const cfg = {
-      providerId: 'dashscope', apiKey: 'sk-qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      providerId: 'dashscope', apiKey: 'sk-test-qwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
       model: 'qwen-plus', agreed: true,
-      keyByProvider: { deepseek: 'sk-ds', dashscope: 'sk-qwen' },
+      keyByProvider: { deepseek: 'sk-test-ds', dashscope: 'sk-test-qwen' },
     };
     const map = keysByProviderOf(cfg);
     assert.deepEqual(Object.keys(map).sort(), ['dashscope', 'deepseek']);
-    assert.equal(map.deepseek, 'sk-ds');
-    assert.equal(map.dashscope, 'sk-qwen');
+    assert.equal(map.deepseek, 'sk-test-ds');
+    assert.equal(map.dashscope, 'sk-test-qwen');
     assert.equal(map.zhipu ?? '', '', '没配置过的服务商必须为空');
   });
 
@@ -2729,3 +2730,313 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
     }
   });
 }
+
+/* ── token 用量堆叠柱聚合（纯函数：日历回填 / 共同 y 轴 / before 排除 / 分色上限） ── */
+
+describe('Token usage stacked bars (buildDailyBars)', () => {
+  function usageOf(rows: [string, string, number][]): TokenUsageData {
+    const out: TokenUsageData = {};
+    for (const [model, day, tokens] of rows) {
+      out[model] = out[model] ?? {};
+      out[model][day] = (out[model][day] ?? 0) + tokens;
+    }
+    return out;
+  }
+
+  test('日历回填：断档日必须补齐为 hasRecord=false，横轴不丢日期', () => {
+    const usage = usageOf([
+      ['m1', '2026-10-01', 100],
+      ['m1', '2026-10-04', 300],
+    ]);
+    const out = buildDailyBars(usage, 5, new Date(2026, 9, 5));
+    assert.equal(out.bars.length, 5, '窗口 5 天必须生成 5 根柱（含断档日）');
+    assert.deepEqual(
+      out.bars.map((b) => b.day),
+      ['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05'],
+    );
+    assert.deepEqual(out.bars.map((b) => b.hasRecord), [true, false, false, true, false]);
+    assert.equal(out.bars[1].total, 0);
+    assert.equal(out.bars[1].segments.length, 0);
+  });
+
+  test('共同 y 轴：柱高按窗口内最大日总量归一，分段高度之和等于柱高', () => {
+    const usage = usageOf([
+      ['a', '2026-10-01', 100],
+      ['b', '2026-10-01', 300],
+      ['a', '2026-10-02', 50],
+    ]);
+    const out = buildDailyBars(usage, 2, new Date(2026, 9, 2));
+    assert.equal(out.maxDay, 400);
+    assert.equal(out.bars[0].hPct, 100, '最大日必须满高');
+    assert.equal(out.bars[1].hPct, 12.5, '50 / 400 = 12.5%');
+    for (const bar of out.bars) {
+      const sum = bar.segments.reduce((s, x) => s + x.hPct, 0);
+      assert.ok(
+        Math.abs(sum - bar.hPct) < 0.05,
+        `分段高度之和(${sum})必须等于柱总高(${bar.hPct})，否则堆叠会露缝或溢出`,
+      );
+    }
+  });
+
+  test('before 桶不进时间轴：只汇总为 legacyTokens 单列脚注', () => {
+    const usage = usageOf([['a', '2026-10-01', 100]]);
+    usage.a.before = 5000;
+    const out = buildDailyBars(usage, 3, new Date(2026, 9, 3));
+    assert.equal(out.legacyTokens, 5000);
+    assert.ok(!out.bars.some((b) => b.day === 'before'), 'before 不得成为时间轴上的一天');
+    assert.ok(out.bars.every((b) => b.segments.every((s) => s.model !== 'before')));
+    assert.equal(out.maxDay, 100, 'before 不参与 y 轴归一');
+  });
+
+  test('分色上限：第 6 名及以后合并为「其他」，其他段不占分类色', () => {
+    const rows: [string, string, number][] = [];
+    for (let i = 0; i < 8; i++) rows.push(['m' + i, '2026-10-01', 1000 - i * 10]);
+    const out = buildDailyBars(usageOf(rows), 1, new Date(2026, 9, 1));
+    assert.equal(out.models.length, CHART_MODEL_LIMIT);
+    assert.equal(out.otherModels.length, 3);
+    const seg = out.bars[0].segments.find((s) => s.isOther);
+    assert.ok(seg, '必须存在「其他」合并段');
+    assert.equal(seg.tokens, 950 + 940 + 930, '「其他」= 第 6/7/8 名（950+940+930）之和');
+    assert.equal(out.bars[0].segments.length, 6, '5 个分色模型 + 1 个「其他」');
+  });
+
+  test('空数据：不崩、不产生 NaN', () => {
+    const out = buildDailyBars({}, 4, new Date(2026, 9, 4));
+    assert.equal(out.bars.length, 4);
+    assert.equal(out.maxDay, 0);
+    assert.ok(out.bars.every((b) => b.hPct === 0 && !b.hasRecord));
+    assert.equal(out.legacyTokens, 0);
+  });
+
+  test('单模型回到 --accent，多模型走 --chart-N，其他段用中性灰', () => {
+    const single = buildDailyBars(usageOf([['only', '2026-10-01', 123]]), 2, new Date(2026, 9, 2));
+    assert.deepEqual(single.models, ['only']);
+    assert.equal(single.otherModels.length, 0);
+    assert.equal(
+      segmentColor(0, single.models.length + (single.otherModels.length > 0 ? 1 : 0)),
+      'var(--accent)',
+      '单模型必须回到 --accent（与旧单色迷你条语言连续）',
+    );
+    assert.equal(segmentColor(0, 3), 'var(--chart-1)');
+    assert.equal(segmentColor(2, 3), 'var(--chart-3)');
+    assert.equal(OTHER_COLOR, 'var(--border-strong)');
+  });
+});
+
+describe('Token usage retention (90 天 FIFO)', () => {
+  test('保留窗口常量与实现一致：只留最近 90 天（含今天），before 永久保留', () => {
+    assert.equal(RETENTION_DAYS, 90);
+    const usage: TokenUsageData = { a: { '2026-07-09': 1, '2026-07-10': 2, '2026-07-11': 3, before: 42 } };
+    // 今天 2026-10-07，90 天窗口 → 最早保留 2026-07-10
+    const pruned = pruneTokenUsage(usage, new Date(2026, 9, 7));
+    assert.equal('2026-07-09' in pruned.a, false, '第 91 天前的日期必须被丢弃');
+    assert.equal(pruned.a['2026-07-10'], 2, '窗口边界日必须保留');
+    assert.equal(pruned.a['2026-07-11'], 3);
+    assert.equal(pruned.a.before, 42, 'before 无日期，永久保留');
+  });
+
+  test('修剪后模型一天不剩则整个模型键一并移除（不留空对象）', () => {
+    const pruned = pruneTokenUsage({ old: { '2020-01-01': 5 } }, new Date(2026, 9, 7));
+    assert.equal(Object.keys(pruned).length, 0);
+  });
+
+  test('addTokenUsage 写入即修剪：90 天前的旧键不会留在存储里', () => {
+    const mem = new Map<string, string>();
+    mem.set('stem-ai-token-usage', JSON.stringify({ a: { '2020-01-01': 5 } }));
+    const g = globalThis as unknown as { window: unknown };
+    const had = 'window' in g;
+    const prev = g.window;
+    (g as Record<string, unknown>).window = {
+      localStorage: {
+        getItem: (k: string) => mem.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          mem.set(k, v);
+        },
+        removeItem: (k: string) => {
+          mem.delete(k);
+        },
+      },
+    };
+    try {
+      addTokenUsage('a', 100);
+      const raw = JSON.parse(mem.get('stem-ai-token-usage')!) as Record<string, Record<string, number>>;
+      assert.equal('2020-01-01' in raw.a, false, '过期日期键必须被 FIFO 修剪掉');
+      assert.ok(Object.values(raw.a).some((n) => n === 100), '当天的新增必须保留');
+    } finally {
+      if (had) (g as Record<string, unknown>).window = prev;
+      else delete (g as Record<string, unknown>).window;
+    }
+  });
+});
+
+describe('Token usage chart source guards (零第三方图表依赖)', () => {
+  const chart = readFileSync('src/components/ui/TokenUsageChart.tsx', 'utf8');
+  const dialog = readFileSync('src/components/ui/TokenUsageDialog.tsx', 'utf8');
+
+  test('包依赖中不存在任何图表库（手写原生 SVG）', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    const deps = Object.keys({ ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) });
+    const banned = deps.filter((d) => /recharts|chartjs|chart\.js|echarts|nivo|victory|apexcharts|visx|^d3$/i.test(d));
+    assert.deepEqual(banned, [], `不得引入图表库：${banned.join(', ')}`);
+    for (const lib of ['recharts', 'chart.js', 'echarts', 'd3']) {
+      assert.ok(!chart.includes(`from '${lib}'`), `图表组件不得依赖 ${lib}`);
+    }
+  });
+
+  test('非等比缩放 + 发丝描边：锁 1px 边框语言', () => {
+    assert.match(chart, /preserveAspectRatio="none"/, '百分比横轴必须配 preserveAspectRatio="none"');
+    assert.match(chart, /vectorEffect="non-scaling-stroke"/, '描边必须 non-scaling-stroke，否则被非等比缩放拉粗');
+  });
+
+  test('整列命中区：单个透明 rect 按 clientX 算列，不为每根柱建元素', () => {
+    assert.match(chart, /data-usage-hit="1"/, '必须有整列透明命中区');
+    assert.match(chart, /pickIndex\(e\.clientX/, '命中列必须按 clientX 计算');
+    assert.match(chart, /Math\.floor\(ratio \* n\)/, '列序号 = floor(clientX 比例 × 柱数)');
+  });
+
+  test('断档日去方框化：只留 1.5px 圆头极淡短横条 + before 只做脚注 + 读数条常驻', () => {
+    assert.match(chart, /data-usage-empty="1"/, '断档日必须有标记（供量测与测试定位）');
+    assert.match(chart, /strokeLinecap="round"/, '断档日短横条必须圆头（不再是方框）');
+    assert.match(chart, /strokeWidth=\{1\.5\}/, '断档日短横条 1.5px（发丝级，不抢视线）');
+    assert.match(chart, /opacity=\{0\.25\}/, '断档日短横条必须极淡（无记录 ≠ 用量为 0）');
+    assert.ok(!/<rect[^>]*data-usage-empty/.test(chart), '断档日不得再画空心方框 rect（整排方框=密集栅栏噪音）');
+    assert.match(dialog, /u\.legacyPrefix/, 'before 桶必须以脚注呈现');
+    assert.ok(!dialog.includes('此前累计'), 'before 不得作为列表行出现（该文案已收进 i18n）');
+    // 方案 B：日期明细列表整体移除 —— 不得再有任何列表 / 折叠 / 滚动残留
+    assert.doesNotMatch(dialog, /byDay|aria-expanded|ChevronDown/, '时间轴的日期明细列表必须已彻底移除');
+    assert.match(dialog, /u\.hint/, '读数条必须常驻（固定高度，防抖动）');
+  });
+
+  test('天数切换 = 整体分段滑槽（废除三个独立方框；桌面紧凑、触屏 40px）', () => {
+    assert.match(
+      dialog,
+      /inline-flex items-center gap-0 p-0\.5 rounded-lg bg-\[var\(--accent-light\)\]\/70 border border-\[var\(--border\)\]\/60/,
+      '外层必须是整体式包裹槽（不是三个割裂方块）；槽底 70% 叠色保证未选中文字暗色 ≥5.5',
+    );
+    assert.match(dialog, /tap-area rounded-md px-2\.5 py-1\.5 text-\[0\.6875rem\]/, '选项必须是紧凑胶囊 + tap-area（触屏兜到 40px）');
+    assert.ok(!/min-h-10 px-2 text-\[0\.625rem\] mono-font border/.test(dialog), '不得回到三个割裂的独立方框');
+    assert.match(
+      dialog,
+      /bg-\[var\(--card-bg\)\] text-\[var\(--fg\)\] font-medium border-\[var\(--border\)\]\/50 shadow-xs/,
+      '选中态必须是抬起的卡片式胶囊（底色 + 微阴影 + 半透明描边）',
+    );
+    assert.match(dialog, /text-\[var\(--muted\)\] border-transparent hover:text-\[var\(--fg\)\]/, '未选中态透明描边，避免选中时尺寸跳动');
+    // 列表移除后，弹窗只剩「头部 + 图表块 + 脚注」三层，不得再有 flex-1 滚动容器
+    assert.doesNotMatch(dialog, /flex-1 overflow-y-auto|overscroll-contain/, '弹窗不得再留多余的垂直滚动区');
+  });
+
+  test('读数条：合计 + 各模型绝对值(百分比)，未选中回落最近一天（固定高度防抖）', () => {
+    assert.match(dialog, /data-usage-readout="1"/, '读数条必须有稳定标记（供量测与测试定位）');
+    assert.match(dialog, /h-12 px-3 flex flex-col justify-center/, '读数条必须是固定高度（悬停/换窗都不抖动）');
+    assert.match(dialog, /u\.dayTotal/, '当日数字必须带「合计 / total」标签');
+    assert.match(
+      dialog,
+      /≈\$\{s\.tokens\.toLocaleString\(\)\} \(\$\{s\.sharePct\}%\)/,
+      '每段必须同时给绝对值与百分比（方案 B 的读数条强化要求）',
+    );
+    assert.match(dialog, /reverse\(\)\.find\(\(b\) => b\.hasRecord\)/, '未选中时必须回落到最近一个有记录的日子');
+  });
+
+  test('图表呼吸感：X 轴时间标尺（左/中/右 MM-DD）+ 图例色块微圆角', () => {
+    assert.match(dialog, /grid grid-cols-3 text-\[0\.625rem\] mono-font/, '底部必须有左/中/右三点时间标尺');
+    assert.match(dialog, /axisLabels\[0\]/, '标尺取首日');
+    assert.match(dialog, /axisLabels\[1\]/, '标尺取中日');
+    assert.match(dialog, /axisLabels\[2\]/, '标尺取末日');
+    assert.match(dialog, /day\.length >= 10 \? day\.slice\(5\)/, '标尺只显示 MM-DD');
+    const dots = dialog.match(/w-2 h-2 shrink-0 rounded-\[2px\]/g) ?? [];
+    assert.ok(dots.length >= 2, `图例色块必须微圆角（模型 + 其他，实测 ${dots.length} 处）`);
+  });
+
+  test('按钮去硬描边：AI 窗口重试 / 继续生成 / Quiz 重试统一为轻底色胶囊', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const pills = ai.match(/rounded-md border border-\[var\(--border\)\]\/80 bg-\[var\(--accent-light\)\] text-\[var\(--fg\)\]/g) ?? [];
+    assert.ok(pills.length >= 3, `三处 chip 都要改成轻底色胶囊（实测 ${pills.length} 处）`);
+    assert.match(ai, /min-h-10[^"]*tap-area"\s*>\s*<ChevronsDown/, '继续生成仍保 40px 触控 + Lucide 图标');
+    assert.match(
+      ai,
+      /rounded-md border border-\[var\(--border\)\]\/60 bg-\[var\(--error\)\]\/5 px-2\.5 py-2/,
+      '错误卡片也去硬边（微质感错误底 + 半透明发丝边）',
+    );
+  });
+
+  test('文案全部走 i18n（中英齐全），且新文件不含 emoji / 字符符号', () => {
+    const keys = [
+      'title', 'totalPrefix', 'totalSuffix', 'dayTotal', 'dailyTitle', 'windowAria', 'days7', 'days14', 'days30',
+      'a11yChart', 'hint', 'noRecord', 'other', 'modelTotal', 'legacyPrefix', 'legacySuffix', 'empty', 'close',
+    ] as const;
+    for (const k of keys) {
+      assert.ok(translations.zh.usage[k], `usage.${k} 缺少中文`);
+      assert.ok(translations.en.usage[k], `usage.${k} 缺少英文`);
+    }
+    for (const [name, src] of [['TokenUsageChart.tsx', chart], ['TokenUsageDialog.tsx', dialog]] as const) {
+      const glyph = src.match(/[✓✗⏱]/);
+      assert.equal(glyph, null, `${name} 不得出现字符符号：${glyph?.[0]}`);
+      const emoji = src.match(/[\u{1F300}-\u{1FAFF}\u{2705}\u{274C}\u{26A0}]/u);
+      assert.equal(emoji, null, `${name} 不得出现 emoji：${emoji?.[0]}`);
+    }
+  });
+});
+
+/* ── AI 设置面板：高度自适应与控件质感（本轮精修守卫） ── */
+
+describe('AI settings panel layout & control polish', () => {
+  const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+
+  test('保底高度只服务对话视图：表单视图必须内容自适应，不得再被 62dvh 撑出死区', () => {
+    assert.match(
+      ai,
+      /\$\{view === 'chat' && height === 0 \? ' min-h-\[min\(62dvh,calc\(100dvh-4\.5rem\)\)\]' : ''\}/,
+      '面板保底高度必须收紧为「对话视图且未拖过高度」',
+    );
+    assert.ok(
+      !ai.includes("${height > 0 && view === 'chat' ? '' : ' min-h-[min(62dvh,calc(100dvh-4.5rem))]'}"),
+      '旧的宽条件（设置视图也吃 62dvh）必须移除，否则高视口下栏下留 184px 死区',
+    );
+    assert.match(ai, /移动端抽屉|ai-sheet inset-x-0/, '移动端抽屉保高不受影响');
+  });
+
+  test('思考强度 = 整体分段滑槽，且不再用符号点表达选中', () => {
+    assert.match(
+      ai,
+      /inline-flex items-center p-0\.5 rounded-lg bg-\[var\(--accent-light\)\]\/70 border border-\[var\(--border\)\]\/60" role="group" aria-label=\{lang === 'zh' \? '思考强度'/,
+      '三档必须同槽（整体分段滑槽）',
+    );
+    assert.match(
+      ai,
+      /bg-\[var\(--card-bg\)\] text-\[var\(--fg\)\] font-medium border-\[var\(--border\)\]\/50 shadow-xs/,
+      '选中档位必须由背景滑块承托',
+    );
+    assert.ok(!ai.includes("'● '"), '不得再用 ● 字符符号表达选中态');
+  });
+
+  test('服务商与筛选 chips = 柔和 Chip：去硬描边、选中态微强调', () => {
+    const selected = ai.match(/border-\[var\(--fg\)\]\/25 bg-\[var\(--accent-light\)\] text-\[var\(--fg\)\] font-medium/g) ?? [];
+    const unselected = ai.match(/border-transparent text-\[var\(--muted\)\] hover:bg-\[var\(--accent-light\)\]\/60 hover:text-\[var\(--fg\)\]/g) ?? [];
+    assert.ok(selected.length >= 8, `选中态柔和 Chip 至少 8 处（实测 ${selected.length}）`);
+    assert.ok(unselected.length >= 8, `未选中态去描边 Chip 至少 8 处（实测 ${unselected.length}）`);
+    assert.ok(
+      !/px-2 py-1 text-\[0\.6875rem\] mono-font border transition-colors/.test(ai),
+      '不得残留「1px 硬描边方框」的旧 chip 写法',
+    );
+    const tap = ai.match(/tap-area (rounded-md|inline-flex)/g) ?? [];
+    assert.ok(tap.length >= 8, `chips 必须挂 tap-area 兜触屏 40px（实测 ${tap.length} 处）`);
+  });
+
+  test('操作按钮层级：保存实底主操作 / 返回与关闭 ghost / 清除补 40px', () => {
+    assert.match(
+      ai,
+      /onClick=\{save\} className="tap-primary rounded-md px-3 py-1\.5 text-xs mono-font font-bold border border-transparent bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/,
+      '保存必须是实底主操作（亮色黑底 / 暗色白底）',
+    );
+    const ghost = ai.match(/tap-primary rounded-md px-3 py-1\.5 text-xs mono-font border border-transparent text-\[var\(--muted\)\] transition-colors hover:bg-\[var\(--accent-light\)\] hover:text-\[var\(--fg\)\]/g) ?? [];
+    assert.ok(ghost.length >= 3, `返回对话 / 关闭 / 取消 都要是 ghost（实测 ${ghost.length} 处）`);
+    assert.match(
+      ai,
+      /className="ml-auto tap-area inline-flex items-center gap-1 text-\[0\.6875rem\] mono-font text-\[var\(--muted\)\] transition-colors hover:text-\[var\(--fg\)\]"/,
+      '清除入口必须保持文字链并补 tap-area（触屏 ≥40px）',
+    );
+  });
+});

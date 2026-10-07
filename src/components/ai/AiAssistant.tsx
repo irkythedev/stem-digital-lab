@@ -33,7 +33,7 @@ import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, t
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
-import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageModelTotal, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
+import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
@@ -2022,8 +2022,10 @@ export default function AiAssistant() {
             ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
             : collapsed
               ? 'w-auto'
-              // 空会话也保底 62dvh，面板不再塌到 221px；只在用户拖过高度时让位（见下方 style 里的 maxHeight）
-              : `w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]${height > 0 && view === 'chat' ? '' : ' min-h-[min(62dvh,calc(100dvh-4.5rem))]'}`
+              // 62dvh 保底只服务「对话视图」（防空会话塌到 221px）；用户拖过高度时同样让位。
+              // 设置/条款/学习记录是表单视图：一律随内容紧凑包裹，否则高视口下会在吸底栏下方留大片死区
+              //（1440 视口实测 184px；阈值 ≈ 62dvh 超过内容高 ≈ 视口 1145px）。
+              : `w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]${view === 'chat' && height === 0 ? ' min-h-[min(62dvh,calc(100dvh-4.5rem))]' : ''}`
         }`}
         style={{
           ...(!isMobile
@@ -2294,7 +2296,7 @@ export default function AiAssistant() {
                   key={p.id}
                   type="button"
                   onClick={() => selectProvider(p.id)}
-                  className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${providerId === p.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                  className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${providerId === p.id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                 >
                   {p.name}
                 </button>
@@ -2422,7 +2424,7 @@ export default function AiAssistant() {
                 disabled={fetching}
                 aria-label={lang === 'zh' ? '获取模型' : 'Fetch models'}
                 title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap border border-[var(--border)] px-2 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
                 <List className="w-3 h-3" aria-hidden="true" />
                 {fetching ? (lang === 'zh' ? '获取中…' : 'Fetching…') : (lang === 'zh' ? '获取模型' : 'Fetch')}
@@ -2433,7 +2435,7 @@ export default function AiAssistant() {
                 disabled={testing}
                 aria-label={lang === 'zh' ? '测试连接' : 'Test connection'}
                 title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap border border-[var(--border)] px-2 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
                 <PlugZap className="w-3 h-3" aria-hidden="true" />
                 {testing ? (lang === 'zh' ? '测试中…' : 'Testing…') : (lang === 'zh' ? '测试连接' : 'Test')}
@@ -2454,9 +2456,9 @@ export default function AiAssistant() {
                     type="button"
                     onClick={() => setModel(m)}
                     aria-pressed={modelMatches(m)}
-                    className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
-                      ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold'
-                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
+                    className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
+                      ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
+                      : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                   >
                     {m}
                   </button>
@@ -2468,7 +2470,8 @@ export default function AiAssistant() {
           {/* 思考强度：三档；可用档位由当前模型的能力表决定，不可用档位置灰并说明原因 */}
           <div>
             <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '思考强度' : 'Thinking effort'}</p>
-            <div className="flex flex-wrap gap-1.5">
+            {/* 整体分段滑槽：三档同槽，选中由背景滑块承托（不再用符号点表达状态） */}
+            <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '思考强度' : 'Thinking effort'}>
               {THINKING_TIERS.map((t) => {
                 // 只有「模型有档位集合但缺这一档」才置灰；其余情况三档都可点，保证点击有反馈
                 const usable = !tierLocked(t.id);
@@ -2481,13 +2484,13 @@ export default function AiAssistant() {
                     aria-pressed={selected}
                     title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
                     onClick={() => setThinkingEffort(t.id)}
-                    className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${selected
-                      ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold'
+                    className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
+                      ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs'
                       : usable
-                        ? 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
-                        : 'border-[var(--border)] text-[var(--muted)] opacity-40 cursor-not-allowed'}`}
+                        ? 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'
+                        : 'text-[var(--muted)] border-transparent opacity-40 cursor-not-allowed'}`}
                   >
-                    {selected ? '● ' : ''}{lang === 'zh' ? t.zh : t.en}
+                    {lang === 'zh' ? t.zh : t.en}
                   </button>
                 );
               })}
@@ -2600,18 +2603,18 @@ export default function AiAssistant() {
           <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
             {config ? (
-              <button type="button" onClick={() => setView('chat')} className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+              <button type="button" onClick={() => setView('chat')} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
                 {lang === 'zh' ? '返回对话' : 'Back to chat'}
               </button>
             ) : (
-              <button type="button" onClick={() => setOpen(false)} className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors">
+              <button type="button" onClick={() => setOpen(false)} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>
             )}
-            <button type="button" onClick={save} className="tap-primary px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--card-bg)]">
+            <button type="button" onClick={save} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font font-bold border border-transparent bg-[var(--fg)] text-[var(--bg)] transition-colors hover:opacity-90">
               {lang === 'zh' ? '保存' : 'Save'}
             </button>
-            <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]">
+            <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto tap-area inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]">
               <Trash2 className="w-3 h-3" />
               {lang === 'zh' ? '清除 AI 配置与记录' : 'Clear AI data'}
             </button>
@@ -2659,8 +2662,8 @@ export default function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => setSubjFilter(null)}
-                  className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${
-                    subjFilter === null ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                  className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${
+                    subjFilter === null ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
                   }`}
                 >
                   {lang === 'zh' ? '全部' : 'All'}
@@ -2670,8 +2673,8 @@ export default function AiAssistant() {
                     key={s}
                     type="button"
                     onClick={() => setSubjFilter(subjFilter === s ? null : s)}
-                    className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${
-                      subjFilter === s ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                    className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${
+                      subjFilter === s ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
                     }`}
                   >
                     {s}
@@ -2930,7 +2933,7 @@ export default function AiAssistant() {
                               key={id}
                               type="button"
                               onClick={() => setPaperOpts((o) => ({ ...o, blankLevel: id }))}
-                              className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.blankLevel === id ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                              className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.blankLevel === id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                             >
                               {lang === 'zh' ? zhLabel : enLabel}
                             </button>
@@ -2948,7 +2951,7 @@ export default function AiAssistant() {
                               key={id}
                               type="button"
                               onClick={() => setPaperOpts((o) => ({ ...o, sortMode: id }))}
-                              className={`px-1.5 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.sortMode === id ? 'border-[var(--fg)] text-[var(--fg)] bg-[var(--accent-light)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                              className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.sortMode === id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                             >
                               {lang === 'zh' ? zhLabel : enLabel}
                             </button>
@@ -2960,7 +2963,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => setPaperOpen(false)}
-                        className="tap-primary px-3 py-1.5 text-xs mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
+                        className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
                       >
                         {lang === 'zh' ? '取消' : 'Cancel'}
                       </button>
@@ -3150,7 +3153,7 @@ export default function AiAssistant() {
                           <button
                             type="button"
                             onClick={() => setQuizSummaryConfirm(false)}
-                            className="px-2 py-1 text-[0.625rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] transition-colors"
+                            className="tap-area rounded-md px-2.5 py-1 text-[0.625rem] mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
                           >
                             {lang === 'zh' ? '取消' : 'Cancel'}
                           </button>
@@ -3191,7 +3194,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => setQuizSubjFilter(null)}
-                        className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === null ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                        className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === null ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                       >
                         {lang === 'zh' ? '全部' : 'All'}
                       </button>
@@ -3200,7 +3203,7 @@ export default function AiAssistant() {
                           key={s}
                           type="button"
                           onClick={() => setQuizSubjFilter(quizSubjFilter === s ? null : s)}
-                          className={`px-2 py-1 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === s ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
+                          className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === s ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                         >
                           {s}
                         </button>
@@ -3547,7 +3550,7 @@ export default function AiAssistant() {
                 <button
                   type="button"
                   onClick={() => void loadQuizBatch()}
-                  className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors tap-area"
+                  className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] tap-area"
                 >
                   <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                   {lang === 'zh' ? '重试' : 'Retry'}
@@ -3810,7 +3813,7 @@ export default function AiAssistant() {
                           void sendQuestion(t.aiContinue.ask, true);
                         }}
                         disabled={busy}
-                        className="mt-1 inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--fg)] transition-colors hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                        className="mt-1 inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                       >
                         <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
                         {t.aiContinue.label}
@@ -3852,7 +3855,7 @@ export default function AiAssistant() {
                   </>
                 )}
                 {failure && (
-                  <div className="mt-1 border border-[var(--border)] bg-[var(--card-bg)]/50 px-2.5 py-2 space-y-1.5">
+                  <div className="mt-1 rounded-md border border-[var(--border)]/60 bg-[var(--error)]/5 px-2.5 py-2 space-y-1.5">
                     <div className="flex items-start gap-2">
                       {failure.kind === 'offline' ? (
                         <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--error)]" aria-hidden="true" />
@@ -3878,7 +3881,7 @@ export default function AiAssistant() {
                           type="button"
                           onClick={() => retryLastAttempt()}
                           disabled={retryCountdown > 0 || busy}
-                          className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--fg)] transition-colors hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
+                          className="inline-flex min-h-10 items-center gap-1.5 px-3 text-[0.6875rem] mono-font rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                         >
                           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
                           {retryCountdown > 0 ? `${retryCountdown}${t.aiError.waiting}` : t.aiError.retry}

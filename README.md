@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/v0.36.5-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
+![version](https://img.shields.io/badge/v0.36.6-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
 ![stack](https://img.shields.io/badge/React%20%2B%20Vite%20%2B%20KaTeX-087ea4?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
@@ -118,6 +118,18 @@ npm run test       # 运行测试
 
 > 局域网访问：开发服务器监听 `0.0.0.0`，启动后其他设备打开 `http://<本机局域网IP>:3000`。
 > Node.js 建议使用 nvm 管理的 v24.19.0（npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
+
+### 测试
+
+```bash
+npm test           # 运行全部测试（无需任何服务）
+```
+
+内置测试套件 **237 项全绿**，秒级完成，**100% 离线**：仅使用 Node 内置模块（`node:assert` / `node:fs`），不启动服务器、不访问网络、不需要数据库或环境变量。三类断言并存：
+
+- **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
+- **源码级约束**：触控命中区 ≥40px、不引入第三方图表库、界面不出现 Emoji、中英文案必须对称；
+- **进程内替身**：涉及请求的用例一律替换 `fetch` 并在 `finally` 中恢复，绝不触发真实请求。
 
 ### 三幕式探究
 
@@ -284,6 +296,18 @@ npm run test       # Run tests
 
 > LAN access: the dev server listens on `0.0.0.0`; open `http://<your-LAN-IP>:3000` from other devices.
 > Node.js: use nvm-managed v24.19.0 (npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
+
+### Testing
+
+```bash
+npm test           # Run the whole suite (no service required)
+```
+
+The built-in suite runs **237 assertions, all green**, in seconds and is **100% offline**: it only uses Node built-ins (`node:assert` / `node:fs`) — no server, no network, no database, no environment variables. Three kinds of checks live side by side:
+
+- **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;
+- **Source-level constraints**: touch targets ≥40px, no third-party chart library, no emoji in the UI, zh/en copy must stay symmetric;
+- **In-process stand-ins**: every request-related case replaces `fetch` and restores it in `finally`, so no real request ever fires.
 
 ### Three-Act Inquiry
 

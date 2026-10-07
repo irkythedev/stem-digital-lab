@@ -28,6 +28,15 @@
   /* 铜粉及其氧化产物（质量守恒实验）：浅色底用暗金/近黑，暗色底提亮保证可见 */
   --cu-powder: #b8860b;
   --cu-oxide: #3a3a3a;
+  /* 图表分类色（token 用量按模型分色堆叠柱）：取 Okabe-Ito 无障碍配色族。
+     亮底对 --bg/--card-bg 实测 3.28–5.19，暗底 3.22–9.10，全部 ≥3:1（WCAG 1.4.11 图形元素门槛）。
+     刻意不复用 --meter-* / --cu-*（电表与试剂语义），避免语义污染与暗色不达标。 */
+  --chart-1: #0072b2;
+  --chart-2: #d55e00;
+  --chart-3: #009e73;
+  --chart-4: #b07400;
+  --chart-5: #3e7fa8;
+  --chart-6: #b0568a;
   --f-serif: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
   --f-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
   --f-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -51,6 +60,13 @@ html.dark {
   /* 铜粉/氧化铜在暗底提亮（#3a3a3a 在 #0a0a0a 上几乎不可见） */
   --cu-powder: #d4a017;
   --cu-oxide: #6b6b6b;
+  /* 图表分类色：暗底提亮，保持 ≥3:1（与亮色值成对，语义一一对应） */
+  --chart-1: #4da6e0;
+  --chart-2: #ff8a4c;
+  --chart-3: #34d3a6;
+  --chart-4: #f0b429;
+  --chart-5: #7ec8f2;
+  --chart-6: #e39bc0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -70,6 +86,12 @@ html.dark {
     --meter-v: #42a5f5;
     --cu-powder: #d4a017;
     --cu-oxide: #6b6b6b;
+    --chart-1: #4da6e0;
+    --chart-2: #ff8a4c;
+    --chart-3: #34d3a6;
+    --chart-4: #f0b429;
+    --chart-5: #7ec8f2;
+    --chart-6: #e39bc0;
   }
 }
 
