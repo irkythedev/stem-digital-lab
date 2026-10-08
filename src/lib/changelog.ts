@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.36.6';
+export const APP_VERSION = '0.37.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.37.0',
+    date: '2026-10',
+    zh: [
+      '[优化] AI 助教次级操作精简：重试、继续生成、重试测验等按钮改为紧凑胶囊，桌面端高度由 40px 收到 28px，界面更清爽利落',
+      '[优化] 出错提示由上下两行改为单行横向排布，报错时不再多占一行高度，重试入口紧随提示文案',
+      '[优化] 触屏热区不再靠视觉高度硬撑：桌面保持紧凑，手机上这些控件自动放大到 40px；思考过程折叠、复制回答与推荐追问统一为轻量底色，硬边框一并去掉',
+    ],
+    en: [
+      '[Improved] Slimmer secondary AI actions: retry, continue generation and quiz retry become compact pills, trimming desktop height from 40px to 28px for a tidier panel',
+      '[Improved] Error notices now sit in a single horizontal row instead of two stacked rows, so a failure no longer costs an extra line of height and its retry sits right beside the message',
+      '[Improved] Touch targets no longer rely on visual height: controls stay compact on desktop and grow to 40px on touch devices; the reasoning toggle, copy answer and follow-up chips share one light-weight look without hard borders',
+    ],
+  },
   {
     version: '0.36.6',
     date: '2026-10',
