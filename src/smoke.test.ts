@@ -81,6 +81,7 @@ import {
 } from './lib/quiz-summary';
 import { addTokenUsage, buildDailyBars, clearTokenUsage, loadTokenUsage, pruneTokenUsage, tokenUsageTotal, CHART_MODEL_LIMIT, RETENTION_DAYS, type TokenUsageData } from './lib/token-usage';
 import { OTHER_COLOR, segmentColor } from './components/ui/TokenUsageChart';
+import { splitSentences } from './pages/GuidePage';
 import {
   currentOf as coreCurrentOf,
   elementResistance as coreElementResistance,
@@ -2598,7 +2599,7 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
     assert.ok(wrap.includes('aspect-video'),
       '容器必须锁 16:9：否则未加载时浏览器按 UA 默认 300×150（2:1）排布，元数据到位后回跳（实测桌面 41px / 移动端 19px）');
     assert.ok(wrap.includes('overflow-hidden') && wrap.includes('rounded-lg'), '圆角需配 overflow-hidden 才能裁切封面与首帧');
-    assert.ok(wrap.includes('max-w-2xl'), '保持既有版心宽度');
+    assert.ok(!wrap.includes('max-w-2xl'), '版心宽度改由页面级 max-w-5xl 容器统一承托，视频容器自身不再单独限宽');
 
     const video = page.match(/<video[\s\S]*?>/)?.[0] ?? '';
     assert.ok(/poster="\/videos\/[^"]+\.webp(\?v=\d+)?"/.test(video),
@@ -3093,5 +3094,226 @@ describe('AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承
   test('尺寸规范：主胶囊内边距统一 px-2.5 py-1.5 + leading-none（≈26–28px 视觉）', () => {
     const pills = ai.match(/px-2\.5 py-1\.5 text-\[0\.6875rem\] mono-font leading-none/g) ?? [];
     assert.ok(pills.length >= 3, `三处主胶囊须统一（实测 ${pills.length}）`);
+  });
+});
+
+describe('主标题真字重宋体与品牌字体子集', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+
+  test('衬线栈：现代 CJK 宋体真名在前，Georgia 退居兜底', () => {
+    const m = css.match(/--f-serif:\s*([^;]+);/);
+    assert.ok(m, '未能读取 --f-serif 声明');
+    const stack = m[1].trim();
+    assert.ok(stack.startsWith("'Noto Serif CJK SC'"), `栈首须是 'Noto Serif CJK SC'，实际 ${stack.slice(0, 44)}`);
+    assert.ok(
+      stack.indexOf("'Noto Serif CJK SC'") < stack.indexOf("'Georgia'"),
+      'Georgia 须排在真名之后（其无 CJK 字形，此前占首位会先吃掉所有拉丁与标点）',
+    );
+    for (const fam of ["'Noto Serif SC'", "'Source Han Serif SC'", "'Songti SC'", "'STSong'", "'SimSun'"]) {
+      assert.ok(stack.includes(fam), `衬线栈缺少兜底家族 ${fam}`);
+    }
+  });
+
+  test('品牌子集资产存在且体积控制在 3~12KB', () => {
+    const p = 'public/fonts/stem-lab-serif-medium.woff2';
+    assert.ok(existsSync(p), '品牌子集 woff2 缺失');
+    const size = readFileSync(p).length;
+    assert.ok(size >= 3 * 1024 && size <= 12 * 1024, `子集体积须在 3~12KB，实测 ${size} bytes`);
+  });
+
+  test('品牌子集是合法 woff2 且附带 OFL 许可声明', () => {
+    const buf = readFileSync('public/fonts/stem-lab-serif-medium.woff2');
+    assert.equal(buf.subarray(0, 4).toString('latin1'), 'wOF2', 'woff2 magic 不正确');
+    const ofl = readFileSync('public/fonts/OFL.txt', 'utf8');
+    assert.match(ofl, /SIL Open Font License/i, 'OFL 许可文件缺少许可声明');
+    assert.match(ofl, /stem-lab-serif-medium\.woff2/, 'OFL 许可文件须点名该字体资产');
+  });
+
+  test('@font-face 只作用于 h1.t-hero，不得污染 .serif-font（避免字形混排割裂）', () => {
+    assert.match(css, /@font-face\s*\{[^}]*font-family:\s*'STEM Lab Serif'[^}]*\}/, '@font-face 未声明品牌字体');
+    assert.match(css, /src:\s*url\('\/fonts\/stem-lab-serif-medium\.woff2'\)\s*format\('woff2'\)/, '品牌字体 src 指向错误');
+    assert.match(css, /h1\.t-hero\s*\{\s*font-family:\s*var\(--f-brand\),\s*var\(--f-serif\)/, 'h1.t-hero 未绑定品牌字体');
+    assert.doesNotMatch(css, /\.serif-font\s*\{[^}]*STEM Lab Serif/, '.serif-font 不得使用品牌子集');
+  });
+
+  test('index.html 预渲染 h1 使用同一套衬线栈（避免慢加载先闪黑体）', () => {
+    const html = readFileSync('index.html', 'utf8');
+    const m = html.match(/<h1 style="[^"]*font-family:\s*([^"]+)"/);
+    assert.ok(m, '预渲染 h1 未声明 font-family');
+    assert.ok(m[1].includes('Noto Serif CJK SC'), `预渲染 h1 衬线栈须含真名，实际 ${m[1].slice(0, 48)}`);
+  });
+});
+
+describe('使用说明页容器化重构（文案逐字不动）', () => {
+  const guide = readFileSync('src/pages/GuidePage.tsx', 'utf8');
+  const copyMatch = guide.match(/const copy = \{[\s\S]*?\n\};/);
+  const copyBlock = copyMatch ? copyMatch[0] : '';
+  const renderBlock = copyBlock ? guide.slice(guide.indexOf(copyBlock) + copyBlock.length) : guide;
+
+  test('页面容器统一 max-w-5xl，视频升级为 figure 展台', () => {
+    assert.match(guide, /mx-auto w-full max-w-5xl/, '缺少统一的页面容器');
+    assert.match(guide, /<figure className="mb-10 rounded-xl border[^"]*p-2[^"]*">/, '视频未升级为 figure 展台');
+    assert.match(guide, /relative aspect-video w-full overflow-hidden rounded-lg bg-\[var\(--bg\)\]/, '视频内层 16:9 容器缺失');
+    assert.doesNotMatch(guide, /max-w-2xl/, '头部/视频不应再各自 max-w-2xl（宽度须与栅格统一）');
+  });
+
+  test('七个区块卡片化，且不再用裸 border-t 平铺', () => {
+    const cards = guide.match(/rounded-lg border border-\[var\(--border\)\] bg-\[var\(--card-bg\)\] (?:p-4|px-4 py-3|p-5 sm:p-6)/g) ?? [];
+    assert.ok(cards.length >= 7, `卡片化区块须 ≥7（含 AI 卡新内边距与尾部轻量面板），实测 ${cards.length}`);
+    assert.doesNotMatch(guide, /border-t border-\[var\(--border\)\] pt-4/, '不应再有裸 border-t 分区');
+  });
+
+  test('行宽收口：全文不再有 38em/36rem/46em 死限宽，仅容器级 max-w-5xl', () => {
+    assert.doesNotMatch(guide, /max-w-\[38em\]/, '38em 死限宽须全部清除（半幅卡内本就无效）');
+    assert.doesNotMatch(guide, /max-w-\[36rem\]/, '旧的 36rem 行宽须全部替换');
+    assert.doesNotMatch(guide, /max-w-\[46em\]/, '46em 死限宽须清除，尾部面板改为 flex-1 撑满容器');
+    assert.match(guide, /text-\[var\(--muted\)\] w-full">\{c\.intro\}/, 'header 首段须 w-full 自适应撑满');
+    assert.match(guide, /<div className="mb-5 w-full">/, 'AI 首段容器须 w-full 撑满卡片内容区');
+    assert.match(
+      guide,
+      /min-w-0 flex-1 text-sm serif-font leading-relaxed text-\[var\(--muted\)\]">\{c\.privacyText\}/,
+      '尾部辅助面板正文须 flex-1 撑满剩余宽度',
+    );
+    // 全页只允许「容器控宽」：不得存在任何子级任意值限宽（子级文本一律撑满容器 padding）
+    const arbitrary = guide.match(/max-w-\[[^\]]+\]/g) ?? [];
+    assert.deepEqual(
+      arbitrary,
+      [],
+      `GuidePage 不得再有子级任意值死限宽，实测 ${JSON.stringify(arbitrary)}`,
+    );
+    assert.match(guide, /mx-auto w-full max-w-5xl/, '页面容器须保留 max-w-5xl 统一控宽');
+  });
+
+  test('常见操作：与错题集共用同一套胶囊规范，标签剥离冒号', () => {
+    const pill = /rounded border border-\[var\(--border\)\]\/40 bg-\[var\(--accent-light\)\] px-2 py-0\.5 text-xs font-medium leading-normal text-\[var\(--fg\)\]/g;
+    const hits = guide.match(pill) ?? [];
+    assert.ok(hits.length >= 2, `错题集与常见操作须共用同一胶囊类（≥2 处），实测 ${hits.length}`);
+    assert.match(guide, /\{c\.controlsList\.map\(\(item\) => \{/, '常见操作须由纯文本改为结构化映射');
+    assert.match(
+      guide,
+      /const inline = at > 0 && at <= 8;[\s\S]{0,600}min-w-0 text-\[var\(--muted\)\]">\{rest\}<\/span>/,
+      '常见操作须走与错题集一致的非冒号「标签 / 说明」拆分',
+    );
+  });
+
+  test('文案微调：仅表笔一条按裁决中英同步更新', () => {
+    const copySrc = (guide.match(/const copy = \{[\s\S]*?\n\};/) ?? [''])[0];
+    assert.ok(copySrc.includes('表笔：拖到正确的测量点'), '中文表笔文案未按裁决更新');
+    assert.ok(!copySrc.includes('拖到合法测量位置'), '中文旧表笔文案须已移除');
+    assert.ok(copySrc.includes('Probes: Drag to correct measurement points'), '英文表笔文案未按裁决更新');
+    assert.ok(!copySrc.includes('drag to a legal measurement point'), '英文旧表笔文案须已移除');
+  });
+
+  test('卡片重排：基本流程+教师建议 / 三幕式+常见操作，栅格 items-start 收拢矮卡', () => {
+    assert.match(guide, /grid gap-5 sm:gap-6 md:grid-cols-2 md:items-start/, '栅格须加 md:items-start 让矮卡随内容收拢');
+    const order = ['{c.flow}', '{c.teaching}', '{c.inquiry}', '{c.controls}'].map((k) => guide.indexOf('// ' + k));
+    assert.ok(order.every((v) => v > 0), '四张半幅卡标题须齐备');
+    assert.deepEqual(order, order.slice().sort((a, b) => a - b), '卡片顺序须为 基本流程 → 教师建议 → 三幕式 → 常见操作（桌面两列即两行配对）');
+  });
+
+  test('AI 条款：纯语义图标 + 标题垂直居中（无数字序号冗余）', () => {
+    assert.match(guide, /const TERM_ICONS = \[Coins, ShieldCheck, BookOpen, Scale\]/, '条款语义图标表缺失或顺序不符');
+    assert.match(
+      guide,
+      /<Icon className="w-4 h-4 shrink-0 text-\[var\(--fg\)\]" aria-hidden="true" \/>/,
+      '条款图标须为 w-4 h-4 + 语义色 + aria-hidden',
+    );
+    assert.doesNotMatch(guide, /rounded-full bg-\[var\(--accent-light\)\] text-\[0\.625rem\]/, '灰色数字圆圈徽章须彻底废除');
+    assert.doesNotMatch(guide, /\{i \+ 1\}\./, '条款标题不得再有「1.」式阿拉伯数字序号');
+    assert.match(
+      guide,
+      /<p className="flex items-center gap-2 mb-1\.5 text-\[var\(--fg\)\]">/,
+      '标题容器须为 flex items-center gap-2 mb-1.5（图标与标题垂直居中）',
+    );
+    assert.match(guide, /<strong className="font-bold">\{t\.title\}<\/strong>/, '标题须为纯文本（无序号前缀）');
+    assert.match(guide, /<p className="pl-6">\{t\.body\}<\/p>/, '正文须置于下方并与标题左缘对齐');
+  });
+
+  test('AI 首段：按句末标点分句流式排版，且拼接后与原文逐字节一致', () => {
+    assert.match(guide, /splitSentences\(c\.aiIntro\)\.map\(/, '首段须走分句渲染，不得整块平铺');
+    const re = /aiIntro: '([^']*)'/g;
+    const intros: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(guide)) !== null) {
+      intros.push(m[1]);
+    }
+    assert.ok(intros.length >= 2, `须取到中英两段首段（实测 ${intros.length}）`);
+    for (const s of intros) {
+      assert.equal(splitSentences(s).join(''), s, `分句破坏了字符：${s.slice(0, 24)}`);
+    }
+    assert.ok(splitSentences(intros[0]).length >= 2, '中文首段应拆出多句以消解整块压迫感');
+    for (const s of ['无句末标点结尾', '', 'A.B; C。']) {
+      assert.equal(splitSentences(s).join(''), s, `分句在边界样本上破坏字符：${s}`);
+    }
+  });
+
+  test('错题集：微底标签 + 去冒号 + 键值化 + 桌面双列列优先栅格', () => {
+    assert.match(guide, /item\.search\(\/\[：:\]\/\)/, '缺少冒号探测逻辑');
+    assert.match(guide, /at <= 8/, '缺少中文短引子长度判定（≤8 字才同排）');
+    assert.match(guide, /const lead = at > 0 \? item\.slice\(0, at\) : '';/, '标签须剔除分隔冒号（中英文冒号均不展示）');
+    assert.doesNotMatch(guide, /item\.slice\(0, at \+ 1\)/, '标签不得再带上冒号');
+    assert.match(
+      guide,
+      /rounded border border-\[var\(--border\)\]\/40 bg-\[var\(--accent-light\)\] px-2 py-0\.5 text-xs font-medium/,
+      '标签须为微底描边胶囊且字重克制（medium）',
+    );
+    assert.match(
+      guide,
+      /<ul className="grid gap-x-8 gap-y-3 md:grid-flow-col md:grid-cols-2 md:grid-rows-3">/,
+      '5 个步骤须在桌面端按列优先双列流式排布',
+    );
+    assert.match(guide, /flex text-sm serif-font leading-relaxed/, '条目行高须为 leading-relaxed');
+  });
+
+  test('卡片平衡：三张通栏卡 + 尾部轻量面板（不再等高拉伸出空洞）', () => {
+    assert.match(guide, /<ul className="grid gap-x-8 gap-y-4 md:grid-cols-2">/, '条款须桌面 2×2 栅格');
+    const code = guide.replace(/\/\*[\s\S]*?\*\//g, '');
+    const spans = code.match(/md:col-span-2/g) ?? [];
+    assert.equal(spans.length, 3, `AI 卡 + 错题集 + 反馈面板应恰为 3 处通栏（注释不计），实测 ${spans.length}`);
+    assert.match(
+      guide,
+      /px-4 py-3 md:col-span-2/,
+      '反馈与隐私须为紧凑内边距的通栏轻量面板（禁止与高卡片等高拉伸）',
+    );
+    assert.match(
+      guide,
+      /flex flex-col gap-1\.5 md:flex-row md:items-baseline md:gap-4/,
+      '轻量面板桌面端须标签与正文同排一行',
+    );
+  });
+
+  test('图标纪律：严禁 Emoji 与字符符号替代图标', () => {
+    assert.doesNotMatch(guide, /[\u{1F300}-\u{1FAFF}]/u, '不得出现 Emoji');
+    assert.doesNotMatch(guide, /[✓✗⏱▾▸●★☆]/u, '不得出现字符符号代替图标');
+  });
+
+  test('文案零改动①：JSX 渲染段不得出现任何中文硬编码（注释与路由 meta 除外）', () => {
+    const jsx = renderBlock.slice(renderBlock.indexOf('return ('));
+    const noComments = jsx.replace(/\/\*[\s\S]*?\*\//g, '');
+    const cjk = noComments.match(/[\u4e00-\u9fa5]+/g) ?? [];
+    assert.deepEqual(cjk, [], `JSX 段出现中文硬编码：${cjk.join(' / ')}`);
+  });
+
+  test('文案零改动②：全部 c.* 引用与原始文案字符串逐条仍在', () => {
+    const refs = [
+      'c.backHome', 'c.title', 'c.intro', 'c.flow', 'c.steps', 'c.inquiry', 'c.acts', 'c.controls',
+      'c.controlsList', 'c.teaching', 'c.teachingText', 'c.ai', 'c.aiIntro', 'c.aiTermsTitle',
+      'c.aiTerms', 'c.mistakes', 'c.mistakesList', 'c.privacy', 'c.privacyText',
+    ];
+    for (const ref of refs) {
+      assert.ok(guide.includes(ref), `缺少文案引用 ${ref}`);
+    }
+    // 说明页标签文案已按用户裁决精简：仅标签词变化，其余文案逐字不动
+    const strings = [
+      '自动收集：', '学情分析：', '组卷导出：', '卷面排版：', '打印保存：',
+      '服务性质与费用', '数据与隐私安全', '学习辅助声明', '合规与责任限制',
+    ];
+    for (const s of strings) {
+      assert.ok(copyBlock.includes(s), `标签/条款文案丢失或被改写：${s}`);
+    }
+    for (const old of ['怎么收集：', '学情概览：', '怎么导出：', '打印与保存：']) {
+      assert.ok(!copyBlock.includes(old), `旧口语化标签「${old}」应已被精简替换`);
+    }
+    assert.ok(guide.includes('数理化数字实验室'), '路由标题里的品牌名须仍在');
   });
 });

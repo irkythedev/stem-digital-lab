@@ -37,9 +37,30 @@
   --chart-4: #b07400;
   --chart-5: #3e7fa8;
   --chart-6: #b0568a;
-  --f-serif: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', 'STSong', serif;
+  /* 衬线栈：现代 CJK 宋体真名在前。Linux 实际家族名是 'Noto Serif CJK SC'，
+     'Noto Serif SC' 是 Google Fonts 屏幕版名；再以思源旧名 / 苹果 / Windows 宋体兜底，
+     Georgia 退居拉丁兜底位（它无 CJK 字形，此前排在首位会先吃掉所有拉丁与标点）。 */
+  --f-serif: 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', 'Source Han Serif CN', 'Songti SC', 'STSong', 'SimSun', '宋体', 'Georgia', serif;
   --f-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
   --f-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* 品牌主标题专用字体（真字重宋体微子集），仅首页 h1.t-hero 使用 */
+  --f-brand: 'STEM Lab Serif';
+}
+
+/* ── 品牌主标题字体（真字重宋体微子集）──────────────────────────────
+   思源宋体 / Noto Serif SC Medium，真字重 500（非合成加粗），pyftsubset 微子集 6.6KB，
+   覆盖「数理化数字实验室」与「Math · Physics · Chemistry Lab」所需字形；OFL-1.1，许可见 public/fonts/OFL.txt。
+   只作用于首页 h1.t-hero：正文与其它 serif 文本继续走系统 --f-serif 栈，
+   避免局部字形与系统字体混排造成割裂。 */
+@font-face {
+  font-family: 'STEM Lab Serif';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/stem-lab-serif-medium.woff2') format('woff2');
+}
+h1.t-hero {
+  font-family: var(--f-brand), var(--f-serif);
 }
 
 html.dark {
