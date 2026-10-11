@@ -95,6 +95,10 @@
  *      its position whenever the content height changes: measured 106 px of travel, exactly half
  *      of the 212 px height delta), with the panel's max-height tied to the overlay's own padding
  *      so the bottom edge keeps the same inset.
+ *  22. the periodic table's search bar is a bare input with a leading search icon: no card wrapper,
+ *      no static label (its accessible name lives on aria-label), flush with the page content edge,
+ *      and exactly one category legend is visible per breakpoint (the table-area dashboard above
+ *      sm, the small-screen fallback below it).
  *
  * Add an assertion whenever a new number or boundary becomes part of the
  * teaching content.
@@ -127,7 +131,7 @@ import {
   resolveThinkingDispatch, describeThinkingParams,
   type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
-import { ELEMENTS } from './lib/elements';
+import { ELEMENTS, type ElementInfo } from './lib/elements';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
 import {
   buildQuizPaper, normalizeTopic, optionLabel, correctTextOf, wrongTextOf,
@@ -3048,7 +3052,7 @@ describe('元素详情卡：相邻导航 / 电子层胶囊 / 微粒看板', () =
     assert.match(src, /if \(heroTimer\.current\) \{ window\.clearTimeout\(heroTimer\.current\); heroTimer\.current = null; \}/, '再次进入须取消回退（防闪烁）');
     // 内容：默认图例态 + 悬停预览态（实物图 / 身份 / 核心指标 / 微提示）
     assert.match(src, /\/\/ \{isZh \? '分类图例' : 'LEGEND'\}/, '默认态须含分类图例');
-    assert.match(src, /element-images\/\$\{heroEl\.n\}\.jpg/, '悬停态须复用百科实物标本图');
+    assert.match(src, /element-images\/\$\{heroFocus\.n\}\.jpg/, '悬停态须复用百科实物标本图（按焦点的原子序数取图）');
     assert.match(src, /data-hero-fallback/, '无实物图须有优雅回退');
     assert.match(src, /点击元素格打开完整微观结构与百科故事/, '须有底部微提示');
     for (const k of ['相对原子质量', '周期', '电子层', '外层倾向']) {
@@ -4516,8 +4520,8 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.doesNotMatch(hero, /rounded/, '展台容器不得含圆角卡片壳');
     assert.doesNotMatch(hero, /overflow-hidden/, '展台容器不得含裁切');
     assert.match(hero, /relative/, '须保留 relative（两态叠层依赖）');
-    assert.ok(pt.includes("heroEl ? 'opacity-0' : 'opacity-100'"), '图例态须只做透明度过渡');
-    assert.ok(pt.includes("heroEl ? 'opacity-100' : 'opacity-0'"), '悬停态须只做透明度过渡');
+    assert.ok(pt.includes("heroFocus ? 'opacity-0' : 'opacity-100'"), '图例态须只做透明度过渡');
+    assert.ok(pt.includes("heroFocus ? 'opacity-100' : 'opacity-0'"), '悬停/检索态须只做透明度过渡');
   });
 
   test('③ 详情卡支持 2D / 3D 切换且默认恒为 2D 课本规范', () => {
@@ -4808,5 +4812,98 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.doesNotMatch(panel[1], /92dvh|88dvh/, '外框不得再用与 padding 脱钩的 92dvh / 88dvh');
     assert.match(panel[1], /flex flex-col/, '外框须为纵向 flex，内容区才能独立滚动');
     assert.match(pt, /flex-1 overflow-y-auto[^"]*space-y-3/, '内容区须 flex-1 承载剩余高度（头部与 Tab 栏不动）');
+  });
+
+  test('⑭ 检索栏无外框无静态标题，且类别图例不在 ≥sm 重复', () => {
+    // ① 检索栏：无卡片包裹（无 card-bg / 无内边距），标题已移除
+    assert.ok(
+      !pt.includes('mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3 space-y-3'),
+      '检索区卡片外框须已移除（不再有 border + card-bg + p-3 包裹）',
+    );
+    assert.ok(!pt.includes("{lang === 'zh' ? '检索元素' : 'Search'}"), '「检索元素」静态标题须已移除');
+    assert.match(
+      pt,
+      /className="relative mb-3 sm:mb-5 w-full sm:max-w-xs border border-\[var\(--border-strong\)\] rounded-lg transition-colors focus-within:border-\[var\(--accent\)\]"/,
+      '边框与聚焦态须由外层容器唯一定义（且不含 card-bg / 内边距）',
+    );
+    // ② 输入框：零边框零轮廓（边框交给外层），前置轻量 Search 图标；placeholder 与无障碍名保留
+    assert.match(pt, /<Search\s[\s\S]{0,150}?absolute left-2\.5 top-1\/2 -translate-y-1\/2/, '输入框前须有轻量 Search 图标');
+    const inputCls = (pt.match(/className="min-h-10 w-full ([^"]+)"/) ?? ['', ''])[1];
+    assert.ok(inputCls.includes('border-none'), '内层 input 须 border-none');
+    assert.ok(inputCls.includes('outline-none') && inputCls.includes('focus:ring-0'), '内层 input 须 outline-none + focus:ring-0');
+    assert.doesNotMatch(inputCls, /(^|\s)border(\s|$)/, '内层 input 不得再带 border 宽度类（会与外层叠加成双层框）');
+    assert.doesNotMatch(inputCls, /border-\[/, '内层 input 不得再带任意边框色类');
+    assert.match(
+      pt,
+      /style=\{\{ outline: 'none' \}\}/,
+      '须补内联 outline:none —— index.css 的全局 :focus-visible 在 @layer 之外会盖过分层 outline-none，光有工具类挡不住',
+    );
+    assert.match(pt, /placeholder=\{lang === 'zh' \? '输入元素符号或中文名，如 H \/ 氢'/, 'placeholder 提示须保留');
+    assert.match(pt, /aria-label=\{lang === 'zh' \? '检索元素' : 'Search elements'\}/, '去掉可见标题后须补上无障碍名');
+    // ③ 单层边框不变量：整个检索组件里「自带边框」的元素必须恰好一个（外层容器）
+    const widget = pt.slice(
+      pt.indexOf('relative mb-3 sm:mb-5 w-full sm:max-w-xs'),
+      pt.indexOf('类别图例：只在 <640px 保留'),
+    );
+    assert.ok(widget.length > 120, '须能切出检索组件');
+    const bordered = widget.match(/(?:^|\s)border(?=\s|")/g) ?? [];
+    assert.equal(bordered.length, 1, `检索组件内自带边框的元素须恰 1 个（实测 ${bordered.length}）`);
+    assert.doesNotMatch(widget, /border-\[var\(--border\)\]/, '检索组件内不得再出现 --border 边框（弱于 --border-strong，且会与外层叠加）');
+    // ④ 类别图例：≥sm 唯一来源是中央展台；检索框下方那处只兜底小屏
+    const searchLegend = pt.match(/className="mb-5 flex flex-wrap gap-4 text-\[0\.625rem\] mono-font text-\[var\(--muted\)\]([^"]*)"/);
+    assert.ok(searchLegend, '须能定位检索框下方的兜底图例');
+    assert.match(searchLegend[1], /sm:hidden/, '兜底图例须只在 <640px 出现（≥sm 与中央展台重复）');
+    assert.ok(pt.includes("{isZh ? '分类图例' : 'LEGEND'}"), '中央展台须保留分类图例（≥sm 的唯一来源）');
+    assert.match(
+      pt,
+      /pointer-events-none absolute left-\[28px\] right-\[3px\] top-0 hidden sm:grid/,
+      '展台须在 <640px 折叠——这正是小屏仍需兜底图例的原因',
+    );
+    // 两份图例同源：都必须走 CAT_COLOR，不得各写一套色值
+    const renders = pt.match(/Object\.keys\(CAT_COLOR\) as ElementInfo\['cat'\]\[\]\)\.map\(/g) ?? [];
+    assert.equal(renders.length, 2, `类别图例须恰好两处渲染点且都走 CAT_COLOR（实测 ${renders.length} 处）`);
+  });
+
+  test('⑮ 检索命中驱动中央展台预览：与悬停共用同一套渲染', () => {
+    // ① 焦点元素 = 悬停优先，无悬停退回检索命中
+    assert.match(
+      pt,
+      /const searchPreview = queryLower \? \(exactSymbol \?\? ELEMENTS\.find\(\(e\) => matchN\(e\)\) \?\? null\) : null;/,
+      '须有「检索驱动的展台预览目标」',
+    );
+    assert.match(pt, /const heroFocus = heroEl \?\? searchPreview;/, '展台焦点须为「悬停优先、否则退回检索命中」');
+    // ② 展台渲染区只认 heroFocus：直接读 heroEl 会让检索态根本不出现在展台上
+    //    切片起点必须取在展台覆层容器处（早于两态透明度三元），否则判定不到默认图例态
+    const dashboard = pt.slice(pt.indexOf('pointer-events-none absolute left-[28px] right-[3px]'));
+    assert.ok(dashboard.length > 2000, '须能定位展台渲染区');
+    assert.match(dashboard, /\/\/ \{isZh \? '分类图例' : 'LEGEND'\}/, '切片须覆盖默认图例态');
+    assert.doesNotMatch(dashboard, /\bheroEl\b/, '展台渲染区不得再直接引用 heroEl（须统一走 heroFocus）');
+    assert.match(dashboard, /heroFocus \? 'opacity-0' : 'opacity-100'/, '默认图例态须以 heroFocus 判定');
+    assert.match(dashboard, /heroData && heroFocus && \(/, '预览态须以 heroFocus 判定');
+    // ③ 展台派生数据同样走 heroFocus；状态机仍保留 heroEl 存悬停
+    assert.match(pt, /if \(!heroFocus\) return null;[\s\S]{0,40}const vt = valenceTendency\(heroFocus\)/, '展台派生数据须走 heroFocus');
+    assert.match(pt, /const \[heroEl, setHeroEl\] = useState<ElementInfo \| null>\(null\)/, '悬停态存储须保留');
+    assert.match(pt, /const previewOn = \(el: ElementInfo\) =>/, '悬停进入逻辑须保留');
+    // ④ 行为级：复用页面同一套判定，验证「精确符号优先 / 否则按原子序数取首个命中」
+    const pick = (q: string) => {
+      const ql = q.trim().toLowerCase();
+      if (!ql) return null;
+      const exact = ELEMENTS.find((e) => e.symbol.toLowerCase() === ql);
+      const hit = (e: ElementInfo) =>
+        exact ? e.n === exact.n
+          : e.symbol.toLowerCase().startsWith(ql) || e.zh.includes(ql) || e.en.toLowerCase().startsWith(ql);
+      return exact ?? ELEMENTS.find(hit) ?? null;
+    };
+    assert.equal(pick(''), null, '空检索不得预览');
+    assert.equal(pick('   '), null, '纯空白检索不得预览');
+    assert.equal(pick('zzz'), null, '无命中不得预览');
+    assert.equal(pick('H')?.n, 1, '「H」须精确命中氢（而非按前缀命中一堆 H 开头元素）');
+    assert.equal(pick('fe')?.n, 26, '「fe」须精确命中铁');
+    assert.equal(pick('He')?.n, 2, '「He」须精确命中氦');
+    assert.equal(pick('氢')?.n, 1, '中文名须可命中氢');
+    assert.equal(pick('氧')?.n, 8, '中文名须可命中氧');
+    assert.equal(pick('Tellurium')?.n, 52, '英文名须可命中碲');
+    // 前缀查询：按原子序数取首个命中（ELEMENTS 本身按 Z 升序）
+    assert.ok((pick('c')?.n ?? 99) <= 6, `「c」应取 Z 最小的命中（实测 ${pick('c')?.symbol}）`);
   });
 });
