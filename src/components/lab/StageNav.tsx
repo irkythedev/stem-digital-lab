@@ -6,7 +6,7 @@
  * iOS Segmented Control 风格胶囊组件：浅底托 + 激活白卡微投影 + 触控安全。
  */
 
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw } from 'lucide-react';
 
 export type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -84,7 +84,10 @@ export default function StageNav({
                   : 'text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
             >
-              {done && !active ? `✓ ${text}` : text}
+              {done && !active && (
+                <Check className="inline-block w-3.5 h-3.5 align-middle mr-1" aria-hidden />
+              )}
+              {text}
             </button>
           );
         })}

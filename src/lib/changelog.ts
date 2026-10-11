@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.37.1';
+export const APP_VERSION = '0.37.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.37.2',
+    date: '2026-10',
+    zh: [
+      '[优化] 化学虚拟仿真精度与动力学全面升级：微观粒子按成键、解离、重组的真实几何连续演进，天平读数以阻尼摆动呈现，气体收集可按管身刻度直接读出体积比；实验流程贴合真实仪器规范，并加入打磨除氧化膜等前置步骤',
+      '[优化] 界面与交互规范统一：全站矢量图标标准化，使用说明改为卡片化分组，评测选项分布更均衡，整体呈现更克制一致',
+    ],
+    en: [
+      '[Improved] Chemistry simulation fidelity and dynamics upgraded across the board: particle animations follow the true geometry of bonding, dissociation and recombination, balance readings settle with a damped swing, collected gas volumes read directly against the tube graduations, and procedures follow real instrument practice with steps such as polishing off the surface oxide film',
+      '[Improved] Consistent interface and interaction conventions: icons standardised site-wide, the guide page regrouped into cards, quiz answer positions balanced, all presented with greater restraint and uniformity',
+    ],
+  },
   {
     version: '0.37.1',
     date: '2026-10',
@@ -1078,10 +1090,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     version: '0.13.1',
     date: '2026-08',
     zh: [
-      '[修复] 修复串并联电路实验的结论反馈：答题后正确显示 ✓/✗；优化实验视觉效果（灯泡点亮渐变、深色主题下液面颜色更清晰）',
+      '[修复] 修复串并联电路实验的结论反馈：答题后正确显示判定标记；优化实验视觉效果（灯泡点亮渐变、深色主题下液面颜色更清晰）',
     ],
     en: [
-      '[Fixed] Fixed the conclusion feedback in the series-parallel circuits lab: ✓/✗ now shows correctly after answering; polished lab visuals (smooth bulb glow, clearer liquid colors in dark theme)',
+      '[Fixed] Fixed the conclusion feedback in the series-parallel circuits lab: the correctness mark now shows correctly after answering; polished lab visuals (smooth bulb glow, clearer liquid colors in dark theme)',
     ],
   },
   {

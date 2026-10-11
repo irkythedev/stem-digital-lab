@@ -13,7 +13,7 @@
  * 视觉用烧杯液面颜色随 pH 渐变（石蕊/酚酞示意）。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
@@ -29,38 +29,70 @@ type Stage = 'predict' | 'explore' | 'conclude';
 type PredictTrend = 'slow-fast' | 'linear' | 'flat' | 'up' | null;
 
 /**
- * 计算滴定 pH：向 V0=20mL 浓度为 acidM 的 HCl 中滴入体积 v 的 NaOH（0.1M）。
+ * 计算滴定 pH：向 V0=20mL 浓度为 acidM 的 HCl 中滴入体积 v 的 NaOH（0.1 mol/L）。
  * 强酸强碱中和，简化模型：
  *  - 中和前：pH = -log10(剩余酸浓度)
  *  - 恰好中和（v = V0 * acidM / 0.1）：pH = 7
  *  - 过量：pH = 14 + log10(过量碱浓度)
  */
-function phAt(acidM: number, v: number): number {
+export function phAt(acidM: number, v: number): number {
   const v0 = 20;
   const baseM = 0.1;
   const acidMol = acidM * v0; // 酸的毫摩尔
   const baseMol = baseM * v; // 加入碱的毫摩尔
   const total = v0 + v;
+  // 等当点用相对容差判定：否则 v 的浮点误差会让「残余/过量浓度」趋零而使 pH 发散
+  if (Math.abs(baseMol - acidMol) < 1e-9 * Math.max(1, acidMol)) return 7;
+  // 两个分支都必须双向 clamp 到 [0,14]——酸性分支原先只有 Math.max(0,…)，
+  // 缺上界，等当点附近会给出 pH 16.9 这种越界值（曲线上冲出坐标系的尖峰）
   if (baseMol < acidMol) {
     const h = (acidMol - baseMol) / total;
-    return Math.max(0, -Math.log10(h));
+    return Math.min(14, Math.max(0, -Math.log10(h)));
   }
-  if (Math.abs(baseMol - acidMol) < 1e-9) return 7;
   const oh = (baseMol - acidMol) / total;
-  return Math.min(14, 14 + Math.log10(oh));
+  return Math.min(14, Math.max(0, 14 + Math.log10(oh)));
 }
 
-/** 采样 pH-滴入体积曲线：v ∈ [0, 40]，步长 0.2 */
-function sampleTitration(acidM: number): [number, number][] {
+/** 横轴与滴入量程上限（mL）：取 50 以保证最高浓度档（0.20 mol/L，V_eq = 40 mL）
+ *  的突跃及其「过量后平缓上升」段仍完整落在坐标系内 */
+export const AXIS_MAX = 50;
+
+/** 判定标记图标：统一 Lucide 矢量图标与尺寸/对齐，禁用「对勾 / 叉号」文本字符充当图标（全站图标纪律） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
+
+/** 选项定义（value + 文案键），数组顺序即渲染顺序。
+ *  顺序已打乱：正确项不再恒在首位，避免「总选第一项」蒙对。
+ *  判题按 value 比对（见组件内 correctKeys），与渲染顺序解耦，故重排不影响正误判定。 */
+export const OPTIONS = {
+  q1: [['l', 'concludeQ1L'], ['s', 'concludeQ1S'], ['none', 'concludeQ1None']],
+  q2: [['ph0', 'concludeQ2Ph0'], ['none', 'concludeQ2None'], ['ph7', 'concludeQ2Ph7']],
+  q3: [['mild', 'concludeQ3Mild'], ['steep', 'concludeQ3Steep'], ['none', 'concludeQ3None']],
+  q4: [['acid', 'concludeQ4Acid'], ['none', 'concludeQ4None'], ['basic', 'concludeQ4Basic']],
+} as const;
+
+/** 题号 → 判题正确值（与组件内 correctKeys 同口径，供守卫共用） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  q1: ['s'],
+  q2: ['ph7'],
+  q3: ['steep'],
+  q4: ['basic'],
+};
+
+/** 采样 pH-滴入体积曲线：v ∈ [0, AXIS_MAX]，步长 0.2，共 251 点 */
+export function sampleTitration(acidM: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let v = 0; v <= 40.0001; v += 0.2) {
+  // 用索引乘法而非 v += 0.2 累加——累加会累积浮点漂移，使等当点处的采样值落到
+  // 等当点「之前」，残余酸浓度趋零导致 pH 发散（实测曾取到 16.9）
+  const steps = Math.round(AXIS_MAX / 0.2);
+  for (let i = 0; i <= steps; i++) {
+    const v = i * 0.2;
     pts.push([v, phAt(acidM, v)]);
   }
   return pts;
 }
 
 /** 中和点体积 */
-function eqVolume(acidM: number): number {
+export function eqVolume(acidM: number): number {
   return (acidM * 20) / 0.1;
 }
 
@@ -140,11 +172,11 @@ const copy = {
     cards: [
       {
         title: '滴入过程',
-        prompt: '保持酸为稀盐酸，把滴入体积从 0 调到 40mL。pH 曲线长什么样？陡降段在哪？',
+        prompt: '保持酸为稀盐酸，把滴入体积从 0 调到 50mL。pH 曲线长什么样？陡升段在哪？',
       },
       {
         title: '酸的浓度',
-        prompt: '把酸从稀盐酸调成浓盐酸：曲线突跃段更陡还是更缓？中和点位置变了吗？',
+        prompt: '在 0.05 – 0.20 mol/L 之间调整酸浓度：恰好中和所需碱液体积（中和点位置）怎么变？',
       },
       {
         title: '恰好中和',
@@ -163,12 +195,12 @@ const copy = {
     tips: [
       '本实验采用强酸 HCl 与强碱 NaOH：H⁺ + OH⁻ → H₂O，等量点 pH≈7（中性）。',
       'pH 滴定曲线呈 S 形：中和前平缓、接近中和点剧烈突跃、过量后平缓。',
-      '酸浓度越大，突跃越陡，所需碱液体积越大（恰好中和点右移）。',
+      '酸浓度越大，恰好中和所需碱液体积越大（中和点右移）；强酸强碱滴定的突跃本身都很陡。',
       '酚酞变色范围约 8.2–10.0：碱性溶液呈粉红至红色，中性/酸性溶液无色。',
       '判断过量：中和后继续加碱 pH 升、加酸 pH 降，可用指示剂验证。',
     ],
     concludeQ1: 'pH 曲线的形状：',
-    concludeQ1S: 'S 形（先平缓后陡降再平缓）',
+    concludeQ1S: 'S 形（先平缓后陡升再平缓）',
     concludeQ1L: '直线',
     concludeQ1None: '无规律',
     concludeQ2: '恰好中和时：',
@@ -176,17 +208,17 @@ const copy = {
     concludeQ2Ph0: 'pH = 0',
     concludeQ2None: '不会发生',
     concludeQ3: '酸的浓度越大：',
-    concludeQ3Steep: '突跃段越陡，中和点体积越大',
-    concludeQ3Mild: '突跃段越缓，中和点体积越小',
-    concludeQ3None: '无影响',
+    concludeQ3Steep: '恰好中和所需碱液体积越大（中和点右移）',
+    concludeQ3Mild: '恰好中和所需碱液体积越小',
+    concludeQ3None: '所需碱液体积不变',
     concludeQ4: '碱过量后：',
     concludeQ4Basic: 'pH 继续上升，溶液显碱性',
     concludeQ4Acid: 'pH 回落，溶液显酸性',
     concludeQ4None: '保持中性',
     concludeHint: '选完四个，看看结论和你的观察是否一致',
     feedbackText:
-      '酸碱中和：H⁺ + OH⁻ → H₂O。pH 滴定曲线呈 S 形——中和前平缓下降、接近中和点时剧烈突跃、过量后平缓上升；' +
-      '恰好中和时 pH=7；酸浓度越大突跃越陡、所需碱液越多。',
+      '酸碱中和：H⁺ + OH⁻ → H₂O。pH 滴定曲线呈 S 形——中和前平缓上升、接近中和点时剧烈突跃、过量后平缓上升；' +
+      '恰好中和时 pH=7；酸浓度越大，恰好中和所需碱液体积越大（中和点右移）。',
   },
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
@@ -224,11 +256,11 @@ const copy = {
     cards: [
       {
         title: 'The titration',
-        prompt: 'Keep the acid dilute and raise the volume from 0 to 40mL. What does the pH curve look like? Where is the sharp drop?',
+        prompt: 'Keep the acid dilute and raise the volume from 0 to 50mL. What does the pH curve look like? Where is the sharp rise?',
       },
       {
         title: 'Acid concentration',
-        prompt: 'Raise the acid from dilute to concentrated: does the jump get steeper or milder? Does the equivalence point move?',
+        prompt: 'Vary the acid concentration between 0.05 and 0.20 mol/L: how does the base volume needed for equivalence change?',
       },
       {
         title: 'At equivalence',
@@ -246,12 +278,12 @@ const copy = {
     tips: [
       'This experiment uses strong acid HCl and strong base NaOH: H⁺ + OH⁻ → H₂O; the equivalence point is approximately pH 7 (neutral).',
       'The titration curve is S-shaped: gentle before, sharp jump near equivalence, gentle after.',
-      'A more concentrated acid gives a steeper jump and needs more base (equivalence shifts right).',
+      'A more concentrated acid needs a larger volume of base to reach equivalence (the point shifts right); a strong acid–strong base jump is steep in every case.',
       'Phenolphthalein changes around pH 8.2–10.0: pink to red in basic solution, colorless in neutral or acidic solution.',
       'After equivalence, extra base raises pH and extra acid lowers it — check with an indicator.',
     ],
     concludeQ1: 'The pH curve looks like:',
-    concludeQ1S: 'an S-shape (flat, sharp drop, flat again)',
+    concludeQ1S: 'an S-shape (flat, sharp rise, flat again)',
     concludeQ1L: 'a straight line',
     concludeQ1None: 'no pattern',
     concludeQ2: 'At exact neutralization:',
@@ -259,9 +291,9 @@ const copy = {
     concludeQ2Ph0: 'pH = 0',
     concludeQ2None: 'it never happens',
     concludeQ3: 'With a more concentrated acid:',
-    concludeQ3Steep: 'the jump is steeper and the equivalence volume is larger',
-    concludeQ3Mild: 'the jump is milder and the equivalence volume is smaller',
-    concludeQ3None: 'no effect',
+    concludeQ3Steep: 'a larger volume of base is needed for equivalence (the point shifts right)',
+    concludeQ3Mild: 'a smaller volume of base is needed for equivalence',
+    concludeQ3None: 'the equivalence volume is unchanged',
     concludeQ4: 'After adding excess base:',
     concludeQ4Basic: 'pH keeps rising — the solution is basic',
     concludeQ4Acid: 'pH falls back — the solution is acidic',
@@ -269,7 +301,7 @@ const copy = {
     concludeHint: 'Answer all four, then see if your conclusion matches your observations',
     feedbackText:
       'Neutralization: H⁺ + OH⁻ → H₂O. The titration curve is S-shaped — gentle before the equivalence point, a sharp jump near it, and gentle again after; ' +
-      'pH = 7 at exact neutralization; a more concentrated acid gives a steeper jump and needs more base.',
+      'pH = 7 at exact neutralization; a more concentrated acid needs a larger volume of base to reach it.',
   },
 };
 
@@ -295,20 +327,25 @@ export default function Neutralization() {
   }>({ q1: null, q2: null, q3: null, q4: null });
 
   const correctKeys = { q1: 's', q2: 'ph7', q3: 'steep', q4: 'basic' } as const;
+
+  /** 按 OPTIONS 定义的顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) =>
+      [value as string, (t as unknown as Record<string, string>)[labelKey]] as [string, string]);
   const conclusionComplete =
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predTrend !== null;
 
   const ph = phAt(acidM, volume);
   const eqV = eqVolume(acidM);
-  /** 烧杯液面 y：滴入 0mL → 104（低液位），40mL → 68（接近满），用 rAF 平滑插值 */
-  const liquidY = useLiquidY(Math.round(104 - (Math.min(volume, 40) / 40) * 36));
+  /** 烧杯液面 y：滴入 0mL → 104（低液位），AXIS_MAX → 68（接近满），用 rAF 平滑插值 */
+  const liquidY = useLiquidY(Math.round(104 - (Math.min(volume, AXIS_MAX) / AXIS_MAX) * 36));
 
   const currentCurve: CoordCurve = useMemo(
     () => ({
       id: 'main',
       points: sampleTitration(acidM),
-      label: `酸 ${(acidM / 0.1).toFixed(1)}×`,
+      label: `酸 ${acidM.toFixed(2)} mol/L`,
     }),
     [acidM],
   );
@@ -317,7 +354,7 @@ export default function Neutralization() {
     id: `pin${p.id}`,
     points: sampleTitration(p.acidM),
     dashed: true,
-    label: `酸 ${(p.acidM / 0.1).toFixed(1)}×`,
+    label: `酸 ${p.acidM.toFixed(2)} mol/L`,
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
@@ -350,7 +387,7 @@ export default function Neutralization() {
         id: prev.length + 1,
         snapshot: [
           { label: 'V', value: `${volume.toFixed(1)}mL` },
-          { label: '酸', value: `${(acidM / 0.1).toFixed(1)}×` },
+          { label: '酸', value: `${acidM.toFixed(2)} mol/L` },
           { label: 'pH', value: ph.toFixed(2) },
         ],
         note,
@@ -447,7 +484,7 @@ export default function Neutralization() {
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.flaskLabel}
             </h3>
-            <svg viewBox="0 0 220 200" className="w-full h-auto max-h-[320px]" role="img" aria-label={t.flaskLabel} strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 -40 220 240" className="w-full h-auto max-h-[320px]" role="img" aria-label={t.flaskLabel} strokeLinecap="round" strokeLinejoin="round">
               {/* 液面高度随滴入体积上升：0mL→y=104，40mL→y=68（线性） */}
               {/* 烧杯壁（平底） */}
               <path d="M40 30 H180 V170 H40 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
@@ -471,16 +508,18 @@ export default function Neutralization() {
                   transition: 'transform 0.4s ease-out, stroke 0.4s ease',
                 }}
               />
-              {/* 滴管：胶头（橡胶乳头）+ 管身 + 尖嘴 */}
-              <path d="M104 14 Q110 8 116 14 L116 20 L104 20 Z" fill="var(--fg)" opacity="0.3" />
-              <line x1="110" y1="20" x2="110" y2="44" stroke="var(--fg)" strokeWidth="1.5" />
-              <path d="M108 44 L112 44 L110 50 Z" fill="var(--fg)" />
-              {/* 液滴：从滴管口下落（CSS 动画，无限循环，随滴入体积变化节奏） */}
+              {/* 滴管：胶头（橡胶乳头）+ 管身 + 尖嘴。
+                  规范要求「垂直悬空于容器口上方，不得伸入容器内」——整支上抬，
+                  尖嘴 y=10 悬于烧杯口沿 y=30 之上 20px；画布上沿扩到 -40 为抬升预留空间。 */}
+              <path d="M104 -28 Q110 -36 116 -28 L116 -10 L104 -10 Z" fill="var(--fg)" opacity="0.3" />
+              <line x1="110" y1="-10" x2="110" y2="4" stroke="var(--fg)" strokeWidth="1.5" />
+              <path d="M108 4 L112 4 L110 10 Z" fill="var(--fg)" />
+              {/* 液滴：自尖嘴下落（CSS 动画，无限循环，随滴入体积变化节奏） */}
               {volume > 0 && (
                 <circle
                   className="titration-drop"
                   cx="110"
-                  cy="46"
+                  cy="10"
                   r="2.6"
                   fill={phColor(Math.min(14, ph + 1))}
                   opacity="0.9"
@@ -490,8 +529,8 @@ export default function Neutralization() {
               <text x="110" y="196" textAnchor="middle" fontSize="12" fill="var(--fg)" fontFamily="var(--f-mono)">
                 pH = {ph.toFixed(2)}
               </text>
-              {/* 滴入体积 */}
-              <text x="110" y="18" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
+              {/* 滴入体积（移到右上角，避开上抬后的滴管本体） */}
+              <text x="214" y="-27" textAnchor="end" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">
                 + {volume.toFixed(1)} mL NaOH
               </text>
             </svg>
@@ -510,7 +549,7 @@ export default function Neutralization() {
             <CoordPlane
               curves={curves}
               xMin={0}
-              xMax={40}
+              xMax={AXIS_MAX}
               yMin={0}
               yMax={14}
               ariaLabel={`pH vs volume graph`}
@@ -531,7 +570,7 @@ export default function Neutralization() {
               </div>
               <div>
                 <p className="text-[0.6875rem] text-[var(--muted)] mono-font">c(HCl)</p>
-                <p className="text-sm mono-font text-[var(--fg)]">{acidM.toFixed(1)} M</p>
+                <p className="text-sm mono-font text-[var(--fg)]">{acidM.toFixed(2)} mol/L</p>
               </div>
               <div>
                 <p className="text-[0.6875rem] text-[var(--muted)] mono-font">pH</p>
@@ -554,7 +593,7 @@ export default function Neutralization() {
               label="V (NaOH)"
               value={volume}
               min={0}
-              max={40}
+              max={AXIS_MAX}
               step={0.5}
               onChange={setVolume}
               format={(v) => `${v.toFixed(1)}mL`}
@@ -562,11 +601,11 @@ export default function Neutralization() {
             <ParamSlider
               label="c (HCl)"
               value={acidM}
-              min={0.1}
-              max={2}
-              step={0.1}
+              min={0.05}
+              max={0.2}
+              step={0.05}
               onChange={setAcidM}
-              format={(v) => `${(v / 0.1).toFixed(1)}×`}
+              format={(v) => `${v.toFixed(2)} mol/L`}
             />
             <button
               type="button"
@@ -614,9 +653,10 @@ export default function Neutralization() {
                 <button
                   type="button"
                   onClick={reveal}
-                  className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
-                  ✓ {t.predictDone} — {t.revealLabel}
+                  <Check className="w-3.5 h-3.5" aria-hidden />
+                  <span>{t.predictDone} — {t.revealLabel}</span>
                 </button>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictHint}</p>
@@ -667,7 +707,7 @@ export default function Neutralization() {
                   <div className="flex flex-wrap gap-1.5">
                     {pinned.map((p) => (
                       <span key={p.id} className="text-[0.6875rem] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
-                        酸 {(p.acidM / 0.1).toFixed(1)}×
+                        酸 {p.acidM.toFixed(2)} mol/L
                       </span>
                     ))}
                   </div>
@@ -693,13 +733,7 @@ export default function Neutralization() {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ1}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['s', t.concludeQ1S],
-                      ['l', t.concludeQ1L],
-                      ['none', t.concludeQ1None],
-                    ] as ['s' | 'l' | 'none', string][]
-                  ).map(([v, label]) => {
+                  {opts('q1').map(([v, label]) => {
                     const selected = conclusion.q1 === v;
                     const correct = correctKeys.q1 === v;
                     const showFeedback = conclusion.q1 !== null;
@@ -707,7 +741,7 @@ export default function Neutralization() {
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q1: v as 's' | 'l' | 'none' }))}
                         className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
@@ -718,8 +752,10 @@ export default function Neutralization() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct
+                          ? <Check className={MARK_CLS} aria-hidden />
+                          : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -731,13 +767,7 @@ export default function Neutralization() {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ2}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['ph7', t.concludeQ2Ph7],
-                      ['ph0', t.concludeQ2Ph0],
-                      ['none', t.concludeQ2None],
-                    ] as ['ph7' | 'ph0' | 'none', string][]
-                  ).map(([v, label]) => {
+                  {opts('q2').map(([v, label]) => {
                     const selected = conclusion.q2 === v;
                     const correct = correctKeys.q2 === v;
                     const showFeedback = conclusion.q2 !== null;
@@ -745,7 +775,7 @@ export default function Neutralization() {
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q2: v as 'ph7' | 'ph0' | 'none' }))}
                         className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
@@ -756,8 +786,10 @@ export default function Neutralization() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct
+                          ? <Check className={MARK_CLS} aria-hidden />
+                          : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -769,13 +801,7 @@ export default function Neutralization() {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ3}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['steep', t.concludeQ3Steep],
-                      ['mild', t.concludeQ3Mild],
-                      ['none', t.concludeQ3None],
-                    ] as ['steep' | 'mild' | 'none', string][]
-                  ).map(([v, label]) => {
+                  {opts('q3').map(([v, label]) => {
                     const selected = conclusion.q3 === v;
                     const correct = correctKeys.q3 === v;
                     const showFeedback = conclusion.q3 !== null;
@@ -783,7 +809,7 @@ export default function Neutralization() {
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q3: v as 'steep' | 'mild' | 'none' }))}
                         className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
@@ -794,8 +820,10 @@ export default function Neutralization() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct
+                          ? <Check className={MARK_CLS} aria-hidden />
+                          : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -807,13 +835,7 @@ export default function Neutralization() {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ4}</p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {(
-                    [
-                      ['basic', t.concludeQ4Basic],
-                      ['acid', t.concludeQ4Acid],
-                      ['none', t.concludeQ4None],
-                    ] as ['basic' | 'acid' | 'none', string][]
-                  ).map(([v, label]) => {
+                  {opts('q4').map(([v, label]) => {
                     const selected = conclusion.q4 === v;
                     const correct = correctKeys.q4 === v;
                     const showFeedback = conclusion.q4 !== null;
@@ -821,7 +843,7 @@ export default function Neutralization() {
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q4: v as 'basic' | 'acid' | 'none' }))}
                         className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
                           selected
                             ? correct
@@ -832,8 +854,10 @@ export default function Neutralization() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct
+                          ? <Check className={MARK_CLS} aria-hidden />
+                          : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -842,7 +866,10 @@ export default function Neutralization() {
               </div>
 
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]">✓ {t.concludeHint}</p>
+                <p className="inline-flex items-center gap-1.5 text-xs mono-font text-[var(--fg)]">
+                  <Check className="w-3.5 h-3.5" aria-hidden />
+                  <span>{t.concludeHint}</span>
+                </p>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
@@ -852,7 +879,10 @@ export default function Neutralization() {
           {/* 完成态 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]">✓ {t.stageDone}</p>
+              <p className="inline-flex items-center gap-1.5 text-sm font-bold mono-font text-[var(--fg)]">
+                <Check className="w-4 h-4" aria-hidden />
+                <span>{t.stageDone}</span>
+              </p>
               <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
               <button
                 type="button"

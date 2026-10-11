@@ -16,12 +16,15 @@
  * 复用组件：BalanceScale（天平）、MicroAnimation（微观动画）、ExploreStage。
  */
 import { useMemo, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import BalanceScale from '../../components/lab/BalanceScale';
 import MicroAnimation from '../../components/lab/MicroAnimation';
+import StageNav from '../../components/lab/StageNav';
+import Formula from '../../components/ui/Formula';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -86,12 +89,20 @@ const copy = {
     resetBtn: '重置实验',
     beforeMass: '反应前质量',
     afterMass: '反应后质量',
+    eqCuO: '2\\mathrm{Cu} + \\mathrm{O_2} \\xrightarrow{\\ \\text{加热}\\ } 2\\mathrm{CuO}',
     scheme1Reacted: '铜粉变黑（CuO），气球先胀后缩',
     scheme2Reacted: '铁钉表面有红色铜析出，溶液变浅绿色',
     scheme3Reacted: '产生大量气泡，CO₂ 逸出，质量减少',
-    scheme1Explain: '密封体系：铜与氧气反应生成氧化铜，气体未逸出，质量不变。',
+    scheme1Explain: '密封体系：铜与氧气反应生成氧化铜，气体未逸出，质量不变。瓶底铺一层细沙，防止局部受热使锥形瓶炸裂；瓶口气球缓冲气压变化。',
+    sandLabel: '细沙',
     scheme2Explain: '无气体参与：铁与硫酸铜反应，所有物质都在容器内，质量不变。',
     scheme3Explain: '开放体系：生成的 CO₂ 气体逸出，质量减少。若在密封容器中，质量不变。',
+    /** 反应现象（双语，防止英文界面泄漏中文；只渲染前两条，第三条留作资料） */
+    reactionLines: [
+      ['铜粉变黑（CuO）', '气球先胀后缩', '密封体系，质量不变'],
+      ['铁钉表面有红色铜析出', '溶液由蓝色变浅绿色', '无气体参与，质量不变'],
+      ['产生大量气泡', 'CO₂ 气体逸出', '开放体系，质量减少'],
+    ],
     cards: [
       {
         title: '实验一：铜 + 氧气（密封）',
@@ -180,12 +191,20 @@ const copy = {
     resetBtn: 'Reset experiment',
     beforeMass: 'Mass before',
     afterMass: 'Mass after',
+    eqCuO: '2\\mathrm{Cu} + \\mathrm{O_2} \\xrightarrow{\\ \\text{heating}\\ } 2\\mathrm{CuO}',
     scheme1Reacted: 'Copper turns black (CuO), balloon inflates then deflates',
     scheme2Reacted: 'Red copper on iron surface, solution turns light green',
     scheme3Reacted: 'Bubbles form, CO₂ escapes, mass decreases',
-    scheme1Explain: 'Sealed: Cu + O₂ → CuO, no gas escapes, mass unchanged.',
+    scheme1Explain: 'Sealed: Cu + O₂ → CuO, no gas escapes, mass unchanged. A layer of sand at the bottom keeps the flask from cracking under uneven heating; the balloon buffers the pressure.',
+    sandLabel: 'Sand',
     scheme2Explain: 'No gas: Fe + CuSO₄ → FeSO₄ + Cu, all substances contained, mass unchanged.',
     scheme3Explain: 'Open: CO₂ gas escapes, mass decreases. In a sealed container, mass would be conserved.',
+    /** Reaction observations (bilingual; only the first two are rendered, the third is kept as reference) */
+    reactionLines: [
+      ['Copper powder turns black (CuO)', 'Balloon inflates, then deflates', 'Sealed system — mass unchanged'],
+      ['Red copper deposits on the iron nail', 'Solution turns from blue to pale green', 'No gas involved — mass unchanged'],
+      ['Vigorous bubbling', 'CO₂ escapes', 'Open system — mass decreases'],
+    ],
     cards: [
       {
         title: 'Experiment 1: Cu + O₂ (sealed)',
@@ -240,18 +259,36 @@ const CORRECT_KEYS: Record<string, string[]> = {
   q3: ['atom'],
 };
 
+/** 判定标记图标：统一 Lucide 矢量图标与尺寸/对齐，禁用「对勾 / 叉号」文本字符充当图标（全站图标纪律） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
+
+/** 选项定义（value + 文案键），数组顺序即渲染顺序。
+ *  顺序已打乱：正确项不再恒在首位，避免「总选第一项」蒙对。
+ *  判题按 value 比对（QUIZ_CORRECT），与渲染顺序解耦，故重排不影响正误判定。 */
+export const OPTIONS = {
+  predictQ1: [['more', 'predictQ1More'], ['less', 'predictQ1Less'], ['same', 'predictQ1Same']],
+  predictQ2: [['same', 'predictQ2Same'], ['more', 'predictQ2More'], ['less', 'predictQ2Less']],
+  predictQ3: [['same', 'predictQ3Same'], ['less', 'predictQ3Less'], ['more', 'predictQ3More']],
+  concludeQ1: [['change', 'concludeQ1Change'], ['same', 'concludeQ1Same'], ['always-change', 'concludeQ1AlwaysChange']],
+  concludeQ2: [['same', 'concludeQ2Same'], ['more', 'concludeQ2More'], ['less', 'concludeQ2Less']],
+  concludeQ3: [['atom', 'concludeQ3Atom'], ['mol', 'concludeQ3Mol'], ['energy', 'concludeQ3Energy']],
+} as const;
+
+/** 题号 → 判题正确值：预测题为实验中质量的真实变化，结论题为守恒结论（与 CORRECT_KEYS 对齐） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  predictQ1: ['same'],  // 实验一：密封体系，质量不变
+  predictQ2: ['same'],  // 实验二：无气体参与，质量不变
+  predictQ3: ['less'],  // 实验三：开放体系，CO₂ 逸出，质量变小
+  concludeQ1: CORRECT_KEYS.q1,
+  concludeQ2: CORRECT_KEYS.q2,
+  concludeQ3: CORRECT_KEYS.q3,
+};
+
 /** 方案反应后质量 */
 const AFTER_MASSES: Record<SchemeIdx, number> = {
   0: 100,   // 密封，质量不变
   1: 100,   // 无气体，质量不变
   2: 95,    // CO₂ 逸出，质量减少
-};
-
-/** 方案反应现象描述 */
-const REACTED_DESCS: Record<SchemeIdx, string[]> = {
-  0: ['铜粉变黑（CuO）', '气球先胀后缩', '密封体系，质量不变'],
-  1: ['铁钉表面有红色铜析出', '溶液由蓝色变浅绿色', '无气体参与，质量不变'],
-  2: ['产生大量气泡', 'CO₂ 气体逸出', '开放体系，质量减少'],
 };
 
 export default function MassConservation() {
@@ -279,7 +316,7 @@ export default function MassConservation() {
   ]);
 
   const predComplete = predict1 !== null && predict2 !== null && predict3 !== null;
-  const concludeComplete = conclude1 && conclude2 && conclude3;
+  const concludeComplete = Boolean(conclude1 && conclude2 && conclude3);
 
   const curScheme = schemes[activeScheme];
 
@@ -352,14 +389,20 @@ export default function MassConservation() {
 
   /* ── 结论题渲染 ── */
 
-  function renderConcludeQ(
-    key: string,
+  /** 按 OPTIONS 定义的顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
+
+  function renderQ(
     question: string,
     options: { value: string; label: string }[],
     selected: string | null,
     onSelect: (v: string) => void,
+    correctKeys: string[],
   ) {
-    const correctKeys = CORRECT_KEYS[key];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -378,13 +421,6 @@ export default function MassConservation() {
                 ? 'border-[var(--fg)] text-[var(--fg)]'
                 : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback
-              ? isCorrect
-                ? '✓ '
-                : isSel
-                  ? '✗ '
-                  : ''
-              : '';
             return (
               <button
                 key={opt.value}
@@ -393,7 +429,11 @@ export default function MassConservation() {
                 disabled={showFeedback}
                 className={`${cls} ${showFeedback ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
-                {prefix}{opt.label}
+                {showFeedback && (isCorrect
+                  ? <Check className={MARK_CLS} aria-hidden />
+                  : isSel
+                    ? <X className={MARK_CLS} aria-hidden />
+                    : null)}{opt.label}
               </button>
             );
           })}
@@ -404,48 +444,24 @@ export default function MassConservation() {
 
   return (
     <div className="space-y-6">
-      {/* ── 幕导航 ── */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs 2xl:text-sm mono-font tracking-wider">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label =
-            s === 'predict'
-              ? c.stagePredict
-              : s === 'explore'
-                ? c.stageExplore
-                : c.stageConclude;
-          const isDone =
-            s === 'predict'
-              ? predComplete
-              : s === 'explore'
-                ? observations.length > 0
-                : concludeComplete;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStage(s)}
-              className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${
-                stage === s
-                  ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs'
-                  : isDone
-                    ? 'border-[var(--border)] text-[var(--fg)]'
-                    : 'border-[var(--border)] text-[var(--muted)] opacity-60'
-              }`}
-            >
-              {isDone && stage !== s ? `✓ ${label}` : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto flex gap-2">
-          <button
-            type="button"
-            onClick={redoAll}
-            className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95"
-          >
-            {c.redoLabel}
-          </button>
-        </div>
-      </div>
+      {/* ── 幕导航：全站共享 StageNav，胶囊槽样式/高度/触控与四实验保持一致 ── */}
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{
+          predict: c.stagePredict,
+          explore: c.stageExplore,
+          conclude: c.stageConclude,
+          next: c.nextStage,
+          redo: c.redoLabel,
+        }}
+        onRedo={redoAll}
+        isDone={{
+          predict: predComplete,
+          explore: observations.length > 0,
+          conclude: concludeComplete,
+        }}
+      />
       {/* AI 工具行：问 AI + 考考你 并排 */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
         <AskAiButton question={lang === 'zh' ? '请讲解质量守恒定律的实质，以及本实验三个方案为什么要分别设计' : 'Explain the essence of conservation of mass and why this lab uses three designs'} />
@@ -480,11 +496,7 @@ export default function MassConservation() {
           <div className="space-y-2">
             <p className="text-sm serif-font text-[var(--fg)]">{c.predictQ1}</p>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              {[
-                { value: 'same', label: c.predictQ1Same },
-                { value: 'more', label: c.predictQ1More },
-                { value: 'less', label: c.predictQ1Less },
-              ].map((opt) => (
+              {opts('predictQ1').map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -505,11 +517,7 @@ export default function MassConservation() {
           <div className="space-y-2">
             <p className="text-sm serif-font text-[var(--fg)]">{c.predictQ2}</p>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              {[
-                { value: 'same', label: c.predictQ2Same },
-                { value: 'more', label: c.predictQ2More },
-                { value: 'less', label: c.predictQ2Less },
-              ].map((opt) => (
+              {opts('predictQ2').map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -530,11 +538,7 @@ export default function MassConservation() {
           <div className="space-y-2">
             <p className="text-sm serif-font text-[var(--fg)]">{c.predictQ3}</p>
             <div className="grid gap-1.5 sm:grid-cols-3">
-              {[
-                { value: 'same', label: c.predictQ3Same },
-                { value: 'more', label: c.predictQ3More },
-                { value: 'less', label: c.predictQ3Less },
-              ].map((opt) => (
+              {opts('predictQ3').map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -626,23 +630,33 @@ export default function MassConservation() {
             {/* 反应容器可视化 */}
             <div className="pt-1">
               {activeScheme === 0 && (
+                <>
                 <svg viewBox="0 0 240 150" className="w-full max-w-[280px] mx-auto" aria-label="锥形瓶加热铜粉" strokeLinecap="round" strokeLinejoin="round">
-                  {/* 锥形瓶 */}
-                  <path d="M70 40 H170 L150 130 H90 Z" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
-                  <line x1="70" y1="40" x2="170" y2="40" stroke="var(--fg)" strokeWidth="1.2" />
-                  {/* 铜粉（底部） */}
-                  <rect x="96" y="120" width="48" height="10" fill={curScheme.reacted ? 'var(--cu-oxide)' : 'var(--cu-powder)'} opacity="0.8" />
-                  {/* 气球（锥形瓶口） */}
+                  {/* 锥形瓶：下宽上窄 + 竖直直颈（瓶颈 x106–134 宽 28，瓶底 x82–158 宽 76） */}
+                  <path d="M106 40 V62 L82 126 H158 L134 62 V40" fill="none" stroke="var(--fg)" strokeWidth="1.2" />
+                  <line x1="104" y1="40" x2="136" y2="40" stroke="var(--fg)" strokeWidth="1.2" />
+                  {/* 细沙层：铺在瓶底，防止局部受热炸裂（中考操作规范） */}
+                  <path d="M86 126 V118 H154 V126 Z" fill="var(--accent-light)" opacity={0.9} />
+                  {[92, 100, 108, 116, 124, 132, 140, 148].map((dx) => (
+                    <circle key={dx} cx={dx} cy={119 + (dx % 6)} r={0.9} fill="var(--muted)" opacity="0.5" />
+                  ))}
+                  {/* 细沙标示（引线 + 文字，随语言切换） */}
+                  <line x1="156" y1="122" x2="172" y2="115" stroke="var(--muted)" strokeWidth="0.8" />
+                  <text x="174" y="118" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">{c.sandLabel}</text>
+                  {/* 铜粉（铺在细沙之上） */}
+                  <rect x="100" y="110" width="40" height="8" fill={curScheme.reacted ? 'var(--cu-oxide)' : 'var(--cu-powder)'} opacity="0.8" />
+                  {/* 气球（居中套在直颈瓶口） */}
                   <path d={curScheme.reacted
-                    ? "M120 40 q-6 -14 6 -18 q12 2 6 18 Z" // 反应后气球鼓起
-                    : "M120 40 q0 -6 6 -8 q6 2 6 8 Z"}
+                    ? "M114 40 q0 -16 6 -18 q6 2 6 18 Z" // 反应后气球鼓起
+                    : "M114 40 q0 -6 6 -8 q6 2 6 8 Z"}
                     fill="none" stroke="var(--fg)" strokeWidth="1.2" />
                   {/* 火焰（加热） */}
                   {curScheme.reacted && (
                     <path d="M120 130 v10 M117 138 q-3 -6 0 -10 M123 138 q3 -6 0 -10" stroke="var(--accent)" strokeWidth="1.2" fill="none" />
                   )}
-                  <text x="120" y="148" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">Cu → CuO</text>
                 </svg>
+                <Formula tex={c.eqCuO} block className="mt-1 text-[var(--fg)]" />
+                </>
               )}
 
               {activeScheme === 1 && (
@@ -656,12 +670,13 @@ export default function MassConservation() {
                   <line x1="107" y1="70" x2="163" y2="70" stroke="var(--fg)" strokeWidth="0.8" strokeDasharray="3 2" />
                   {/* 铁钉 */}
                   <line x1="135" y1="42" x2="135" y2="95" stroke="#a0a6ad" strokeWidth="1.5" strokeLinecap="round" />
-                  {/* 析出红铜（反应后） */}
+                  {/* 析出红铜（反应后）：统一用紫红系 #b8533a（中考答题词「紫红色固体」），
+                      与 MetalActivity 的铜丝本色 / 析出铜、微观动画 Cu 原子同色 */}
                   {curScheme.reacted && (
                     <>
-                      <circle cx="132" cy="82" r="2.4" fill="#e08a3c" />
-                      <circle cx="139" cy="90" r="2.2" fill="#e08a3c" />
-                      <circle cx="135" cy="96" r="2.6" fill="#e08a3c" />
+                      <circle cx="132" cy="82" r="2.4" fill="#b8533a" />
+                      <circle cx="139" cy="90" r="2.2" fill="#b8533a" />
+                      <circle cx="135" cy="96" r="2.6" fill="#b8533a" />
                     </>
                   )}
                   <text x="135" y="148" textAnchor="middle" fontSize="10" fill="var(--muted)" fontFamily="var(--f-mono)">Fe + CuSO₄</text>
@@ -695,10 +710,10 @@ export default function MassConservation() {
             {curScheme.reacted && (
               <div className="space-y-1 pt-2 border-t border-[var(--border)]">
                 <p className="text-sm text-[var(--accent)] serif-font">
-                  {REACTED_DESCS[activeScheme][0]}
+                  {c.reactionLines[activeScheme][0]}
                 </p>
                 <p className="text-sm text-[var(--accent)] serif-font">
-                  {REACTED_DESCS[activeScheme][1]}
+                  {c.reactionLines[activeScheme][1]}
                 </p>
                 <p className="text-sm text-[var(--fg)] serif-font pt-1">
                   {activeScheme === 0
@@ -738,41 +753,11 @@ export default function MassConservation() {
             <p className="text-sm text-[var(--accent)] serif-font">{c.concludeSkipHint}</p>
           )}
 
-          {renderConcludeQ(
-            'q1',
-            c.concludeQ1,
-            [
-              { value: 'same', label: c.concludeQ1Same },
-              { value: 'change', label: c.concludeQ1Change },
-              { value: 'always-change', label: c.concludeQ1AlwaysChange },
-            ],
-            conclude1,
-            setConclude1,
-          )}
+          {renderQ(c.concludeQ1, opts('concludeQ1'), conclude1, setConclude1, QUIZ_CORRECT.concludeQ1)}
 
-          {renderConcludeQ(
-            'q2',
-            c.concludeQ2,
-            [
-              { value: 'less', label: c.concludeQ2Less },
-              { value: 'same', label: c.concludeQ2Same },
-              { value: 'more', label: c.concludeQ2More },
-            ],
-            conclude2,
-            setConclude2,
-          )}
+          {renderQ(c.concludeQ2, opts('concludeQ2'), conclude2, setConclude2, QUIZ_CORRECT.concludeQ2)}
 
-          {renderConcludeQ(
-            'q3',
-            c.concludeQ3,
-            [
-              { value: 'atom', label: c.concludeQ3Atom },
-              { value: 'mol', label: c.concludeQ3Mol },
-              { value: 'energy', label: c.concludeQ3Energy },
-            ],
-            conclude3,
-            setConclude3,
-          )}
+          {renderQ(c.concludeQ3, opts('concludeQ3'), conclude3, setConclude3, QUIZ_CORRECT.concludeQ3)}
 
           {!showFeedback && concludeComplete && (
             <button
@@ -813,18 +798,12 @@ export default function MassConservation() {
                   <MicroAnimation
                     reactants={[
                       {
-                        label: 'H₂',
-                        atoms: [
-                          { id: 'h1', label: 'H', color: '#4fc3f7' },
-                          { id: 'h2', label: 'H', color: '#4fc3f7' },
-                        ],
+                        label: 'Cu',
+                        atoms: [{ id: 'cu1', label: 'Cu', color: '#b8533a' }],
                       },
                       {
-                        label: 'H₂',
-                        atoms: [
-                          { id: 'h3', label: 'H', color: '#4fc3f7' },
-                          { id: 'h4', label: 'H', color: '#4fc3f7' },
-                        ],
+                        label: 'Cu',
+                        atoms: [{ id: 'cu2', label: 'Cu', color: '#b8533a' }],
                       },
                       {
                         label: 'O₂',
@@ -836,18 +815,16 @@ export default function MassConservation() {
                     ]}
                     products={[
                       {
-                        label: 'H₂O',
+                        label: 'CuO',
                         atoms: [
-                          { id: 'h1', label: 'H', color: '#4fc3f7' },
-                          { id: 'h2', label: 'H', color: '#4fc3f7' },
+                          { id: 'cu1', label: 'Cu', color: '#b8533a' },
                           { id: 'o1', label: 'O', color: '#ef5350' },
                         ],
                       },
                       {
-                        label: 'H₂O',
+                        label: 'CuO',
                         atoms: [
-                          { id: 'h3', label: 'H', color: '#4fc3f7' },
-                          { id: 'h4', label: 'H', color: '#4fc3f7' },
+                          { id: 'cu2', label: 'Cu', color: '#b8533a' },
                           { id: 'o2', label: 'O', color: '#ef5350' },
                         ],
                       },
