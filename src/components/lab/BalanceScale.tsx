@@ -27,11 +27,28 @@ const CY = 100;
 /** 力臂半长（px）：托盘升降位移与横梁端点位移同源，均 = 力臂 × sinθ */
 const ARM = 50;
 
+/** 量程上限（度）：tiltDeg 与阻尼输出共用同一上限，确保指针绝不冲出分度盘 */
+const MAX_DEG = 10;
+
+/** 欠阻尼曲线的峰值系数：1 − e^(−4.2t)·cos(6.4πt) 在 t ≈ 0.146 处取到 **1.530154**（数值扫描实测）。
+ *  单程 0 → 10° 的未钳位峰值即 ≈ 15.30°（超出目标 53%）；全域 ±10° 往返回转时最坏可达 20.60°。
+ *  即「只把目标夹到 ±10°」并不能保证中间过程也在 ±10° 内，故必须在输出侧再夹一次
+ *  （见 useDampedAngle）；这也贴合真实托盘天平的限位挡块。
+ *  导出给守卫：断言该系数与数值扫描结果一致，且钳位确实承重。 */
+export const OVERSHOOT = 1.530154;
+
 /** 由质量差求横梁倾角（度）。delta>0 = 左盘（被测物）变轻 → 右盘（砝码端）下沉。
  *  SVG 中正角即左端抬起，与上述方向一致，故直接正向映射。 */
 function tiltDeg(beforeMass: number, afterMass: number): number {
   const raw = (beforeMass - afterMass) * 1.6;
-  return Math.max(-10, Math.min(10, raw));
+  return Math.max(-MAX_DEG, Math.min(MAX_DEG, raw));
+}
+
+/** 导出给守卫：阻尼插值的完整求值（与组件内同源），供「输出绝不越量程」的行为级断言使用 */
+export function dampedAngleAt(from: number, to: number, t: number): number {
+  const envelope = Math.exp(-4.2 * t);
+  const raw = from + (to - from) * (1 - envelope * Math.cos(6.4 * Math.PI * t));
+  return Math.max(-MAX_DEG, Math.min(MAX_DEG, raw));
 }
 
 /**
@@ -41,15 +58,17 @@ function tiltDeg(beforeMass: number, afterMass: number): number {
  */
 function useDampedAngle(targetDeg: number): number {
   const [angle, setAngle] = useState(targetDeg);
-  const fromRef = useRef(targetDeg);
+  /** 当前「实际渲染值」：目标在动画在途时反转，必须从这里起算。
+   *  若改存「上一个目标值」，新动画会把画面瞬间拽回那个目标 —— 实测单帧硬跳 4.85°。 */
+  const currentRef = useRef(targetDeg);
   const rafRef = useRef(0);
 
   useEffect(() => {
-    const from = fromRef.current;
+    const from = currentRef.current;
     const to = targetDeg;
-    fromRef.current = to;
     if (from === to) return;
     if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      currentRef.current = to;
       setAngle(to);
       return;
     }
@@ -57,8 +76,10 @@ function useDampedAngle(targetDeg: number): number {
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / dur);
-      const envelope = Math.exp(-4.2 * t);
-      setAngle(t < 1 ? from + (to - from) * (1 - envelope * Math.cos(6.4 * Math.PI * t)) : to);
+      // 输出侧量程钳位：阻尼过冲可达目标的 1.52 倍，不夹就会冲出分度盘
+      const next = dampedAngleAt(from, to, t);
+      currentRef.current = next;
+      setAngle(next);
       if (t < 1) rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
@@ -99,10 +120,11 @@ function SingleScale({
           stroke={accent} strokeWidth={1.5} />
         <circle cx={CX} cy={CY} r={4} fill={accent} />
       </g>
-      {/* 分度盘：指针下方刻度，作为偏转读数参照（中点加长加粗） */}
-      <line x1={CX - 15} y1={CY + 40} x2={CX + 15} y2={CY + 40}
+      {/* 分度盘：指针可达域 = 臂长 × sin(量程) = 38 × sin(10°) ≈ 6.6px，刻度按此定标（±7px）。
+          原先画到 ±12px 是「永不可达」的装饰——指针最大只到 6.6px，外侧刻度一辈子读不到。 */}
+      <line x1={CX - 8} y1={CY + 40} x2={CX + 8} y2={CY + 40}
         stroke="var(--muted)" strokeWidth={0.8} opacity={0.65} />
-      {[-12, -6, 0, 6, 12].map((dx) => (
+      {[-7, -3.5, 0, 3.5, 7].map((dx) => (
         <line key={dx} x1={CX + dx} y1={CY + 40} x2={CX + dx} y2={CY + (dx === 0 ? 33 : 35)}
           stroke="var(--muted)" strokeWidth={dx === 0 ? 1 : 0.6} opacity={dx === 0 ? 0.9 : 0.55} />
       ))}

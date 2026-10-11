@@ -64,8 +64,8 @@ const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
  *  顺序已打乱：正确项不再恒在首位，避免「总选第一项」蒙对。
  *  判题按 value 比对（见组件内 correctKeys），与渲染顺序解耦，故重排不影响正误判定。 */
 export const OPTIONS = {
-  q1: [['l', 'concludeQ1L'], ['s', 'concludeQ1S'], ['none', 'concludeQ1None']],
-  q2: [['ph0', 'concludeQ2Ph0'], ['none', 'concludeQ2None'], ['ph7', 'concludeQ2Ph7']],
+  q1: [['l', 'concludeQ1L'], ['none', 'concludeQ1None'], ['s', 'concludeQ1S']],
+  q2: [['ph7', 'concludeQ2Ph7'], ['ph0', 'concludeQ2Ph0'], ['none', 'concludeQ2None']],
   q3: [['mild', 'concludeQ3Mild'], ['steep', 'concludeQ3Steep'], ['none', 'concludeQ3None']],
   q4: [['acid', 'concludeQ4Acid'], ['none', 'concludeQ4None'], ['basic', 'concludeQ4Basic']],
 } as const;
@@ -100,19 +100,28 @@ export function eqVolume(acidM: number): number {
 function useLiquidY(target: number): number {
   const [y, setY] = useState(target);
   const rafRef = useRef<number>(0);
-  const prevRef = useRef(target);
+  /** 当前「实际渲染值」：目标在动画在途时反转，必须从这里起算。
+   *  若改存「上一个目标值」，快速往返拖拽会把液面瞬间拽回那个目标 —— 实测单帧硬跳 19px。 */
+  const currentRef = useRef(target);
 
   useEffect(() => {
-    const from = prevRef.current;
+    const from = currentRef.current;
     const to = target;
-    prevRef.current = target;
     if (from === to) return;
+    // 全局 CSS 的减动效兜底只压 CSS 动画/过渡，管不到 rAF 逐帧改坐标，必须自查
+    if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      currentRef.current = to;
+      setY(to);
+      return;
+    }
     const start = performance.now();
     const dur = 300;
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / dur);
       const e = 1 - Math.pow(1 - t, 3);
-      setY(Math.round(from + (to - from) * e));
+      const next = t < 1 ? Math.round(from + (to - from) * e) : to;
+      currentRef.current = next;
+      setY(next);
       if (t < 1) rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
@@ -200,21 +209,21 @@ const copy = {
       '判断过量：中和后继续加碱 pH 升、加酸 pH 降，可用指示剂验证。',
     ],
     concludeQ1: 'pH 曲线的形状：',
-    concludeQ1S: 'S 形（先平缓后陡升再平缓）',
-    concludeQ1L: '直线',
-    concludeQ1None: '无规律',
+    concludeQ1S: 'S 形（先缓、后陡、再缓）',
+    concludeQ1L: '整体呈一条均匀上升的直线',
+    concludeQ1None: '变化与滴入量之间没有规律',
     concludeQ2: '恰好中和时：',
     concludeQ2Ph7: 'pH = 7（中性）',
-    concludeQ2Ph0: 'pH = 0',
-    concludeQ2None: '不会发生',
+    concludeQ2Ph0: 'pH = 0（强酸）',
+    concludeQ2None: 'pH 值不会发生改变',
     concludeQ3: '酸的浓度越大：',
     concludeQ3Steep: '恰好中和所需碱液体积越大（中和点右移）',
-    concludeQ3Mild: '恰好中和所需碱液体积越小',
-    concludeQ3None: '所需碱液体积不变',
+    concludeQ3Mild: '恰好中和所需碱液体积越小（中和点左移）',
+    concludeQ3None: '恰好中和所需碱液体积不变（中和点不动）',
     concludeQ4: '碱过量后：',
     concludeQ4Basic: 'pH 继续上升，溶液显碱性',
-    concludeQ4Acid: 'pH 回落，溶液显酸性',
-    concludeQ4None: '保持中性',
+    concludeQ4Acid: 'pH 回落下降，溶液显酸性',
+    concludeQ4None: 'pH 保持中性，不升也不降',
     concludeHint: '选完四个，看看结论和你的观察是否一致',
     feedbackText:
       '酸碱中和：H⁺ + OH⁻ → H₂O。pH 滴定曲线呈 S 形——中和前平缓上升、接近中和点时剧烈突跃、过量后平缓上升；' +
@@ -283,21 +292,21 @@ const copy = {
       'After equivalence, extra base raises pH and extra acid lowers it — check with an indicator.',
     ],
     concludeQ1: 'The pH curve looks like:',
-    concludeQ1S: 'an S-shape (flat, sharp rise, flat again)',
-    concludeQ1L: 'a straight line',
-    concludeQ1None: 'no pattern',
+    concludeQ1S: 'an S-shape: gentle, then steep, then gentle',
+    concludeQ1L: 'a straight line rising evenly all the way',
+    concludeQ1None: 'no clear pattern as the volume increases',
     concludeQ2: 'At exact neutralization:',
-    concludeQ2Ph7: 'pH = 7 (neutral)',
-    concludeQ2Ph0: 'pH = 0',
-    concludeQ2None: 'it never happens',
+    concludeQ2Ph7: 'pH = 7 (neutral point)',
+    concludeQ2Ph0: 'pH = 0 (strongly acidic)',
+    concludeQ2None: 'pH cannot change at all',
     concludeQ3: 'With a more concentrated acid:',
-    concludeQ3Steep: 'a larger volume of base is needed for equivalence (the point shifts right)',
-    concludeQ3Mild: 'a smaller volume of base is needed for equivalence',
-    concludeQ3None: 'the equivalence volume is unchanged',
+    concludeQ3Steep: 'a larger base volume is needed for equivalence (the point shifts right)',
+    concludeQ3Mild: 'a smaller base volume is needed for equivalence (the point shifts left)',
+    concludeQ3None: 'the equivalence volume stays unchanged (the point does not move)',
     concludeQ4: 'After adding excess base:',
-    concludeQ4Basic: 'pH keeps rising — the solution is basic',
-    concludeQ4Acid: 'pH falls back — the solution is acidic',
-    concludeQ4None: 'stays neutral',
+    concludeQ4Basic: 'pH keeps rising, the solution turns basic',
+    concludeQ4Acid: 'pH falls back, the solution turns acidic',
+    concludeQ4None: 'pH stays neutral, neither rising nor falling',
     concludeHint: 'Answer all four, then see if your conclusion matches your observations',
     feedbackText:
       'Neutralization: H⁺ + OH⁻ → H₂O. The titration curve is S-shaped — gentle before the equivalence point, a sharp jump near it, and gentle again after; ' +

@@ -55,6 +55,46 @@
  *  15. the user-facing changelog stays presentation-grade: no emoji at all, a capped
  *      number of items for the current release, and no implementation units or technical
  *      nouns leaking into reader-facing text (those belong in docs/changelog-internal.md).
+ *  16. the element detail card keeps a continuous exploration flow and a textbook-exact
+ *      micro view: previous/next element navigation (disabled at #1 and #118, mirrored by
+ *      the arrow keys), K/L/M/N shell badges driven by the shells array (outermost shell
+ *      highlighted by default), a protons / neutrons / electrons board whose neutron count
+ *      is Math.round(A) − Z, and the nuclear-charge (+Z) circle with concentric orbits —
+ *      never replaced by glossy graded spheres.
+ *  17. the element models keep their scope boundaries: the outer-shell loss/gain rule is
+ *      emitted for main-group elements only (transition and f-block report variable
+ *      valence), the electron count can never go negative (palladium's 18-electron outer
+ *      shell is handled as a saturated exception), a metal never "gains" electrons, and
+ *      the neutron figure is labelled an estimate; the table's right edge is never masked
+ *      away and the central hero preview keeps the same column geometry as the real cells.
+ *  18. the hardening batch holds: both rAF interpolators (the balance beam and the titration
+ *      liquid level) start from the value actually on screen instead of the previous target,
+ *      so reversing a target mid-flight cannot teleport a frame; the damped beam angle is
+ *      clamped to the dial range across the whole time domain; the dial ticks sit inside the
+ *      pointer's real reach; every rAF-driven lab file checks prefers-reduced-motion itself;
+ *      and the chemistry question bank is cognitively balanced — option text lengths converge
+ *      within 15% inside every question, and correct answers rotate evenly across A/B/C.
+ *  19. the 3D nucleus is a discrete particle cluster, never a solid two-tone patch: particles
+ *      fill the nucleus volume uniformly (a golden-ratio low-discrepancy sequence through cbrt,
+ *      so the layout is reproducible and testable rather than random), and protons/neutrons are
+ *      assigned by equal sampling across the whole index range — the Fibonacci sphere's latitude
+ *      is monotonic in the index, so a naive "first Z are protons" splits the nucleus into two
+ *      solid hemispheres (measured mean latitude +0.538 / -0.462 for chromium);
+ *  20. the element detail card's figure area stays compact and unambiguous: the 2D/3D toggle is
+ *      a single ghost button pinned to the figure's top-right corner instead of a full-width
+ *      segmented control, its label always states the action ("3D model" / "Flat view") rather
+ *      than a state-like word, the particle readout carries three visually distinct legend marks
+ *      (dark sphere / pale sphere / ringed dot drawn from the same source as the 3D ball colours,
+ *      because the theme's accent and foreground differ by only ~7% luminance), the fifth electron
+ *      shell is the letter O (the mono face renders O and 0 pixel-identically — width, height and
+ *      ink all match — so shell letters render in the serif face), group labels use only
+ *      precomposed Roman numerals (U+2160–U+2167), and explanatory notes inside the dialog are
+ *      upright, never italic;
+ *  21. the detail dialog is top-anchored rather than vertically centred, so switching between the
+ *      properties and story tabs cannot move the header or the tab bar (a centred box re-solves
+ *      its position whenever the content height changes: measured 106 px of travel, exactly half
+ *      of the 212 px height delta), with the panel's max-height tied to the overlay's own padding
+ *      so the bottom edge keeps the same inset.
  *
  * Add an assertion whenever a new number or boundary becomes part of the
  * teaching content.
@@ -105,11 +145,19 @@ import {
 import { addTokenUsage, buildDailyBars, clearTokenUsage, loadTokenUsage, pruneTokenUsage, tokenUsageTotal, CHART_MODEL_LIMIT, RETENTION_DAYS, type TokenUsageData } from './lib/token-usage';
 import { OTHER_COLOR, segmentColor } from './components/ui/TokenUsageChart';
 import { ATOM_RADII, radiusOf, layoutInMolecule } from './components/lab/MicroAnimation';
+import { dampedAngleAt, OVERSHOOT } from './components/lab/BalanceScale';
+import {
+  fibonacciSphere, orbitRadius, project3, sortByDepth,
+  nucleusPoints, protonFlags, visualCount, nucleonScreenSizes, nucleonAlpha,
+  SHELL_TILTS, MAX_LAYERS, CAMERA_D, NUCLEON_FILL, NUCLEON_MIN_PX, NUCLEON_MAX_PX,
+  NUCLEUS_MIN_PX, NUCLEUS_MAX_PX, VISUAL_COUNT_CAP, MIN_CLUSTER_FILL, NEUTRON_COLOR,
+} from './lib/atom-3d';
 import { phAt, sampleTitration, eqVolume, AXIS_MAX, OPTIONS as NEUT_OPTIONS, QUIZ_CORRECT as NEUT_CORRECT } from './labs/chemistry/Neutralization';
 import { canReact, wireColor, OPTIONS as METAL_OPTIONS, QUIZ_CORRECT as METAL_CORRECT } from './labs/chemistry/MetalActivity';
 import { CARD_FOCUS, TICK_YS, MOUTH_Y, GAS_COL_MAX, gasColumn, OPTIONS as EL_OPTIONS, QUIZ_CORRECT as EL_CORRECT } from './labs/chemistry/Electrolysis';
 import { OPTIONS as MASS_OPTIONS, QUIZ_CORRECT as MASS_CORRECT } from './labs/chemistry/MassConservation';
 import { splitSentences } from './pages/GuidePage';
+import { neighborOf, particleCount, valenceTendency, valenceNote, groupLabel, groupDisplay, elementScope, fSeriesOf, VALENCE_LABEL, SCROLL_FADE_MASK, SHELL_NAMES, LEGEND_DOT } from './pages/PeriodicTable';
 import {
   currentOf as coreCurrentOf,
   elementResistance as coreElementResistance,
@@ -539,7 +587,10 @@ describe('Chemistry labs: academic hard-fault regressions', () => {
     assert.match(balance, /rotate\(\$\{angle\}/, '横梁与指针须按角度旋转');
     assert.match(balance, /useDampedAngle/, '须有阻尼振荡过渡（非瞬时硬切）');
     assert.match(balance, /tiltDeg\(/, '倾角须由质量差函数求得');
-    assert.match(balance, /\[-12, -6, 0, 6, 12\]\.map/, '指针下方须有分度盘刻度线（5 条）');
+    // 分度盘刻度：5 条，且最外刻度必须落在指针真实可达域内（±7px ↔ 38×sin10° ≈ 6.6px）
+    const dial = balance.match(/\[(-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)+)\]\.map/);
+    assert.ok(dial, '指针下方须有分度盘刻度线');
+    assert.ok(dial[1].split(',').length === 5, `分度盘刻度须为 5 条：实测 [${dial[1]}]`);
     assert.match(balance, /prefers-reduced-motion/, 'rAF 须自行处理减动效偏好（全局 CSS 兜底管不到）');
   });
 
@@ -899,11 +950,19 @@ describe('Chemistry labs: academic hard-fault regressions', () => {
         `正确项须在位置 ${slot} 至少出现 2 次；实测分布 ${JSON.stringify(hist)}（${where.join(' ')}）`,
       );
     }
-    // 首位占比不得过高（旧实现 19/19 = 100%）
-    assert.ok(
-      hist[0] / idxs.length <= 0.3,
-      `正确项居首位的比例须 ≤30%：实测 ${hist[0]}/${idxs.length}`,
-    );
+    // 位置须按 1/3 均摊：理论占比 33.3%，故判据是「不得显著高于随机基线（约 36%）」，
+    // 而非「首位必须 ≤30%」—— 后者与均摊目标自相矛盾（旧实现 19/19 = 100% 全挤首位）
+    const share = (slot: number) => hist[slot] / idxs.length;
+    for (const slot of [0, 1, 2]) {
+      assert.ok(
+        share(slot) <= 0.4,
+        `位置 ${slot} 的正解占比 ${(share(slot) * 100).toFixed(1)}% 过高（须 ≤40%，随机基线约 36%）：${where.join(' ')}`,
+      );
+      assert.ok(
+        share(slot) >= 0.25,
+        `位置 ${slot} 的正解占比 ${(share(slot) * 100).toFixed(1)}% 过低（均摊目标约 33%）`,
+      );
+    }
   });
 
   test('电解水体积比（行为级）：气柱 H₂:O₂ 恒为 2:1，收满时两侧液面落在刻度线上', () => {
@@ -2743,6 +2802,271 @@ describe('触屏命中区（hover:none + pointer:coarse）', () => {
 });
 
 
+/* ── 元素详情卡：相邻元素连续探索流 + 微观结构工效 ── */
+
+describe('元素详情卡：相邻导航 / 电子层胶囊 / 微粒看板', () => {
+  const src = readFileSync('src/pages/PeriodicTable.tsx', 'utf8');
+
+  test('相邻元素导航：前一号 / 后一号成对，首末位自动禁用且不环绕', () => {
+    // 边界：首末位
+    assert.equal(neighborOf(1).prev, null, '#1 H 之前没有元素');
+    assert.equal(neighborOf(1).next?.n, 2, '#1 H 的下一个是 #2 He');
+    assert.equal(neighborOf(118).next, null, '#118 Og 之后没有元素');
+    assert.equal(neighborOf(118).prev?.n, 117, '#118 Og 的上一个是 #117 Ts');
+    // 用户点名的样例：#24 铬 ↔ #23 V / #25 Mn
+    assert.equal(neighborOf(24).prev?.n, 23, '#24 铬的前一个是 #23');
+    assert.equal(neighborOf(24).prev?.symbol, 'V', '#24 铬的前一个是 #23 V');
+    assert.equal(neighborOf(24).next?.n, 25, '#24 铬的后一个是 #25');
+    assert.equal(neighborOf(24).next?.symbol, 'Mn', '#24 铬的后一个是 #25 Mn');
+    // 118 个元素全部成链：邻域必须严格按原子序数相邻（不得跳过 La/Ac 或错位）
+    for (const e of ELEMENTS) {
+      const { prev, next } = neighborOf(e.n);
+      if (prev) assert.equal(prev.n, e.n - 1, `#${e.n} 的前一个必须是 #${e.n - 1}`);
+      if (next) assert.equal(next.n, e.n + 1, `#${e.n} 的后一个必须是 #${e.n + 1}`);
+    }
+    // 源码级：触发器 / 禁用 / 方向键 / Z-of-118 指示
+    assert.match(src, /neighborOf\(selected\.n\)/, '详情卡须用 neighborOf 取相邻元素');
+    assert.match(src, /disabled=\{!prev\}/, '前一号按钮须在首位置禁用');
+    assert.match(src, /disabled=\{!next\}/, '后一号按钮须在末位置禁用');
+    assert.match(src, /e\.key === 'ArrowLeft'/, '须绑定 ← 方向键');
+    assert.match(src, /e\.key === 'ArrowRight'/, '须绑定 → 方向键');
+    assert.match(src, /ELEMENTS\.length/, '须显示「当前序数 / 总数」紧凑指示');
+  });
+
+  test('电子层胶囊：K/L/M/N 命名、由 shells 生成、默认高亮最外层', () => {
+    assert.deepEqual([...SHELL_NAMES], ['K', 'L', 'M', 'N', 'O', 'P', 'Q'], '电子层名须为 K L M N O P Q');
+    assert.match(src, /selected\.shells\.map\(\(cnt, i\)/, '胶囊须由 shells 数组生成（层数自适应）');
+    assert.match(src, /SHELL_NAMES\[i\]/, '胶囊须带 K/L/M/N 层名');
+    assert.match(src, /hoveredLayer \?\? pinnedLayer \?\? e\.shells\.length - 1/,
+      '高亮优先级须为：悬停 > 点击锁定 > 默认最外层');
+    assert.match(src, /setPinnedLayer\(pinnedLayer === i \? null : i\)/, '点击胶囊须锁定该层');
+    assert.match(src, /bg-\[var\(--accent-light\)\]/, '胶囊须用微底；本仓无 --surface-sunken，须以 --accent-light 代替');
+    assert.doesNotMatch(src, /surface-sunken/, '不得引用不存在的 --surface-sunken 令牌');
+    // 层数自适应：每个元素都能在 K~Q 命名范围内生成等长胶囊
+    for (const e of ELEMENTS) {
+      assert.ok(
+        e.shells.length >= 1 && e.shells.length <= SHELL_NAMES.length,
+        `#${e.n} 的电子层数 ${e.shells.length} 超出 K~Q 命名范围`,
+      );
+    }
+  });
+
+  test('微粒三元组：质子 Z / 中子 N = round(A) − Z / 核外电子 Z', () => {
+    assert.match(src, /Math\.round\(e\.massExact \?\? e\.mass \?\? e\.n\)/, '中子数须用 Math.round(A) − Z');
+    // 行为级：初中铁律在全部 118 个元素上成立
+    for (const e of ELEMENTS) {
+      const pc = particleCount(e);
+      assert.equal(pc.protons, e.n, `#${e.n} 质子数须等于原子序数`);
+      assert.equal(pc.electrons, e.n, `#${e.n} 核外电子数须等于原子序数（原子整体呈电中性）`);
+      assert.ok(pc.neutrons >= 0, `#${e.n} 中子数不得为负`);
+      const a = Math.round(e.massExact ?? e.mass ?? e.n);
+      assert.equal(pc.protons + pc.neutrons, a, `#${e.n} 须满足 A ≈ Z + N`);
+      assert.ok(pc.neutrons <= 180, `#${e.n} 中子数 ${pc.neutrons} 明显偏离合理量级`);
+    }
+    // 抽查教科书经典：氢（氕）、氯、以及用户点名的铬
+    assert.deepEqual(particleCount(ELEMENTS.find((e) => e.n === 1)!), { protons: 1, neutrons: 0, electrons: 1 }, '#1 氢（氕）：1 / 0 / 1');
+    assert.deepEqual(particleCount(ELEMENTS.find((e) => e.n === 17)!), { protons: 17, neutrons: 18, electrons: 17 }, '#17 氯：17 / 18 / 17');
+    assert.deepEqual(particleCount(ELEMENTS.find((e) => e.n === 24)!), { protons: 24, neutrons: 28, electrons: 24 }, '#24 铬：24 / 28 / 24');
+    // 源码级：三元看板齐备
+    for (const k of ['质子', '中子', '核外电子']) assert.ok(src.includes(k), `微粒看板须含「${k}」`);
+    assert.ok(src.includes('核电荷数 = 质子数 = 核外电子数'), '须写出初中铁律');
+  });
+
+  test('保留教材画法：核内 +Z 与同心轨道圆环不得被替换成拟物小球', () => {
+    assert.match(src, /\+{selected\.n}/, '原子核须保留 +Z（核电荷数）文字画法');
+    assert.match(src, /<circle\s+cx=\{cx\} cy=\{cy\} r=\{r\} fill="none"/, '须保留同心轨道圆环');
+    assert.match(src, /shellLayout\(selected\.shells, coreR\)/, '轨道几何须来自共享纯函数 shellLayout');
+    assert.match(src, /ATOM_VIEW/, '须使用共享画布常量');
+    assert.doesNotMatch(src, /radialGradient|linearGradient/, '原子结构图不得改用渐变拟物小球');
+    // 行为级：核半径与各层几何在全部元素上都不越界、且点数等于真实电子数
+    for (const e of ELEMENTS) {
+      const coreR = coreRadiusFor(e.n);
+      assert.ok(coreR >= 13 && coreR <= 16, `#${e.n} 核半径 ${coreR} 偏离既定区间`);
+      const shells = shellLayout(e.shells, coreR);
+      assert.equal(shells.length, e.shells.length, `#${e.n} 轨道数须等于电子层数`);
+      shells.forEach((s, i) => {
+        assert.equal(s.dots.length, e.shells[i], `#${e.n} 第 ${i + 1} 层点数须等于真实电子数（教材画法不得截断）`);
+      });
+      assert.ok(
+        shells[shells.length - 1].r <= ATOM_VIEW.h / 2,
+        `#${e.n} 最外层半径 ${shells[shells.length - 1].r} 越出画布`,
+      );
+    }
+  });
+
+  test('族标签与人教版写法 + 结构要点倾向', () => {
+    assert.equal(groupLabel(1), 'ⅠA', '第 1 族须写作ⅠA');
+    assert.equal(groupLabel(17), 'ⅦA', '卤素族须写作ⅦA');
+    assert.equal(groupLabel(18), '0', '稀有气体族须写作 0 族');
+    assert.equal(groupLabel(6), 'ⅥB', '#24 铬所在族须写作ⅥB');
+    assert.equal(groupLabel(8), 'Ⅷ', '8/9/10 三列同属Ⅷ族');
+    assert.equal(groupLabel(null), '—', 'f 区（无族）须优雅回退');
+    // 行为级：最外层得失倾向（主族）——分区分流后返回值增加 scope 字段
+    const na = ELEMENTS.find((e) => e.n === 11)!;
+    const cl = ELEMENTS.find((e) => e.n === 17)!;
+    const c6 = ELEMENTS.find((e) => e.n === 6)!;
+    const ar = ELEMENTS.find((e) => e.n === 18)!;
+    const he = ELEMENTS.find((e) => e.n === 2)!;
+    assert.deepEqual(
+      { outer: valenceTendency(na).outer, kind: valenceTendency(na).kind, count: valenceTendency(na).count },
+      { outer: 1, kind: 'lose', count: 1 },
+      '#11 钠：外层 1，易失 1',
+    );
+    assert.equal(valenceTendency(na).scope, 'main', '#11 钠须落在主族作用域');
+    assert.deepEqual(
+      { outer: valenceTendency(cl).outer, kind: valenceTendency(cl).kind, count: valenceTendency(cl).count },
+      { outer: 7, kind: 'gain', count: 1 },
+      '#17 氯：外层 7，易得 1',
+    );
+    assert.equal(valenceTendency(c6).kind, 'share', '#6 碳：外层 4，易共用电子');
+    assert.equal(valenceTendency(ar).kind, 'stable', '#18 氩：外层 8，稳定结构');
+    assert.equal(valenceTendency(he).kind, 'stable', '#2 氦：首层排满 2，稳定结构');
+    for (const e of ELEMENTS) {
+      const vt = valenceTendency(e);
+      assert.equal(vt.outer, e.shells[e.shells.length - 1], `#${e.n} 最外层电子数须取末位`);
+      assert.ok(
+        ['lose', 'gain', 'share', 'stable', 'hydrogen', 'saturated', 'variable', 'lanthanide', 'polyvalent'].includes(vt.kind),
+        `#${e.n} 倾向类型非法：${vt.kind}`,
+      );
+    }
+  });
+
+  test('外层倾向分区：副族/过渡与 f 区只给可变化合价，严禁硬套初中主族规律', () => {
+    // 用户点名的三个过渡元素：一律不得输出 lose/gain，且必须落在 transition 作用域
+    for (const n of [24, 26, 29]) {
+      const e = ELEMENTS.find((x) => x.n === n)!;
+      const vt = valenceTendency(e);
+      assert.equal(vt.scope, 'transition', `#${n} ${e.symbol} 须判定为过渡元素`);
+      assert.equal(vt.kind, 'variable', `#${n} ${e.symbol} 须输出「可变化合价」而非得失数`);
+      assert.notEqual(vt.kind, 'lose', `#${n} 不得输出「易失」`);
+      assert.notEqual(vt.kind, 'gain', `#${n} 不得输出「易得」`);
+      assert.equal(vt.count, 0, `#${n} 不得给出得失电子个数`);
+      const note = valenceNote(e, vt, true)!;
+      assert.match(note, /可变化合价/, `#${n} 须说明可变化合价`);
+      assert.match(note, /仅严格适用于主族/, `#${n} 须声明适用域边界`);
+    }
+    // #46 钯：外层 18 的经典特例 —— 既不作得失判定，也不得出现负数
+    const pd = ELEMENTS.find((e) => e.n === 46)!;
+    const pdV = valenceTendency(pd);
+    assert.equal(pdV.outer, 18, '#46 钯最外层应为 18（2,8,18,18）');
+    assert.equal(pdV.kind, 'saturated', '#46 钯须判为「外层已达饱和」');
+    assert.equal(pdV.count, 0, '#46 钯不得出现负数电子数');
+    assert.match(valenceNote(pd, pdV, true)!, /18 个电子/, '钯须说明 18 电子特例');
+    // f 区（镧系/锕系）
+    for (const n of [57, 71, 89, 103]) {
+      const e = ELEMENTS.find((x) => x.n === n)!;
+      const vt = valenceTendency(e);
+      assert.equal(vt.scope, 'f', `#${n} 须判定为 f 区`);
+      assert.equal(vt.kind, 'lanthanide', `#${n} 须输出镧系/锕系说明`);
+      assert.notEqual(vt.kind, 'lose');
+      assert.notEqual(vt.kind, 'gain');
+    }
+    // 全域硬不变量（118 元素逐个）
+    for (const e of ELEMENTS) {
+      const vt = valenceTendency(e);
+      assert.ok(Number.isFinite(vt.count) && vt.count >= 0, `#${e.n} ${e.symbol} 得失电子数不得为负或非数：${vt.count}`);
+      assert.equal(vt.outer, e.shells[e.shells.length - 1], `#${e.n} 最外层须取末位`);
+      if (vt.kind === 'gain') {
+        assert.ok(vt.count > 0 && vt.count <= 3, `#${e.n} 易得电子数须落在 1–3：${vt.count}`);
+        assert.notEqual(e.cat, 'metal', `#${e.n} ${e.symbol} 是金属，绝不输出「易得电子」`);
+        assert.equal(vt.scope, 'main', `#${e.n} 只有主族才允许输出得失判定`);
+      }
+      if (vt.kind === 'lose') assert.equal(vt.scope, 'main', `#${e.n} 只有主族才允许输出得失判定`);
+      if (vt.kind === 'saturated') assert.ok(vt.outer > 8, `#${e.n} 只有外层 > 8 才可判为饱和`);
+    }
+    // 作用域与序号/列号的对应关系（118 元素）
+    for (const e of ELEMENTS) {
+      const expectScope = (e.n >= 57 && e.n <= 71) || (e.n >= 89 && e.n <= 103)
+        ? 'f'
+        : e.group !== null && e.group >= 3 && e.group <= 12 ? 'transition' : 'main';
+      assert.equal(elementScope(e), expectScope, `#${e.n} ${e.symbol} 分区判定错误`);
+    }
+    // 氢：两性特例，不得按普通ⅠA 处理
+    const h = ELEMENTS.find((e) => e.n === 1)!;
+    const hV = valenceTendency(h);
+    assert.equal(hV.kind, 'hydrogen', '#1 氢须为两性特例');
+    assert.match(valenceNote(h, hV, true)!, /H⁻/, '氢须说明 H⁻');
+    // 金属永不得 gain：Bi/Po/Mc/Lv 走多价态
+    for (const n of [83, 84, 115, 116]) {
+      const e = ELEMENTS.find((x) => x.n === n)!;
+      const vt = valenceTendency(e);
+      assert.equal(vt.kind, 'polyvalent', `#${n} ${e.symbol}（金属）须走多价态`);
+      assert.equal(vt.count, 0);
+    }
+    // 短标签表齐备且与 kind 一一对应
+    for (const k of ['lose', 'gain', 'share', 'stable', 'hydrogen', 'saturated', 'variable', 'lanthanide', 'polyvalent'] as const) {
+      assert.ok(VALENCE_LABEL[k].zh && VALENCE_LABEL[k].en, `VALENCE_LABEL.${k} 中英文案都不得为空`);
+    }
+  });
+
+  test('族标签展示：第 18 列兼顾 0 族与第 18 族，镧系/锕系显式激活系别', () => {
+    const he = ELEMENTS.find((e) => e.n === 2)!;
+    assert.equal(groupDisplay(he, true).main, '0', '第 18 列主标须为 0 族（人教版初中口径）');
+    assert.match(groupDisplay(he, true).sub, /第 18 族/, '副标须给出「第 18 族」（新课标口径）');
+    assert.match(groupDisplay(he, true).sub, /第 18 列/, '副标须保留列号');
+    assert.equal(groupDisplay(he, false).sub, 'group 18 · column 18', '英文副标须同时给出 group 18');
+    for (const e of ELEMENTS.filter((x) => x.group === 18)) {
+      assert.equal(groupDisplay(e, true).main, '0', `#${e.n} 稀有气体主标须为 0`);
+    }
+    const la = ELEMENTS.find((e) => e.n === 57)!;
+    const u = ELEMENTS.find((e) => e.n === 92)!;
+    assert.equal(groupDisplay(la, true).main, 'ⅢB', '#57 镧主标须为ⅢB');
+    assert.equal(groupDisplay(la, true).series, '镧系', '#57 须激活「镧系」徽章');
+    assert.equal(groupDisplay(u, true).series, '锕系', '#92 须激活「锕系」徽章');
+    assert.equal(groupDisplay(la, false).series, 'lanthanide', '英文系别徽章');
+    for (let n = 57; n <= 71; n++) assert.equal(fSeriesOf(ELEMENTS.find((e) => e.n === n)!), 'lanthanide', `#${n} 须判为镧系`);
+    for (let n = 89; n <= 103; n++) assert.equal(fSeriesOf(ELEMENTS.find((e) => e.n === n)!), 'actinide', `#${n} 须判为锕系`);
+    for (const n of [21, 39, 72, 104, 118]) assert.equal(fSeriesOf(ELEMENTS.find((e) => e.n === n)!), null, `#${n} 不得判为 f 区`);
+    assert.match(src, /groupDisplay\(selected, isZh\)/, '详情卡须用 groupDisplay 渲染族标签');
+    assert.match(src, /\{selGroup\?\.series && \(/, '系别徽章须按系别条件渲染');
+    // 中子标称修饰 + 诚实化说明
+    assert.match(src, /N（估算）/, '中子格须标明为估算值');
+    // 意图级断言（不锁死措辞）：中子数须显式标注为估算值，并点明「丰度加权平均 + 取整」的成因
+    assert.match(src, /N（估算）|N \(est\.\)/, '中子数须在界面上标注为估算值');
+    assert.match(src, /同位素丰度加权平均/, '须说明相对原子质量是同位素丰度的加权平均');
+    assert.match(src, /³⁵Cl/, '须给出常见稳定同位素的取整实例（氯取 ³⁵Cl）');
+    assert.match(src, /最长寿命核素/, '须说明放射性元素按最长寿命核素取质量数');
+    // 学段分层提示（意图级：须点明「第 3 层可容纳 18 个电子」这一排布差异根因）
+    assert.match(src, /\{selected\.n >= 21 && \(/, 'Z ≥ 21 须附学段分层提示');
+    assert.match(src, /第 3 层最多容纳 18 个电子/, '提示须解释 21 号起的排布差异');
+  });
+
+  test('中央悬停展台：几何与真实格子同构、落位第 1~3 周期第 3~12 列、防抖回退齐备', () => {
+    // 几何：左侧 28px（周期号 24 + 间距 4）、18 列等宽、4px 间隙、58px 行高 —— 与 flex 行逐列重合
+    assert.match(src, /left-\[28px\] right-\[3px\] top-0 hidden sm:grid/, '展台覆层须按同一几何定位，并在移动端折叠');
+    assert.match(src, /col-start-3 col-end-13 row-start-1 row-end-4/, '展台须占第 3~12 列、第 1~3 周期');
+    assert.match(src, /gridTemplateColumns: 'repeat\(18, minmax\(0, 1fr\)\)'/, '须与 18 列网格同模板');
+    assert.match(src, /gridTemplateRows: 'repeat\(3, 58px\)'/, '须与 58px 行高同模板');
+    assert.match(src, /gap: '4px'/, '间隙须与 gap-1 一致');
+    assert.match(src, /pointer-events-none/, '展台不得抢走格子的点击');
+    assert.match(src, /aria-hidden="true"/, '展台为纯展示层，须对辅助技术隐藏');
+    // 悬停响应与防抖
+    assert.match(src, /onMouseEnter=\{\(\) => previewOn\(el\)\}/, '元素格须绑定 previewOn');
+    assert.match(src, /onMouseLeave=\{previewOff\}/, '元素格须绑定 previewOff');
+    assert.match(src, /const \[heroEl, setHeroEl\] = useState<ElementInfo \| null>\(null\)/, '须有 heroEl 状态');
+    assert.match(src, /heroTimer\.current = window\.setTimeout\(\(\) => \{ setHeroEl\(null\)/, '离开后须延迟回退到默认态');
+    assert.match(src, /if \(heroTimer\.current\) \{ window\.clearTimeout\(heroTimer\.current\); heroTimer\.current = null; \}/, '再次进入须取消回退（防闪烁）');
+    // 内容：默认图例态 + 悬停预览态（实物图 / 身份 / 核心指标 / 微提示）
+    assert.match(src, /\/\/ \{isZh \? '分类图例' : 'LEGEND'\}/, '默认态须含分类图例');
+    assert.match(src, /element-images\/\$\{heroEl\.n\}\.jpg/, '悬停态须复用百科实物标本图');
+    assert.match(src, /data-hero-fallback/, '无实物图须有优雅回退');
+    assert.match(src, /点击元素格打开完整微观结构与百科故事/, '须有底部微提示');
+    for (const k of ['相对原子质量', '周期', '电子层', '外层倾向']) {
+      assert.ok(src.includes(k), `展台核心指标须含「${k}」`);
+    }
+    // 右边缘：蒙版条件化 + 呼吸边距
+    assert.doesNotMatch(src, /className="fade-r-x/, '不得再无条件套用 .fade-r-x 蒙版');
+    assert.match(src, /style=\{canScrollRight \? \{ maskImage: SCROLL_FADE_MASK/, '渐隐蒙版须按 canScrollRight 条件施加');
+    assert.equal(
+      SCROLL_FADE_MASK,
+      'linear-gradient(to right, #000 calc(100% - 12px), transparent 100%)',
+      '渐隐须收窄到 12px（原 28px 会吞掉整列边框）',
+    );
+    assert.match(src, /pr-\[3px\]/, '最右列须留 3px 呼吸边距');
+  });
+});
+
+
 /* ── 版本一致性：避免发布时三方（构建产物 / 常量 / 变更记录）不同步 ── */
 
 describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条）', () => {
@@ -3056,7 +3380,12 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     const zh = translations.zh.offlinePack as unknown as Record<string, string>;
     const en = (translations.en as unknown as typeof translations.zh).offlinePack as unknown as Record<string, string>;
     assert.ok(zh.insecure.includes('HTTPS') && en.insecure.includes('HTTPS'), '文案须点明 HTTPS 这个原因');
-    assert.match(readFileSync('src/pages/PeriodicTable.tsx', 'utf8'), /packStatus\.supported \?/, '未支持时入口不得显示 0/总数');
+    // 断言与换行无关：只要「总数只在 supported 分支里出现」即可（收敛成行内图标后 title 跨行）
+    assert.match(
+      readFileSync('src/pages/PeriodicTable.tsx', 'utf8'),
+      /packStatus\.supported\s*\?/,
+      '未支持时入口不得显示 0/总数',
+    );
   });
 
   test('离线教学包与断网提示文案：中英对称、大白话、三态齐全', () => {
@@ -3967,5 +4296,517 @@ describe('使用说明页容器化重构（文案逐字不动）', () => {
       assert.ok(!copyBlock.includes(old), `旧口语化标签「${old}」应已被精简替换`);
     }
     assert.ok(guide.includes('数理化数字实验室'), '路由标题里的品牌名须仍在');
+  });
+});
+
+describe('化学模块高危边界加固（动画连续性 / 量程钳位 / 题库认知平衡）', () => {
+  // 先剥注释再断言：注释里的示例文本曾两次把守卫误伤
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+
+  test('P1-1 动画插值起点取「当前渲染值」，不得再存「上一个目标」', () => {
+    const pairs = [
+      ['BalanceScale.tsx', strip(readFileSync('src/components/lab/BalanceScale.tsx', 'utf8'))],
+      ['Neutralization.tsx', strip(readFileSync('src/labs/chemistry/Neutralization.tsx', 'utf8'))],
+    ] as const;
+    for (const [name, src] of pairs) {
+      assert.match(src, /currentRef/, `${name}: 插值须用 currentRef 记录当前实际渲染值`);
+      assert.match(
+        src, /currentRef\.current\s*=\s*next/,
+        `${name}: 每一帧都要把实际输出写回 currentRef，否则目标在途反转时仍会帧级瞬移`,
+      );
+      assert.doesNotMatch(
+        src, /fromRef\.current\s*=\s*to\b/,
+        `${name}: 不得把「上一个目标值」当作动画起点（实测单帧硬跳 4.85° / 19px 的根因）`,
+      );
+    }
+  });
+
+  test('P1-2 阻尼输出量程钳位：全时域扫描绝不越出 ±10°（且钳位是承重的）', () => {
+    const MAX = 10;
+    let rawWorst = 0;   // 全域最坏（±10 往返回转）的未钳位峰值
+    let rawUnit = 0;    // 0 → MAX 单程的未钳位峰值，用于核对 OVERSHOOT 系数
+    for (const from of [-MAX, -8, 0, 8, MAX]) {
+      for (const to of [-MAX, -8, 0, 8, MAX]) {
+        for (let i = 0; i <= 400; i++) {
+          const t = i / 400;
+          const out = dampedAngleAt(from, to, t);
+          assert.ok(Number.isFinite(out), `from=${from} to=${to} t=${t}: 输出非有限值`);
+          assert.ok(
+            Math.abs(out) <= MAX + 1e-9,
+            `from=${from} to=${to} t=${t}: 输出 ${out.toFixed(3)}° 越出量程 ±${MAX}°（指针会冲出分度盘）`,
+          );
+          const env = Math.exp(-4.2 * t);
+          const g = 1 - env * Math.cos(6.4 * Math.PI * t);
+          rawWorst = Math.max(rawWorst, Math.abs(from + (to - from) * g));
+          if (from === 0 && to === MAX) rawUnit = Math.max(rawUnit, (to - from) * g);
+        }
+      }
+    }
+    // 钳位必须「真在起作用」：未钳位的原始曲线本就超调（全域最坏可达 20.6°），否则本断言毫无意义
+    assert.ok(
+      rawWorst > MAX,
+      `原始阻尼曲线应有超调（实测最坏 ${rawWorst.toFixed(3)}°），否则钳位断言失去意义`,
+    );
+    // OVERSHOOT 是「单程 0→MAX 的峰值倍数」，不是「全域最坏倍数」——两者相差 (1+OVERSHOOT) 倍
+    assert.ok(
+      Math.abs(OVERSHOOT * MAX - rawUnit) < 0.05,
+      `OVERSHOOT=${OVERSHOOT} 与实测单程峰值 ${rawUnit.toFixed(4)}° 不符（应 ≈ ${(OVERSHOOT * MAX).toFixed(2)}°）`,
+    );
+  });
+
+  test('P2-3 分度盘刻度落在指针真实可达域内', () => {
+    const balance = readFileSync('src/components/lab/BalanceScale.tsx', 'utf8');
+    const ticks = balance.match(/\[\s*(-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)+)\s*\]\.map/);
+    assert.ok(ticks, '未找到分度盘刻度数组');
+    const abs = ticks[1].split(',').map((x) => Math.abs(Number(x.trim())));
+    const ptr = balance.match(/x2=\{CX\}\s+y2=\{CY \+ (\d+(?:\.\d+)?)\}/);
+    assert.ok(ptr, '未找到指针长度（y2={CY + n}）');
+    const reach = Number(ptr[1]) * Math.sin((10 * Math.PI) / 180);
+    assert.ok(
+      Math.max(...abs) <= reach + 0.5,
+      `最外刻度 ±${Math.max(...abs)}px 超出指针可达 ${reach.toFixed(2)}px —— 外侧刻度会变成「一生读不到」的装饰`,
+    );
+  });
+
+  test('P2-1 减动效：凡用 rAF 逐帧改坐标的实验室文件必须自查 prefers-reduced-motion', () => {
+    // 全局 @media(prefers-reduced-motion) 的 * 级兜底只压 CSS 动画/过渡，覆盖不到 rAF
+    const files = [
+      'src/labs/chemistry/Electrolysis.tsx',
+      'src/labs/chemistry/Neutralization.tsx',
+      'src/components/lab/BalanceScale.tsx',
+      'src/components/lab/MicroAnimation.tsx',
+    ];
+    for (const f of files) {
+      const src = strip(readFileSync(f, 'utf8'));
+      assert.match(src, /requestAnimationFrame/, `${f} 已不再使用 rAF —— 请同步更新本守卫清单`);
+      assert.match(
+        src, /prefers-reduced-motion/,
+        `${f} 用 rAF 驱动动画却未判断 prefers-reduced-motion`,
+      );
+    }
+  });
+
+  /* ── 题库认知平衡：长度收敛 + 位置均摊 ── */
+  const braceBlock = (src: string, marker: string): string => {
+    const i = src.indexOf('{', src.indexOf(marker));
+    assert.ok(i >= 0, `未找到 ${marker}`);
+    let d = 0;
+    for (let j = i; j < src.length; j++) {
+      if (src[j] === '{') d++;
+      else if (src[j] === '}') {
+        d--;
+        if (d === 0) return src.slice(i, j + 1);
+      }
+    }
+    throw new Error(`括号不平衡：${marker}`);
+  };
+  // 单引号与双引号都要覆盖 —— 只匹配单引号会把双引号写的文案误报为「缺失」
+  const kvMap = (b: string): Record<string, string> => {
+    const out: Record<string, string> = {};
+    const re = /(\w+):\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(b))) out[m[1]] = m[2] !== undefined ? m[2] : m[3];
+    return out;
+  };
+  type OptionsMap = Record<string, ReadonlyArray<readonly [string, string]>>;
+  const LABS_QUIZ = [
+    { file: 'Electrolysis.tsx', options: EL_OPTIONS as unknown as OptionsMap, correct: EL_CORRECT },
+    { file: 'MassConservation.tsx', options: MASS_OPTIONS as unknown as OptionsMap, correct: MASS_CORRECT },
+    { file: 'MetalActivity.tsx', options: METAL_OPTIONS as unknown as OptionsMap, correct: METAL_CORRECT },
+    { file: 'Neutralization.tsx', options: NEUT_OPTIONS as unknown as OptionsMap, correct: NEUT_CORRECT },
+  ];
+
+  test('题库① 选项长度收敛：任一题任一语种 max/min ≤ 1.15（破「最长项即正解」）', () => {
+    let checked = 0;
+    for (const lab of LABS_QUIZ) {
+      const src = readFileSync(`src/labs/chemistry/${lab.file}`, 'utf8');
+      const cb = braceBlock(src, 'const copy = {');
+      const maps = { zh: kvMap(braceBlock(cb, 'zh: {')), en: kvMap(braceBlock(cb, 'en: {')) };
+      for (const [q, pairs] of Object.entries(lab.options)) {
+        assert.ok(pairs.length >= 2, `${lab.file} ${q}: 选项数异常`);
+        for (const lang of ['zh', 'en'] as const) {
+          const texts = pairs.map(([, lk]) => {
+            const t = maps[lang][lk];
+            assert.ok(t != null, `${lab.file} ${q}: 文案键 ${lk} 在 copy.${lang} 缺失（解析失效或数据损坏）`);
+            return t;
+          });
+          const L = texts.map((t) => [...t].length);
+          const ratio = Math.max(...L) / Math.min(...L);
+          assert.ok(
+            ratio <= 1.15,
+            `${lab.file} ${q} [${lang}] 选项长度比 ${ratio.toFixed(3)} > 1.15（${L.join('/')}）——「谁最长谁是答案」的破绽会回归`,
+          );
+          assert.ok(
+            new Set(texts).size === texts.length,
+            `${lab.file} ${q} [${lang}] 同一题内出现重复选项文案`,
+          );
+          checked++;
+        }
+      }
+    }
+    assert.ok(checked >= 38, `应覆盖 19 题 × 2 语种 = 38 组，实测仅 ${checked} 组（解析可能漏题）`);
+  });
+
+  test('题库② 正解位置均摊：A/B/C 各约 1/3，「一律选同一项」不得高于随机基线', () => {
+    const positions: number[] = [];
+    for (const lab of LABS_QUIZ) {
+      for (const [q, pairs] of Object.entries(lab.options)) {
+        const corr = lab.correct[q];
+        assert.ok(corr, `${lab.file} ${q}: 缺少判题键`);
+        const vals = pairs.map(([v]) => v);
+        const idx = vals.findIndex((v) => corr.includes(v));
+        assert.ok(idx >= 0, `${lab.file} ${q}: 正确值 ${corr.join(',')} 不在选项值域 ${vals.join(',')} 内`);
+        positions.push(idx);
+      }
+    }
+    const n = positions.length;
+    assert.ok(n === 19, `四实验题目总数应为 19，实测 ${n}`);
+    const counts = [0, 1, 2].map((i) => positions.filter((p) => p === i).length);
+    for (let i = 0; i < 3; i++) {
+      const share = counts[i] / n;
+      assert.ok(
+        share >= 0.25 && share <= 0.40,
+        `正解落在第 ${i + 1} 位的占比 ${(share * 100).toFixed(1)}%（${counts[i]}/${n}）越界——目标约 33%，实测分布 ${counts.join('/')}`,
+      );
+    }
+    // 随机基线 = 各题 1/选项数 的均值（本题库实测 36.0%）；「无脑同选」不得高过它
+    const dumbest = Math.max(...counts) / n;
+    assert.ok(
+      dumbest <= 0.40,
+      `「一律选同一项」最高可得 ${(dumbest * 100).toFixed(1)}%，仍显著高于随机基线 36.0%`,
+    );
+  });
+});
+
+describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型', () => {
+  const pt = readFileSync('src/pages/PeriodicTable.tsx', 'utf8');
+  /** 取 [from, until) 之间的源码片段（体积与类名断言的统一取法） */
+  const sliceTo = (from: string, until: string) => {
+    const i = pt.indexOf(from);
+    assert.ok(i > 0, `未找到锚点：${from}`);
+    const j = pt.indexOf(until, i);
+    assert.ok(j > i, `未找到闭合：${until}`);
+    return pt.slice(i, j);
+  };
+
+  test('① 离线教学包已收敛为紧贴「中考跟读」的行内纯图标按钮', () => {
+    const btn = sliceTo('onClick={() => setShowPack(true)}', '</button>');
+    assert.match(btn, /title=\{/, '行内图标按钮须有 title 悬停提示');
+    assert.match(btn, /t\.offlinePack\.entryHint/, 'title 须写明离线教学包的用途');
+    assert.match(btn, /aria-label=\{t\.offlinePack\.entry\}/, '纯图标按钮须有 aria-label 兜底');
+    assert.match(btn, /HardDrive className="w-4 h-4/, '图标须为紧凑尺寸 w-4 h-4');
+    assert.doesNotMatch(btn, /border border-\[var\(--border\)\] px-2\.5 py-1\.5/, '不得再是带边框的实体按钮');
+    assert.ok(btn.length < 800, `行内图标按钮片段 ${btn.length} 字符，疑似残留实体按钮`);
+    const panel = pt.indexOf('recite-panel');
+    const pack = pt.indexOf('onClick={() => setShowPack(true)}');
+    assert.ok(panel > 0 && pack > panel, '离线包入口须移入跟读面板内部');
+    assert.ok(pack < pt.indexOf('声音选择'), '离线包入口须紧贴「中考跟读」标题（位于声音选择之前）');
+    assert.doesNotMatch(pt.slice(panel, pack), /flex flex-wrap items-center gap-2/, '不得再被独立整行容器包裹');
+    assert.ok(
+      pt.includes('{showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}'),
+      '离线包弹窗触发逻辑须保持不变',
+    );
+  });
+
+  test('② 中央展台容器无硬边框 / 重底色 / 投影 / 卡片壳', () => {
+    const hero = sliceTo('col-start-3 col-end-13 row-start-1 row-end-4', '>');
+    assert.doesNotMatch(hero, /border/, '展台容器不得含边框类');
+    assert.doesNotMatch(hero, /bg-\[var\(--card-bg\)\]/, '展台容器不得含实体卡片底色');
+    assert.doesNotMatch(hero, /shadow/, '展台容器不得含投影');
+    assert.doesNotMatch(hero, /rounded/, '展台容器不得含圆角卡片壳');
+    assert.doesNotMatch(hero, /overflow-hidden/, '展台容器不得含裁切');
+    assert.match(hero, /relative/, '须保留 relative（两态叠层依赖）');
+    assert.ok(pt.includes("heroEl ? 'opacity-0' : 'opacity-100'"), '图例态须只做透明度过渡');
+    assert.ok(pt.includes("heroEl ? 'opacity-100' : 'opacity-0'"), '悬停态须只做透明度过渡');
+  });
+
+  test('③ 详情卡支持 2D / 3D 切换且默认恒为 2D 课本规范', () => {
+    assert.match(pt, /const \[atomMode, setAtomMode\] = useState<'2d' \| '3d'>\('2d'\)/, '默认视图须为 2D');
+    assert.match(pt, /useEffect\(\(\) => \{ setAtomMode\('2d'\); \}, \[selected\?\.n\]\)/, '换元素须强制复位为 2D');
+    // 控件形态（2026-10 改版）：由「左上整行双段控件」收敛为「图区外框右上角单个幽灵按钮」
+    assert.match(pt, /data-atom-mode=\{atomMode\}/, '切换按钮须带 data-atom-mode（供渲染量测）');
+    assert.match(pt, /absolute top-1 right-1 z-10/, '切换按钮须绝对定位于图区内部右上角，不占布局行');
+    // 文案只描述「点下去会发生什么」，消除「2D 规范」既像状态标识又像操作按钮的歧义
+    assert.ok(
+      pt.includes("atomMode === '3d' ? (isZh ? '课本平面' : 'Flat view') : (isZh ? '3D 模型' : '3D model')"),
+      '按钮文案须用动作语义（2D 态「3D 模型」/ 3D 态「课本平面」）',
+    );
+    for (const stale of ['3D 空间', '2D 规范', "'2D textbook'", "'3D space'"]) {
+      assert.ok(!pt.includes(stale), `旧歧义文案「${stale}」须已清除`);
+    }
+    assert.doesNotMatch(pt, /role="group" aria-label=\{isZh \? '原子模型视图'/, '双段控件须已移除（不得再有 role=group 分段组）');
+    assert.ok(pt.includes("// {isZh ? '原子结构示意图' : 'Bohr model'}"), '左上须只保留单行小标题「// 原子结构示意图」');
+    assert.doesNotMatch(pt, /原子结构示意图（点击电子层查看电子数）/, '小标题不得再挂长括注（须收敛为单行）');
+    assert.match(pt, /atomMode === '2d' \? \(/, '须按 atomMode 分支渲染');
+    assert.match(pt, /<Atom3D[\s\S]{0,260}z=\{selected\.n\}/, 'Atom3D 须接收真实质子数 Z');
+    assert.match(pt, /n=\{particleCount\(selected\)\.neutrons\}/, 'Atom3D 中子数须走 particleCount（与看板同源）');
+    assert.match(pt, /highlight=\{layerHighlight\(selected\)\}/, '3D 须与电子层胶囊高亮联动');
+    assert.ok(pt.includes('+{selected.n}'), '2D 核内「+Z」圈须仍在（中考必考画法，不得因引入 3D 而破坏）');
+  });
+
+  test('④ 3D 视图为原生 Canvas 2D，零外部 3D 库', () => {
+    const comp = readFileSync('src/components/lab/Atom3D.tsx', 'utf8');
+    const math = readFileSync('src/lib/atom-3d.ts', 'utf8');
+    assert.match(comp, /getContext\('2d'\)/, '须为原生 Canvas 2D');
+    // 组件与纯数学模块都不得出现 3D 库
+    for (const [name, src] of [['Atom3D.tsx', comp], ['atom-3d.ts', math]] as const) {
+      assert.doesNotMatch(src, /from\s+['"](three|@?babylonjs|@react-three\/[a-z-]+|zdog|o3d)/i, `${name} 不得引入外部 3D 库`);
+      assert.doesNotMatch(src, /WebGL|THREE\.|createRenderer/, `${name} 不得走 WebGL / THREE 命名空间`);
+    }
+    const pkg = readFileSync('package.json', 'utf8');
+    assert.doesNotMatch(
+      pkg,
+      /"(three|@react-three\/[a-z-]+|@babylonjs\/[a-z-]+|babylonjs|zdog|o3d)"\s*:/,
+      'package.json 不得出现 3D 库依赖',
+    );
+    // 斐波那契球面点阵：点数正确、逐点落在单位球面上、互不重合
+    for (const count of [1, 2, 8, 118, 294]) {
+      const pts = fibonacciSphere(count);
+      assert.ok(pts.length === count, `fibonacciSphere(${count}) 点数应为 ${count}`);
+      for (const p of pts) {
+        if (count === 1) continue;
+        const len = Math.hypot(p.x, p.y, p.z);
+        assert.ok(Math.abs(len - 1) < 1e-6, `斐波那契点须在单位球面上：|p|=${len}`);
+      }
+      const uniq = new Set(pts.map((p) => `${p.x.toFixed(4)},${p.y.toFixed(4)},${p.z.toFixed(4)}`));
+      assert.ok(uniq.size === count, `核内点阵不得重合（${uniq.size}/${count}）`);
+    }
+  });
+
+  test('⑥ 核内点阵为离散球簇：质子/中子沿纬度混匀，绝不「上下半球拼接」', () => {
+    // 旧实现的根因：斐波那契纬度 y=1-(2i+1)/A 随 i 单调，而「前 Z 个即质子」→ 质子全在北半球
+    const cases: Array<[number, number, string]> = [[52, 24, 'Cr'], [294, 118, 'Og'], [4, 2, 'He'], [12, 6, 'C']];
+    for (const [a, z, name] of cases) {
+      const pts = nucleusPoints(a, z, 1);
+      const p = pts.filter((x) => x.proton);
+      const q = pts.filter((x) => !x.proton);
+      const mean = (arr: typeof pts) => (arr.length ? arr.reduce((s, v) => s + v.y, 0) / arr.length : 0);
+      const mp = mean(p), mq = mean(q);
+      // y∈[-1,1]；半球拼接时质子/中子平均纬度会分别逼近 ±0.5（旧实现实测 +0.538 / −0.462）
+      assert.ok(
+        Math.abs(mp) < 0.3,
+        `${name}: 质子平均纬度 ${mp.toFixed(3)} 偏北半球——「前 Z 个即质子」的实心半球拼接缺陷回归了`,
+      );
+      assert.ok(
+        Math.abs(mq) < 0.3,
+        `${name}: 中子平均纬度 ${mq.toFixed(3)} 偏南半球——同上`,
+      );
+      // 小样本（A<20）时均值噪声本就大，只在样本足够时才要求两者均值也接近
+      if (a >= 20) {
+        assert.ok(
+          Math.abs(mp - mq) < 0.3,
+          `${name}: 质子与中子的平均纬度差 ${Math.abs(mp - mq).toFixed(3)} 过大（>0.3 即出现上下分色）`,
+        );
+      }
+    }
+    // 等距取样：质子下标必须均匀铺满全程（否则又退化成「集中在某一半球」）
+    for (const [count, protonN] of [[52, 24], [90, 36], [7, 3], [2, 1]] as const) {
+      const flags = protonFlags(count, protonN);
+      assert.ok(flags.length === count, `protonFlags 长度应为 ${count}`);
+      assert.ok(flags.filter(Boolean).length === protonN, `质子数应为 ${protonN}`);
+      const idx = flags.map((f, i) => (f ? i : -1)).filter((i) => i >= 0);
+      // 等距布点：第 j 个质子落在 (j+0.5)/k 分位 → 首/末质子分别落在 1/(2k) 与 1−1/(2k) 分位附近。
+      // 用 ceil(count/(2k)) 作容差，退化样本（count=2, k=1）也成立。
+      const bin = Math.ceil(count / (2 * protonN));
+      assert.ok(idx[0] <= bin, `首个质子下标 ${idx[0]} 越过第 1 个分位 ${bin}（南半球会缺质子）`);
+      assert.ok(
+        idx[idx.length - 1] >= count - 1 - bin,
+        `末个质子下标 ${idx[idx.length - 1]} 未达倒数第 1 个分位（北半球会缺质子）`,
+      );
+      // 相邻质子下标差 ≥ 1（不重号）
+      for (let i = 1; i < idx.length; i++) {
+        assert.ok(idx[i] > idx[i - 1], `质子下标须严格递增：${idx[i - 1]} → ${idx[i]}`);
+      }
+    }
+    // 体积填充：粒子半径经 cbrt 映射，故内层也有粒子（不是全部浮在球面）
+    const pts = nucleusPoints(52, 24, 1);
+    const radii = pts.map((p) => Math.hypot(p.x, p.y, p.z));
+    assert.ok(Math.max(...radii) <= 1 + 1e-9, '核内粒子不得跑到球外');
+    assert.ok(radii.filter((r) => r < 0.5).length >= 3, '应有若干粒子落在内核区（体积填充而非球面壳层）');
+    const shellOnly = radii.filter((r) => r > 0.9).length;
+    assert.ok(shellOnly < radii.length, '不得全部粒子都贴在球面上');
+    // 无随机数：同参数两次调用必须完全一致（可测可复现）
+    const again = nucleusPoints(52, 24, 1);
+    assert.deepEqual(again.map((p) => `${p.x},${p.y},${p.z},${p.proton}`), pts.map((p) => `${p.x},${p.y},${p.z},${p.proton}`));
+  });
+
+  test('⑦ 核球/单球尺寸：单球恒在 2.2~3.5px，核球重元素落在 16~22px 且含缝隙', () => {
+    // 轨道上限按「最内层轨道半径 × 0.4」给（组件即如此传参）
+    const orbitLimit = (layers: number) => 0.4 * orbitRadius(0, layers) * 76;
+    for (const a of [1, 2, 4, 7, 12, 24, 52, 118, 294]) {
+      const count = visualCount(a);
+      assert.ok(count <= VISUAL_COUNT_CAP, `A=${a} 视觉代表粒子数 ${count} 超过上限 ${VISUAL_COUNT_CAP}`);
+      const s = nucleonScreenSizes(count, orbitLimit(4));
+      assert.ok(
+        s.nucleonR >= NUCLEON_MIN_PX - 1e-9 && s.nucleonR <= NUCLEON_MAX_PX + 1e-9,
+        `A=${a} 单球半径 ${s.nucleonR.toFixed(2)}px 越出 [${NUCLEON_MIN_PX}, ${NUCLEON_MAX_PX}]px（过小会糊成一片、过大就成实心块）`,
+      );
+      if (a >= 40) {
+        assert.ok(
+          s.nucleusR >= NUCLEUS_MIN_PX - 1e-9 && s.nucleusR <= NUCLEUS_MAX_PX + 1e-9,
+          `A=${a} 核球半径 ${s.nucleusR.toFixed(2)}px 越出 [${NUCLEUS_MIN_PX}, ${NUCLEUS_MAX_PX}]px`,
+        );
+      }
+      assert.ok(s.nucleusR * 1.6 <= 76 * 2, `A=${a} 核球半径相对画布过大`);
+    }
+    // 单球越小 → 填充率不会反超「密堆积」；离散球簇的填充率必须显著低于实心（1.0）
+    for (const a of [24, 52, 118, 294]) {
+      const count = visualCount(a);
+      const s = nucleonScreenSizes(count, orbitLimit(4));
+      const fill = count * (s.nucleonR / s.nucleusR) ** 3;
+      assert.ok(fill <= 0.62, `A=${a} 核内填充率 ${fill.toFixed(3)} 偏高，投影后会糊成实心色块（目标 ≈ ${NUCLEON_FILL}）`);
+      assert.ok(fill >= MIN_CLUSTER_FILL - 1e-9, `A=${a} 核内填充率 ${fill.toFixed(3)} 过低，会看成几颗散珠`);
+    }
+    // 核球上限：无论轨道多小，核球都不得越过「最内层轨道 × 0.4」
+    for (const layers of [1, 2, 4, 7]) {
+      const limit = 0.4 * orbitRadius(0, layers) * 76;
+      const s = nucleonScreenSizes(52, limit);
+      assert.ok(s.nucleusR <= Math.max(NUCLEUS_MIN_PX, limit) + 1e-9, `layers=${layers} 核球越出最内层轨道的 40%`);
+    }
+    // 景深：近端不透明度 1.0，远端 0.66
+    assert.ok(Math.abs(nucleonAlpha(-2, 2) - 1) < 1e-9, '核球近端（z=-R）不透明度须为 1.0');
+    assert.ok(Math.abs(nucleonAlpha(2, 2) - 0.66) < 1e-9, '核球远端（z=+R）不透明度须为 0.66');
+    assert.ok(Math.abs(nucleonAlpha(0, 2) - 0.83) < 1e-9, '核中心不透明度须为 0.83');
+  });
+
+  test('⑧ 绘制层：核子逐球独立渐变，杜绝「前 Z 个即质子」的实心拼贴', () => {
+    const comp = readFileSync('src/components/lab/Atom3D.tsx', 'utf8');
+    assert.match(comp, /createRadialGradient/, '核子须逐球画径向渐变（同色球不改光影就会合并成实心色块）');
+    assert.match(comp, /nucleusPoints/, '核点阵须走 nucleusPoints（体积填充 + 等距取样分配）');
+    assert.match(comp, /nucleonAlpha/, '核子须带景深透明度（近 1.0 / 远 0.66）');
+    assert.doesNotMatch(
+      comp,
+      /i < z \? 'proton' : 'neutron'/,
+      '不得再按「前 Z 个即质子」分配——斐波那契纬度单调，这正是实心半球拼接的根因',
+    );
+    assert.doesNotMatch(comp, /coreRadius3D|nucleonRadius\b/, '不得再使用会糊成实心块的旧尺寸函数');
+    // 核子与电子分开处理：电子保持扁平小点，核子走渐变
+    assert.match(comp, /it\.kind === 'electron'/, '电子须与核子分支处理');
+  });
+
+  test('⑤ 透视与画家排序约定自洽，且卸载/切回时取消动画帧', () => {
+    // 约定：depth 是「离相机的距离」，越大越远 → k 越小（近大远小）
+    const near = project3({ x: 0, y: 0, z: -1 }, 0, 0, 100);
+    const far = project3({ x: 0, y: 0, z: 1 }, 0, 0, 100);
+    assert.ok(near.k > far.k, `近处透视因子 ${near.k.toFixed(3)} 须大于远处 ${far.k.toFixed(3)}（近大远小）`);
+    assert.ok(Math.abs(project3({ x: 0, y: 0, z: 0 }, 0, 0, 100).k - 1) < 1e-9, 'z=0 时 k 须为 1');
+    assert.ok(CAMERA_D > 1.5, '相机距离须大于轨道最大半径的 1.5 倍，避免透视分母过零');
+    const order = sortByDepth([
+      { depth: -0.9, id: 'near' }, { depth: 0.9, id: 'far' }, { depth: 0, id: 'mid' },
+    ]).map((x) => x.id);
+    assert.deepEqual(order, ['far', 'mid', 'near'], '画家算法须「远的先画」（从后往前）');
+    assert.ok(SHELL_TILTS.length === 7 && MAX_LAYERS === 7, '轨道倾角表须覆盖 7 个电子层');
+    for (let i = 0; i < MAX_LAYERS; i++) {
+      const [tx, ty] = SHELL_TILTS[i];
+      assert.ok(Math.abs(tx) <= 45 && Math.abs(ty) <= 45, `第 ${i} 层倾角过大，会与相邻层重合`);
+    }
+    for (let i = 1; i < 7; i++) {
+      assert.ok(orbitRadius(i, 7) > orbitRadius(i - 1, 7), '轨道半径须自内向外严格递增');
+    }
+    // 防泄漏：卸载（切回 2D 或关闭弹窗）必须取消 rAF 并摘掉全部监听
+    const src = readFileSync('src/components/lab/Atom3D.tsx', 'utf8');
+    assert.match(src, /cancelAnimationFrame\(raf\)/, '卸载时须 cancelAnimationFrame');
+    assert.match(src, /removeEventListener\('pointermove'/, '卸载时须摘掉 window 上的 pointermove');
+    assert.match(src, /removeEventListener\('pointercancel'/, '卸载时须摘掉 pointercancel');
+    assert.match(src, /ro\.disconnect\(\)/, '卸载时须断开 ResizeObserver');
+  });
+
+  test('⑨ 微粒三联卡带形态互异的图例点，颜色与 3D 本体色同源', () => {
+    assert.match(pt, /data-particle-dot=\{cell\.id\}/, '微粒卡片须带 data-particle-dot（供渲染量测）');
+    assert.match(pt, /data-dot-shape=\{cell\.id === 'electron' \? 'ringed-dot' : 'sphere'\}/, '须标注图例形态（环点 / 微球）');
+    for (const id of ['proton', 'neutron', 'electron']) {
+      assert.ok(pt.includes(`id: '${id}'`), `微粒卡片须有 ${id} 稳定标识`);
+    }
+    // 三套绘制配方互异：核内两格是径向渐变微球（与 Atom3D 同一套配方），电子是「实心点 + 细环」
+    assert.match(String(LEGEND_DOT.proton.background), /^radial-gradient\(/, '质子须为径向渐变微球');
+    assert.match(String(LEGEND_DOT.neutron.background), /^radial-gradient\(/, '中子须为径向渐变微球');
+    assert.ok(String(LEGEND_DOT.proton.background).includes('var(--accent)'), '质子球本体色须用 --accent（3D 质子球本体色）');
+    assert.ok(String(LEGEND_DOT.neutron.background).includes(NEUTRON_COLOR), '中子球本体色须走 NEUTRON_COLOR 常量');
+    assert.ok(!String(LEGEND_DOT.neutron.background).includes('var(--accent)'), '中子不得复用质子本体色');
+    assert.ok(String(LEGEND_DOT.electron.background).includes('var(--fg)'), '电子点须用 --fg（2D/3D 电子点同填色）');
+    assert.ok(LEGEND_DOT.electron.outline, '电子点须带细环线（环即轨道，形态与核内微球区分）');
+    assert.ok(!String(LEGEND_DOT.electron.background).includes('radial-gradient'), '电子不得复用核内微球的球体配方');
+    // 三类样式两两不同：防止退化成「三个同形换色圆点」（浅色主题下 --accent #000 与 --fg #111 仅差约 7% 亮度）
+    assert.notDeepEqual(LEGEND_DOT.proton, LEGEND_DOT.neutron, '质子与中子图例不得同形同色');
+    assert.notDeepEqual(LEGEND_DOT.proton, LEGEND_DOT.electron, '质子与核外电子图例不得雷同');
+    assert.notDeepEqual(LEGEND_DOT.neutron, LEGEND_DOT.electron, '中子与核外电子图例不得雷同');
+    // 单一事实源：3D 组件必须取同一中子色常量，两处不得各写一份
+    const comp = readFileSync('src/components/lab/Atom3D.tsx', 'utf8');
+    assert.match(comp, /NEUTRON_COLOR/, 'Atom3D 须从同一常量取中子色');
+    assert.doesNotMatch(comp, /'#d8cfc4'/, 'Atom3D 不得再硬写中子色（须走 NEUTRON_COLOR）');
+    assert.equal(NEUTRON_COLOR, '#d8cfc4', '中子色常量值须保持淡暖灰白');
+  });
+
+  test('⑩ 电子层名第 5 层输出大写字母 O（并规避 mono 字体 O/0 同形误读）', () => {
+    assert.deepEqual([...SHELL_NAMES], ['K', 'L', 'M', 'N', 'O', 'P', 'Q'], '层名须为 K L M N O P Q');
+    assert.equal(SHELL_NAMES[4], 'O', '第 5 层须是大写字母 O');
+    assert.notEqual(SHELL_NAMES[4], '0', '第 5 层不得是数字 0');
+    for (const s of SHELL_NAMES) {
+      assert.match(s, /^[A-Z]$/, `层名「${s}」须为单个拉丁大写字母`);
+    }
+    assert.ok(
+      ELEMENTS.filter((e) => e.shells.length >= 5).length > 0,
+      '须存在 5 层及以上的元素（否则本守卫覆盖不到第 5 层）',
+    );
+    // 字形反碰撞：Space Grotesk（--f-mono）的 O 与 0 逐像素同形（40px 下宽高同为 20×30、
+    // 墨量 376 vs 375、仅 2.1% 抗锯齿噪声，且不支持 zero/ss01 斜杠零特性），
+    // 故层名字母的两处渲染点都必须显式走 --f-serif（同尺寸 O/0 墨量比 1.58×）。
+    const serifSpans = pt.match(/<span className="serif-font">\{SHELL_NAMES\[[a-z]+\]\}<\/span>/g) ?? [];
+    assert.equal(serifSpans.length, 2, `层名字母须在两处渲染点都走 --f-serif（实测 ${serifSpans.length} 处）`);
+    assert.match(pt, /O 与 0 逐像素同形/, '须保留字形碰撞成因注释（防后人「顺手」改回 mono）');
+  });
+
+  test('⑪ 118 元素族标签只用标准预组合罗马数字（U+2160–U+2167）', () => {
+    const CANON = /^(?:[ⅠⅡⅢⅣⅤⅥⅦⅧ][AB]?|0)$/;
+    for (const e of ELEMENTS) {
+      const { main } = groupDisplay(e, true);
+      assert.match(main, CANON, `Z=${e.n} ${e.symbol} 族标签「${main}」不是标准预组合罗马数字`);
+      assert.doesNotMatch(main, /[IVX]/, `族标签「${main}」含 ASCII 字母 I/V/X（应使用 Ⅰ~Ⅷ 预组合字符）`);
+    }
+    // 关键对照：主族 ⅥA、8/9/10 同属 Ⅷ、第 18 列沿用人教版「0 族」、副族 ⅢB
+    assert.equal(groupLabel(16), 'ⅥA', '第 16 列须为 ⅥA');
+    assert.equal(groupLabel(3), 'ⅢB');
+    assert.equal(groupLabel(8), 'Ⅷ');
+    assert.equal(groupLabel(9), 'Ⅷ');
+    assert.equal(groupLabel(10), 'Ⅷ', '8/9/10 三列同属 Ⅷ 族');
+    assert.equal(groupLabel(18), '0', '第 18 列须兼容人教版「0 族」');
+    // 字形覆盖：Space Grotesk 不含 U+2165 → 会回退到不同源字体；族标签须走含该字形的 --f-serif
+    assert.match(pt, /font-bold serif-font text-\[var\(--fg\)\] leading-tight">\{selGroup\?\.main/, '族标签须走 --f-serif（mono 缺罗马数字字形）');
+    assert.match(pt, /font-semibold serif-font">\{heroData\.gd\.main\}/, '展台族标签同样须走 --f-serif');
+  });
+
+  test('⑫ 详情卡内解释性注释一律正体（斜体只留给强调/引文）', () => {
+    // 弹窗内曾有三段长斜体小字（中子估算说明 / IUPAC 原子量 / 发现史免责），造成整屏斜体轰炸
+    const from = pt.indexOf('可滚动内容主体');
+    const to = pt.indexOf('问 AI：看完元素详情后可一键提问');
+    assert.ok(from > 0 && to > from && to - from > 1000, '须能定位到详情卡滚动主体');
+    assert.doesNotMatch(pt.slice(from, to), /italic/, '详情卡内不得再出现斜体小字（须为正体）');
+    // 高中拓展改为紧凑通知徽章条（正体标签 + 无左侧长竖线）
+    assert.ok(pt.includes("{lang === 'zh' ? '高中拓展' : 'Extension'}"), '高中拓展须改为徽章标签条');
+    assert.doesNotMatch(
+      pt,
+      /border-l-2 border-\[var\(--border\)\] pl-2">\s*\{lang === 'zh'\s*\?\s*'高中拓展'/,
+      '高中拓展不得再沿用左侧长竖线段落形态',
+    );
+  });
+
+  test('⑬ 详情卡顶部锚定：切 Tab 时弹窗头部与 Tab 栏绝对静止', () => {
+    // 根因：外框与 overlay 原为 items-center + 高度随内容变化 → 垂直居中重算导致整框上下跳。
+    // 改前实测（1280×1100）：面板 top 66 → 172 → 66，跳幅 106px = 高度差 212px 的一半。
+    const ov = pt.match(/className="fixed inset-0 z-50 flex ([^"]+)"/);
+    assert.ok(ov, '须能定位弹窗 overlay');
+    assert.match(ov[1], /items-start/, 'overlay 须顶部锚定（items-start），避免居中重算');
+    assert.doesNotMatch(ov[1], /items-center/, 'overlay 不得垂直居中（内容高度变化会带动整框重排）');
+    assert.match(ov[1], /overflow-y-auto/, 'overlay 须可滚动，兜底极矮视口');
+    const panel = pt.match(/className="relative w-full max-w-sm sm:max-w-md ([^"]+)"/);
+    assert.ok(panel, '须能定位弹窗外框');
+    assert.match(
+      panel[1],
+      /max-h-\[calc\(100dvh-1rem\)\] sm:max-h-\[calc\(100dvh-2rem\)\]/,
+      '外框 max-h 须与 overlay 的 p-2/p-4 对齐（顶边固定、底边仍留同距）',
+    );
+    assert.doesNotMatch(panel[1], /92dvh|88dvh/, '外框不得再用与 padding 脱钩的 92dvh / 88dvh');
+    assert.match(panel[1], /flex flex-col/, '外框须为纵向 flex，内容区才能独立滚动');
+    assert.match(pt, /flex-1 overflow-y-auto[^"]*space-y-3/, '内容区须 flex-1 承载剩余高度（头部与 Tab 栏不动）');
   });
 });

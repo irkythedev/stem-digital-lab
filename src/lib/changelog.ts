@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.37.2';
+export const APP_VERSION = '0.38.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.38.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 元素详情卡新增「3D 空间原子模型」：与课本平面图一键切换，拖拽即可旋转观察，核内质子与中子紧密成簇、电子沿倾斜轨道绕行',
+      '[优化] 元素详情卡整体重排：可直接翻到相邻元素，电子层按层点看电子数，质子、中子与核外电子配上了与立体视图对应的图例；切换页签时卡片不再上下跳动',
+      '[优化] 元素信息与浏览更严谨顺手：副族元素的电子层说明改按化合价可变的实际情况表述，不再套用简单的得失电子判断；周期表上悬停格子即可预览元素概览与实物图',
+    ],
+    en: [
+      '[New] A 3D space model for the atom in the element card: switch between the flat textbook diagram and a rotatable model in one tap, with protons and neutrons packed tightly in the nucleus and electrons orbiting on tilted shells',
+      '[Improved] The element card is reorganised: step straight to the neighbouring element, tap a shell for its electron count, and match protons, neutrons and electrons against legend marks that mirror the 3D view; the card no longer shifts up and down when you change tabs',
+      '[Improved] Clearer element facts and easier browsing: for transition metals the shell wording now reflects variable valence instead of a simple gain-or-lose count, and hovering a cell previews that element together with its photo',
+    ],
+  },
   {
     version: '0.37.2',
     date: '2026-10',

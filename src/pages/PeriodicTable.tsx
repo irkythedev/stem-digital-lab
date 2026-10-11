@@ -12,9 +12,9 @@
  * 教材依据：ch03「元素周期表简介」——7 个横行 18 个纵列，金属/非金属/稀有气体
  * 用不同颜色区分，标出相对原子质量；元素周期表是学习和研究化学的重要工具。
  */
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck} from 'lucide-react';
+import { House, Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import OfflinePackPanel from '../components/feedback/OfflinePackPanel';
 import { useOfflinePack } from '../lib/use-offline-pack';
@@ -26,6 +26,8 @@ import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 import { ATOM_VIEW, coreRadiusFor, shellLayout } from '../lib/atom-shells';
+import { NEUTRON_COLOR } from '../lib/atom-3d';
+import Atom3D from '../components/lab/Atom3D';
 
 /** 类别 → 配色（教科书三色区分；类金属用中间色）——浅色背景填充 + 同色系边框 */
 const CAT_COLOR: Record<ElementInfo['cat'], { border: string; text: string; bg: string }> = {
@@ -47,6 +49,179 @@ const CAT_EN: Record<ElementInfo['cat'], string> = {
   nonmetal: 'Non-metal',
   noble: 'Noble gas',
   metalloid: 'Metalloid',
+};
+
+/** 电子层名（初中教材用 K L M N O P Q，自内向外） */
+export const SHELL_NAMES = ['K', 'L', 'M', 'N', 'O', 'P', 'Q'] as const;
+
+/** 相邻元素（按原子序数排序）：越界方向返回 null，供导航按钮禁用。
+ *  纯函数，供详情卡渲染与 smoke 测试共用。 */
+export function neighborOf(n: number): { prev: ElementInfo | null; next: ElementInfo | null } {
+  const i = ELEMENTS.findIndex((e) => e.n === n);
+  if (i < 0) return { prev: null, next: null };
+  return {
+    prev: i > 0 ? ELEMENTS[i - 1] : null,
+    next: i < ELEMENTS.length - 1 ? ELEMENTS[i + 1] : null,
+  };
+}
+
+/** 族标签（人教版习惯写法）：1→ⅠA、17→ⅦA、18→0（稀有气体族）、3→ⅢB … 8/9/10 同属Ⅷ族 */
+const GROUP_ROMAN: Record<number, string> = {
+  1: 'ⅠA', 2: 'ⅡA', 13: 'ⅢA', 14: 'ⅣA', 15: 'ⅤA', 16: 'ⅥA', 17: 'ⅦA', 18: '0',
+  3: 'ⅢB', 4: 'ⅣB', 5: 'ⅤB', 6: 'ⅥB', 7: 'ⅦB', 8: 'Ⅷ', 9: 'Ⅷ', 10: 'Ⅷ', 11: 'ⅠB', 12: 'ⅡB',
+};
+
+/** 族的中文化标签；f 区（镧系/锕系）在本数据中 group 为 null */
+export function groupLabel(group: number | null): string {
+  if (group == null) return '—';
+  return GROUP_ROMAN[group] ?? '—';
+}
+
+/** 微观粒子计数：质子 Z、核外电子 Z（原子整体呈电中性）、中子 N = round(A) − Z。
+ *  依据初中铁律「核电荷数 = 质子数 = 核外电子数」「相对原子质量 ≈ 质子数 + 中子数」。
+ *  相对原子质量取 IUPAC 标准原子量的四舍五入（≈ 最丰同位素质量数）；
+ *  无稳定同位素的元素数据里存的就是质量数，取整后同样成立。 */
+export function particleCount(e: ElementInfo): { protons: number; neutrons: number; electrons: number } {
+  const a = Math.round(e.massExact ?? e.mass ?? e.n);
+  return { protons: e.n, neutrons: Math.max(0, a - e.n), electrons: e.n };
+}
+
+/** 元素分区：初中「最外层得失规律」适用域的判据 */
+export type ElementScope = 'main' | 'transition' | 'f';
+
+/** 分区：主族（典型元素）/ 过渡（副族，d 电子参与成键）/ f 区（镧系锕系） */
+export function elementScope(e: ElementInfo): ElementScope {
+  if ((e.n >= 57 && e.n <= 71) || (e.n >= 89 && e.n <= 103)) return 'f';
+  const g = e.group;
+  return g !== null && g >= 3 && g <= 12 ? 'transition' : 'main';
+}
+
+/** 镧系 / 锕系（供族标签与分区提示使用）；group 数据把两者都记为第 3 列，需按序号判定 */
+export function fSeriesOf(e: ElementInfo): 'lanthanide' | 'actinide' | null {
+  if (e.n >= 57 && e.n <= 71) return 'lanthanide';
+  if (e.n >= 89 && e.n <= 103) return 'actinide';
+  return null;
+}
+
+export type ValenceKind =
+  | 'lose' | 'gain' | 'share' | 'stable'
+  | 'hydrogen' | 'saturated' | 'variable' | 'lanthanide' | 'polyvalent';
+
+export interface ValenceInfo {
+  outer: number;
+  kind: ValenceKind;
+  /** 仅 lose/gain 有意义，且恒 ≥ 0 */
+  count: number;
+  scope: ElementScope;
+}
+
+/** 最外层电子的得失倾向。
+ *
+ *  适用范围（学科硬边界）：初中「最外层 < 4 易失、> 4 易得、= 8 稳定」**仅严格适用于主族（典型）元素**。
+ *  副族/过渡元素次外层 d 电子参与成键、具可变化合价；f 区（镧系/锕系）f 电子参与成键——对这两类
+ *  只输出分区说明，绝不套用简单得失数（否则会出现 Cr「易失 1」、Fe「易失 2」这类误导）。
+ *  硬保护：count 恒 ≥ 0（杜绝 Pd 出现过 gain -10）；最外层 > 8 时不得输出得失判定。
+ */
+export function valenceTendency(e: ElementInfo): ValenceInfo {
+  const outer = e.shells[e.shells.length - 1] ?? 0;
+  const scope = elementScope(e);
+  // ① 全局硬保护：最外层超过 8（Pd 为 2,8,18,18 的经典例外）→ 不做得失判定
+  if (outer > 8) return { outer, kind: 'saturated', count: 0, scope };
+  // ② f 区（镧系/锕系）：f 电子参与成键，常见 +3 价
+  if (scope === 'f') return { outer, kind: 'lanthanide', count: 0, scope };
+  // ③ 副族/过渡：可变化合价，阻断单纯得失判定
+  if (scope === 'transition') return { outer, kind: 'variable', count: 0, scope };
+  // ④ 氢：既可失 1 个电子（H⁺）也可得 1 个电子（H⁻）
+  if (e.n === 1) return { outer, kind: 'hydrogen', count: 1, scope };
+  // ⑤ 稳定结构：外层 8，或首层排满 2（He）
+  if (outer === 8 || (e.shells.length === 1 && outer === 2)) return { outer, kind: 'stable', count: 0, scope };
+  // ⑥ 最外层 4：既不易得也不易失，通常与他人共用电子对（C、Si、Ge、Sn、Pb）
+  if (outer === 4) return { outer, kind: 'share', count: 0, scope };
+  // ⑦ 最外层 < 4：易失
+  if (outer < 4) return { outer, kind: 'lose', count: outer, scope };
+  // ⑧ 最外层 5~7：金属元素（Bi/Po/Mc/Lv 等）不适用非金属的得电子倾向，按多价态处理
+  if (e.cat === 'metal') return { outer, kind: 'polyvalent', count: 0, scope };
+  return { outer, kind: 'gain', count: Math.max(0, 8 - outer), scope };
+}
+
+/** 外层倾向的短标签（格子内用，控制在 6 字内避免窄格溢出） */
+export const VALENCE_LABEL: Record<ValenceKind, { zh: string; en: string }> = {
+  lose: { zh: '易失', en: 'lose' },
+  gain: { zh: '易得', en: 'gain' },
+  share: { zh: '共用电子', en: 'shares e⁻' },
+  stable: { zh: '稳定结构', en: 'stable' },
+  hydrogen: { zh: '两性 ±1', en: 'both ±1' },
+  saturated: { zh: '外层饱和', en: 'full shell' },
+  variable: { zh: '可变化合价', en: 'variable' },
+  lanthanide: { zh: '常见 +3', en: 'usually +3' },
+  polyvalent: { zh: '多价态', en: 'several' },
+};
+
+/** 适用域补充说明：主族返回 null；过渡/f 区必须声明「规律仅适用主族」，另含 H 与 Pd 两个特例 */
+export function valenceNote(e: ElementInfo, vt: ValenceInfo, isZh: boolean): string | null {
+  if (vt.kind === 'saturated') {
+    return isZh
+      ? '钯的最外层（第 4 层）已达 18 个电子（d 电子全充满）——经典特例，该层不参与简单得失。'
+      : 'Palladium already holds 18 electrons in its outermost (4th) shell (a filled d subshell) — a classic exception where simple loss/gain does not apply.';
+  }
+  if (vt.scope === 'transition') {
+    return isZh
+      ? '过渡元素：次外层 d 电子参与成键，具可变化合价（如 Cr +3/+6、Fe +2/+3、Cu +1/+2）。初中「最外层得失」规律仅严格适用于主族元素。'
+      : 'Transition element: second-outermost d electrons take part in bonding, so valences vary (Cr +3/+6, Fe +2/+3, Cu +1/+2). The junior-high outer-shell rule applies strictly to main-group elements.';
+  }
+  if (vt.scope === 'f') {
+    return isZh
+      ? '镧系/锕系：f 电子参与成键，常见 +3 价。初中「最外层得失」规律不适用。'
+      : 'f-block (lanthanide/actinide): f electrons take part in bonding, usually +3. The junior-high outer-shell rule does not apply.';
+  }
+  if (vt.kind === 'hydrogen') {
+    return isZh
+      ? '氢既可失 1 个电子（H⁺），也可得 1 个电子（H⁻，如 NaH）——「最外层规律」的经典特例。'
+      : 'Hydrogen can lose one electron (H⁺) or gain one (H⁻, as in NaH) — a classic exception to the outer-shell rule.';
+  }
+  if (vt.kind === 'polyvalent') {
+    return isZh
+      ? '该金属位于第 15/16 列，通常表现多价态（如 Bi +3/+5、Po +2/+4），不宜按非金属的「易得电子」描述。'
+      : 'This metal sits in group 15/16 and shows several valences (Bi +3/+5, Po +2/+4); “gains electrons” wording does not fit a metal.';
+  }
+  return null;
+}
+
+/** 族标签的展示三元组：主标签（罗马/0）、副标签（列号或族号）、系别标记（镧系/锕系）
+ *  —— 第 18 列兼顾人教版初中「0 族」与新课标「第 18 族」；镧系/锕系显式激活系别。 */
+export function groupDisplay(e: ElementInfo, isZh: boolean): { main: string; sub: string; series: string | null } {
+  const series = fSeriesOf(e);
+  const g = e.group;
+  const main = groupLabel(g);
+  if (series) {
+    return {
+      main,
+      sub: isZh ? `第 ${g ?? 3} 列` : `column ${g ?? 3}`,
+      series: isZh ? (series === 'lanthanide' ? '镧系' : '锕系') : series,
+    };
+  }
+  if (g === 18) return { main, sub: isZh ? '第 18 族 · 第 18 列' : 'group 18 · column 18', series: null };
+  if (g === null) return { main, sub: isZh ? '镧系/锕系' : 'f-block', series: null };
+  return { main, sub: isZh ? `第 ${g} 列` : `column ${g}`, series: null };
+}
+
+/** 主表横向滚动时的右端渐隐蒙版（仅在确实可向右滚动时施加；12px 只为提示，不吞掉列边框） */
+export const SCROLL_FADE_MASK = 'linear-gradient(to right, #000 calc(100% - 12px), transparent 100%)';
+
+/** 微粒图例色点的**绘制配方**（三种形态互异，不再只是三个同形圆点换色）。
+ *
+ *  核内微粒做成 3D 微球：径向渐变与 `Atom3D` 核子球**同一套配方**
+ *  （白光高光偏左上 → 本体色 → 外缘压暗），故图例与 3D 视图里的球一一对应；
+ *  质子深色、中子浅米色，明暗互为对应。
+ *
+ *  核外电子则**换形态**：实心微点 + 细环线（环即轨道），体现「轨道上绕行的轻子」，
+ *  与核内「实体球」彻底拉开差距——本项目强调色 `--accent` 与正文色 `--fg` 在浅色主题下
+ *  分别是 #000000 / #111111（亮度差约 7%），仅靠填色无法区分，必须靠形态。
+ */
+export const LEGEND_DOT: Record<'proton' | 'neutron' | 'electron', CSSProperties> = {
+  proton: { background: 'radial-gradient(circle at 32% 30%, #fff 0%, var(--accent) 44%, rgba(8,6,4,0.62) 100%)' },
+  neutron: { background: `radial-gradient(circle at 32% 30%, #fff 0%, ${NEUTRON_COLOR} 44%, rgba(8,6,4,0.62) 100%)` },
+  electron: { background: 'var(--fg)', outline: '1px solid var(--muted)', outlineOffset: '2px' },
 };
 
 /** 中考必背连读预设（人教版教材）：元素名称与符号是中考必背内容 */
@@ -92,6 +267,8 @@ export default function PeriodicTable() {
   }), [lang, t.brandName]);
   usePageMeta(pageMeta);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
+  /** 原子模型视图：默认恒为 2D 课本规范（中考必考画法）；换元素时强制回到 2D */
+  const [atomMode, setAtomMode] = useState<'2d' | '3d'>('2d');
   useLockBodyScroll(!!selected);
   // 离线教学包：素材就在这一页，把入口放在最贴近的地方
   const [showPack, setShowPack] = useState(false);
@@ -124,6 +301,11 @@ export default function PeriodicTable() {
   const [tab, setTab] = useState<'props' | 'story'>('props');
   // 原子结构示意图：当前悬停/点击的电子层（显示该层电子数）
   const [hoveredLayer, setHoveredLayer] = useState<number | null>(null);
+  /** 点击锁定的电子层（null = 未锁定，此时默认高亮最外层——初中核心考点） */
+  const [pinnedLayer, setPinnedLayer] = useState<number | null>(null);
+  /** 中央展台当前预览的元素（null = 默认图例 / 操作指引态） */
+  const [heroEl, setHeroEl] = useState<ElementInfo | null>(null);
+  const heroTimer = useRef<number | null>(null);
   // 元素实物照片：放大预览（null=未打开）
   const [photoZoom, setPhotoZoom] = useState(false);
 
@@ -183,7 +365,89 @@ export default function PeriodicTable() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  /** 详情卡打开时的键盘工效：← / → 在相邻元素间切换，Esc 关闭（输入框内不拦截） */
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el?.isContentEditable) return;
+      if (e.key === 'Escape') {
+        if (photoZoom) setPhotoZoom(false);
+        else setSelected(null);
+        return;
+      }
+      const dir = e.key === 'ArrowLeft' ? 'prev' : e.key === 'ArrowRight' ? 'next' : null;
+      if (!dir) return;
+      // 边界判定用渲染时的 selected 即可；真正的推进交给函数式更新取「当前」值 ——
+      // 闭包快照在同一 task 内连发方向键时不刷新，实测 20 次只前进 1 步。
+      if (!neighborOf(selected.n)[dir]) return; // 首末位：保持停住，不做环绕
+      e.preventDefault();
+      // 切换前先停掉正在播放的读音（否则上一个元素的读音会残留）
+      speakAudio.current?.pause();
+      window.speechSynthesis?.cancel();
+      if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+      setSpeakState('idle');
+      setSelected((prev) => (prev ? neighborOf(prev.n)[dir] ?? prev : prev));
+      setPinnedLayer(null);
+      setHoveredLayer(null);
+      setPhotoZoom(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected, photoZoom]);
+
+  /** 换元素即把原子模型复位为 2D 课本规范：3D 只是「可选的空间补充」，不能成为默认视图 */
+  useEffect(() => { setAtomMode('2d'); }, [selected?.n]);
+
   const isZh = lang === 'zh';
+
+  /** 高亮电子层：悬停 > 点击锁定 > 默认最外层（打开详情即高亮最外层电子数——初中核心考点） */
+  const layerHighlight = (e: ElementInfo) => hoveredLayer ?? pinnedLayer ?? e.shells.length - 1;
+
+  /** 切换元素（相邻导航共用）：同步复位层高亮、照片放大与朗读状态 */
+  const goTo = (target: ElementInfo) => {
+    speakAudio.current?.pause();
+    window.speechSynthesis?.cancel();
+    if (speakTimeout.current) window.clearTimeout(speakTimeout.current);
+    setSpeakState('idle');
+    setSelected(target);
+    setPinnedLayer(null);
+    setHoveredLayer(null);
+    setPhotoZoom(false);
+  };
+
+  /** 中央展台：进入元素格立即切换（无延迟，快速划过也不掉帧）；
+   *  离开网格后延迟 800ms 回退到默认图例态——期间再次进入任何格子即取消回退，避免闪烁。 */
+  const previewOn = (el: ElementInfo) => {
+    if (heroTimer.current) { window.clearTimeout(heroTimer.current); heroTimer.current = null; }
+    setHeroEl(el);
+  };
+  const previewOff = () => {
+    if (heroTimer.current) window.clearTimeout(heroTimer.current);
+    heroTimer.current = window.setTimeout(() => { setHeroEl(null); heroTimer.current = null; }, 800);
+  };
+  useEffect(() => () => { if (heroTimer.current) window.clearTimeout(heroTimer.current); }, []);
+
+  /** 展台派生数据（无悬停元素时为 null）：质量文本 / 族展示三元组 / 外层倾向短标签 */
+  const heroData = (() => {
+    if (!heroEl) return null;
+    const vt = valenceTendency(heroEl);
+    return {
+      vt,
+      gd: groupDisplay(heroEl, isZh),
+      massText: heroEl.radioactive
+        ? String(heroEl.mass)
+        : heroEl.massExact != null ? String(heroEl.massExact) : String(heroEl.mass ?? '—'),
+      vLabel: VALENCE_LABEL[vt.kind][isZh ? 'zh' : 'en'] + (vt.kind === 'lose' || vt.kind === 'gain' ? ` ${vt.count}` : ''),
+      shells: heroEl.shells.join(', '),
+    };
+  })();
+
+  /** 详情卡派生数据（与展台共用同一口径，避免两处漂移） */
+  const selGroup = selected ? groupDisplay(selected, isZh) : null;
+  const selValence = selected ? valenceTendency(selected) : null;
+  const selValenceNote = selected && selValence ? valenceNote(selected, selValence, isZh) : null;
 
   // 检索：符号精确优先 / 否则符号前缀、中文包含、英文前缀（避免短查询过度匹配）
   const queryLower = query.trim().toLowerCase();
@@ -416,7 +680,11 @@ export default function PeriodicTable() {
       <button
         key={`el-${el.n}`}
         type="button"
-        onClick={() => { setSelected(el); setTab('props'); setHoveredLayer(null); }}
+        onClick={() => { setSelected(el); setTab('props'); setHoveredLayer(null); setPinnedLayer(null); }}
+        onMouseEnter={() => previewOn(el)}
+        onMouseLeave={previewOff}
+        onFocus={() => previewOn(el)}
+        onBlur={previewOff}
         title={`${el.zh} ${el.symbol}`}
         aria-label={`${el.zh} ${el.symbol}`}
         className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)] ${
@@ -511,8 +779,26 @@ export default function PeriodicTable() {
       {/* 中考跟读（播放器：选预设 → 设置次数/间隔 → 播放，右侧进度条 + 播放控制） */}
       <div className="recite-panel mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3">
         <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
-          <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
-            {lang === 'zh' ? '// 中考跟读' : '// Recite'}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[0.6875rem] mono-font text-[var(--muted)]">
+              {lang === 'zh' ? '// 中考跟读' : '// Recite'}
+            </span>
+            {/* 离线教学包：收敛为紧贴标题的行内纯图标按钮（不再独立占行）。
+                点击逻辑与弹窗沿用原样；提示走原生 title，进度并进 title 文案。 */}
+            <button
+              type="button"
+              onClick={() => setShowPack(true)}
+              title={
+                packStatus && packStatus.supported
+                  ? `${t.offlinePack.entryHint} · ${packStatus.cachedCount}/${packStatus.totalCount}`
+                  : t.offlinePack.entryHint
+              }
+              aria-label={t.offlinePack.entry}
+              className="chip-tap inline-flex items-center gap-0.5 text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+            >
+              <HardDrive className="w-4 h-4 shrink-0" aria-hidden="true" />
+              {packStatus?.isFull && <CircleCheck className="w-3 h-3 shrink-0 text-green-600" aria-hidden="true" />}
+            </button>
           </div>
           {/* 声音切换（女声/男声，语言跟随界面）+ 跟读进度 */}
           <div className="flex items-center gap-3">
@@ -540,25 +826,6 @@ export default function PeriodicTable() {
           </div>
         </div>
 
-        {/* 离线教学包：把照片与读音存到本机，断网也能照常上课 */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowPack(true)}
-            title={t.offlinePack.entryHint}
-            className="chip-tap inline-flex items-center gap-1.5 border border-[var(--border)] px-2.5 py-1.5 text-xs mono-font text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
-          >
-            <HardDrive className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-            {t.offlinePack.entry}
-            {packStatus?.isFull ? (
-              <CircleCheck className="w-3 h-3 shrink-0 text-green-600" aria-hidden="true" />
-            ) : (
-              <span className="text-[0.625rem] text-[var(--muted)]">
-                {!packStatus ? '' : packStatus.supported ? `${packStatus.cachedCount}/${packStatus.totalCount}` : '—'}
-              </span>
-            )}
-          </button>
-        </div>
         {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
 
         {/* 预设选择 */}
@@ -713,12 +980,153 @@ export default function PeriodicTable() {
         </div>
 
         {/* pt-3 给第一行（氢/氦）hover 上浮留出空间，避免被上方模块遮挡 */}
+        {/* 右端渐隐蒙版：只在「右侧确实还有可滚动内容」时施加。
+            原先 .fade-r-x 无条件把容器最后 28px 渐隐为透明 —— CSS mask 是真的把这 28px 抹掉，
+            等于把第 18 列（He~Og）与镧系/锕系右端的边框挖去。现改为条件施加并收窄到 12px。 */}
         <div
           ref={tableScrollRef}
           onScroll={checkTableScroll}
-          className="fade-r-x overflow-x-auto pt-3 -mt-1 touch-pan-x overscroll-x-contain pb-2 scrollbar-thin"
+          style={canScrollRight ? { maskImage: SCROLL_FADE_MASK, WebkitMaskImage: SCROLL_FADE_MASK } : undefined}
+          className="overflow-x-auto pt-3 -mt-1 touch-pan-x overscroll-x-contain pb-2 scrollbar-thin"
         >
-          <div className="min-w-[720px] xl:min-w-[880px]">
+          {/* pr-[3px] 为最右列留出均匀呼吸边距，边框不再贴住容器边缘 */}
+          <div className="relative min-w-[720px] xl:min-w-[880px] pr-[3px]">
+            {/* ── 中央悬停展台（Hero Preview Dashboard）──
+                占位说明：主表用 flex 行渲染，单元格为 flex-1；下面这层覆层用同一套几何
+                （左侧 24px 周期号 + 4px 间距 = 28px 起点，18 列等宽、4px 间隙、58px 行高），
+                因此列边界与真实格子逐列重合 —— 展台恰好落在第 1~3 周期、第 3~12 列的天然空白区。
+                纯 hover 交互，触屏无 hover 故在 <640px 折叠（sm:grid），390 视口下不占位、不溢出。 */}
+            <div
+              className="pointer-events-none absolute left-[28px] right-[3px] top-0 hidden sm:grid"
+              style={{
+                gridTemplateColumns: 'repeat(18, minmax(0, 1fr))',
+                gridTemplateRows: 'repeat(3, 58px)',
+                gap: '4px',
+              }}
+              aria-hidden="true"
+            >
+              {/* 展台本体：**无边框、无底色、无投影、无裁切**——完全通透。
+                  层级只靠字重、字阶与负空间组织，让图文直接悬浮在周期表中部的天然留白里，
+                  两态（图例态 / 悬停态）共用同一片空间，不出现「外挂小卡片」的硬切割感。 */}
+              <div className="col-start-3 col-end-13 row-start-1 row-end-4 relative">
+                {/* 默认态：分类图例 + 操作指引 */}
+                <div
+                  className={`absolute inset-0 px-3 py-2.5 flex flex-col justify-center gap-1.5 transition-opacity duration-[var(--dur-base)] ${
+                    heroEl ? 'opacity-0' : 'opacity-100'
+                  }`}
+                >
+                  <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest">
+                    // {isZh ? '分类图例' : 'LEGEND'}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    {(Object.keys(CAT_COLOR) as ElementInfo['cat'][]).map((k) => (
+                      <span key={k} className="inline-flex items-center gap-1.5 text-[0.6875rem] serif-font text-[var(--fg)]">
+                        <span
+                          className="w-3 h-3 border shrink-0"
+                          style={{ borderColor: CAT_COLOR[k].border, backgroundColor: CAT_COLOR[k].bg }}
+                        />
+                        {isZh ? CAT_ZH[k] : CAT_EN[k]}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[0.6875rem] serif-font text-[var(--muted)] leading-relaxed">
+                    {isZh
+                      ? '把光标移到任意元素格上，这里即时预览该元素的实物标本与核心数据。'
+                      : 'Move the cursor over any cell to preview its specimen photo and key data here.'}
+                  </p>
+                  <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-relaxed">
+                    {isZh
+                      ? '点击元素格 → 完整微观结构与百科故事 · 横向滚动浏览 118 个元素'
+                      : 'Click a cell → full micro view and wiki story · scroll sideways for all 118'}
+                  </p>
+                </div>
+
+                {/* 悬停态：实物标本 + 身份 + 核心指标 + 微提示 */}
+                {heroData && heroEl && (
+                  <div
+                    className={`absolute inset-0 px-3 py-2.5 flex flex-col gap-1.5 transition-opacity duration-[var(--dur-base)] ${
+                      heroEl ? 'opacity-100' : 'opacity-0'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="relative w-[72px] h-[72px] shrink-0 border border-[var(--border)] rounded-xs overflow-hidden bg-white">
+                        <img
+                          key={`hero-img-${heroEl.n}`}
+                          src={`/element-images/${heroEl.n}.jpg`}
+                          alt=""
+                          loading="lazy"
+                          draggable={false}
+                          className="w-full h-full object-contain"
+                          style={{ display: heroEl.n > 103 ? 'none' : 'block' }}
+                          onError={(e) => {
+                            const img = e.currentTarget as HTMLImageElement;
+                            img.style.display = 'none';
+                            const fb = img.parentElement?.querySelector('[data-hero-fallback]') as HTMLElement | null;
+                            if (fb) fb.style.display = 'flex';
+                          }}
+                        />
+                        <div
+                          key={`hero-fb-${heroEl.n}`}
+                          data-hero-fallback
+                          className="absolute inset-0 flex-col items-center justify-center gap-0.5"
+                          style={{ display: heroEl.n > 103 ? 'flex' : 'none' }}
+                        >
+                          <span className="text-lg font-bold mono-font leading-none" style={{ color: CAT_COLOR[heroEl.cat].border }}>
+                            {heroEl.symbol}
+                          </span>
+                          <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{isZh ? '无实物图' : 'no photo'}</span>
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[0.625rem] mono-font text-[var(--muted)] leading-none">#{heroEl.n}</div>
+                        <div className="flex items-baseline gap-1.5 mt-0.5">
+                          <span className="text-xl font-bold mono-font text-[var(--fg)] leading-none">{heroEl.symbol}</span>
+                          <span className="text-base serif-font font-medium text-[var(--fg)] leading-none">{heroEl.zh}</span>
+                        </div>
+                        <div className="text-[0.6875rem] serif-font text-[var(--muted)] truncate leading-tight mt-0.5">{heroEl.en}</div>
+                        <span
+                          className="mt-1 inline-block px-1.5 py-0.5 border text-[0.625rem] mono-font rounded-xs font-medium"
+                          style={{
+                            borderColor: CAT_COLOR[heroEl.cat].border,
+                            color: CAT_COLOR[heroEl.cat].border,
+                            backgroundColor: CAT_COLOR[heroEl.cat].bg,
+                          }}
+                        >
+                          {isZh ? CAT_ZH[heroEl.cat] : CAT_EN[heroEl.cat]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.6875rem] mono-font text-[var(--muted)]">
+                      <span>
+                        {isZh ? '相对原子质量 ' : 'Aᵣ '}
+                        <b className="text-[var(--fg)] font-semibold">{heroData.massText}</b>
+                      </span>
+                      <span>
+                        {isZh ? '周期 ' : 'Period '}
+                        <b className="text-[var(--fg)] font-semibold">{heroEl.period}</b>
+                      </span>
+                      <span>
+                        {isZh ? '族 ' : 'Group '}
+                        <b className="text-[var(--fg)] font-semibold serif-font">{heroData.gd.main}</b>
+                      </span>
+                      <span>
+                        {isZh ? '电子层 ' : 'Shells '}
+                        <b className="text-[var(--fg)] font-semibold">{heroData.shells}</b>
+                      </span>
+                      <span>
+                        {isZh ? '外层倾向 ' : 'Outer '}
+                        <b className="text-[var(--fg)] font-semibold">{heroData.vLabel}</b>
+                      </span>
+                    </div>
+                    <p className="mt-auto text-[0.625rem] serif-font text-[var(--muted)] leading-tight">
+                      {isZh
+                        ? '点击元素格打开完整微观结构与百科故事'
+                        : 'Click the cell to open the full micro view and wiki story'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* 周期行 */}
             {[1, 2, 3, 4, 5, 6, 7].map((period) => (
               <div key={period} className="flex gap-1 mb-1">
@@ -783,17 +1191,65 @@ export default function PeriodicTable() {
       {/* 元素详情卡 */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]"
           onClick={() => setSelected(null)}
         >
           <div
-            className="relative w-full max-w-sm sm:max-w-md max-h-[92dvh] sm:max-h-[88dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
+            /* 顶部锚定（Top-anchored）：外框顶边由 overlay 的 padding 固定（8 / 16px），
+               高度随内容向下生长——两个 Tab 高度不一致时，弹窗头部与 Tab 控制栏**绝对静止**，
+               绝不再因「垂直居中重算」整体上下跳（改前实测：1280×1100 下切 Tab 面板 top
+               66 → 172 → 66，跳幅 106px = 高度差 212px 的一半）。max-h 与 padding 对齐，
+               保证底边仍留出同样边距；overlay 自身 overflow-y-auto 兜底极矮视口。 */
+            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.zh} ${selected.symbol}`}
           >
             {/* 顶部固定标题与导航区 */}
             <div className="relative px-4 py-3 sm:px-5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--bg)] shrink-0">
+              {/* 相邻元素无缝切换：连续探索流。首末位（#1 H / #118 Og）自动禁用；
+                  ← / → 方向键同效，便于同周期、同族比对。 */}
+              {(() => {
+                const { prev, next } = neighborOf(selected.n);
+                const navCls = (on: boolean) =>
+                  `inline-flex items-center gap-1 px-2 py-0.5 text-[0.6875rem] mono-font border rounded-md transition-colors touch-manipulation ${
+                    on
+                      ? 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+                      : 'border-[var(--border)] text-[var(--muted)] opacity-35 cursor-not-allowed'
+                  }`;
+                return (
+                  <div className="flex items-center justify-end gap-1.5 pr-9">
+                    <button
+                      type="button"
+                      onClick={() => prev && goTo(prev)}
+                      disabled={!prev}
+                      aria-label={prev ? `${isZh ? '上一个元素' : 'Previous element'} #${prev.n} ${prev.zh} ${prev.symbol}` : (isZh ? '已是第一个元素' : 'First element')}
+                      title={prev ? `#${prev.n} ${prev.zh} ${prev.symbol}` : (isZh ? '已是第一个元素' : 'First element')}
+                      className={navCls(Boolean(prev))}
+                    >
+                      <ArrowLeft className="w-3 h-3 shrink-0" aria-hidden />
+                      <span className="truncate max-w-[4.5rem]">{prev ? `#${prev.n} ${prev.symbol}` : '—'}</span>
+                    </button>
+                    <span className="shrink-0 px-0.5 text-[0.6875rem] mono-font text-[var(--muted)] tabular-nums">
+                      <span className="text-[var(--fg)] font-medium">{selected.n}</span>
+                      <span className="mx-0.5">/</span>
+                      {ELEMENTS.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => next && goTo(next)}
+                      disabled={!next}
+                      aria-label={next ? `${isZh ? '下一个元素' : 'Next element'} #${next.n} ${next.zh} ${next.symbol}` : (isZh ? '已是最后一个元素' : 'Last element')}
+                      title={next ? `#${next.n} ${next.zh} ${next.symbol}` : (isZh ? '已是最后一个元素' : 'Last element')}
+                      className={navCls(Boolean(next))}
+                    >
+                      <span className="truncate max-w-[4.5rem]">{next ? `#${next.n} ${next.symbol}` : '—'}</span>
+                      <ArrowRight className="w-3 h-3 shrink-0" aria-hidden />
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* 关闭按钮：独立右上角 */}
               <button
                 type="button"
@@ -873,11 +1329,36 @@ export default function PeriodicTable() {
               {/* 基础属性面板 */}
               {tab === 'props' && (
                 <>
-                  {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数） */}
+                  {/* 原子结构示意图（教材简绘：核 + 实线轨道 + 电子点；悬停/点击电子层显示该层电子数）
+                      视图切换：**默认 2D 课本规范**（「+Z」核圈 + 同心圆，中考必考画法）；3D 仅为可选的空间补充 */}
                   <div className="relative border border-[var(--border)] px-2 py-1 mb-1.5 bg-[var(--card-bg)]/30 rounded-xs">
-                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest mb-0">
-                      // {lang === 'zh' ? '原子结构示意图（点击电子层查看电子数）' : 'Bohr model (tap a shell for electron count)'}
+                    {/* 左上：单行小标题（原先与双段控件同行且控件更高，控件收敛到右上角后释放该行高度） */}
+                    <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest">
+                      // {isZh ? '原子结构示意图' : 'Bohr model'}
                     </div>
+                    {/* 图区右上角幽灵按钮（Ghost Button）：不占布局行，悬浮在外框内部右上角。
+                        文案只描述「点下去会发生什么」，不再用「2D + 状态词」这类既像状态标识又像按钮的措辞：
+                        2D 态 →「3D 模型」（点击进入 3D 探索）；3D 态 →「课本平面」（点击切回课本规范图）。 */}
+                    <button
+                      type="button"
+                      data-atom-mode={atomMode}
+                      aria-pressed={atomMode === '3d'}
+                      aria-label={isZh ? '原子模型视图' : 'Atom model view'}
+                      title={atomMode === '3d'
+                        ? (isZh ? '切回课本平面规范图' : 'Back to the flat textbook diagram')
+                        : (isZh ? '查看 3D 立体模型' : 'Open the 3D model')}
+                      onClick={() => setAtomMode(atomMode === '2d' ? '3d' : '2d')}
+                      /* 轻盈徽章：按 .dialog-tabs 先例豁免全局 main button 的 40px 底线 */
+                      style={{ minHeight: 0 }}
+                      className={`absolute top-1 right-1 z-10 px-1.5 py-0.5 text-[0.625rem] mono-font rounded-xs border transition-colors touch-manipulation ${
+                        atomMode === '3d'
+                          ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]'
+                          : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:text-[var(--fg)]'
+                      }`}
+                    >
+                      {atomMode === '3d' ? (isZh ? '课本平面' : 'Flat view') : (isZh ? '3D 模型' : '3D model')}
+                    </button>
+                    {atomMode === '2d' ? (
                     <svg viewBox="0 0 180 150" className="w-full max-h-[160px]" aria-label={`${selected.zh} 原子结构`}>
                       {/* 轨道半径与电子点位由 lib/atom-shells 统一给出（纯函数，smoke 测试共用同一实现） */}
                       {(() => {
@@ -892,12 +1373,12 @@ export default function PeriodicTable() {
                             {/* 电子层轨道 + 隐形感应区：悬停/点击整层都可触发，避免细线难点 */}
                             {shells.map((s, i) => {
                               const r = s.r;
-                              const active = hoveredLayer === i;
+                              const active = layerHighlight(selected) === i;
                               return (
                                 <g
                                   key={i}
                                   className="cursor-pointer"
-                                  onClick={() => setHoveredLayer(active ? null : i)}
+                                  onClick={() => setPinnedLayer(pinnedLayer === i ? null : i)}
                                   onMouseEnter={() => setHoveredLayer(i)}
                                   onMouseLeave={() => setHoveredLayer(null)}
                                 >
@@ -925,6 +1406,7 @@ export default function PeriodicTable() {
                               // 内层快(3s)、外层慢(9s)；相邻层反向
                               const dur = (3 + i * 2).toFixed(1);
                               const reverse = i % 2 === 1;
+                              const lit = layerHighlight(selected) === i;
                               return (
                                 <g
                                   key={i}
@@ -932,7 +1414,15 @@ export default function PeriodicTable() {
                                   style={{ animationDuration: `${dur}s`, animationDirection: reverse ? 'reverse' : 'normal' }}
                                 >
                                   {s.dots.map((d, k) => (
-                                    <circle key={k} cx={d.x} cy={d.y} r={s.dotR} fill="var(--fg)" />
+                                    <circle
+                                      key={k}
+                                      cx={d.x}
+                                      cy={d.y}
+                                      r={lit ? s.dotR + 0.55 : s.dotR}
+                                      fill="var(--fg)"
+                                      opacity={lit ? 1 : 0.42}
+                                      style={{ transition: 'r 0.2s ease, opacity 0.2s ease' }}
+                                    />
                                   ))}
                                 </g>
                               );
@@ -941,52 +1431,182 @@ export default function PeriodicTable() {
                         );
                       })()}
                     </svg>
-                    {/* 当前层电子数提示条（悬停/点击时显示；绝对定位不占布局，避免卡片高度变化引起晃动） */}
-                    {hoveredLayer !== null && selected.shells[hoveredLayer] != null && (
-                      <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
-                        {lang === 'zh'
-                          ? `第 ${hoveredLayer + 1} 层：${selected.shells[hoveredLayer]} 个电子`
-                          : `Shell ${hoveredLayer + 1}: ${selected.shells[hoveredLayer]} electron${selected.shells[hoveredLayer] > 1 ? 's' : ''}`}
-                      </div>
+                    ) : (
+                      /* 3D 立体模型：纯原生 Canvas 2D 自算投影（零 3D 库）；拖拽旋转，与下方胶囊联动高亮 */
+                      <Atom3D
+                        z={selected.n}
+                        n={particleCount(selected).neutrons}
+                        shells={selected.shells}
+                        highlight={layerHighlight(selected)}
+                        label={isZh ? `${selected.zh} 三维空间原子模型` : `${selected.en} 3D atom model`}
+                      />
                     )}
+                    {/* 高亮层电子数提示条（默认即最外层；绝对定位不占布局，避免卡片高度变化引起晃动） */}
+                    {(() => {
+                      const li = layerHighlight(selected);
+                      const cnt = selected.shells[li];
+                      if (cnt == null) return null;
+                      return (
+                        <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
+                          {/* 层名字母固定走 --f-serif：Space Grotesk（--f-mono）的 O 与 0 逐像素同形
+                              ——40px 下宽高同为 20×30、墨量 376 vs 375、仅 2.1% 抗锯齿噪声，且不支持
+                              zero/ss01 斜杠零特性——第 5 层「O 层」会被读成「0 层」。serif 同尺寸下
+                              O/0 墨量比 1.58×，一眼可辨；计数仍留 mono 以保持等宽对齐。 */}
+                          <span className="serif-font">{SHELL_NAMES[li]}</span>
+                          {lang === 'zh'
+                            ? ` 层（第 ${li + 1} 层）：${cnt} 个电子`
+                            : ` shell (#${li + 1}): ${cnt} electron${cnt > 1 ? 's' : ''}`}
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  {/* 属性列表：斑马线行距 */}
+                  {/* 电子层胶囊栏：把「2, 8, 13, 1」这类平铺文本变成可点条目；
+                      点击胶囊或图上轨道圆环都锁定该层，默认高亮最外层（初中核心考点）。 */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[0.625rem] mono-font text-[var(--muted)] tracking-widest">
+                      // {lang === 'zh' ? '电子层' : 'Shells'}
+                    </span>
+                    {selected.shells.map((cnt, i) => {
+                      const lit = layerHighlight(selected) === i;
+                      const isOuter = i === selected.shells.length - 1;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setPinnedLayer(pinnedLayer === i ? null : i)}
+                          aria-pressed={lit}
+                          aria-label={`${SHELL_NAMES[i]} ${cnt}${isOuter ? (lang === 'zh' ? '（最外层）' : ' (outermost)') : ''}`}
+                          title={isOuter ? (lang === 'zh' ? '最外层电子数 · 初中核心考点' : 'Outermost shell electrons') : undefined}
+                          /* 紧凑徽章行：按 .dialog-tabs 的既有先例豁免全局 main button 的 40px 底线
+                             （同一状态在左侧结构图上另有 16px 宽的整环感应区，触控另有入口） */
+                          style={{ minHeight: 0 }}
+                          className={`inline-flex items-baseline gap-1 px-2 py-0.5 text-xs mono-font rounded border transition-colors touch-manipulation ${
+                            lit
+                              ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold'
+                              : 'border-transparent bg-[var(--accent-light)] text-[var(--muted)] hover:text-[var(--fg)]'
+                          }`}
+                        >
+                          {/* 层名字母走 --f-serif（与图区提示条同源）：Space Grotesk 的 O/0 同形会误读为数字 */}
+                          <span className="serif-font">{SHELL_NAMES[i]}</span>
+                          <span className="tabular-nums">{cnt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* 学段分层：21 号起电子填入次外层与更内层轨道，排布不再符合初中「2,8,8,…」经验。
+                      以紧凑通知徽章条呈现（正体、无左侧长竖线），替代原先的整行斜体小字。 */}
+                  {selected.n >= 21 && (
+                    <div className="flex items-start gap-1.5 text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed">
+                      <span className="mt-[1px] shrink-0 px-1 rounded-xs border border-[var(--border)] mono-font tracking-wide">
+                        {lang === 'zh' ? '高中拓展' : 'Extension'}
+                      </span>
+                      <span>
+                        {lang === 'zh'
+                          ? '21 号起电子填入次外层与更内层轨道，第 3 层最多容纳 18 个电子，排布不再是「2, 8, 8, …」。初中重点掌握 1~20 号元素。'
+                          : 'From Z = 21 electrons fill deeper subshells, so shell 3 holds up to 18 and the layout is no longer “2, 8, 8, …”. Junior high focuses on Z = 1–20.'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 微观粒子计数看板：质子 / 中子 / 核外电子（初中铁律 A ≈ Z + N） */}
+                  {(() => {
+                    const pc = particleCount(selected);
+                    const cells: Array<{ id: 'proton' | 'neutron' | 'electron'; k: string; sym: string; v: number }> = [
+                      /* 三格与 LEGEND_DOT 的三套绘制配方一一对应（质子深色微球 / 中子浅米色微球 / 电子环点） */
+                      { id: 'proton', k: lang === 'zh' ? '质子' : 'Protons', sym: 'Z', v: pc.protons },
+                      { id: 'neutron', k: lang === 'zh' ? '中子' : 'Neutrons', sym: lang === 'zh' ? 'N（估算）' : 'N (est.)', v: pc.neutrons },
+                      { id: 'electron', k: lang === 'zh' ? '核外电子' : 'Electrons', sym: 'Z', v: pc.electrons },
+                    ];
+                    return (
+                      <>
+                        <div className="grid grid-cols-3 gap-2">
+                          {cells.map((cell) => (
+                            <div key={cell.k} className="border border-[var(--border)] rounded-xs px-1.5 py-2 text-center bg-[var(--card-bg)]/40">
+                              <div className="flex items-center justify-center gap-1.5 text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
+                                {/* 微粒图例：核内两格是带高光的 3D 微球、核外电子是环点，形态本身即语义 */}
+                                <span
+                                  data-particle-dot={cell.id}
+                                  data-dot-shape={cell.id === 'electron' ? 'ringed-dot' : 'sphere'}
+                                  className="w-2 h-2 shrink-0 rounded-full"
+                                  style={LEGEND_DOT[cell.id]}
+                                  aria-hidden="true"
+                                />
+                                {cell.k}
+                              </div>
+                              <div className="text-xl sm:text-2xl font-bold mono-font text-[var(--fg)] leading-tight tabular-nums">{cell.v}</div>
+                              <div className="text-[0.625rem] mono-font text-[var(--muted)]">{cell.sym}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="px-1 text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed">
+                          {lang === 'zh'
+                            ? '核电荷数 = 质子数 = 核外电子数；相对原子质量 ≈ 质子数 + 中子数。中子数为估算值：质量按同位素丰度加权平均后取整（氯取 ³⁵Cl），放射性元素取最长寿命核素。'
+                            : 'Nuclear charge = protons = electrons; relative atomic mass ≈ protons + neutrons. Neutrons are an estimate: mass is an abundance-weighted average rounded to a common stable isotope (³⁵Cl for chlorine); radioactive elements use their longest-lived nuclide.'}
+                        </p>
+                      </>
+                    );
+                  })()}
+
+                  {/* 主指标卡：相对原子质量 / 周期 / 族（3 列看板，取代原先单列流水账） */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="border border-[var(--border)] rounded-xs px-2 py-2 bg-[var(--card-bg)]/40">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
+                        {lang === 'zh' ? '相对原子质量' : 'Atomic mass'}
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold mono-font text-[var(--fg)] leading-tight tabular-nums">
+                        {selected.radioactive
+                          ? String(selected.mass)
+                          : (selected.massExact != null ? String(selected.massExact) : String(selected.mass ?? '—'))}
+                      </div>
+                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                        {selected.radioactive
+                          ? (lang === 'zh' ? '质量数 · 无稳定同位素' : 'mass no. · no stable isotope')
+                          : selected.massUnc ? `±${selected.massUnc}` : ''}
+                      </div>
+                    </div>
+                    <div className="border border-[var(--border)] rounded-xs px-2 py-2 text-center bg-[var(--card-bg)]/40">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
+                        {lang === 'zh' ? '周期' : 'Period'}
+                      </div>
+                      <div className="text-lg sm:text-xl font-bold mono-font text-[var(--fg)] leading-tight tabular-nums">{selected.period}</div>
+                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                        {lang === 'zh' ? '第几横行' : 'row'}
+                      </div>
+                    </div>
+                    <div className="border border-[var(--border)] rounded-xs px-2 py-2 text-center bg-[var(--card-bg)]/40">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
+                        {lang === 'zh' ? '族' : 'Group'}
+                      </div>
+                      {/* 族标签走 --f-serif：罗马数字 Ⅰ~Ⅷ（U+2160–U+2167 预组合字符）在 Space Grotesk
+                          中缺字形，会回退到同形备用字体（与相邻 mono 数字不同源、观感割裂）；serif 栈
+                          （Noto Serif CJK SC / Georgia）含该字形，才是「人教版标准罗马数字」的等效排印。 */}
+                      <div className="text-lg sm:text-xl font-bold serif-font text-[var(--fg)] leading-tight">{selGroup?.main ?? '—'}</div>
+                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                        {selGroup?.sub ?? ''}
+                      </div>
+                      {selGroup?.series && (
+                        <div className="mt-0.5 inline-block px-1 py-0.5 text-[0.5625rem] mono-font rounded-xs bg-[var(--accent-light)] text-[var(--fg)]">
+                          {selGroup.series}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 次级常规属性：紧凑排版行（英文名 / 类别徽章 / 核电荷数） */}
                   <dl className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
                     {[
                       { k: lang === 'zh' ? '英文名' : 'English', v: selected.en },
-                      { k: lang === 'zh' ? '核电荷数（原子序数）' : 'Nuclear charge (atomic number)', v: String(selected.n) },
-                      { k: lang === 'zh' ? '电子层排布' : 'Electron shells', v: selected.shells.join(', ') },
-                      { k: lang === 'zh' ? '相对原子质量' : 'Atomic mass', v: selected.radioactive ? String(selected.mass) : (selected.massExact != null ? String(selected.massExact) : String(selected.mass ?? '—')) },
-                      { k: lang === 'zh' ? '位置' : 'Position', v: lang === 'zh' ? `第 ${selected.period} 周期，第 ${selected.group ?? '?'} 族` : `Period ${selected.period}, Group ${selected.group ?? '?'}` },
-                      { k: lang === 'zh' ? '类别' : 'Category', v: isZh ? CAT_ZH[selected.cat as ElementInfo['cat']] : selected.cat },
+                      { k: lang === 'zh' ? '类别' : 'Category', v: isZh ? CAT_ZH[selected.cat as ElementInfo['cat']] : CAT_EN[selected.cat as ElementInfo['cat']] },
+                      { k: lang === 'zh' ? '核电荷数（原子序数）' : 'Nuclear charge (Z)', v: String(selected.n) },
                     ].map((row, i) => {
                       const isCat = row.k === (lang === 'zh' ? '类别' : 'Category');
-                      const isMass = row.k === (lang === 'zh' ? '相对原子质量' : 'Atomic mass');
                       return (
                         <div key={row.k} className={`flex items-baseline justify-between gap-3 py-2 px-2 text-sm ${i % 2 === 1 ? 'bg-[var(--card-bg)]/40' : ''}`}>
                           <dt className="text-[var(--muted)] serif-font shrink-0">{row.k}</dt>
                           <dd className="text-right serif-font text-[var(--fg)]">
-                            {isMass ? (
-                              // 相对原子质量：标准原子量 + 不确定度；放射性元素显示质量数并注明
-                              <span className="inline-flex items-baseline gap-1.5">
-                                <span>
-                                  {selected.radioactive
-                                    ? String(selected.mass)
-                                    : selected.massExact != null
-                                      ? String(selected.massExact)
-                                      : String(selected.mass ?? '—')}
-                                </span>
-                                {!selected.radioactive && selected.massUnc && (
-                                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">±{selected.massUnc}</span>
-                                )}
-                                {selected.radioactive && (
-                                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">
-                                    {lang === 'zh' ? '质量数·无稳定同位素' : 'mass no.·no stable'}
-                                  </span>
-                                )}
-                              </span>
-                            ) : isCat ? (
+                            {isCat ? (
                               // 类别：彩色标签（配色与检索图例一致：金属红/非金属绿/稀有气体蓝/类金属黄褐）
                               <span
                                 className="inline-block px-2 py-0.5 border text-xs mono-font rounded-xs font-medium"
@@ -1006,10 +1626,40 @@ export default function PeriodicTable() {
                       );
                     })}
                   </dl>
-                  <p className="px-1 text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
+
+                  {/* 次级指标卡：可由数据直接推出的结构要点。
+                      物性常数（熔点/沸点/密度）不在本仓数据模型中，此处不臆造数值；
+                      将来补入授权数据后可在此插槽并行呈现。
+                      「外层倾向」按分区给出：主族用初中得失规律，副族/f 区只说明可变化合价。 */}
+                  {selValence && (
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { k: lang === 'zh' ? '电子层数' : 'Shells', v: String(selected.shells.length) },
+                          { k: lang === 'zh' ? '最外层电子数' : 'Outermost e⁻', v: String(selValence.outer) },
+                          {
+                            k: lang === 'zh' ? '外层倾向' : 'Tendency',
+                            v: VALENCE_LABEL[selValence.kind][lang === 'zh' ? 'zh' : 'en']
+                              + (selValence.kind === 'lose' || selValence.kind === 'gain' ? ` ${selValence.count}` : ''),
+                          },
+                        ].map((cell) => (
+                          <div key={cell.k} className="border border-[var(--border)] rounded-xs px-1.5 py-2 text-center bg-[var(--card-bg)]/40">
+                            <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">{cell.k}</div>
+                            <div className="text-sm sm:text-base font-bold mono-font text-[var(--fg)] leading-tight">{cell.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {selValenceNote && (
+                        <p className="px-1 text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed border-l-2 border-[var(--border)] pl-2">
+                          {selValenceNote}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className="px-1 text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed">
                     {lang === 'zh'
-                      ? '相对原子质量为 IUPAC 标准原子量（2021 年修订）；无稳定同位素的元素显示其最稳定同位素的质量数。'
-                      : 'Atomic masses are IUPAC standard atomic weights (2021); elements with no stable isotopes show the mass number of their longest-lived isotope.'}
+                      ? '相对原子质量为 IUPAC 标准原子量（2021 年修订）。'
+                      : 'Atomic masses are IUPAC standard atomic weights (2021).'}
                   </p>
                 </>
               )}
@@ -1045,12 +1695,12 @@ export default function PeriodicTable() {
                         data-photo-fallback
                       >
                         <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
-                        <span className="text-[0.625rem] serif-font italic text-[var(--muted)]">
+                        <span className="text-[0.625rem] serif-font text-[var(--muted)]">
                           {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
                         </span>
                       </div>
                     </div>
-                    <p className="mt-1 text-[0.625rem] serif-font italic text-[var(--muted)]">
+                    <p className="mt-1 text-[0.625rem] serif-font text-[var(--muted)]">
                       {selected.n >= 105
                         ? lang === 'zh'
                           ? '人工合成元素，暂无实物照片'
@@ -1080,7 +1730,7 @@ export default function PeriodicTable() {
                       {lang === 'zh' ? selected.usage.zh : selected.usage.en}
                     </p>
                   </div>
-                  <p className="text-[0.625rem] serif-font italic text-[var(--muted)] leading-relaxed">
+                  <p className="text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed">
                     {lang === 'zh'
                       ? '发现史与用途为简要科普，具体年代与细节以权威化学史资料为准。'
                       : 'Discovery and uses are brief; exact dates and details defer to authoritative chemistry history sources.'}
