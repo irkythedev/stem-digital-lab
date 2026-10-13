@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
@@ -28,6 +28,25 @@ import EngineBadge from '../../components/lab/EngineBadge';
 import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
+
+  /** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  concludeQ1: [['prop', 'concludeQ1Proportional'], ['inv', 'concludeQ1Inverse'], ['none', 'concludeQ1None']],
+  concludeQ2: [['prop', 'concludeQ2Proportional'], ['inv', 'concludeQ2Inverse'], ['none', 'concludeQ2None']],
+  concludeQ3: [['none', 'concludeQ3None'], ['r', 'concludeQ3R'], ['invr', 'concludeQ3InvR']],
+  concludeQ4: [['iur', 'concludeQ4IUR'], ['uir', 'concludeQ4UIR'], ['none', 'concludeQ4None']],
+} as const;
+
+/** 题号 → 正确答案值（多选题写成多个值；等价表达式必须同时列为正确） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  concludeQ1: ['prop'],
+  concludeQ2: ['inv'],
+  concludeQ3: ['invr'],
+  concludeQ4: ['iur', 'uir'],
+};
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -127,18 +146,18 @@ const copy = {
     concludeQ1: 'R 不变时，I 与 U：',
     concludeQ1Proportional: '成正比（U 翻倍，I 翻倍）',
     concludeQ1Inverse: '成反比（U 翻倍，I 减半）',
-    concludeQ1None: '没关系',
+    concludeQ1None: '没关系（电压电流互不影响）',
     concludeQ2: 'U 不变时，I 与 R：',
     concludeQ2Inverse: '成反比（R 翻倍，I 减半）',
     concludeQ2Proportional: '成正比（R 翻倍，I 翻倍）',
-    concludeQ2None: '没关系',
+    concludeQ2None: '没关系（电阻电流互不影响）',
     concludeQ3: 'I-U 图像的斜率等于：',
     concludeQ3InvR: '1/R（R 越大越平缓）',
-    concludeQ3R: 'R（R 越大越陡）',
-    concludeQ3None: '没有意义',
+    concludeQ3R: 'R（R 越大图像越陡）',
+    concludeQ3None: '没有意义（与 R 无关）',
     concludeQ4: '欧姆定律的表达式是：',
     concludeQ4IUR: 'I = U / R',
-    concludeQ4UIR: 'U = I × R（等价变形）',
+    concludeQ4UIR: 'U = I × R',
     concludeQ4None: 'I = U × R',
     concludeHint: '选完四个，看看结论和你的观察是否一致',
     feedbackText:
@@ -287,6 +306,9 @@ export default function Ohm() {
   const [r, setR] = useState(TARGET_R);
   const [element, setElement] = useState<ElementType>('resistor');
   const [rp, setRp] = useState(40); // 滑动变阻器阻值；初始置最大（教科书：连接电路时滑片在最大阻值处，保护电路）
+  /** 表盘手动量程：null = 自动选档（默认）；点击表盘后锁定，用于观察超量程保护 */
+  const [aRange, setARange] = useState<number | null>(null);
+  const [vRange, setVRange] = useState<number | null>(null);
   /** 控制电压（探究二：换电阻后须调变阻器使电压回到此值）；null = 未启用 */
   const [targetV, setTargetV] = useState<number | null>(null);
   const [measureMode, setMeasureMode] = useState(false);
@@ -323,7 +345,14 @@ export default function Ohm() {
   }>({ q1: null, q2: null, q3: null, q4: null });
 
   // 结论正确答案
-  const correctKeys = { q1: 'prop', q2: 'inv', q3: 'invr', q4: 'iur' } as const;
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (t as unknown as Record<string, string>)[labelKey],
+    }));
+  const correctKeys = { q1: QUIZ_CORRECT.concludeQ1, q2: QUIZ_CORRECT.concludeQ2, q3: QUIZ_CORRECT.concludeQ3, q4: QUIZ_CORRECT.concludeQ4 };
+
   const conclusionComplete =
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predShape !== null;
@@ -375,7 +404,9 @@ export default function Ohm() {
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: 40, y1: 60, x2: 95, y2: 60, current: 'i0' },
     { id: 'dry-mid', x1: 145, y1: 60, x2: 173, y2: 60, current: 'i0' },
-    { id: 'dry-rheo', x1: 207, y1: 60, x2: 230, y2: 60, current: 'i0' },
+    // 「一上一下」：变阻器由右上接线柱 D（金属杆端，y=44）出线，再 90° 折向干路高度
+    { id: 'dry-rheo', x1: 207, y1: 44, x2: 230, y2: 44, current: 'i0' },
+    { id: 'dry-rheo-v', x1: 230, y1: 44, x2: 230, y2: 60, current: 'i0' },
     { id: 'dry-right', x1: 270, y1: 60, x2: 270, y2: 140, current: 'i0' },
     { id: 'dry-bottom', x1: 270, y1: 140, x2: 40, y2: 140, current: 'i0' },
     { id: 'dry-batt-top', x1: 40, y1: 60, x2: 40, y2: 70, current: 'i0' },
@@ -396,9 +427,30 @@ export default function Ohm() {
     return c.voltage === 'v-elem' ? elemVoltage : u;
   };
 
-  /** 表盘量程：电流表 0.6A / 3A 自动选档（真实学生表双量程），电压表 0-15V */
-  const gaugeMax = (kind: 'current' | 'voltage', target: MeterTarget | null): number =>
-    kind === 'current' ? ((gaugeValue(kind, target) ?? 0) <= 0.6 ? 0.6 : 3) : 15;
+  /** 双量程档位（对应实物电流表 0.6A/3A、电压表 3V/15V 两组接线柱） */
+  const A_RANGES = [0.6, 3];
+  const V_RANGES = [3, 15];
+
+  /**
+   * 表盘量程：默认按读数自动选档（真实学生表双量程）；
+   * 点击表盘手动换档后锁定该档——读数若超过本档满偏即出现「超量程」警示（指针停满偏、不飞出）。
+   */
+  const gaugeMax = (kind: 'current' | 'voltage', target: MeterTarget | null): number => {
+    const val = gaugeValue(kind, target) ?? 0;
+    const list = kind === 'current' ? A_RANGES : V_RANGES;
+    const manual = kind === 'current' ? aRange : vRange;
+    return manual ?? (val <= list[0] ? list[0] : list[1]);
+  };
+
+  /** 点击表盘换档：在双量程之间循环（电流 0.6↔3A、电压 3↔15V） */
+  const cycleRange = (kind: 'current' | 'voltage') => {
+    const list = kind === 'current' ? A_RANGES : V_RANGES;
+    const val = gaugeValue(kind, kind === 'current' ? meterA : meterV) ?? 0;
+    const cur = (kind === 'current' ? aRange : vRange) ?? (val <= list[0] ? list[0] : list[1]);
+    const next = list[(list.indexOf(cur) + 1) % list.length];
+    if (kind === 'current') setARange(next);
+    else setVRange(next);
+  };
 
   /** 当前测点名称 */
   const gaugeLabel = (kind: 'current' | 'voltage'): string => {
@@ -420,6 +472,8 @@ export default function Ohm() {
     setMeterA({ id: 'dry-left', x: 67, y: 60 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
+    setARange(null);
+    setVRange(null);
   };
 
   const redoAll = () => {
@@ -584,12 +638,14 @@ export default function Ohm() {
                 max={gaugeMax('current', meterA)}
                 unit="A"
                 label={gaugeLabel('current')}
+                onCycleRange={() => cycleRange('current')}
               />
               <MeterGauge
                 value={gaugeValue('voltage', meterV)}
                 max={gaugeMax('voltage', meterV)}
                 unit="V"
                 label={gaugeLabel('voltage')}
+                onCycleRange={() => cycleRange('voltage')}
               />
             </div>
             <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
@@ -601,7 +657,9 @@ export default function Ohm() {
                 {/* 上导线（电池正极 → 开关S 左触点 95 → 右触点 145 → 滑动变阻器 → 元件）导线始终可见 */}
                 <line x1="40" y1="60" x2="95" y2="60" />
                 <line x1="145" y1="60" x2="173" y2="60" />
-                <line x1="207" y1="60" x2="230" y2="60" />
+                {/* 变阻器出线：右上接线柱 D(207,44) → 90° 直角折下 → 元件左端(230,60) */}
+                <line x1="207" y1="44" x2="230" y2="44" />
+                <line x1="230" y1="44" x2="230" y2="60" />
                 {/* 元件右端到下横线 + 回负极：导线始终可见，开关只断电流 */}
                 <line x1="270" y1="60" x2="270" y2="140" />
                 <line x1="270" y1="140" x2="40" y2="140" />
@@ -1026,7 +1084,7 @@ export default function Ohm() {
                   onClick={reveal}
                   className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
-                  ✓ {t.predictDone} — {t.revealLabel}
+                  <Check className={MARK_CLS} aria-hidden />{t.predictDone} — {t.revealLabel}
                 </button>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictHint}</p>
@@ -1108,20 +1166,19 @@ export default function Ohm() {
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ1}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(
-                    [
-                      ['prop', t.concludeQ1Proportional],
-                      ['inv', t.concludeQ1Inverse],
-                      ['none', t.concludeQ1None],
-                    ] as ['prop' | 'inv' | 'none', string][]
-                  ).map(([v, label]) => {
-                    const selected = conclusion.q1 === v;
-                    const correct = correctKeys.q1 === v;
+                    opts('concludeQ1')
+                  ).map(({ value: v, label }) => {
+                    // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
+                    // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
+                    const vv = v as typeof conclusion.q1;
+                    const selected = conclusion.q1 === vv;
+                    const correct = correctKeys.q1.includes(vv);
                     const showFeedback = conclusion.q1 !== null;
                     return (
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q1: vv }))}
                         className={`text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
@@ -1132,8 +1189,8 @@ export default function Ohm() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? <Check className={MARK_CLS} aria-hidden /> : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -1146,20 +1203,19 @@ export default function Ohm() {
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ2}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(
-                    [
-                      ['inv', t.concludeQ2Inverse],
-                      ['prop', t.concludeQ2Proportional],
-                      ['none', t.concludeQ2None],
-                    ] as ['inv' | 'prop' | 'none', string][]
-                  ).map(([v, label]) => {
-                    const selected = conclusion.q2 === v;
-                    const correct = correctKeys.q2 === v;
+                    opts('concludeQ2')
+                  ).map(({ value: v, label }) => {
+                    // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
+                    // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
+                    const vv = v as typeof conclusion.q2;
+                    const selected = conclusion.q2 === vv;
+                    const correct = correctKeys.q2.includes(vv);
                     const showFeedback = conclusion.q2 !== null;
                     return (
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q2: vv }))}
                         className={`text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
@@ -1170,8 +1226,8 @@ export default function Ohm() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? <Check className={MARK_CLS} aria-hidden /> : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -1184,20 +1240,19 @@ export default function Ohm() {
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ3}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(
-                    [
-                      ['invr', t.concludeQ3InvR],
-                      ['r', t.concludeQ3R],
-                      ['none', t.concludeQ3None],
-                    ] as ['invr' | 'r' | 'none', string][]
-                  ).map(([v, label]) => {
-                    const selected = conclusion.q3 === v;
-                    const correct = correctKeys.q3 === v;
+                    opts('concludeQ3')
+                  ).map(({ value: v, label }) => {
+                    // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
+                    // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
+                    const vv = v as typeof conclusion.q3;
+                    const selected = conclusion.q3 === vv;
+                    const correct = correctKeys.q3.includes(vv);
                     const showFeedback = conclusion.q3 !== null;
                     return (
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q3: vv }))}
                         className={`text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
@@ -1208,8 +1263,8 @@ export default function Ohm() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? <Check className={MARK_CLS} aria-hidden /> : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -1222,20 +1277,19 @@ export default function Ohm() {
                 <p className="text-xs font-bold text-[var(--fg)] mono-font">{t.concludeQ4}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {(
-                    [
-                      ['iur', t.concludeQ4IUR],
-                      ['uir', t.concludeQ4UIR],
-                      ['none', t.concludeQ4None],
-                    ] as ['iur' | 'uir' | 'none', string][]
-                  ).map(([v, label]) => {
-                    const selected = conclusion.q4 === v;
-                    const correct = correctKeys.q4 === v;
+                    opts('concludeQ4')
+                  ).map(({ value: v, label }) => {
+                    // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
+                    // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
+                    const vv = v as typeof conclusion.q4;
+                    const selected = conclusion.q4 === vv;
+                    const correct = correctKeys.q4.includes(vv);
                     const showFeedback = conclusion.q4 !== null;
                     return (
                       <button
                         key={v}
                         type="button"
-                        onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
+                        onClick={() => setConclusion((p) => ({ ...p, q4: vv }))}
                         className={`text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
@@ -1246,8 +1300,8 @@ export default function Ohm() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? <Check className={MARK_CLS} aria-hidden /> : <X className={MARK_CLS} aria-hidden />)}
+                        {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                         {label}
                       </button>
                     );
@@ -1256,7 +1310,7 @@ export default function Ohm() {
               </div>
 
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]">✓ {t.concludeHint}</p>
+                <p className="text-xs mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.concludeHint}</p>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
@@ -1266,7 +1320,7 @@ export default function Ohm() {
           {/* 完成态 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]">✓ {t.stageDone}</p>
+              <p className="text-sm font-bold mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.stageDone}</p>
               <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
               <button
                 type="button"

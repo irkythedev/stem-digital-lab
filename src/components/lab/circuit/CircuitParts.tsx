@@ -399,7 +399,38 @@ export function Fuse({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ---------- 滑动变阻器（教科书样式：矩形电阻体 + 斜箭头滑片，阻值随 value 比例滑动） ---------- */
+/* ---------- 滑动变阻器（中考实物标准四柱：下层线圈瓷筒 A/B + 上层金属杆 C/D + 中层滑片 P） ---------- */
+
+/** 几何常量——父级导线端点须与接线柱圆心严格对齐，故导出共用 */
+export const RHEO_W = 34;        // 瓷筒宽度（接线柱 A/B/C/D 横向间距基准）
+export const RHEO_H = 12;        // 瓷筒高度
+export const RHEO_ROD_DY = -16;  // 金属杆相对主回路线(y)的偏移：负值 = 位于上方
+export const RHEO_TERM_R = 2.2;  // 接线柱圆孔半径
+
+/**
+ * 四个接线柱圆心。教科书「一上一下」标准接法 = **左下 A 进、右上 D 出**：
+ * 电流 A → 线圈(A..P 段) → 滑片 P → 金属杆 → D，故滑片右移时接入线圈变长、Rp 增大。
+ * B（右下）、C（左上）默认悬空。
+ */
+export function rheostatTerminals(x: number, y: number) {
+  const hw = RHEO_W / 2;
+  return {
+    A: { x: x - hw, y },
+    B: { x: x + hw, y },
+    C: { x: x - hw, y: y + RHEO_ROD_DY },
+    D: { x: x + hw, y: y + RHEO_ROD_DY },
+  };
+}
+
+/**
+ * 滑片中心 x：行程两端各留 4px。ratio 单调递增 → wiperX 单调递增 → A→P 接入线圈变长 → Rp 增大。
+ * 导出供守卫做单调性断言，避免「公式改了但守卫还在测旧行为」。
+ */
+export function rheostatWiperX(x: number, ratio: number) {
+  const r = Math.max(0, Math.min(1, ratio));
+  return x - RHEO_W / 2 + 4 + (RHEO_W - 8) * r;
+}
+
 export function Rheostat({
   x,
   y,
@@ -414,45 +445,66 @@ export function Rheostat({
   label?: ReactNode;
 }) {
   const ratio = Math.max(0, Math.min(1, value / max));
-  const w = 34;
-  const h = 12;
-  // 滑片位置：沿电阻体宽度
-  const wiperX = x - w / 2 + 4 + (w - 8) * ratio;
+  const t = rheostatTerminals(x, y);
+  const rodY = t.C.y;
+  const coilTop = y - RHEO_H / 2;
+  const coilBot = y + RHEO_H / 2;
+  /** 滑片行程：两端各留 4px，不越过瓷筒端头。P 右移 → A→P 接入线圈变长 → Rp 增大 */
+  const wiperX = rheostatWiperX(x, ratio);
+  /** 接入线圈的有效长度（px），与滑片同步伸缩 */
+  const activeW = wiperX - t.A.x;
+  const turns = 8;
+
   return (
     <g>
-      {/* 电阻体：教科书矩形框（下方两端开口接导线） */}
+      {/* ── 下层：漆包线线圈瓷筒（接线柱 A / B 在其两端） ── */}
       <rect
-        x={x - w / 2}
-        y={y - h / 2}
-        width={w}
-        height={h}
-        rx="1"
+        x={t.A.x}
+        y={coilTop}
+        width={RHEO_W}
+        height={RHEO_H}
+        rx="1.5"
         fill="var(--card-bg)"
-        stroke="var(--fg)"
+        stroke="var(--muted)"
         strokeWidth="1.2"
       />
-      {/* 接线端子：电阻体两端接入电路（教科书符号，一上一下接入） */}
-      <circle cx={x - w / 2} cy={y} r="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
-      <circle cx={x + w / 2} cy={y} r="2" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
-      {/* 滑片：斜向下的箭头（教科书画法），尖端指向电阻体下方；用 transform translateX 平滑过渡 */}
-      <g
-        style={{
-          transform: `translateX(${wiperX}px)`,
-          transition: 'transform 0.18s ease-out',
-        }}
-      >
-        <line
-          x1={0}
-          y1={y - h / 2 - 3}
-          x2={7}
-          y2={y + h / 2 + 1}
-          stroke="var(--fg)"
-          strokeWidth="1.3"
-        />
-        <path d={`M7 ${y + h / 2 + 1} l-2.6 3.8 h5.2 Z`} fill="var(--fg)" />
+      {/* 线圈匝：等距竖细线，仅作纹理，不抢主结构 */}
+      {Array.from({ length: turns }, (_, i) => {
+        const tx = t.A.x + (RHEO_W / (turns + 1)) * (i + 1);
+        return <line key={i} x1={tx} y1={coilTop + 1.6} x2={tx} y2={coilBot - 1.6} stroke="var(--muted)" strokeWidth="0.6" />;
+      })}
+      {/* 接入区间（A → 滑片）：直观呈现「接入电路的有效线圈长度」 */}
+      <rect
+        x={t.A.x + 0.6}
+        y={y - 1.5}
+        width={Math.max(0, activeW - 0.6)}
+        height="3"
+        fill="var(--accent)"
+        opacity="0.16"
+        style={{ transition: 'width 0.18s ease-out' }}
+      />
+      {/* ── 上层：导电金属杆（接线柱 C / D 在其两端） ── */}
+      <line x1={t.C.x} y1={rodY} x2={t.D.x} y2={rodY} stroke="var(--fg)" strokeWidth="1.6" />
+      {/* ── 中层：滑片 P —— 实体垂直连通金属杆与线圈，随调参连续水平位移 ── */}
+      <g style={{ transform: `translateX(${wiperX}px)`, transition: 'transform 0.18s ease-out' }}>
+        {/* 杆上滑块：滑片与金属杆的接触点 */}
+        <rect x="-3.2" y={rodY - 2.2} width="6.4" height="4.4" rx="1" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.1" />
+        {/* 垂直连杆：金属杆 → 瓷筒上沿（一体化，行程内始终连通，不脱节） */}
+        <line x1="0" y1={rodY} x2="0" y2={coilTop} stroke="var(--fg)" strokeWidth="1.4" />
+        {/* 触头：压在线圈上的三角触点 */}
+        <polygon points={`-2.6,${coilTop} 2.6,${coilTop} 0,${coilTop + 3.6}`} fill="var(--fg)" />
       </g>
+      {/* ── 接线柱（圆孔）：A/B 在下层线圈两端，C/D 在上层金属杆两端 ── */}
+      {(['A', 'B', 'C', 'D'] as const).map((k) => (
+        <circle key={k} cx={t[k].x} cy={t[k].y} r={RHEO_TERM_R} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1" />
+      ))}
+      {/* 接线柱标号（教科书 A/B/C/D） */}
+      <text x={t.A.x - 5} y={y + 12.5} textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="var(--f-mono)">A</text>
+      <text x={t.B.x + 5} y={y + 12.5} textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="var(--f-mono)">B</text>
+      <text x={t.C.x - 5} y={rodY - 3.5} textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="var(--f-mono)">C</text>
+      <text x={t.D.x + 5} y={rodY - 3.5} textAnchor="middle" fontSize="7" fill="var(--muted)" fontFamily="var(--f-mono)">D</text>
       {label && (
-        <text x={x} y={y + h + 18} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
+        <text x={x} y={coilBot + 16} textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">
           {label}
         </text>
       )}

@@ -18,9 +18,14 @@ import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import LensBench from '../../components/lab/LensBench';
+import { isBeyondBench } from '../../components/lab/LensBench';
 import EngineBadge from '../../components/lab/EngineBadge';
 import Formula from '../../components/ui/Formula';
 import { imageV, loadOhmEngine } from './stem-engine';
+import { Check, X } from 'lucide-react';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -141,7 +146,7 @@ const copy = {
     concludeQ3RealInvSm: '倒立缩小实像',
     concludeQ3RealInvLg: '倒立放大实像',
     concludeQ3VirtUprLg: '正立放大虚像',
-    concludeQ3NoImage: '光屏上不能得到清晰实像',
+    concludeQ3NoImage: '光屏上无清晰实像',
     concludeQ4: 'u = 2f 时像距 v 等于？',
     concludeQ4V2f: 'v = 2f',
     concludeQ4Vf: 'v = f',
@@ -259,15 +264,25 @@ const copy = {
 type Lang = 'zh' | 'en';
 
 /** 结论题正确选项 */
-const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['real-inv-sm'],
-  q2: ['real-inv-lg'],
-  q3: ['virt-upr-lg'],
-  q4: ['v2f'],
+/** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  concludeQ1: [['virt-upr-lg', 'concludeQ1VirtUprLg'], ['real-inv-eq', 'concludeQ1RealInvEq'], ['real-inv-lg', 'concludeQ1RealInvLg'], ['real-inv-sm', 'concludeQ1RealInvSm']],
+  concludeQ2: [['real-inv-sm', 'concludeQ2RealInvSm'], ['real-inv-lg', 'concludeQ2RealInvLg'], ['real-inv-eq', 'concludeQ2RealInvEq'], ['virt-upr-lg', 'concludeQ2VirtUprLg']],
+  concludeQ3: [['real-inv-sm', 'concludeQ3RealInvSm'], ['real-inv-lg', 'concludeQ3RealInvLg'], ['virt-upr-lg', 'concludeQ3VirtUprLg'], ['no-image', 'concludeQ3NoImage']],
+  concludeQ4: [['vltf', 'concludeQ4Vltf'], ['vf', 'concludeQ4Vf'], ['vgt2f', 'concludeQ4Vgt2f'], ['v2f', 'concludeQ4V2f']],
+} as const;
+
+/** 题号 → 正确答案值（**按题号**而非 q 序号，杜绝 predict/conclude 同名串味） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  concludeQ1: ['real-inv-sm'],
+  concludeQ2: ['real-inv-lg'],
+  concludeQ3: ['virt-upr-lg'],
+  concludeQ4: ['v2f'],
 };
 
+
 export default function Lens() {
-  const { lang } = useApp();
+  const { lang, t } = useApp();
   const c = copy[lang as Lang] ?? copy.zh;
 
   const [stage, setStage] = useState<Stage>('predict');
@@ -365,6 +380,12 @@ export default function Lens() {
 
   /* ── 结论题渲染 ── */
 
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
   function renderConcludeQ(
     key: string,
     question: string,
@@ -372,7 +393,7 @@ export default function Lens() {
     selected: string | null,
     onSelect: (v: string) => void,
   ) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key] ?? [];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -391,13 +412,9 @@ export default function Lens() {
                 ? 'border-[var(--fg)] text-[var(--fg)]'
                 : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback
-              ? isCorrect
-                ? '✓ '
-                : isSel
-                  ? '✗ '
-                  : ''
-              : '';
+            const prefix = showFeedback ? (
+              isCorrect ? <Check className={MARK_CLS} aria-hidden /> : isSel ? <X className={MARK_CLS} aria-hidden /> : null
+            ) : null;
             return (
               <button
                 key={opt.value}
@@ -445,7 +462,7 @@ export default function Lens() {
                     : 'border-[var(--border)] text-[var(--muted)] opacity-60'
               }`}
             >
-              {isDone && stage !== s ? `✓ ${label}` : label}
+              {isDone && stage !== s ? (<><Check className={MARK_CLS} aria-hidden />{label}</>) : label}
             </button>
           );
         })}
@@ -496,6 +513,9 @@ export default function Lens() {
             <div className="text-sm mono-font text-[var(--fg)]">
               <span className="text-[var(--muted)]">v = </span>
               {v !== null ? `${v.toFixed(1)} cm` : '—'}
+              {isBeyondBench(v) && (
+                <span className="ml-2 text-[0.6875rem] leading-tight text-[var(--error)]">{t.lensOutOfBench}</span>
+              )}
             </div>
             <div className="text-sm mono-font text-[var(--fg)]">
               <span className="text-[var(--muted)]">{lang === 'zh' ? '像' : 'Image'}: </span>
@@ -656,53 +676,25 @@ export default function Lens() {
           )}
 
           {renderConcludeQ(
-            'q1',
-            c.concludeQ1,
-            [
-              { value: 'real-inv-sm', label: c.concludeQ1RealInvSm },
-              { value: 'real-inv-eq', label: c.concludeQ1RealInvEq },
-              { value: 'real-inv-lg', label: c.concludeQ1RealInvLg },
-              { value: 'virt-upr-lg', label: c.concludeQ1VirtUprLg },
-            ],
+            'concludeQ1', c.concludeQ1, opts('concludeQ1'),
             conclude1,
             setConclude1,
           )}
 
           {renderConcludeQ(
-            'q2',
-            c.concludeQ2,
-            [
-              { value: 'real-inv-sm', label: c.concludeQ2RealInvSm },
-              { value: 'real-inv-eq', label: c.concludeQ2RealInvEq },
-              { value: 'real-inv-lg', label: c.concludeQ2RealInvLg },
-              { value: 'virt-upr-lg', label: c.concludeQ2VirtUprLg },
-            ],
+            'concludeQ2', c.concludeQ2, opts('concludeQ2'),
             conclude2,
             setConclude2,
           )}
 
           {renderConcludeQ(
-            'q3',
-            c.concludeQ3,
-            [
-              { value: 'real-inv-sm', label: c.concludeQ3RealInvSm },
-              { value: 'real-inv-lg', label: c.concludeQ3RealInvLg },
-              { value: 'virt-upr-lg', label: c.concludeQ3VirtUprLg },
-              { value: 'no-image', label: c.concludeQ3NoImage },
-            ],
+            'concludeQ3', c.concludeQ3, opts('concludeQ3'),
             conclude3,
             setConclude3,
           )}
 
           {renderConcludeQ(
-            'q4',
-            c.concludeQ4,
-            [
-              { value: 'v2f', label: c.concludeQ4V2f },
-              { value: 'vf', label: c.concludeQ4Vf },
-              { value: 'vgt2f', label: c.concludeQ4Vgt2f },
-              { value: 'vltf', label: c.concludeQ4Vltf },
-            ],
+            'concludeQ4', c.concludeQ4, opts('concludeQ4'),
             conclude4,
             setConclude4,
           )}

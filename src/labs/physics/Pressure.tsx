@@ -17,6 +17,11 @@ import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
+import { Check, X } from 'lucide-react';
+import { dentAmount, solidPressure } from './mechanics-core';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -121,11 +126,22 @@ const copy = {
 
 type Lang = 'zh' | 'en';
 
-const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['big'],
-  q2: ['big'],
-  q3: ['needle'],
+/** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  predictQ1: [['mass', 'predictQ1Mass'], ['area', 'predictQ1Area'], ['pres', 'predictQ1Pres']],
+  concludeQ1: [['big', 'concludeQ1Big'], ['small', 'concludeQ1Small']],
+  concludeQ2: [['small', 'concludeQ2Small'], ['big', 'concludeQ2Big']],
+  concludeQ3: [['needle', 'concludeQ3Needle'], ['board', 'concludeQ3Board']],
+} as const;
+
+/** 题号 → 正确答案值（**按题号**而非 q 序号，杜绝 predict/conclude 同名串味） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  predictQ1: ['pres', 'area'],
+  concludeQ1: ['big'],
+  concludeQ2: ['big'],
+  concludeQ3: ['needle'],
 };
+
 
 export default function Pressure() {
   const { lang } = useApp();
@@ -144,8 +160,8 @@ export default function Pressure() {
   const concludeComplete = concl.q1 && concl.q2 && concl.q3;
 
   // 压强：p = F/S，S 从 cm² 转 m²（×10⁻⁴）
-  const p = (F / (S * 1e-4)) / 1000; // kPa 显示
-  const dent = Math.min(1, F / (S * 2)); // 凹陷程度 0-1
+  const p = solidPressure(F, S); // kPa 显示（力学核，分母有下界，全域有限）
+  const dent = dentAmount(F, S); // 凹陷程度 0-1（可视化代理量）
 
   function redoAll() {
     setStage('predict');
@@ -187,8 +203,14 @@ export default function Pressure() {
     [c],
   );
 
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
   function renderConcludeQ(key: string, question: string, options: { value: string; label: string }[], selected: string | null, onSelect: (v: string) => void) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key] ?? [];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -205,7 +227,7 @@ export default function Pressure() {
             } else {
               cls += isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
+            const prefix = showFeedback ? (isCorrect ? <Check className={MARK_CLS} aria-hidden /> : isSel ? <X className={MARK_CLS} aria-hidden /> : null) : null;
             return (
               <button key={opt.value} type="button" onClick={() => onSelect(opt.value)} disabled={showFeedback}
                 className={`${cls} ${showFeedback ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -228,7 +250,7 @@ export default function Pressure() {
           return (
             <button key={s} type="button" onClick={() => setStage(s)}
               className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${stage === s ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs' : isDone ? 'border-[var(--border)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] opacity-60'}`}>
-              {isDone && stage !== s ? `✓ ${label}` : label}
+              {isDone && stage !== s ? (<><Check className={MARK_CLS} aria-hidden />{label}</>) : label}
             </button>
           );
         })}
@@ -273,9 +295,9 @@ export default function Pressure() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
-          {renderConcludeQ('q1', c.predictQ1, [{ value: 'pres', label: c.predictQ1Pres }, { value: 'area', label: c.predictQ1Area }, { value: 'mass', label: c.predictQ1Mass }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
+          {renderConcludeQ('predictQ1', c.predictQ1, opts('predictQ1'), predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {predComplete ? (
-            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">✓ {c.predictDone} — {c.revealLabel}</button>
+            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"><Check className={MARK_CLS} aria-hidden />{c.predictDone} — {c.revealLabel}</button>
           ) : (
             <p className="text-xs text-[var(--muted)] serif-font italic">{c.predictHint}</p>
           )}
@@ -300,9 +322,9 @@ export default function Pressure() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
-          {renderConcludeQ('q1', c.concludeQ1, [{ value: 'big', label: c.concludeQ1Big }, { value: 'small', label: c.concludeQ1Small }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
-          {renderConcludeQ('q2', c.concludeQ2, [{ value: 'big', label: c.concludeQ2Big }, { value: 'small', label: c.concludeQ2Small }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
-          {renderConcludeQ('q3', c.concludeQ3, [{ value: 'needle', label: c.concludeQ3Needle }, { value: 'board', label: c.concludeQ3Board }], concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })))}
+          {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
+          {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
+          {renderConcludeQ('concludeQ3', c.concludeQ3, opts('concludeQ3'), concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })))}
           {concludeComplete && !showFeedback && (
             <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}

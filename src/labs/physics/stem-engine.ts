@@ -14,9 +14,13 @@
  * 四个 Embind 导出才切换 wasm；任一缺失或 throw → 全部指针保持 JS
  * （欧姆 + 透镜 + 二次一起，禁止半 wasm 半 js）。
  *
- * 采样循环固定在本模块（照抄各 core 语义）：sampleOhm / sampleQuadratic 的
+ * 采样循环固定在本模块（与各 core 同语义，**含索引乘法口径**）：sampleOhm / sampleQuadratic 的
  * 循环体内调用「当前指针」的标量——WASM 就绪后整条曲线同样走 C++ 标量，
  * 调用点（Ohm.tsx / Lens.tsx / Quadratic.tsx）无需任何改动。
+ *
+ * ⚠️ 数值边界由本门面统一兜底（currentOf 的 NaN→0、imageV 的非有限→null）：
+ * 运行时可能已切到 WASM，只改 TS core 对应用无效——smoke 测试覆盖的是 core，
+ * 会出现「测试全绿、页面仍 NaN」。边界修复必须落在本文件。
  */
 
 import {
@@ -53,12 +57,19 @@ export function elementResistance(r: number, element: ElementType, u: number): n
 
 /** 电路读数 I（A）（签名与 ohm-core 一致）。分母为 0 不特判。 */
 export function currentOf(u: number, r: number, element: ElementType, rp = 0): number {
-  return implCurrentOf(u, r, element, rp);
+  const v = implCurrentOf(u, r, element, rp);
+  // 0/0 → 0：无驱动电压（U=0）且总电阻为 0 时，C++ 侧返回 NaN（实测：页面出现 4 处 "NaN"，
+  // 电表读数与 SVG 属性全被污染）。门面是两条实现（JS core / WASM）的唯一汇合点，
+  // 在这里统一兜住——只改 TS core 对应用无效，因为运行时可能已切到 WASM。
+  return Number.isNaN(v) ? 0 : v;
 }
 
 /** 像距 v（cm）（签名与 lens-core 一致）：u≈f 时返回 null（无清晰实像）。 */
 export function imageV(u: number, f: number): number | null {
-  return implImageV(u, f);
+  const v = implImageV(u, f);
+  // 不成像（u≈f）必须是严格的 null，不能是 NaN：调用点用 `v === null` / `v < 0` 分支，
+  // NaN 会让两者都落空，虚像/无像判定全部失效。WASM 侧可能返回 NaN，在此归一。
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
 
 /** 二次函数单点求值（签名与 quadratic-core 一致）。 */
@@ -74,7 +85,10 @@ export function sampleOhm(r: number, element: ElementType, rp = 0): [number, num
   // 元件短路（R=0 相当于导线）：I-U 图像无有效关系，返回空曲线
   if (element === 'resistor' && r === 0) return [];
   const pts: [number, number][] = [];
-  for (let u = 0; u <= 12.0001; u += 0.1) {
+  // 索引乘法，不用 `u += 0.1` 累加：累加式到第 120 点已漂移到 11.999999999999973，
+  // 横轴 109/121 点带浮点尾数（实测）。此处与 ohm-core 保持同一口径。
+  for (let k = 0; k * 0.1 <= 12.0001; k++) {
+    const u = k * 0.1;
     const i = implCurrentOf(u, r, element, rp);
     pts.push([i * implElementResistance(r, element, u), i]);
   }
@@ -87,7 +101,10 @@ export function sampleOhm(r: number, element: ElementType, rp = 0): [number, num
  */
 export function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -4; x <= 4.0001; x += 0.05) {
+  // 索引乘法取点（原先的逐点累加使末点漂移为 3.9999999999999396，161 点里 160 个带尾数）
+  const n = Math.round(8 / 0.05);
+  for (let k = 0; k <= n; k++) {
+    const x = -4 + k * 0.05;
     pts.push([x, implQuadraticY(a, b, c, x)]);
   }
   return pts;

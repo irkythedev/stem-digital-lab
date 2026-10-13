@@ -27,7 +27,7 @@ import { useAiContext } from '../../lib/ai-context';
 import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
 import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
 import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
-import { clearHistory, isStoppedAnswer, listHistory, markStopped, saveHistory, relativeTime, stripStoppedMark, type AiHistoryEntry } from '../../lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
@@ -38,7 +38,7 @@ import AnswerRich, { InlineAnswer } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
-  classifyChatFailure, type ChatFailure,
+  classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, isLengthTruncated, resolveMaxTokens, type ChatFailure,
   effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
 } from '../../lib/ai-config';
@@ -332,6 +332,8 @@ export default function AiAssistant() {
   // 自定义端点附加请求参数（JSON 文本，仅「自定义端点」显示与生效）
   const [extraParamsText, setExtraParamsText] = useState('');
   const [extraParamsOpen, setExtraParamsOpen] = useState(false);
+  /** 输出上限输入框（文本态：留空 = 不下发 max_tokens；只接受数字） */
+  const [maxTokensText, setMaxTokensText] = useState('');
   const [liveModels, setLiveModels] = useState<string[]>([]);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const modelMenuRef = useRef<HTMLDivElement | null>(null);
@@ -670,7 +672,7 @@ export default function AiAssistant() {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const full = await streamChat(
+      const res = await streamChat(
         config,
         messages,
         (delta) => {
@@ -683,12 +685,16 @@ export default function AiAssistant() {
           });
         },
         quizSummaryAbortRef.current.signal,
-        1200, // 归纳输出上限（学习诊断 250 字以内，留足分节/公式余量）
+        CHAIN_MAX_TOKENS.summary, // 诊断 250 字以内，但要给思考型模型留出思考余量（1200 会被思考吃光）
       );
+      const full = res.text;
+      // 空正文按失败处理：空白诊断会被当成「没有问题」而不是「这次没生成出来」
+      if (classifyStreamOutcome(res) === 'empty') throw new EmptyAnswerError(res.finishReason);
       // 跨会话累计 token（归纳请求 = prompt + 实际输出）
       addTokenUsage(config?.model, promptTokens + estimateTokens(full));
       refreshTokenUsage();
-      setQuizSummaryText(full);
+      // 没写完必须标注：半句诊断看起来像结论，其实不完整（上限截断或连接被切断）
+      setQuizSummaryText(classifyStreamOutcome(res) === 'ok' ? full : `${full}\n\n${t.aiError.truncatedNote}`);
     } catch (e) {
       if (quizSummaryAbortRef.current && quizSummaryAbortRef.current.signal.aborted) return;
       const classified = classifyChatFailure(e, { offline: isOffline });
@@ -824,7 +830,7 @@ export default function AiAssistant() {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const full = await streamChat(
+      const res = await streamChat(
         config,
         messages,
         (delta) => {
@@ -837,14 +843,17 @@ export default function AiAssistant() {
           });
         },
         quizAbortRef.current.signal,
-        4000, // 出题输出上限：保证批量末题不截断
+        // 默认不下发上限：出题对思考型模型同样会被思考吃满预算，护栏交给下面的完整性校验 + 一次修复
+        CHAIN_MAX_TOKENS.quiz,
       );
+      const full = res.text;
+      const outcome = classifyStreamOutcome(res);
       // 跨会话累计 token（出题请求 = prompt + 实际输出）
       addTokenUsage(config?.model, promptTokens + estimateTokens(full));
       refreshTokenUsage();
       let parsed = parseQuizBatchChecked(full, count);
       if (parsed.reason) {
-        logPromptIssue('quiz-parse', parsed.reason);
+        logPromptIssue('quiz-parse', `${parsed.reason}${outcome === 'limit' ? '（端点已按输出上限截断）' : outcome === 'cut' ? '（连接被中途切断）' : ''}`);
         // 一次修复重试：只回灌上一次输出的尾部，要求补出缺失题目（无对话窗口，学生无法自己重来）
         try {
           const repair = await streamChat(
@@ -861,9 +870,9 @@ export default function AiAssistant() {
             ],
             () => {},
             quizAbortRef.current.signal,
-            2000,
+            CHAIN_MAX_TOKENS.quiz,
           );
-          const merged = parseQuizBatchChecked(`${full}\n${repair}`, count);
+          const merged = parseQuizBatchChecked(`${full}\n${repair.text}`, count);
           if (merged.items.length > parsed.items.length) parsed = merged;
         } catch {
           logPromptIssue('quiz-repair', '修复重试失败，按首次结果继续');
@@ -872,10 +881,17 @@ export default function AiAssistant() {
       // 去重（重试最容易产出重复题）+ 选项洗牌（正确项位置交给代码，不交给模型）
       const items = dedupeQuizQuestions(parsed.items).slice(0, count).map((q) => shuffleOptions(q));
       if (items.length === 0) {
-        setQuizError(t.aiError.other); // 模型没给出可用题目：按普通失败处理，给「重试」
+        // 空/无法解析一律给分类文案：空正文（思考吃满预算）与普通失败对学生是两种提示
+        setQuizError(full.trim() ? t.aiError.other : t.aiError.empty);
         setQuizQuestions([]);
         setQuizLoading(false);
         return;
+      }
+      // 题数不足必须让学生知道：静默少给几题会被当成「系统只出这么多题」
+      if (items.length < count) {
+        flashToast(false, lang === 'zh'
+          ? `模型只给出 ${items.length}/${count} 题（输出被截断），可重新出题`
+          : `The model produced only ${items.length}/${count} questions (output cut off) — try again`);
       }
       setQuizQuestions(items);
       setQuizIdx(0);
@@ -937,12 +953,23 @@ export default function AiAssistant() {
       setFillJudging(true);
       const { system, user } = buildFillJudgePrompt(lang, quizQ.question, answerForAi, quizQ.fillAnswers);
       try {
-        const signal = new AbortController(); // 判分超时 8 秒
-        const timeoutId = setTimeout(() => signal.abort(), 8000);
-        const full = await streamChat(config, [{ role: 'system', content: system }, { role: 'user', content: user }], () => {}, signal.signal, 20);
+        const signal = new AbortController(); // 判分超时 20 秒（思考型模型需要先想再回一个字母）
+        const timeoutId = setTimeout(() => signal.abort(), 20000);
+        const res = await streamChat(
+          config,
+          [{ role: 'system', content: system }, { role: 'user', content: user }],
+          () => {},
+          signal.signal,
+          CHAIN_MAX_TOKENS.judge,
+        );
         clearTimeout(timeoutId);
         // 取第一个 Y/N，而不是首字符（解析见 ai-quiz.ts parseJudgeVerdict）
-        if (parseJudgeVerdict(full)) finalCorrect = true;
+        if (parseJudgeVerdict(res.text)) finalCorrect = true;
+        else if (!res.text.trim()) {
+          // 空正文（思考吃满预算最常见）：判分不可用就保留规则判分结果——
+          // 绝不能因为「AI 没回话」把学生答对的题判错（旧实现正是如此）
+          logPromptIssue('fill-judge', `空正文（finish_reason=${res.finishReason}）：保留规则判分结果`);
+        }
       } catch (e) {
         // AI 判分失败（网络/Key 超时等）：静默回退规则结果，不抛错、不卡 UI
         logPromptIssue('fill-judge', (e as Error).message);
@@ -1394,6 +1421,7 @@ export default function AiAssistant() {
       setModel(config.model);
       setThinkingEffort(config.thinkingEffort ?? 'standard');
       setExtraParamsText(config.extraParamsText ?? '');
+      setMaxTokensText(typeof config.maxOutputTokens === 'number' && config.maxOutputTokens > 0 ? String(config.maxOutputTokens) : '');
       setTestResult(null);
     }
   }, [view]);
@@ -1590,7 +1618,10 @@ export default function AiAssistant() {
     // Key 按服务商归档：本次填写的 Key 只记到当前服务商名下
     const nextKeys = { ...keyByProvider, [providerId]: trimmedKey };
     setKeyByProvider(nextKeys);
-    const cfg: AiConfig = { providerId, apiKey: trimmedKey, baseUrl, model, agreed: true, thinkingEffort, keyByProvider: nextKeys, extraParamsText: providerId === 'custom' ? extraParamsText.trim() : undefined };
+    // 输出上限：留空 = 不下发 max_tokens（思考型模型的思考也计入上限，填小了会挤出空白回答）
+    const maxOutRaw = maxTokensText.trim();
+    const maxOutNum = /^\d+$/.test(maxOutRaw) ? Number(maxOutRaw) : 0;
+    const cfg: AiConfig = { providerId, apiKey: trimmedKey, baseUrl, model, agreed: true, thinkingEffort, keyByProvider: nextKeys, extraParamsText: providerId === 'custom' ? extraParamsText.trim() : undefined, maxOutputTokens: maxOutNum > 0 ? maxOutNum : undefined };
     saveAiConfig(cfg);
     setConfigured(true);
     setConfig(cfg);
@@ -1618,6 +1649,7 @@ export default function AiAssistant() {
     setThinkingEffort('standard');
     setExtraParamsText('');
     setExtraParamsOpen(false);
+    setMaxTokensText('');
     setLiveModels([]);
     setModelNote(null);
     setTesting(false);
@@ -1759,7 +1791,7 @@ export default function AiAssistant() {
     let reasoningText = '';   // 本轮思考全文（闭包内累积，结束后挂到本轮问答对上）
     let reasoningSecLocal = 0;
     try {
-      const full = await streamChat(
+      const res = await streamChat(
         config,
         messages,
         (delta) => {
@@ -1783,7 +1815,7 @@ export default function AiAssistant() {
           });
         },
         abortRef.current.signal,
-        2000, // 对话输出上限：保证追问段完整
+        CHAIN_MAX_TOKENS.chat, // 默认不下发上限：思考型模型的思考算在 max_tokens 里，封顶会让正文一个字符都不出
         (r) => {
           // 思考增量：也算学生付费的输出，计入本轮用量（想得多=花得多，学生看得见）
           received += r.length;
@@ -1793,10 +1825,19 @@ export default function AiAssistant() {
           setReasoning((x) => x + r);
         },
       );
+      const full = res.text;
+      // 收尾判定与面板共用同一口径：empty=正文一个字都没有（当失败重试）；
+      // limit/cut=正文有但没写完（留下并标注，给「继续生成」）；ok=正常收完
+      const outcome = classifyStreamOutcome(res);
+      // 正文为空一律按失败处理（无论端点是 length 还是 stop）：
+      // 空回答绝不能当成功写进历史 / localStorage，否则学生只看到一个空白框、连重试都没有。
+      if (outcome === 'empty') throw new EmptyAnswerError(res.finishReason);
       // 跨会话累计 token（本次请求 = prompt + 实际输出 + 思考增量：想得多花得多，口径与本轮显示一致）
       addTokenUsage(config?.model, promptTokens + Math.round(accCjk + (accLen - accCjk) / 4));
       refreshTokenUsage();
-      const { body, recs: parsedRecs } = parseRecQuestions(full);
+      const { body: rawBody, recs: parsedRecs } = parseRecQuestions(full);
+      // 没写完的正文必须标注，并把「继续生成」入口交给学生（半句话看着像结论才是真问题）
+      const body = outcome === 'ok' ? rawBody : markTruncated(rawBody, lang, outcome === 'cut' ? 'cut' : 'limit');
       setAnswer(body);
       // 追问推荐三级兜底：①新解析优先 ②保留上一轮有效追问 ③本地主题模板（保证任何模型都不断供）
       const topic = aiCtx.topic ?? pageSubject(location.pathname, lang);
@@ -1925,7 +1966,8 @@ export default function AiAssistant() {
     messages.push({ role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的追问问题（每行一个，编号 1. 2. 3.，不要解释）' : 'Give 3 different follow-up questions on the topic just discussed (one per line, numbered 1. 2. 3., no explanation)' });
     try {
       const t0 = performance.now();
-      const full = await streamChat(config, messages, () => {}, undefined);
+      const res = await streamChat(config, messages, () => {}, undefined, CHAIN_MAX_TOKENS.chat);
+      const full = res.text;
       // 宽松解析：优先 marker，无 marker 时整段按行拆
       const { recs: parsed } = parseRecQuestions(full);
       const lines = full.split('\n').map((l) => l.replace(/^\s*\d+[.、)]\s*/, '').trim()).filter((l) => l && l.length > 2);
@@ -2511,6 +2553,27 @@ export default function AiAssistant() {
                 ? '深度思考会给出更充分的启发线索，但 Token 消耗显著增加；自带 Key 请留意额度。'
                 : 'Deep thinking gives fuller hints but consumes noticeably more tokens — watch your own key quota.'}
             </p>
+            {/* 输出上限（留空＝不下发 max_tokens）：思考型模型的思考也算进上限，填小了会挤出空白回答 */}
+            <div className="mt-1.5 flex items-center gap-2">
+              <label htmlFor="ai-max-out-tokens" className="text-[0.625rem] mono-font text-[var(--muted)] shrink-0">
+                {lang === 'zh' ? '输出上限' : 'Output limit'}
+              </label>
+              <input
+                id="ai-max-out-tokens"
+                type="text"
+                inputMode="numeric"
+                value={maxTokensText}
+                onChange={(e) => setMaxTokensText(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
+                placeholder={lang === 'zh' ? '留空＝不限' : 'blank = no limit'}
+                className="w-24 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+              />
+              <span className="text-[0.625rem] mono-font text-[var(--muted)]">tokens</span>
+            </div>
+            <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
+              {lang === 'zh'
+                ? '思考型模型（R1 / 思考版千问 / 本地模型）的思考也计入这个上限：填小了思考会吃满预算，回答就是空白。除非要控成本，建议留空。'
+                : 'Thinking models (R1 / thinking Qwen / local servers) count their reasoning against this limit — set it too low and the answer comes back blank. Leave it empty unless you need a cost cap.'}
+            </p>
             {/* 模型能力说明：不能关闭 / 无力度档 / 不在支持范围 / 自定义端点走透传 */}
             {thinkingPlan?.note && (
               <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
@@ -2769,7 +2832,7 @@ export default function AiAssistant() {
                     <div className="border-t border-[var(--border)] px-2.5 py-2 space-y-1.5">
                       <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '回答' : 'Answer'}:</p>
                       <div className="text-left">
-                        <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
+                        <div className="inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                           <AnswerRich text={h.answer} />
                           {renderSpeakControls(h.answer, h.topic)}
                         </div>
@@ -3797,7 +3860,7 @@ export default function AiAssistant() {
                       </div>
                     )}
                     <div className="text-left">
-                      <div className="inline-block max-w-[95%] px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
+                      <div className="inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         <AnswerRich text={h.assistant} />
                         {renderSpeakControls(h.assistant, aiCtx.topic)}
                       </div>
@@ -3829,7 +3892,7 @@ export default function AiAssistant() {
                     <div className="text-left">
                       {/* AI 的思考草稿（部分模型才有）：默认折叠，思考中自动展开；拿不到就不渲染 */}
                       {reasoning && renderReasoning(reasoning, reasoningSec, 'live')}
-                      <div className={`inline-block max-w-[95%] px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
+                      <div className={`inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 ${answer ? 'border border-[var(--border)]' : ''} text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer`}>
                         {answer ? (
                           <div style={{ animation: 'answer-fade-in 0.2s ease' }}>
                             <AnswerRich text={answer} caret={caretPhase !== 'off'} caretFading={caretPhase === 'fading'} />

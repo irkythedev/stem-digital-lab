@@ -2,17 +2,24 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 首开欢迎弹窗：首次访问时展示项目介绍（作品概览 / 板块 / AI 助手 / 开源与反馈 / 其他作品）。
+ * 首开欢迎弹窗（双 Tab）：**实验室概览**（作品概览 / 板块 / AI 助手 / 开源与反馈 / 其他作品）
+ * 与**快速上手指引**（四张能力卡片 + 单行提示，手机单列 / ≥sm 2×2）。
+ * 首开自动弹出停在概览；Header 帮助入口传入 `initialTab='guide'` 直达上手指引。
  * 底部可勾选「以后不显示」→ localStorage 永久跳过；不勾选关闭 → 仅本次会话不再弹。
  *
  * 实现说明：
  *  - createPortal 挂到 body（遮罩父级若带 transform 会成为 containing block，必须 portal）
- *  - 书本化视觉：var 变量自适应明暗主题，无渐变阴影
+ *  - 视觉一律走 var 令牌：明暗主题由 html.dark / :root:not(.light) 切换，
+ *    Tailwind 的 dark 前缀变体只认 prefers-color-scheme，手动切主题时会与站点脱节，故禁用
+ *  - 无边界（borderless）块面：内容块用 --accent-light 半透明柔和填充 + rounded-xl，
+ *    图标统一用圆形衬底；只有「外框、底栏分隔线、按钮」保留线框
+ *  - 定高弹性：max-h-[85dvh] sm:max-h-[620px]，头/栏/底 flex-shrink-0 常驻，中间 flex-1 滚动
  *  - Esc 关闭 + 焦点落在主按钮；prefers-reduced-motion 无动画
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Calculator, Library, Mail, MessageSquare, MonitorSmartphone, X } from 'lucide-react';
+import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, MonitorSmartphone, Shapes, Sparkles, X } from 'lucide-react';
+import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
@@ -22,15 +29,21 @@ import ExternalLinkConfirm from './ExternalLinkConfirm';
 import { APP_VERSION } from '../../lib/changelog';
 import { useVersionCheck } from '../../lib/use-version-check';
 
-/* 项目主页 icon（与 Footer 同一套 SVG） */
-const GITEE_PATH =
-  'M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .982.796 1.778 1.778 1.778h6.015c.982 0 1.778-.796 1.778-1.778v-2.37a.594.594 0 0 1 .593-.593h1.482a.594.594 0 0 1 .593.593v2.37c0 2.29-1.856 4.148-4.148 4.148H9.777c-2.29 0-4.148-1.857-4.148-4.148v-5.63c0-2.29 1.857-4.148 4.148-4.148h8.297z';
-const GITHUB_PATH =
-  'M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12';
+/** 欢迎弹窗的两个分区 */
+type WelcomeTab = 'overview' | 'guide';
 
-export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolean) => void }) {
+export default function WelcomeDialog({
+  onClose,
+  initialTab = 'overview',
+}: {
+  onClose: (permanent: boolean) => void;
+  /** 初始激活的分区：首开自动弹出保持「实验室概览」；Header 帮助入口传入 'guide' */
+  initialTab?: WelcomeTab;
+}) {
   const { t, lang } = useApp();
   const zh = lang !== 'en';
+  // 双 Tab：实验室概览 / 快速上手指引
+  const [tab, setTab] = useState<WelcomeTab>(initialTab);
   // 模态弹窗打开期间锁定背景滚动（防止滚动穿透，与工具页详情弹窗一致）
   useLockBodyScroll(true);
   // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
@@ -68,6 +81,8 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
   const close = () => onClose(dontShow);
 
   return createPortal(
+    /* 垂直居中（items-center）。之所以现在可以居中：外框改用**定高** h-[85dvh] sm:h-[620px]，
+       两页高度严格一致 → 切 Tab 时外框不重解位置（此前 max-h 下高度随内容变，居中会顶动头部 98px）。 */
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={t.brandName}>
       {/* 遮罩（仅背景，不响应点击——只有「知道了」才关闭，防误触） */}
       <div
@@ -75,13 +90,13 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
         style={reduceMotion ? undefined : { animation: 'welcome-fade-in 0.3s ease' }}
         aria-hidden="true"
       />
-      {/* 卡片：flex 纵向布局，内容区独立滚动，底部操作栏固定可见（移动端友好） */}
+      {/* 卡片：定高弹性约束（手机 85dvh / 桌面封顶 620px）——两页同高、居中不跳位，内容区独立滚动 */}
       <div
-        className="relative w-full max-w-lg max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
+        className="relative w-full max-w-lg h-[85dvh] sm:h-[620px] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
         style={reduceMotion ? undefined : { animation: 'welcome-rise-in 0.35s ease' }}
       >
-        {/* 顶部条 */}
-        <div className="flex-shrink-0 flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3">
+        {/* 顶部条：flex-shrink-0 常驻 */}
+        <div className="flex-shrink-0 flex items-start justify-between gap-3 px-5 pt-4 pb-2.5">
           <div className="min-w-0">
             <h2 className="t-h2 font-bold mono-font tracking-widest">
               {t.brandName}
@@ -131,159 +146,247 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             onClick={close}
             aria-label={t.welcomeClose}
             title={t.welcomeClose}
-            className="flex-shrink-0 text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            /* 触屏热区 ≥44×44：用 -m-2 抵消多出的盒尺寸，头部视觉高度不变 */
+            className="-m-2 flex-shrink-0 flex items-center justify-center w-11 h-11 text-[var(--muted)] hover:text-[var(--fg)] transition-colors touch-manipulation"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
-          {/* 一句话定位（原文案保留，作为整屏唯一的主文案） */}
-          <p className="text-sm leading-snug serif-font">{t.welcomeIntro}</p>
+        {/* Tab：精致分段滑槽（轨道 + 等宽滑块，位移过渡），紧贴副标题下方居左 */}
+        <div className="flex-shrink-0 px-5 pb-2">
+          <div
+            className="relative grid w-fit max-w-full grid-cols-2 items-center rounded-full border border-[var(--border)]/60 bg-[var(--accent-light)]/60 p-1"
+            role="tablist"
+            aria-label={t.welcomeTabsAria}
+          >
+            {/* 滑块：两格等宽 → 位移一格即切换；reduced-motion 由 index.css 全局兜底块压平 */}
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[var(--card-bg)] shadow-xs transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
+              style={{ transform: tab === 'overview' ? 'translateX(0)' : 'translateX(100%)' }}
+            />
+            {([
+              ['overview', t.welcomeTabOverview],
+              ['guide', t.welcomeTabGuide],
+            ] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                data-welcome-tab={v}
+                aria-selected={tab === v}
+                aria-controls={`welcome-panel-${v}`}
+                onClick={() => setTab(v)}
+                /* 触屏热区：.tap-area 在触屏下抬到 40px（与 TokenUsageDialog / AI 面板的分段控件同一口径）；
+                   刻意不挂 .dialog-tabs——那条全局豁免会把 min-height 压回 0 */
+                className={`tap-area relative z-10 min-h-9 rounded-full px-4 py-1.5 text-xs mono-font transition-colors touch-manipulation ${
+                  tab === v ? 'text-[var(--fg)] font-medium' : 'text-[var(--muted)] hover:text-[var(--fg)]'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          {/* 多端适配 + AI 助手：两条次级注记并排收拢，压低纵向高度 */}
-          <div className="space-y-1.5">
-            <p className="flex items-start gap-1.5 text-xs leading-relaxed mono-font text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">
+        <div
+          id={`welcome-panel-${tab}`}
+          role="tabpanel"
+          /* 内容区独立纵向滚动：px-1 让滚动条贴外缘、不压卡片；pb-6 保证滚到底时末行文字完全露出；
+             min-h 取 12rem——「矮视口也不会把底栏顶出去」的安全上限 */
+          className="flex-1 overflow-y-auto px-1 pb-6 pt-1 min-h-[12rem]"
+        >
+          {/* 内容留白放在内层：mx-4 + 外层 px-1 = 20px，与头部/底栏的 px-5 对齐；滚动条落在外侧留白里 */}
+          <div className="mx-4 space-y-3">
+          {tab === 'overview' ? (
+          <>
+          {/* 多端适配 + AI 助手：合为一块柔和填充，去掉左侧硬引用竖线 */}
+          <div className="rounded-xl bg-[var(--accent-light)]/50 p-3.5 space-y-2">
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
               <MonitorSmartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>{t.welcomeDevices}</span>
             </p>
-            <p className="text-xs leading-snug text-[var(--muted)] border-l-2 border-[var(--border)] pl-2.5">{t.welcomeAi}</p>
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
+              <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{t.welcomeAi}</span>
+            </p>
           </div>
 
-          {/* 四大板块：2x2 微型卡片（细边框 + 微弱底色，形成模块感） */}
-          <div className="grid grid-cols-2 gap-1.5">
+          {/* 四大板块：无边柔和填充 + 圆形图标底衬（手机单列 / ≥sm 双列）
+              图标校准：π 与 Atom/FlaskConical/Calculator 的墨迹体量对齐（见 smoke 守卫 ④e） */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-[0.8125rem] leading-none" /> },
-              { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-3.5 h-3.5" /> },
-              { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-3.5 h-3.5" /> },
-              { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-3.5 h-3.5" /> },
+              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-2xl font-bold leading-none" /> },
+              { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-5 h-5" /> },
+              { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-5 h-5" /> },
+              { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-5 h-5" /> },
             ].map((s, i) => (
-              <div key={i} className="border border-[var(--border)]/70 bg-[var(--accent-light)]/30 p-2">
-                <div className="flex items-center gap-1.5 text-[0.6875rem] mono-font font-bold tracking-widest text-[var(--fg)]">
-                  {s.icon}
-                  <span>{s.title}</span>
+              <div key={i} className="rounded-xl bg-[var(--accent-light)]/60 p-3">
+                {/* 徽标与标题同处一行 items-center → 两者中线严格对齐（此前徽标居中于整块，实测偏下 17~32px） */}
+                <div className="flex items-center gap-3">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-xs"
+                    aria-hidden="true"
+                  >
+                    {s.icon}
+                  </span>
+                  <div className="min-w-0 text-[0.6875rem] mono-font font-bold tracking-widest text-[var(--fg)]">{s.title}</div>
                 </div>
-                <p className="mt-0.5 text-[0.6875rem] leading-snug text-[var(--muted)]">{s.desc}</p>
+                <p className="mt-2 text-[0.6875rem] leading-snug text-[var(--muted)]">{s.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* 次级弱化区：开源协议 / 反馈通道 / 其他作品统一收拢（text-xs + 弱底色信息块） */}
-          <div className="border border-[var(--border)]/70 bg-[var(--accent-light)]/40 p-2 space-y-1.5 text-xs text-[var(--muted)]">
-            <p className="leading-snug">
-              {t.welcomeMaintainPrefix}
-              <button
-                type="button"
-                onClick={() => setShowLicense(true)}
-                title="AGPL-3.0"
-                aria-label="AGPL-3.0"
-                className="underline hover:opacity-70 mono-font"
-              >
-                AGPL-3.0
-              </button>
-              {t.welcomeMaintainSuffix}
-            </p>
-
-            {/* 反馈通道：标签流（去掉伪 Markdown 的 # 前缀） */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mono-font">
-              <span className="flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{t.welcomeFeedbackPrefix}</span>
-                <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)]">king4g@yeah.net</a>
+          {/* 次级底注：协议 / 作者 / 反馈（邮箱带 Mail 图标、Issue 带 Gitee/GitHub 品牌图标）；姊妹作品为紧凑胶囊 */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-0.5 text-[0.6875rem] text-[var(--muted)]">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span>
+                {t.welcomeLicenseLabel}
+                <button
+                  type="button"
+                  onClick={() => setShowLicense(true)}
+                  title="AGPL-3.0"
+                  aria-label="AGPL-3.0"
+                  className="underline hover:text-[var(--fg)] mono-font transition-colors"
+                >
+                  AGPL-3.0
+                </button>
               </span>
+              <span aria-hidden="true" className="text-[var(--border)]">·</span>
+              <span className="text-[var(--fg)]">{t.author}</span>
+              <span aria-hidden="true" className="text-[var(--border)]">·</span>
               <span className="flex items-center gap-1.5">
-                <span>{t.welcomeFeedbackBubbleA}</span>
-                <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>{t.welcomeFeedbackBubbleB}</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span>{t.welcomeFeedbackIssueA}</span>
+                <span>{t.welcomeFeedbackLabel}</span>
+                <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
+                <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)] transition-colors">king4g@yeah.net</a>
+                <span aria-hidden="true" className="text-[var(--border)]">/</span>
+                {/* Issue 入口：只留品牌图标（不再夹「Issue」文字），图标自带外链确认 */}
                 <ExternalLinkConfirm
-                  target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
+                  target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
                   hint={t.externalLinkHint}
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
                   ariaLabel="Gitee project"
                   className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
                     <path d={GITEE_PATH} />
                   </svg>
                 </ExternalLinkConfirm>
                 <ExternalLinkConfirm
-                  target={{ url: 'https://github.com/irkythedev/stem-digital-lab/issues', name: 'GitHub' }}
+                  target={{ url: ISSUE_URLS.github, name: 'GitHub' }}
                   hint={t.externalLinkHint}
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
                   ariaLabel="GitHub project"
                   className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
                     <path d={GITHUB_PATH} />
                   </svg>
                 </ExternalLinkConfirm>
-                <span>{t.welcomeFeedbackIssueB}</span>
               </span>
-            </div>
+            </span>
 
-            {/* 其他作品（点击确认后跳转） */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[var(--border)]/70 pt-2">
-              <span className="flex items-center gap-1.5">
-                <Library className="w-3.5 h-3.5" aria-hidden="true" />
-                <span className="text-[0.625rem] mono-font uppercase tracking-wider">{t.moreWorks}</span>
+            {/* 姊妹作品：前置「作品集图标」（作品名就在后面，故不挂数字角标），后方为图标胶囊 */}
+            <span className="flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex shrink-0" title={t.moreWorks}>
+                <Library className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
               {t.works.map((w) => (
                 <button
                   key={w.url}
                   type="button"
                   onClick={() => setPendingWork(w)}
-                  className="flex items-center gap-1.5 hover:text-[var(--fg)] transition-colors"
+                  className="flex items-center gap-1.5 rounded-full bg-[var(--accent-light)]/70 px-2.5 py-1 transition-colors hover:bg-[var(--accent-light)]"
                 >
-                  <img src={w.icon} alt="" width="14" height="14" className="flex-shrink-0" />
+                  <img src={w.icon} alt="" width="12" height="12" className="shrink-0 rounded-[3px] object-contain" />
                   {w.name}
                 </button>
               ))}
-            </div>
+            </span>
+          </div>
 
-            {/* 内联确认：点「其他作品」后在此展开，先看简介再决定是否跳转 */}
-            {pendingWork && (
-              <div ref={confirmRef} className="border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <img src={pendingWork.icon} alt="" width="16" height="16" className="flex-shrink-0" />
-                  <span className="text-xs font-bold mono-font text-[var(--fg)]">{pendingWork.name}</span>
-                </div>
-                {pendingWork.desc && <p className="text-[0.6875rem] leading-relaxed">{pendingWork.desc}</p>}
-                <p className="text-[0.625rem] mono-font break-all">{pendingWork.url}</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(pendingWork.url, '_blank', 'noopener,noreferrer');
-                      setPendingWork(null);
-                    }}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
-                  >
-                    {zh ? '前往' : 'Open'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPendingWork(null)}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
-                  >
-                    {zh ? '取消' : 'Cancel'}
-                  </button>
+          {/* 内联确认：点姊妹作品胶囊后在此展开，先看简介再决定是否跳转 */}
+          {pendingWork && (
+            <div ref={confirmRef} className="rounded-xl bg-[var(--bg)] p-3 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <img src={pendingWork.icon} alt="" width="16" height="16" className="flex-shrink-0" />
+                <span className="text-xs font-bold mono-font text-[var(--fg)]">{pendingWork.name}</span>
+              </div>
+              {pendingWork.desc && <p className="text-[0.6875rem] leading-relaxed">{pendingWork.desc}</p>}
+              <p className="text-[0.625rem] mono-font break-all">{pendingWork.url}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(pendingWork.url, '_blank', 'noopener,noreferrer');
+                    setPendingWork(null);
+                  }}
+                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                >
+                  {zh ? '前往' : 'Open'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingWork(null)}
+                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                >
+                  {zh ? '取消' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          )}
+          </>
+          ) : (
+          <>
+          {/* 快速上手指引 = 4 条纵向流式导览行 + 一行小字提示（每行只讲一件事） */}
+          <div className="space-y-0.5">
+            {([
+              { icon: <Compass className="w-5 h-5" />, title: t.guideCard1Title, desc: t.guideCard1Desc },
+              { icon: <Shapes className="w-5 h-5" />, title: t.guideCard2Title, desc: t.guideCard2Desc },
+              { icon: <Atom className="w-5 h-5" />, title: t.guideCard3Title, desc: t.guideCard3Desc },
+              { icon: <GraduationCap className="w-5 h-5" />, title: t.guideCard4Title, desc: t.guideCard4Desc },
+            ]).map((c, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3.5 rounded-xl p-3 transition-colors hover:bg-[var(--accent-light)]/50"
+              >
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-light)]/70 text-[var(--fg)]"
+                  aria-hidden="true"
+                >
+                  {c.icon}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-xs mono-font font-bold text-[var(--fg)]">{c.title}</div>
+                  <p className="mt-0.5 text-[0.6875rem] leading-relaxed text-[var(--muted)]">{c.desc}</p>
                 </div>
               </div>
-            )}
+            ))}
+          </div>
+
+          {/* 提示：一行精致小字 */}
+          <p className="flex items-start gap-2 px-1 text-[0.625rem] leading-relaxed text-[var(--muted)]">
+            <Lightbulb className="mt-px h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>
+              <span className="mono-font font-bold tracking-widest text-[var(--fg)]">{t.guideTipLabel}</span>
+              {zh ? '：' : ': '}
+              {t.guideTipBody}
+            </span>
+          </p>
+          </>
+          )}
           </div>
         </div>
 
-        {/* 底部：勾选 + 开始探究（固定可见，不随内容滚动） */}
+        {/* 底部操作栏：flex-shrink-0 常驻，小屏也不会被内容挤出可视区（单行布局，压低总高） */}
         <div
-          className="flex-shrink-0 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[var(--border)] px-5 py-3"
+          className="flex-shrink-0 flex items-center justify-between gap-3 border-t border-[var(--border)]/60 px-5 pt-3"
           style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
         >
-          <label className="flex items-center gap-2 text-xs text-[var(--muted)] cursor-pointer select-none">
+          <label className="flex items-center gap-2 min-h-11 text-xs text-[var(--muted)] cursor-pointer select-none">
             <input
               type="checkbox"
               checked={dontShow}
@@ -296,7 +399,7 @@ export default function WelcomeDialog({ onClose }: { onClose: (permanent: boolea
             ref={gotItRef}
             type="button"
             onClick={close}
-            className="px-5 py-2 text-sm mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors min-h-[40px] touch-manipulation"
+            className="shrink-0 px-5 py-2 text-sm mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors min-h-11 touch-manipulation"
           >
             {t.welcomeGotIt}
           </button>

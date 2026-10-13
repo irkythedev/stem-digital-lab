@@ -158,6 +158,9 @@ function AnimatedPolyline({
   );
 }
 
+/** 数字/坐标文本统一用学术减号 U+2212：等宽字体里 ASCII 连字符过窄且不合数学排版规范 */
+export const mathMinus = (v: string | number): string => String(v).replace(/-/g, '\u2212');
+
 export default function CoordPlane({
   curves,
   markers = [],
@@ -293,7 +296,7 @@ export default function CoordPlane({
             fill="var(--muted)"
             fontFamily="var(--f-mono)"
           >
-            {v}
+            {mathMinus(v)}
           </text>
         ),
       )}
@@ -308,7 +311,7 @@ export default function CoordPlane({
             fill="var(--muted)"
             fontFamily="var(--f-mono)"
           >
-            {v}
+            {mathMinus(v)}
           </text>
         ),
       )}
@@ -356,7 +359,7 @@ export default function CoordPlane({
                   {m.vline.label != null && (
                     <text x={sx(m.vline.x) + 4} y={PAD.top + 6} fontSize="11" fontWeight="500"
                       fill={m.vline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
-                      {m.vline.label}
+                      {mathMinus(m.vline.label)}
                     </text>
                   )}
                 </>
@@ -370,7 +373,7 @@ export default function CoordPlane({
                   {m.hline.label != null && (
                     <text x={PAD.left + 4} y={sy(m.hline.y) + 14} fontSize="11" fontWeight="500"
                       fill={m.hline.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
-                      {m.hline.label}
+                      {mathMinus(m.hline.label)}
                     </text>
                   )}
                 </>
@@ -382,7 +385,7 @@ export default function CoordPlane({
                   {m.dot.label != null && (
                     <text x={sx(m.dot.x) + 8} y={sy(m.dot.y) - 8} fontSize="12" fontWeight="600"
                       fill={m.dot.color ?? 'var(--accent)'} fontFamily="var(--f-mono)">
-                      {m.dot.label}
+                      {mathMinus(m.dot.label)}
                     </text>
                   )}
                 </>
@@ -412,7 +415,7 @@ export default function CoordPlane({
               fill={i === 0 ? 'var(--fg)' : 'var(--muted)'}
             >
               {i === 0 ? '— ' : '- - '}
-              {c.label ?? ''}
+              {mathMinus(c.label ?? '')}
             </text>
           ))}
         </g>

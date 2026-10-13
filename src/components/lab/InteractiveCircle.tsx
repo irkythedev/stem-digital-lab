@@ -42,12 +42,12 @@ function svgToAngle(svgX: number, svgY: number): number {
   return Math.atan2(CY - svgY, svgX - CX);
 }
 
-function dist(x1: number, y1: number, x2: number, y2: number): number {
+export function dist(x1: number, y1: number, x2: number, y2: number): number {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
 /** 三点夹角（顶点在 b） */
-function angleBetween(
+export function angleBetween(
   ax: number, ay: number,
   bx: number, by: number,
   cx: number, cy: number,
@@ -58,11 +58,14 @@ function angleBetween(
   const v2y = cy - by;
   const dot = v1x * v2x + v1y * v2y;
   const mag = Math.sqrt(v1x * v1x + v1y * v1y) * Math.sqrt(v2x * v2x + v2y * v2y);
+  // 退化防护：动点重合 / 与顶点重合 → 向量长度为 0 → dot/0 = NaN，
+  // 而 Math.max(-1, Math.min(1, NaN)) 仍是 NaN（夹取救不了 NaN）→ acos(NaN) = NaN 会污染渲染。
+  if (!(mag > 1e-12)) return 0;
   return Math.acos(Math.max(-1, Math.min(1, dot / mag)));
 }
 
 /** 两线段交点 */
-function lineIntersect(
+export function lineIntersect(
   x1: number, y1: number, x2: number, y2: number,
   x3: number, y3: number, x4: number, y4: number,
 ): { x: number; y: number } | null {
@@ -440,7 +443,7 @@ export default function InteractiveCircle({
                 <text x={CX} y={CY + R + 48} textAnchor="middle"
                   fill={Math.abs(halfChord * 2 - chordLen) < 0.01 ? 'var(--fg)' : 'var(--muted)'}
                   fontSize={13} className="mono-font">
-                  AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? (zh ? '✓ 垂径定理成立' : '✓ Perpendicular bisector holds') : ''}
+                  AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? (zh ? '垂径定理成立' : 'Perpendicular bisector holds') : ''}
                 </text>
               )}
             </Fade>
@@ -558,13 +561,13 @@ export default function InteractiveCircle({
               {Math.abs(angleBPC - angleBQC) < 0.01 && (
                 <text x={CX} y={CY + R + 30} textAnchor="middle"
                   fill="var(--fg)" fontSize={13} className="mono-font">
-                  ∠BPC = ∠BQC = {toDeg(angleBPC)} ✓ 同弧所对圆周角相等
+                  ∠BPC = ∠BQC = {toDeg(angleBPC)} 同弧所对圆周角相等
                 </text>
               )}
               {Math.abs(angleBPC - angleBOC / 2) < 0.01 && (
                 <text x={CX} y={CY + R + 48} textAnchor="middle"
                   fill="var(--accent)" fontSize={13} className="mono-font">
-                  ∠BPC = ½∠BOC ✓ 圆周角 = 圆心角一半
+                  ∠BPC = ½∠BOC 圆周角 = 圆心角一半
                 </text>
               )}
             </Fade>
@@ -620,7 +623,7 @@ export default function InteractiveCircle({
               {Math.abs(angleACB - Math.PI / 2) < 0.01 && (
                 <text x={CX} y={CY + R + 30} textAnchor="middle"
                   fill="var(--fg)" fontSize={13} className="mono-font">
-                  ∠ACB = 90° ✓ 直径所对圆周角为直角
+                  ∠ACB = 90° 直径所对圆周角为直角
                 </text>
               )}
             </Fade>

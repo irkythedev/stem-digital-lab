@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.38.0';
+export const APP_VERSION = '0.39.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.39.0',
+    date: '2026-10',
+    zh: [
+      '[优化] 物理实验器材按课本实物画法重做：滑动变阻器补齐「一上一下」四个接线柱与滑片，滑片右移时能直接看出接入电路的有效线圈变长；电表指针不再越界，超出量程时停在满偏并变色提示，表盘还能点按换档',
+      '[优化] 三科题库与判分统一整理：各题选项的长短与正确答案的位置分布更均衡，不再出现「最长的那一项就是答案」或「答案总在同一个位置」；判分标记统一为矢量图标，不再出现字形误判',
+      '[修复] AI 助教更稳：思考型模型偶发的「有思考过程、回答却是空白」不再被当成一次成功的回答存进记录，改为明确提示并可直接重试；回答被截断或中途断开时会标注出来，并可一键接着写；设置里还能自定义单次输出上限（默认不限制）',
+      '[新增] 上手引导重做并新增帮助入口：欢迎窗改为两个分页，三个学科分别给出快速上手；演示视频同步更新',
+    ],
+    en: [
+      '[Improved] Physics apparatus redrawn to match the real kit: the rheostat now shows the standard four terminals with its wiper, so moving the wiper visibly lengthens the coil in circuit; meter needles no longer run off the dial and stop at full scale with a colour warning when a reading is over range, and the dial can be tapped to switch ranges',
+      '[Improved] Quiz banks and grading across the three subjects regularised: option lengths and correct-answer positions are evenly spread, so the longest option is no longer the answer and the answer no longer always sits in the same place; correctness marks are vector icons instead of glyphs',
+      '[Fixed] A steadier AI assistant: when a thinking model returns reasoning but no answer, that is no longer stored as a successful reply — you get a clear notice and a one-tap retry; an answer cut short or interrupted mid-stream is labelled and can be continued in one tap; the per-request output limit can now be set in settings (unlimited by default)',
+      '[New] Reworked onboarding plus a new help entry: the welcome window now has two tabs with a quick start for each subject, and the demo video has been refreshed',
+    ],
+  },
   {
     version: '0.38.0',
     date: '2026-10',

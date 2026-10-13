@@ -84,16 +84,33 @@ export function markStopped(text: string, lang: 'zh' | 'en'): string {
 }
 
 /**
- * 剥掉「中断标记」：发给模型的文本必须是干净正文。
+ * 「输出未写完」标记：这一轮不是学生停的，而是内容没生成完就断了。两种成因分开命名，
+ * 因为对学生的信息不同：一个是模型自己把预算用光了（finish_reason=length），
+ * 一个是连接被中途切断（网关超时/代理挂断）。同样只给学生看，回灌上下文前必须剥离。
+ */
+export function markTruncated(text: string, lang: 'zh' | 'en', reason: 'limit' | 'cut' = 'limit'): string {
+  const body = text.trim();
+  if (!body) return '';
+  const mark = reason === 'cut'
+    ? (lang === 'zh' ? '[连接被中断，内容可能未写完]' : '[connection cut off — content may be incomplete]')
+    : (lang === 'zh' ? '[输出已达上限]' : '[output limit reached]');
+  return body.includes(mark) ? body : `${body}\n\n${mark}`;
+}
+
+/**
+ * 剥掉「中断 / 未写完标记」：发给模型的文本必须是干净正文。
  * 标记只给学生看（提示这不是完整答案），回灌进上下文会让模型把标记当内容读。
  */
 export function stripStoppedMark(text: string): string {
-  return text.replace(/\n*\s*\[(?:已停止|stopped)\]\s*$/u, '').trim();
+  return text
+    .replace(/\n*\s*\[(?:已停止|stopped|输出已达上限|output limit reached|连接被中断，内容可能未写完|connection cut off — content may be incomplete)\]\s*$/u, '')
+    .trim();
 }
 
-/** 这轮回答是否「被中断」且仍有有效残句 —— 只有这种才值得给「继续生成」入口 */
+/** 这轮回答是否「被中断或没写完」且仍有有效残句 —— 只有这种才值得给「继续生成」入口 */
 export function isStoppedAnswer(text: string): boolean {
-  return /\[(?:已停止|stopped)\]\s*$/u.test(text) && stripStoppedMark(text).length > 0;
+  return /\[(?:已停止|stopped|输出已达上限|output limit reached|连接被中断，内容可能未写完|connection cut off — content may be incomplete)\]\s*$/u.test(text)
+    && stripStoppedMark(text).length > 0;
 }
 
 /** 清空全部历史（只清历史，不动配置与当前会话） */

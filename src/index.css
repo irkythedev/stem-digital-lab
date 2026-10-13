@@ -503,6 +503,10 @@ input[type="range"]::-moz-range-thumb:active {
 .katex-display {
   margin: 0;
   padding: 0;
+  /* 行间公式溢出保护：长公式在窄容器内不撑破布局，改为容器内横向滚动 */
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* 滴定液滴：从滴管口下落进入液面（SVG circle 位移动画） */

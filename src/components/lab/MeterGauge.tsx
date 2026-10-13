@@ -8,6 +8,13 @@
  *
  * 用法：与 MeterProbe 联动——探针吸附测点后，把该测点数值传给 value；
  * value=null 表示表笔悬空（指针回零，读数显示 —）。
+ *
+ * 仪器安全（超量程）：指针角度在**两端**都做极值夹取（左零位 / 右满偏），
+ * 任何输入都不可能让指针飞出表盘或穿模；读数超过本档满偏时指针停在满偏刻度，
+ * 读数与警示文字转为 --error（克制：无图标、无动画、仅变色 + 一行小字）。
+ *
+ * 量程：max 由父级给出（真实学生表双量程：电流 0.6A/3A、电压 3V/15V）。
+ * 传入 onCycleRange 后表盘可点击换档——对应实物「换接大量程接线柱」，缺省为静态图。
  */
 import { useApp } from '../../lib/app-context';
 
@@ -20,6 +27,8 @@ interface MeterGaugeProps {
   unit: 'A' | 'V';
   /** 当前测点名称（表盘下方小字） */
   label: string;
+  /** 可选：点击表盘切换量程（双量程端子）。缺省时表盘不可点。 */
+  onCycleRange?: () => void;
 }
 
 const CX = 50;
@@ -39,10 +48,18 @@ const polar = (r: number, deg: number): [number, number] => {
 /** 上半圆弧路径（左 → 右） */
 const arcPath = `M ${CX - R_OUT} ${CY} A ${R_OUT} ${R_OUT} 0 0 1 ${CX + R_OUT} ${CY}`;
 
-export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps) {
+export default function MeterGauge({ value, max, unit, label, onCycleRange }: MeterGaugeProps) {
   const { lang } = useApp();
+  const zh = lang === 'zh';
   const v = value ?? 0;
-  const deg = 180 - (Math.min(v, max) / max) * 180; // 0 → 左端零位，max → 右端满偏
+  /** 超量程：读数超过本档满偏 → 指针停满偏 + 变色警示（不飞出表盘） */
+  const over = value !== null && v > max;
+  /**
+   * 指针角度：两端夹取到 [0, max]。
+   * 上端夹取 = 超量程停在满偏；下端夹取 = 负值等异常输入停在零位（防穿模）。
+   */
+  const clamped = Math.max(0, Math.min(v, max));
+  const deg = 180 - (clamped / max) * 180; // 0 → 左端零位，max → 右端满偏
   const mid = max / 2;
   // 指针颜色：电流表红 / 电压表蓝（专业仪表惯例），明暗主题由 CSS 变量适配
   const needleColor = unit === 'A' ? 'var(--meter-a)' : 'var(--meter-v)';
@@ -51,49 +68,65 @@ export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps)
   const majors = Array.from({ length: 11 }, (_, i) => i);
   const minors = Array.from({ length: 10 }, (_, i) => i * 2 + 1);
 
+  const dial = (
+    <svg width={100} height={88} viewBox="0 0 100 88" role="img" aria-label={`${unit} ${zh ? '表盘' : 'gauge'}`} className="shrink-0">
+      {/* 外弧 */}
+      <path d={arcPath} fill="none" stroke="var(--border)" strokeWidth="1.2" />
+      {/* 细分刻度 */}
+      {minors.map((i) => {
+        const [x1, y1] = polar(R_MINOR, 180 - i * 9);
+        const [x2, y2] = polar(R_OUT, 180 - i * 9);
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--border)" strokeWidth="0.8" />;
+      })}
+      {/* 主刻度 */}
+      {majors.map((i) => {
+        const [x1, y1] = polar(R_MAJOR, 180 - i * 18);
+        const [x2, y2] = polar(R_OUT, 180 - i * 18);
+        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--fg)" strokeWidth="1" />;
+      })}
+      {/* 刻度数字：0 / max/2 / max（沿弧线内侧排列） */}
+      <text x={polar(R_LABEL, 180)[0]} y={polar(R_LABEL, 180)[1] + 4} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
+        0
+      </text>
+      <text x={polar(R_LABEL, 90)[0]} y={polar(R_LABEL, 90)[1] + 3} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
+        {String(mid)}
+      </text>
+      <text x={polar(R_LABEL, 0)[0]} y={polar(R_LABEL, 0)[1] + 4} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
+        {String(max)}
+      </text>
+      {/* 指针（含尾部平衡杆），CSS transform 过渡；旋转取反：刻度极坐标逆时针、CSS rotate 顺时针 */}
+      <g
+        style={{
+          transform: `rotate(${-deg}deg)`,
+          transformOrigin: `${CX}px ${CY}px`,
+          transformBox: 'view-box',
+          transition: 'transform 0.2s ease-out',
+        }}
+      >
+        <line x1={CX - 8} y1={CY} x2={CX} y2={CY} stroke={needleColor} strokeWidth="1.4" />
+        <line x1={CX} y1={CY} x2={CX + NEEDLE} y2={CY} stroke={needleColor} strokeWidth="1.6" />
+      </g>
+      {/* 中心轴 */}
+      <circle cx={CX} cy={CY} r="2.6" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
+    </svg>
+  );
+
   return (
     <div className="flex w-[100px] flex-col items-center gap-0.5">
-      <svg width={100} height={88} viewBox="0 0 100 88" role="img" aria-label={`${unit} ${lang === 'zh' ? '表盘' : 'gauge'}`} className="shrink-0">
-        {/* 外弧 */}
-        <path d={arcPath} fill="none" stroke="var(--border)" strokeWidth="1.2" />
-        {/* 细分刻度 */}
-        {minors.map((i) => {
-          const [x1, y1] = polar(R_MINOR, 180 - i * 9);
-          const [x2, y2] = polar(R_OUT, 180 - i * 9);
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--border)" strokeWidth="0.8" />;
-        })}
-        {/* 主刻度 */}
-        {majors.map((i) => {
-          const [x1, y1] = polar(R_MAJOR, 180 - i * 18);
-          const [x2, y2] = polar(R_OUT, 180 - i * 18);
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--fg)" strokeWidth="1" />;
-        })}
-        {/* 刻度数字：0 / max/2 / max（沿弧线内侧排列） */}
-        <text x={polar(R_LABEL, 180)[0]} y={polar(R_LABEL, 180)[1] + 4} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
-          0
-        </text>
-        <text x={polar(R_LABEL, 90)[0]} y={polar(R_LABEL, 90)[1] + 3} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
-          {String(mid)}
-        </text>
-        <text x={polar(R_LABEL, 0)[0]} y={polar(R_LABEL, 0)[1] + 4} textAnchor="middle" fontSize="8" fill="var(--muted)" fontFamily="var(--f-mono)">
-          {String(max)}
-        </text>
-        {/* 指针（含尾部平衡杆），CSS transform 过渡；旋转取反：刻度极坐标逆时针、CSS rotate 顺时针 */}
-        <g
-          style={{
-            transform: `rotate(${-deg}deg)`,
-            transformOrigin: `${CX}px ${CY}px`,
-            transformBox: 'view-box',
-            transition: 'transform 0.2s ease-out',
-          }}
+      {onCycleRange ? (
+        <button
+          type="button"
+          onClick={onCycleRange}
+          title={zh ? `量程 0–${max}${unit}，点击换档` : `Range 0–${max}${unit}, click to switch`}
+          aria-label={zh ? `当前量程 0 到 ${max} ${unit}，点击切换量程` : `Current range 0 to ${max} ${unit}, click to switch`}
+          className="tap-area flex cursor-pointer flex-col items-center rounded-md bg-transparent"
         >
-          <line x1={CX - 8} y1={CY} x2={CX} y2={CY} stroke={needleColor} strokeWidth="1.4" />
-          <line x1={CX} y1={CY} x2={CX + NEEDLE} y2={CY} stroke={needleColor} strokeWidth="1.6" />
-        </g>
-        {/* 中心轴 */}
-        <circle cx={CX} cy={CY} r="2.6" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-      </svg>
-      <p className="mono-font text-[0.8125rem] leading-tight text-[var(--fg)]">
+          {dial}
+        </button>
+      ) : (
+        dial
+      )}
+      <p className={`mono-font text-[0.8125rem] leading-tight ${over ? 'text-[var(--error)]' : 'text-[var(--fg)]'}`}>
         {value === null ? (
           '—'
         ) : (
@@ -104,6 +137,11 @@ export default function MeterGauge({ value, max, unit, label }: MeterGaugeProps)
         )}
       </p>
       <p className="text-[0.625rem] mono-font leading-tight text-[var(--muted)]">{label}</p>
+      {over && (
+        <p className="text-[0.5625rem] mono-font leading-tight text-[var(--error)]" role="status">
+          {zh ? `超量程（${max}${unit}）` : `Over range (${max}${unit})`}
+        </p>
+      )}
     </div>
   );
 }

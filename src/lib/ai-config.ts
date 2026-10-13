@@ -70,7 +70,25 @@ export function isNetworkError(msg: string): boolean {
 }
 
 /** 失败分类：决定文案、是否给「重试」、以及 429 要不要先倒计时 */
-export type AiFailureKind = 'offline' | 'network' | 'timeout' | 'stall' | 'rate_limit' | 'server' | 'auth' | 'other';
+export type AiFailureKind = 'offline' | 'network' | 'timeout' | 'stall' | 'empty' | 'rate_limit' | 'server' | 'auth' | 'other';
+
+/**
+ * 空正文失败：这一轮模型只吐了思考（或什么都没吐），正文一个字符都没有。
+ *
+ * 为什么必须当失败：对学生的表现就是「思考过程有、回答是空白」。旧实现把空字符串当成
+ * 正常结束，于是空回答被写进内存历史与 localStorage，学生只看到一个空白框，连「重试」
+ * 都没有。思考型模型（DeepSeek-R1 / Qwen-Thinking / 本地 llama.cpp、vLLM）把思考也算进
+ * max_tokens，思考吃满预算时必然走到这里——这是端点与提示词的边界，不是学生的错。
+ */
+export class EmptyAnswerError extends Error {
+  /** 端点给出的结束原因：'length' 说明输出上限被思考吃满，null/其他说明端点什么都没回 */
+  readonly finishReason: string | null;
+  constructor(finishReason: string | null) {
+    super(finishReason === 'length' ? 'empty answer: output budget exhausted' : 'empty answer');
+    this.name = 'EmptyAnswerError';
+    this.finishReason = finishReason;
+  }
+}
 
 export interface ChatFailure {
   kind: AiFailureKind;
@@ -93,6 +111,9 @@ export function classifyChatFailure(e: unknown, opts: { offline?: boolean } = {}
   const raw = (err && typeof err.message === 'string' ? err.message : String(e)) || '';
   const status = typeof err?.status === 'number' ? err.status : undefined;
 
+  // 空正文：端点真的回了（否则会走 network/offline），只是正文一个字符都没有。
+  // 这类必须给「重试」（重采样一次通常就有正文），且 raw 留空——学生不需要看 finish_reason=length。
+  if (e instanceof EmptyAnswerError) return { kind: 'empty', retryable: true, raw: '' };
   if (opts.offline || isNetworkError(raw)) return { kind: 'offline', retryable: true, raw };
   if (status === 401 || status === 403 || /authentication|invalid[^.]*api|api key/i.test(raw)) {
     return { kind: 'auth', retryable: false, raw };
@@ -129,6 +150,13 @@ export interface AiConfig {
   thinkingEffort?: ThinkingEffort;
   /** 自定义端点的附加请求参数（JSON 文本透传；仅 providerId === 'custom' 时生效） */
   extraParamsText?: string;
+  /**
+   * 输出上限（tokens）。留空 / 非正数 = 不下发 max_tokens（由端点自己决定）。
+   *
+   * 默认不设的理由：思考型模型把「思考」也算进这个上限，上限一小，思考就把预算吃光、
+   * 正文一个字符都不出——学生看到「有思考、回答空白」。只有明确要控成本时才填。
+   */
+  maxOutputTokens?: number;
   /**
    * 各服务商各自保存的 API Key。
    * 切换服务商时按此回填：A 家的 Key 绝不能出现在 B 家的输入框里，
@@ -855,10 +883,97 @@ export function resolveThinkingDispatch(
 
 /** 流式请求的首包超时：连上了却一个 token 都不吐时，学生只能干等（服务商拥塞或被中间设备挂起） */
 export const FIRST_PACKET_TIMEOUT_MS = 20000;
-/** 中途停滞超时：首包已到、但这么久没有任何新增量（弱网/代理半死最常见的表现） */
-export const STALL_TIMEOUT_MS = 30000;
+/**
+ * 中途停滞超时：首包已到、但这么久没有任何新增量（弱网/代理半死最常见的表现）。
+ *
+ * 取 60s 而不是更短：思考型模型在弱算力设备（本地 llama.cpp / 单卡小模型）上，
+ * 思考段的两段增量之间实测能拉开 20s 以上，30s 的闸会把正常思考误判成「传输停滞」。
+ */
+export const STALL_TIMEOUT_MS = 60000;
 
-/** 流式请求 OpenAI 兼容 chat/completions，逐段回调 */
+/**
+ * 各链路的默认输出上限（tokens）。undefined = 不下发 max_tokens。
+ *
+ * 为什么对话与出题不再封顶：思考型模型把思考算进输出上限（llama.cpp / vLLM / R1 类同此），
+ * 封顶就会出现「思考吃满预算、正文一个字符都不出」。护栏改由提示词的长度契约、
+ * 出题的 ===END=== 完整性校验与停滞看门狗承担。归纳与判分是一次性短输出，仍给上限。
+ */
+export const CHAIN_MAX_TOKENS: { chat?: number; quiz?: number; summary?: number; judge?: number } = {
+  chat: undefined,
+  quiz: undefined,
+  summary: 2048,
+  judge: 1024,
+};
+
+/** 本次请求实际下发的输出上限：用户显式设置优先，其次该链路默认，都没有就不下发 */
+export function resolveMaxTokens(
+  cfg: Pick<AiConfig, 'maxOutputTokens'> | null | undefined,
+  chainDefault?: number,
+): number | undefined {
+  const v = cfg?.maxOutputTokens;
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return Math.floor(v);
+  return chainDefault;
+}
+
+/** 流式请求的 token 用量（端点给了才记；部分自建网关不返回 usage） */
+export interface StreamUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+}
+
+/**
+ * 流式请求的结果。
+ *
+ * 为什么要带上 finishReason：正文为空有两种完全不同的原因——模型没写完（length，
+ * 思考吃满预算）与端点什么问题都没有（stop）。只看正文分不出来，而学生看到的都是空白，
+ * 所以调用方必须能拿到端点给的结束原因，才能决定「当失败重试」还是「标注截断」。
+ */
+export interface StreamResult {
+  /** 正文全文（不含思考段：内联思考已由切分器改道到 reasoning 通道） */
+  text: string;
+  /** 端点的结束原因：stop=正常收尾；length=被输出上限掐断；null=端点没给（部分自建网关） */
+  finishReason: string | null;
+  /** token 用量（端点给了才有） */
+  usage: StreamUsage | null;
+  /**
+   * 端点是否给出过收尾信号（finish_reason 或 [DONE]）。
+   *
+   * false = 连接在生成中途被切断（网关超时、代理挂断、弱网），已收到的正文不一定完整。
+   * 这类绝不能当成「正常收完」：学生页面上会是半句话看着像结论。
+   */
+  complete: boolean;
+}
+
+/** 端点明确说被输出上限掐断（思考吃满预算时最常见的「有思考、没正文」） */
+export function isLengthTruncated(res: Pick<StreamResult, 'finishReason'> | null | undefined): boolean {
+  return res?.finishReason === 'length';
+}
+
+/** 流式结果的收尾判定（面板与验收脚本共用同一口径：面板怎么判，验收就怎么判） */
+export type StreamOutcome = 'ok' | 'limit' | 'cut' | 'empty';
+
+export function classifyStreamOutcome(
+  res: Pick<StreamResult, 'text' | 'finishReason' | 'complete'> | null | undefined,
+): StreamOutcome {
+  if (!res || !res.text.trim()) return 'empty';
+  if (res.finishReason === 'length') return 'limit';
+  if (!res.complete) return 'cut'; // 正文有了但没收到收尾信号：连接被中途切断
+  return 'ok';
+}
+
+/** 统一 usage 字段名（各家一致，但值可能是字符串/缺失，一律归一成数字或 undefined） */
+function normalizeUsage(u: Record<string, unknown>): StreamUsage {
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+  return { promptTokens: n(u.prompt_tokens), completionTokens: n(u.completion_tokens), totalTokens: n(u.total_tokens) };
+}
+
+/**
+ * 流式请求 OpenAI 兼容 chat/completions，逐段回调。
+ *
+ * `maxTokens` 是该链路的默认输出上限；用户在设置里显式填了上限时以用户值为准
+ * （见 resolveMaxTokens）。两者都没有就不下发 max_tokens。
+ */
 export async function streamChat(
   cfg: AiConfig,
   messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
@@ -866,8 +981,9 @@ export async function streamChat(
   signal?: AbortSignal,
   maxTokens?: number,
   onReasoning?: (text: string) => void,
-): Promise<string> {
+): Promise<StreamResult> {
   const url = `${normalizeBaseUrl(cfg.baseUrl)}/chat/completions`;
+  const maxOut = resolveMaxTokens(cfg, maxTokens);
   // 首包超时：用一个内部 controller 与外层 signal 联动 —— 既能超时中断，又不越权去
   // abort 调用方自己的 controller（调用方要靠它区分「学生点了停止」与「真失败」）。
   const ctrl = new AbortController();
@@ -915,8 +1031,9 @@ export async function streamChat(
       model: cfg.model,
       messages,
       stream: true,
-      // 输出上限：对话与出题分开设（对话 2000 保证追问段完整，出题 4000 保证末题不截断）
-      ...(maxTokens ? { max_tokens: maxTokens } : {}),
+      // 输出上限：用户显式设置优先；未设置时用该链路默认（undefined = 不下发）。
+      // 封顶会把思考型模型的预算全给思考，正文一个字符都不出（学生看到空白回答）。
+      ...(maxOut ? { max_tokens: maxOut } : {}),
       // 思考强度档位 + 自定义端点透传：与界面「本次下发」留痕共用同一出口
       // （resolveThinkingDispatch），因此界面承诺什么，这里就发什么。
       ...resolveThinkingDispatch(cfg).params,
@@ -951,6 +1068,12 @@ export async function streamChat(
   const decoder = new TextDecoder();
   let full = '';
   let buf = '';
+  // 端点的结束原因与用量：只看正文分不出「没写完」与「真的没内容」，
+  // 而这两种在界面上都需要不同处理（标注截断 / 当失败重试）
+  let finishReason: string | null = null;
+  let usage: StreamUsage | null = null;
+  // 是否收到过收尾信号（finish_reason 或 [DONE]）：没有就是被中途切断
+  let complete = false;
   // 正文与思考分流：content 里若内联了思考标签，由切分器改道到 reasoning 通道
   const splitter = createInlineThinkSplitter((channel, text) => {
     if (channel === 'reasoning') {
@@ -973,9 +1096,22 @@ export async function streamChat(
         if (!t.startsWith('data:')) continue;
         const payload = t.slice(5).trim();
         markFirstPacket(); // 收到事件流即说明模型已开始响应，撤掉首包超时闸
-        if (payload === '[DONE]') continue;
+        if (payload === '[DONE]') {
+          complete = true;
+          continue;
+        }
         try {
-          const { content, reasoning } = extractStreamDelta(JSON.parse(payload));
+          const json = JSON.parse(payload) as {
+            choices?: { finish_reason?: unknown }[];
+            usage?: Record<string, unknown>;
+          };
+          const { content, reasoning } = extractStreamDelta(json);
+          const fr = json?.choices?.[0]?.finish_reason;
+          if (typeof fr === 'string' && fr) {
+            finishReason = fr;
+            complete = true;
+          }
+          if (json?.usage && typeof json.usage === 'object') usage = normalizeUsage(json.usage);
           if (reasoning) onReasoning?.(reasoning);
           if (content) splitter.push(content);
         } catch {
@@ -984,10 +1120,19 @@ export async function streamChat(
       }
     }
     splitter.flush();
-    return full;
+    return { text: full, finishReason, usage, complete };
   } catch (e) {
     // 停滞是「我们自己掐的」，要换成人能看懂的说明；其余原样上抛给调用方分类
     if (stalled) throw new Error(`stalled for ${Math.round(STALL_TIMEOUT_MS / 1000)}s`);
+    // 中途被切断（网关超时/代理挂断）但已经收到正文：这不是「这次没结果」，而是「没写完」——
+    // 返回已收到的部分并标 complete=false，让学生看到内容 + 「继续生成」，而不是整段消失。
+    // 学生自己点停止（外层 signal 已 abort）不在此列：那一条路要保留「已停止」的语义。
+    const userAborted = !!signal?.aborted;
+    if (!userAborted && full.trim()) return { text: full, finishReason, usage, complete: false };
+    // 流已经开始了却一个正文都没收到（网关 60s 切断时最常见：模型还在思考就被掐了）：
+    // 对学生的表现就是「提问后一直没有回答」。按空正文处理，给可重试的明确提示，
+    // 而不是含糊的「网络请求没有成功」——重发一次通常就有正文。
+    if (!userAborted && firstPacket) throw new EmptyAnswerError(finishReason);
     throw e;
   } finally {
     detach();

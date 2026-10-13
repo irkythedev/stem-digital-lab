@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
+import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
@@ -30,7 +31,10 @@ type PredictIntercept = 'pos' | 'neg' | 'zero' | null;
 /** 采样一次函数：x ∈ [-4, 4]，y = kx + b */
 function sampleLinear(k: number, b: number): [number, number][] {
   const pts: [number, number][] = [];
-  for (let x = -4; x <= 4.0001; x += 0.05) {
+  // 索引乘法取点（勿用逐点浮点累加：末点漂移会让直线端点与坐标刻度错位）
+  const N = Math.round(8 / 0.05);
+  for (let i = 0; i <= N; i++) {
+    const x = -4 + i * 0.05;
     pts.push([x, k * x + b]);
   }
   return pts;
@@ -235,6 +239,29 @@ const copy = {
 const TARGET_K = 2;
 const TARGET_B = -3;
 
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+const X_ICON = <X className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+
+
+/**
+ * 题库注册表：选项顺序与判分答案的单一事实源。
+ * 渲染侧按同一顺序排布；smoke 守卫解析源码断言二者一致（防「改了渲染忘了改注册表」）。
+ */
+export const OPTIONS = {
+  q1: [['none', 'concludeQ1None'], ['slope', 'concludeQ1Slope'], ['shift', 'concludeQ1Shift']],
+  q2: [['slope', 'concludeQ2Slope'], ['none', 'concludeQ2None'], ['intercept', 'concludeQ2Intercept']],
+  q3: [['steep', 'concludeQ3Steep'], ['flat', 'concludeQ3Flat'], ['none', 'concludeQ3None']],
+  q4: [['none', 'concludeQ4None'], ['up', 'concludeQ4Up'], ['down', 'concludeQ4Down']],
+} as const;
+
+/** 每题正确选项值（多解用数组）。 */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  q1: ['slope'],
+  q2: ['intercept'],
+  q3: ['steep'],
+  q4: ['up'],
+};
+
 export default function Linear() {
   const { lang } = useApp();
   const t = copy[lang];
@@ -254,7 +281,8 @@ export default function Linear() {
     q4: 'up' | 'down' | 'none' | null;
   }>({ q1: null, q2: null, q3: null, q4: null });
 
-  const correctKeys = { q1: 'slope', q2: 'intercept', q3: 'steep', q4: 'up' } as const;
+  /** 判分表：引用导出的注册表（单一事实源） */
+  const correctKeys = QUIZ_CORRECT;
   const conclusionComplete =
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predSlope !== null && predIntercept !== null;
@@ -511,7 +539,7 @@ export default function Linear() {
                   onClick={reveal}
                   className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
-                  ✓ {t.predictDone} — {t.revealLabel}
+                  {CHECK_ICON} {t.predictDone} — {t.revealLabel}
                 </button>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictHint}</p>
@@ -591,13 +619,12 @@ export default function Linear() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
-                      ['slope', t.concludeQ1Slope],
-                      ['shift', t.concludeQ1Shift],
                       ['none', t.concludeQ1None],
-                    ] as ['slope' | 'shift' | 'none', string][]
+                      ['slope', t.concludeQ1Slope],
+                      ['shift', t.concludeQ1Shift],] as ['slope' | 'shift' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q1 === v;
-                    const correct = correctKeys.q1 === v;
+                    const correct = correctKeys.q1.includes(v);
                     const showFeedback = conclusion.q1 !== null;
                     return (
                       <button
@@ -614,8 +641,8 @@ export default function Linear() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -629,13 +656,12 @@ export default function Linear() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
-                      ['intercept', t.concludeQ2Intercept],
                       ['slope', t.concludeQ2Slope],
                       ['none', t.concludeQ2None],
-                    ] as ['intercept' | 'slope' | 'none', string][]
+                      ['intercept', t.concludeQ2Intercept],] as ['intercept' | 'slope' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q2 === v;
-                    const correct = correctKeys.q2 === v;
+                    const correct = correctKeys.q2.includes(v);
                     const showFeedback = conclusion.q2 !== null;
                     return (
                       <button
@@ -652,8 +678,8 @@ export default function Linear() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -669,11 +695,10 @@ export default function Linear() {
                     [
                       ['steep', t.concludeQ3Steep],
                       ['flat', t.concludeQ3Flat],
-                      ['none', t.concludeQ3None],
-                    ] as ['steep' | 'flat' | 'none', string][]
+                      ['none', t.concludeQ3None],] as ['steep' | 'flat' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q3 === v;
-                    const correct = correctKeys.q3 === v;
+                    const correct = correctKeys.q3.includes(v);
                     const showFeedback = conclusion.q3 !== null;
                     return (
                       <button
@@ -690,8 +715,8 @@ export default function Linear() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -705,13 +730,12 @@ export default function Linear() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
-                      ['up', t.concludeQ4Up],
-                      ['down', t.concludeQ4Down],
                       ['none', t.concludeQ4None],
-                    ] as ['up' | 'down' | 'none', string][]
+                      ['up', t.concludeQ4Up],
+                      ['down', t.concludeQ4Down],] as ['up' | 'down' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q4 === v;
-                    const correct = correctKeys.q4 === v;
+                    const correct = correctKeys.q4.includes(v);
                     const showFeedback = conclusion.q4 !== null;
                     return (
                       <button
@@ -728,8 +752,8 @@ export default function Linear() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -738,7 +762,7 @@ export default function Linear() {
               </div>
 
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]">✓ {t.concludeHint}</p>
+                <p className="text-xs mono-font flex items-center gap-1 text-[var(--fg)]">{CHECK_ICON} {t.concludeHint}</p>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
@@ -748,7 +772,7 @@ export default function Linear() {
           {/* 完成态 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]">✓ {t.stageDone}</p>
+              <p className="text-sm font-bold mono-font flex items-center gap-1 text-[var(--fg)]">{CHECK_ICON} {t.stageDone}</p>
               <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
               <button
                 type="button"

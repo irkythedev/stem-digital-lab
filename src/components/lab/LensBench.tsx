@@ -11,6 +11,7 @@
 
 import { useMemo } from 'react';
 import { imageV } from '../../labs/physics/lens-core';
+import { useApp } from '../../lib/app-context';
 
 interface LensBenchProps {
   u: number;        // 物距 (cm)
@@ -21,6 +22,10 @@ interface LensBenchProps {
 /* ── 布局常量 ── */
 
 const SCALE = 8;        // px/cm
+/* u≈f 邻域像距会暴涨（实测 u=10.5cm → v=210cm、放大率 20×），按真实放大率绘制会得到
+   720px 高的像并让光线冲出画布 → 绘制侧夹取；**读数 v 仍按公式如实显示**，不失真。 */
+const IMG_H_MAX = 240;  // 绘制像高上限
+const X_MIN = 24;       // 绘制左界（虚像位置同样会暴涨）
 const LENS_X = 400;     // 透镜 x
 const AXIS_Y = 150;     // 主光轴 y
 const CANDLE_H = 36;    // 蜡烛体高 (px)
@@ -29,7 +34,18 @@ const SCREEN_W = 6;     // 光屏宽
 const SCREEN_H = 180;   // 光屏高
 const CLAMP_MAX = 840;  // 光屏最大 x
 
+/**
+ * 光具座**可绘制量程**（像距，单位 cm）——即夹取边界反推的物理刻度带。
+ * |v| 超出此带时像（或虚像）已被夹到导轨边缘，须给出「超出量程」学术提示；
+ * 读数本身仍按公式如实显示（不失真），只是绘制位置不再可信。
+ */
+export const BENCH_V_MIN = (X_MIN - LENS_X) / SCALE;   // ≈ -47 cm
+export const BENCH_V_MAX = (CLAMP_MAX - LENS_X) / SCALE; // ≈ +55 cm
+export const isBeyondBench = (v: number | null): boolean =>
+  v !== null && (v > BENCH_V_MAX || v < BENCH_V_MIN);
+
 export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
+  const { t } = useApp();
   const v = useMemo(() => imageV(u, f), [u, f]);
   const mag = useMemo(() => (v !== null ? -v / u : 0), [u, v]);
 
@@ -43,11 +59,11 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
     : null;
 
   // 像高 & 缩放
-  const imgH = v !== null ? Math.abs(mag) * CANDLE_H : 0;
+  const imgH = v !== null ? Math.min(Math.abs(mag) * CANDLE_H, IMG_H_MAX) : 0; // 夹取：防像高溢出画布
   const imgS = imgH / CANDLE_H;
 
   // 虚像 x（同侧，v 为负）
-  const virtualX = isVirtual ? LENS_X + v * SCALE : null;
+  const virtualX = isVirtual ? Math.max(LENS_X + v * SCALE, X_MIN) : null; // 夹取：防虚像绘制到画布外
 
   // 蜡烛顶部（用于光线）
   const ctX = candleX;
@@ -204,6 +220,12 @@ export default function LensBench({ u, f, showRays = false }: LensBenchProps) {
         <text x={LENS_X + (virtualX! - LENS_X) / 2} y={AXIS_Y + 45}
           textAnchor="middle" fill="var(--fg)" fontSize={13} fontWeight="500" className="mono-font">
           |v| = {Math.abs(v!).toFixed(1)} cm
+        </text>
+      )}
+      {/* 超程提示（导轨边缘）：像距超出光具座物理刻度带，绘制位置已夹取到边缘 */}
+      {isBeyondBench(v) && (
+        <text x={CLAMP_MAX} y={AXIS_Y - 10} textAnchor="end" fill="var(--error)" fontSize={11} className="mono-font">
+          {t.lensOutOfBench}
         </text>
       )}
     </svg>

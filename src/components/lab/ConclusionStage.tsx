@@ -5,6 +5,7 @@
  * 三幕式探究 · 幕 3「结论」：学生自拟结论，系统对照「他的猜想 + 他的观察记录」，
  * 给出基于证据的反馈，而不是灌输标准答案。
  */
+import { Check, X } from 'lucide-react';
 import type { Prediction } from './PredictStage';
 import type { Observation } from './ExploreStage';
 
@@ -35,6 +36,9 @@ interface ConclusionStageProps {
     evidenceNone: string;
   };
 }
+
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+const X_ICON = <X className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
 export default function ConclusionStage({
   prediction,
@@ -109,12 +113,12 @@ export default function ConclusionStage({
               <div className="space-y-1 mt-0.5">
                 {rightObs.length > 0 && (
                   <p className="text-xs 2xl:text-sm text-[var(--fg)] serif-font">
-                    ✓ {rightObs.length} {labels.evidenceRight}
+                    {CHECK_ICON} {rightObs.length} {labels.evidenceRight}
                   </p>
                 )}
                 {wrongObs.length > 0 && (
                   <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font">
-                    ✗ {wrongObs.length} {labels.evidenceWrong}
+                    {X_ICON} {wrongObs.length} {labels.evidenceWrong}
                   </p>
                 )}
               </div>

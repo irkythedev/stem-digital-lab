@@ -117,7 +117,7 @@ import {
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
-import { clearHistory, isStoppedAnswer, listHistory, markStopped, saveHistory, stripStoppedMark, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
 import { isNearBottom, STICK_THRESHOLD } from './lib/ai-scroll';
 import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
 import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, QUIZ_HISTORY_LIMIT, type QuizHistoryEntry } from './lib/quiz-history';
@@ -129,6 +129,7 @@ import {
   extractStreamDelta, createInlineThinkSplitter, streamChat,
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
   resolveThinkingDispatch, describeThinkingParams,
+  resolveMaxTokens, CHAIN_MAX_TOKENS, EmptyAnswerError, isLengthTruncated, classifyStreamOutcome, STALL_TIMEOUT_MS,
   type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS, type ElementInfo } from './lib/elements';
@@ -169,6 +170,44 @@ import {
 } from './labs/physics/ohm-core';
 import { currentOf, elementResistance, getEngineKind, loadOhmEngine, sampleOhm } from './labs/physics/ohm-engine';
 import { imageV } from './labs/physics/lens-core';
+import { OPTIONS as Q_B, QUIZ_CORRECT as C_B } from './labs/physics/Buoyancy';
+import { OPTIONS as Q_L, QUIZ_CORRECT as C_L } from './labs/physics/Lever';
+import { OPTIONS as Q_S, QUIZ_CORRECT as C_S } from './labs/physics/Lens';
+import { OPTIONS as Q_P, QUIZ_CORRECT as C_P } from './labs/physics/Pressure';
+import { OPTIONS as Q_U, QUIZ_CORRECT as C_U } from './labs/physics/Pulley';
+import { OPTIONS as Q_O, QUIZ_CORRECT as C_O } from './labs/physics/Ohm';
+import { CIRCUIT_STYLES } from './labs/physics/circuitStyles';
+import {
+  G as MECH_G,
+  HOOK_WEIGHT,
+  LEVER_MAX_TILT,
+  STONE_WEIGHT,
+  STONE_VOLUME,
+  buoyantForce,
+  dentAmount,
+  displacedVolume,
+  isLeverBalanced,
+  leverTilt,
+  solidPressure,
+  springReading,
+  torque,
+} from './labs/physics/mechanics-core';
+import {
+  elementPower,
+  elementVoltages,
+  mainCurrent,
+  parallelBranchCurrents,
+  parallelResistance,
+  seriesCurrent,
+} from './labs/physics/circuits-core';
+import * as MC from './labs/physics/mechanics-core';
+import * as QC from './labs/math/quadratic-core';
+import { CONSTANTS as PC } from './lib/constants';
+import * as IC from './components/lab/InteractiveCircle';
+import * as CP2 from './components/lab/CoordPlane';
+import * as BENCH from './components/lab/LensBench';
+import * as CP from './components/lab/circuit/CircuitParts';
+import { RHEO_ROD_DY as TOPO_RHEO_ROD_DY } from './labs/physics/circuitStyles';
 import { quadraticY, sampleQuadratic } from './labs/math/quadratic-core';
 import {
   imageV as stemImageV,
@@ -2298,7 +2337,7 @@ describe('AI thinking stream (display only)', () => {
     try {
       const reasons: string[] = [];
       const contents: string[] = [];
-      const full = await streamChat(
+      const res = await streamChat(
         { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
         [{ role: 'user', content: 'hi' }],
         (d) => contents.push(d),
@@ -2306,9 +2345,56 @@ describe('AI thinking stream (display only)', () => {
         100,
         (r) => reasons.push(r),
       );
-      assert.equal(full, '结论在此', '返回值只能是正文');
+      assert.equal(res.text, '结论在此', '返回值只能是正文');
       assert.deepEqual(reasons, ['先想一下。'], '思考必须走 reasoning 通道');
       assert.deepEqual(contents, ['结论', '在此']);
+      assert.equal(res.finishReason, null, '端点没给 finish_reason 时必须是 null，不能编一个 stop');
+      assert.equal(res.usage, null, '端点没给 usage 时必须是 null');
+      assert.equal(res.complete, true, '收到 [DONE] 即算正常收完');
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+
+  testAsync('streamChat：记录 finish_reason/usage，思考吃满预算时正文为空但不报错（交调用方判定）', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    const enc = new TextEncoder();
+    const sse = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+    (globalThis as any).fetch = async () => {
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { reasoning_content: '想很久很久' } }] })));
+          c.enqueue(
+            enc.encode(
+              sse({
+                choices: [{ delta: {}, finish_reason: 'length' }],
+                usage: { prompt_tokens: 12, completion_tokens: 100, total_tokens: 112 },
+              }),
+            ),
+          );
+          c.enqueue(enc.encode('data: [DONE]\n\n'));
+          c.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    try {
+      const res = await streamChat(
+        { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
+        [{ role: 'user', content: 'hi' }],
+        () => {},
+      );
+      assert.equal(res.text, '', '思考不算正文');
+      assert.equal(res.finishReason, 'length', '「思考吃满预算」必须能被调用方看见');
+      assert.ok(isLengthTruncated(res), '截断判定必须为真');
+      assert.equal(res.complete, true, '端点给了 finish_reason 就算收完（length 也是收完）');
+      assert.deepEqual(res.usage, { promptTokens: 12, completionTokens: 100, totalTokens: 112 }, 'usage 必须归一成数字');
+      // 空正文 + length 交给分类器 → 学生看到「没输出正文，请重试」并拿到重试按钮，而不是空白框
+      const empty = classifyChatFailure(new EmptyAnswerError(res.finishReason));
+      assert.equal(empty.kind, 'empty');
+      assert.equal(empty.retryable, true, '空正文必须可重试（重采样通常就有正文）');
+      assert.equal(empty.raw, '', 'raw 不得给学生看 finish_reason=length 这类术语');
+      assert.equal(classifyChatFailure(new EmptyAnswerError('stop')).kind, 'empty', '空正文与结束原因无关，一律按空正文处理');
     } finally {
       (globalThis as any).fetch = originalFetch;
     }
@@ -2628,6 +2714,171 @@ describe('思考参数下发 · 留痕与实发同源（resolveThinkingDispatch�
       '面板留痕必须走同一出口',
     );
     assert.ok(panel.includes('sentDesc = dispatch.summaryText'), '留痕文本只能取自 dispatch');
+  });
+});
+
+
+/* ── 输出上限与空正文：思考型模型的思考不得把正文预算挤成空白 ── */
+
+describe('输出上限与空正文（P0 防御：思考型模型 / 本地端点）', () => {
+  test('resolveMaxTokens：用户显式上限优先，未设置才用链路默认，都没有就不下发', () => {
+    assert.equal(resolveMaxTokens({ maxOutputTokens: 3000 }, 2000), 3000, '用户设置优先于链路默认');
+    assert.equal(resolveMaxTokens({ maxOutputTokens: 3000 }, undefined), 3000);
+    assert.equal(resolveMaxTokens({}, 2048), 2048, '未设置时用链路默认');
+    assert.equal(resolveMaxTokens({}, undefined), undefined, '两者都没有 → 不下发 max_tokens');
+    assert.equal(resolveMaxTokens(null, undefined), undefined);
+    assert.equal(resolveMaxTokens({ maxOutputTokens: 0 }, undefined), undefined, '0 = 不限');
+    assert.equal(resolveMaxTokens({ maxOutputTokens: -5 }, undefined), undefined, '负数 = 不限');
+    assert.equal(resolveMaxTokens({ maxOutputTokens: Number.NaN }, 2048), 2048, '非法值回落链路默认');
+    assert.equal(resolveMaxTokens({ maxOutputTokens: 3000.7 }, undefined), 3000, '上限必须是整数');
+  });
+
+  test('链路默认：对话与出题不下发上限，归纳/判分留足思考余量', () => {
+    assert.equal(CHAIN_MAX_TOKENS.chat, undefined, '对话封顶正是「有思考、无正文」的成因');
+    assert.equal(CHAIN_MAX_TOKENS.quiz, undefined, '出题完整性交给 ===END=== 校验 + 一次修复');
+    assert.ok((CHAIN_MAX_TOKENS.summary ?? 0) >= 2048, '归纳上限不得低于 2048');
+    assert.ok((CHAIN_MAX_TOKENS.judge ?? 0) >= 1024, '判分上限不得低于 1024（旧的 20 连思考的零头都不够）');
+  });
+
+  test('代码级防漂移：面板不得再给对话/出题/判分写死小上限', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /CHAIN_MAX_TOKENS\.chat/, '对话链路必须走链路默认');
+    assert.match(ai, /CHAIN_MAX_TOKENS\.quiz/, '出题链路必须走链路默认');
+    assert.match(ai, /CHAIN_MAX_TOKENS\.judge/, '判分链路必须走链路默认');
+    assert.match(ai, /CHAIN_MAX_TOKENS\.summary/, '归纳链路必须走链路默认');
+    assert.doesNotMatch(ai, /2000, \/\/ 对话输出上限/, '对话固定 2000 上限必须废除');
+    assert.doesNotMatch(ai, /4000, \/\/ 出题输出上限/, '出题固定 4000 上限必须废除');
+    assert.doesNotMatch(ai, /signal\.signal, 20\)/, '判分固定 20 上限必须废除');
+  });
+
+  test('空正文入失败态：不落盘、不入历史、给重试', () => {
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /if \(outcome === 'empty'\) throw new EmptyAnswerError\(res\.finishReason\)/, '对话空正文必须抛 EmptyAnswerError');
+    assert.match(ai, /const body = outcome === 'ok' \? rawBody : markTruncated\(rawBody, lang, outcome === 'cut' \? 'cut' : 'limit'\)/, '没写完的正文必须按成因标注');
+    const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    assert.match(i18n, /empty: '模型这次没有输出正文/, '中文文案必须说明「没输出正文」');
+    assert.match(i18n, /empty: 'The model produced no answer this time/, '英文文案必须同步');
+  });
+
+  test('收尾判定：空正文 / 上限截断 / 连接切断 / 正常，四态互不混淆', () => {
+    const R = (text: string, finishReason: string | null, complete: boolean) => ({ text, finishReason, complete });
+    assert.equal(classifyStreamOutcome(R('', 'length', true)), 'empty', '一个字都没有 → empty（当失败重试）');
+    assert.equal(classifyStreamOutcome(R('   ', 'stop', true)), 'empty', '纯空白同样算空正文');
+    assert.equal(classifyStreamOutcome(R('半句', 'length', true)), 'limit', '端点说被上限掐断 → limit');
+    assert.equal(classifyStreamOutcome(R('半句', null, false)), 'cut', '没有收尾信号 → cut（连接被中途切断）');
+    assert.equal(classifyStreamOutcome(R('完整回答', 'stop', true)), 'ok');
+    assert.equal(classifyStreamOutcome(R('完整回答', null, true)), 'ok', '端点不给 finish_reason 但有 [DONE] 也算正常收完');
+    assert.equal(classifyStreamOutcome(null), 'empty');
+  });
+
+  test('截断标记：可续写、可剥离，且与「已停止」互不混淆', () => {
+    assert.equal(markTruncated('', 'zh'), '', '空回答不得只留标记');
+    const zh = markTruncated('电流与电压成正比', 'zh');
+    assert.ok(zh.endsWith('[输出已达上限]'), '中文用 [输出已达上限]');
+    assert.equal(markTruncated(zh, 'zh'), zh, '重复标记必须幂等');
+    assert.ok(markTruncated('current is proportional', 'en').endsWith('[output limit reached]'), '英文用 [output limit reached]');
+    assert.equal(isStoppedAnswer(zh), true, '被截断的正文同样要给「继续生成」入口');
+    assert.equal(stripStoppedMark(zh), '电流与电压成正比', '发给模型的正文必须剥掉标记');
+    assert.equal(stripStoppedMark(markStopped('残句', 'zh')), '残句');
+    // 连接被中途切断：用词与「上限截断」不同（对学生信息不同），但同样可续写、可剥离
+    const cut = markTruncated('连接到一半的内容', 'zh', 'cut');
+    assert.ok(cut.endsWith('[连接被中断，内容可能未写完]'), '切断用 [连接被中断，内容可能未写完]');
+    assert.notEqual(cut, markTruncated('连接到一半的内容', 'zh', 'limit'), '两种成因不得共用同一标记');
+    assert.equal(isStoppedAnswer(cut), true, '被切断的正文也要给「继续生成」入口');
+    assert.equal(stripStoppedMark(cut), '连接到一半的内容', '切断标记同样必须剥离');
+    assert.ok(markTruncated('cut off', 'en', 'cut').endsWith('[connection cut off — content may be incomplete]'), '英文切断标记同步');
+  });
+
+  testAsync('半途切断且有正文：不抛错，返回残句并标 complete=false（网关 60s 切断会走到这里）', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    const enc = new TextEncoder();
+    const sse = (obj: unknown) => `data: ${JSON.stringify(obj)}\n\n`;
+    (globalThis as any).fetch = async () => {
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { content: '前半句' } }] })));
+          c.enqueue(enc.encode(sse({ choices: [{ delta: { content: '后半句' } }] })));
+          // 连接被切断：没有 finish_reason，也没有 [DONE]。
+          // 异步 error：同步调用会让 Node 把流错误抛成未捕获异常
+          setTimeout(() => c.error(new Error('terminated')), 0);
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    try {
+      const res = await streamChat(
+        { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
+        [{ role: 'user', content: 'hi' }],
+        () => {},
+      );
+      assert.equal(res.text, '前半句后半句', '已经收到的正文不得丢弃');
+      assert.equal(res.complete, false, '没收到收尾信号必须标 complete=false');
+      assert.equal(classifyStreamOutcome(res), 'cut');
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+
+  testAsync('半途切断且一个字都没有：按空正文上抛（可重试），不假装成功也不含糊报网络错', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    const enc = new TextEncoder();
+    (globalThis as any).fetch = async () => {
+      // 流已经开始（先来一个空 delta），随后被切断：正是网关 60s 掐断、模型还在思考的样子
+      const stream = new ReadableStream({
+        start(c) {
+          c.enqueue(enc.encode(`data: ${JSON.stringify({ choices: [{ delta: { role: 'assistant', content: '' } }] })}\n\n`));
+          setTimeout(() => c.error(new Error('terminated')), 0);
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    try {
+      let caught: unknown = null;
+      try {
+        await streamChat(
+          { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
+          [{ role: 'user', content: 'hi' }],
+          () => {},
+        );
+      } catch (e) {
+        caught = e;
+      }
+      assert.ok(caught instanceof EmptyAnswerError, '必须是空正文错误，而不是含糊的网络错误');
+      const c = classifyChatFailure(caught);
+      assert.equal(c.kind, 'empty');
+      assert.equal(c.retryable, true, '一个字都没收到时重发一次通常就有正文，必须给重试');
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+
+  testAsync('响应都没开始（首包超时）：仍是 timeout，不能伪装成空正文', async () => {
+    const originalFetch = (globalThis as any).fetch;
+    (globalThis as any).fetch = async () => {
+      const stream = new ReadableStream({ start(c) { setTimeout(() => c.error(new Error('terminated')), 0); } });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+    try {
+      let caught: unknown = null;
+      try {
+        await streamChat(
+          { providerId: 'custom', apiKey: 'k', baseUrl: 'https://example.com/v1', model: 'm', agreed: true },
+          [{ role: 'user', content: 'hi' }],
+          () => {},
+        );
+      } catch (e) {
+        caught = e;
+      }
+      assert.ok(caught && !(caught instanceof EmptyAnswerError), '一个事件都没收到时不得报成空正文');
+    } finally {
+      (globalThis as any).fetch = originalFetch;
+    }
+  });
+
+  test('学生点停止（外层 abort）不当作「切断」：走「已停止」语义', () => {
+    const ai = readFileSync('src/lib/ai-config.ts', 'utf8');
+    assert.match(ai, /const userAborted = !!signal\?\.aborted;/, '切断返回残句前必须排除学生主动停止');
+    assert.match(ai, /if \(!userAborted && full\.trim\(\)\) return \{ text: full, finishReason, usage, complete: false \}/, '只有非学生停止且已有正文才返回残句');
   });
 });
 
@@ -3672,7 +3923,9 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
 
   test('停滞看门狗：常量与重置点齐备（首包闸之外的第二道闸）', () => {
     const cfg = readFileSync('src/lib/ai-config.ts', 'utf8');
-    assert.match(cfg, /STALL_TIMEOUT_MS = 30000/, '停滞超时须显式 30s');
+    assert.match(cfg, /STALL_TIMEOUT_MS = 60000/, '停滞超时须显式 60s（思考型模型在弱算力设备上增量间隔可达 20s+）');
+    assert.equal(STALL_TIMEOUT_MS, 60000, '停滞阈值必须是 60s');
+    assert.ok(STALL_TIMEOUT_MS > 30000, '停滞闸不得短于 30s：会把正常思考误判成传输停滞');
     assert.match(cfg, /armStall\(\); \/\/ 每收到一段就重置停滞闸/, '每收到一段增量都要重置停滞闸（按间隔判定，不看总时长）');
     assert.match(cfg, /if \(stalled\) throw new Error\(`stalled for/, '停滞要换成可识别错误，供分类给出「内容传输停滞」');
     assert.match(cfg, /httpErr\.status = res\.status/, 'HTTP 状态码必须挂到错误上：否则 429/5xx 无法区分');
@@ -4905,5 +5158,1078 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.equal(pick('Tellurium')?.n, 52, '英文名须可命中碲');
     // 前缀查询：按原子序数取首个命中（ELEMENTS 本身按 Z 升序）
     assert.ok((pick('c')?.n ?? 99) <= 6, `「c」应取 Z 最小的命中（实测 ${pick('c')?.symbol}）`);
+  });
+
+  test('⑯ 欢迎弹窗双 Tab、Header 帮助入口与多端响应式不变量', () => {
+    const wd = readFileSync('src/components/ui/WelcomeDialog.tsx', 'utf8');
+    const hd = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    const app = readFileSync('src/App.tsx', 'utf8');
+    const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    // ① 双 Tab 分段控件 + 初始分区入参（首开仍停在概览）
+    assert.match(wd, /type WelcomeTab = 'overview' \| 'guide'/, '须定义两个分区');
+    assert.match(wd, /initialTab = 'overview'/, '默认分区须为「实验室概览」（首开自动弹出）');
+    assert.match(wd, /role="tablist"/, '须有 tablist');
+    assert.match(wd, /data-welcome-tab=\{v\}/, 'Tab 须带 data-welcome-tab（供渲染量测）');
+    assert.match(wd, /aria-selected=\{tab === v\}/, 'Tab 须带 aria-selected');
+    // ② 弹性布局不变量：头 / Tab 栏 / 底栏常驻，内容区独立滚动
+    //    高度上限用 dvh 而非 vh：移动端浏览器 UI 会伸缩，vh 会把底栏顶出屏幕
+    assert.match(wd, /h-\[85dvh\] sm:h-\[620px\] flex flex-col/, '外框须为定高弹性约束（两页同高才能居中不跳位）');
+    const shrink0 = wd.match(/flex-shrink-0/g) ?? [];
+    assert.ok(shrink0.length >= 3, `顶部条 / Tab 栏 / 底栏须 flex-shrink-0 常驻（实测 ${shrink0.length} 处）`);
+    // 垂直居中：外框已定为固定高度（两页同高），故居中不会重解位置；此前 max-h 下居中会顶动头部 98px
+    assert.match(wd, /z-\[100\] flex items-center justify-center p-4/, 'overlay 须垂直居中');
+    assert.doesNotMatch(wd, /items-start justify-center overflow-y-auto p-4/, 'overlay 不得再顶部锚定');
+    // min-h 取 12rem：更大就可能在矮视口挤掉底栏（与「底栏永不越界」的要求冲突）
+    assert.match(wd, /flex-1 overflow-y-auto[^"]*min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 安全的 min-h');
+    // ③ 4 条纵向流式导览行（微圆角图标徽标 + 标题 + 说明，含 hover 反馈）
+    assert.match(wd, /flex items-center gap-3\.5 rounded-xl p-3 transition-colors hover:bg-\[var\(--accent-light\)\]\/50/, '导览须为纵向流式行');
+    assert.match(wd, /h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-\[var\(--accent-light\)\]\/70/, '导览行须有微圆角图标徽标');
+    for (let i = 1; i <= 4; i++) {
+      assert.ok(wd.includes(`t.guideCard${i}Title`) && wd.includes(`t.guideCard${i}Desc`), `第 ${i} 条导览须齐备`);
+    }
+    // ③b 导览须横向覆盖三科，不得偏向单一学科（此前 4 条里 2 条都在讲元素周期表）
+    const gdescs = i18n.match(/guideCard\dDesc:\s*'[^']*'/g) ?? [];
+    assert.equal(gdescs.length, 8, `导览说明须 zh/en 各 4 条（实测 ${gdescs.length}）`);
+    const zhDescs = gdescs.filter((s) => /[\u4e00-\u9fa5]/.test(s));
+    for (const subj of ['数学', '物理', '化学']) {
+      assert.ok(zhDescs.some((s) => s.includes(subj)), `导览须覆盖「${subj}」的玩法`);
+    }
+    assert.ok(
+      zhDescs.some((s) => s.includes('预测') && s.includes('探索') && s.includes('结论')),
+      '导览须交代「预测 → 探索 → 结论」三幕闭环',
+    );
+    const ptRows = gdescs.filter((s) => /周期表|periodic table/.test(s));
+    // 同一条导览的 zh + en 各计一次 → 至多 1 条提及元素周期表（= 至多 2 条字符串）
+    assert.ok(ptRows.length <= 2, `至多一条导览可提及元素周期表（实测 ${ptRows.length}/8 条命中）`);
+    // ④ 触屏热区（本弹窗挂在 body 上，不吃 main button 的 40px 全局底线）
+    //    Tab 走 .tap-area：桌面 36px 的紧凑胶囊，触屏抬到 40px（与 TokenUsageDialog / AI 面板同一口径）
+    assert.match(wd, /tap-area relative z-10 min-h-9 rounded-full px-4 py-1\.5 text-xs mono-font/, 'Tab 须为紧凑胶囊且触屏有热区下限');
+    assert.match(wd, /w-11 h-11 text-\[var\(--muted\)\]/, '关闭 × 热区须 44×44');
+    assert.match(wd, /transition-colors min-h-11 touch-manipulation/, '主按钮热区须 ≥44px');
+    assert.match(wd, /gap-2 min-h-11 text-xs/, '「下次不再显示」须 ≥44px 热区');
+    // ④b Tab：高级分段滑槽——轨道 + 等宽滑块（位移过渡），非孤悬灰块、非实心反色块
+    assert.match(wd, /grid w-fit max-w-full grid-cols-2 items-center rounded-full border border-\[var\(--border\)\]\/60 bg-\[var\(--accent-light\)\]\/60 p-1/, 'Tab 轨道须为胶囊槽且等宽两格');
+    assert.match(wd, /absolute inset-y-1 left-1 w-\[calc\(50%-0\.25rem\)\] rounded-full bg-\[var\(--card-bg\)\] shadow-xs transition-transform/, '须有等宽滑块（抬起面 + 位移过渡）');
+    assert.match(wd, /transform: tab === 'overview' \? 'translateX\(0\)' : 'translateX\(100%\)'/, '滑块位移须由当前分区驱动');
+    assert.doesNotMatch(wd, /bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/, '激活 Tab 不得再用实心反色块');
+    assert.doesNotMatch(wd, /flex-1 min-h-11/, 'Tab 不得再撑满整行（通栏）');
+    // 明暗主题由 html.dark / :root:not(.light) 控制，Tailwind 的 dark 前缀变体只认 prefers-color-scheme
+    // —— 手动切主题时会与站点脱节，故本文件禁用该变体（写法为 dark 前缀 + 冒号 + 工具类，中间无空格），一律走 var 令牌
+    assert.doesNotMatch(wd, /dark:[^\s]/, '弹窗不得使用 dark 前缀变体（与手动主题切换脱节）');
+    // ④c 定高弹性 + 去边框化 + 滚动安全
+    assert.match(wd, /h-\[85dvh\] sm:h-\[620px\] flex flex-col/, '外框须为定高弹性约束（桌面封顶 620px）');
+    // 滚动条落在 px-1 的外侧留白里；内容留白放在内层 mx-4，与外框 px-5 对齐（20px）
+    assert.match(wd, /flex-1 overflow-y-auto px-1 pb-6 pt-1 min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 外侧留白容下滚动条');
+    assert.match(wd, /<div className="mx-4 space-y-3">/, '内容留白须放内层并与外框对齐');
+    assert.match(wd, /border-t border-\[var\(--border\)\]\/60 px-5 pt-3/, '底栏须常驻且只留一条发丝分隔线');
+    assert.doesNotMatch(wd, /border border-\[var\(--border\)\]\/70/, '内容块不得再挂灰色冷边框');
+    assert.ok((wd.match(/rounded-xl bg-\[var\(--accent-light\)\]/g) ?? []).length >= 2, '内容块须用柔和填充（无灰边框）');
+    // ④e 图标校准：学科徽标 36px 圆底 + 20px 图标（占比 55.6%）；π 与图标墨迹体量等重
+    assert.match(
+      wd,
+      /h-9 w-9 shrink-0 items-center justify-center rounded-full border border-\[var\(--border\)\] bg-\[var\(--card-bg\)\] text-\[var\(--fg\)\] shadow-xs/,
+      '学科徽标须为 36px 圆底 + 微投影 + 高对比字色',
+    );
+    assert.match(wd, /<div className="flex items-center gap-3">/, '徽标须与标题同行且中线对齐');
+    assert.match(wd, /min-w-0 text-\[0\.6875rem\] mono-font font-bold tracking-widest/, '标题须紧跟徽标右侧');
+    const w5 = wd.match(/className="w-5 h-5"/g) ?? [];
+    assert.ok(w5.length >= 4, `学科/导览图标须统一 20px（实测 ${w5.length} 处）`);
+    assert.match(wd, /subjectId="math" glyphClassName="text-2xl font-bold leading-none"/, 'π 须与 20px 图标墨迹等高');
+    // 生成 CSS 里 .font-light 排在 .font-bold 之后 → SubjectIcon 绝不能硬编码字重，否则静默吃掉调用方的加粗
+    const si = readFileSync('src/components/ui/SubjectIcon.tsx', 'utf8');
+    const siClass = si.match(/className=\{`serif-font[^`]*`\}/) ?? [];
+    assert.equal(siClass.length, 1, 'SubjectIcon 的 π 类名须唯一');
+    assert.doesNotMatch(siClass[0], /font-(light|normal|medium|semibold|bold)/, 'π 类名不得含字重（会吃掉调用方的 font-bold）');
+    // ④d 底栏级底注：开源协议 / 作者 / 反馈 一行收敛 + 姊妹作品胶囊
+    assert.match(wd, /justify-between gap-x-4 gap-y-2 px-0\.5 text-\[0\.6875rem\]/, '次级底注须为一行 justify-between');
+    for (const k of ['welcomeLicenseLabel', 'welcomeFeedbackLabel']) {
+      assert.ok(wd.includes(`t.${k}`), `底注须含 ${k}`);
+    }
+    assert.match(wd, /rounded-full bg-\[var\(--accent-light\)\]\/70 px-2\.5 py-1/, '姊妹作品须为紧凑胶囊');
+    // 底注图标：邮箱带 Mail、Issue 只留 Gitee / GitHub 品牌图标（无夹字），姊妹作品带图标胶囊 + 数字角标
+    assert.match(wd, /<Mail className="h-3 w-3 shrink-0"/, '邮箱前须有 Mail 图标');
+    assert.match(wd, /<path d=\{GITEE_PATH\} \/>/, 'Issue 须带 Gitee 品牌图标');
+    assert.match(wd, /<path d=\{GITHUB_PATH\} \/>/, '须带 GitHub 品牌图标');
+    assert.doesNotMatch(wd, /welcomeFeedbackIssue/, '两个品牌图标之间不得再夹「Issue」文字');
+    assert.doesNotMatch(i18n, /welcomeFeedbackIssue:/, 'i18n 不得再保留已被替换的 Issue 文案');
+    assert.match(wd, /import \{ GITHUB_PATH, GITEE_PATH, ISSUE_URLS \} from '\.\.\/\.\.\/lib\/brand-icons'/, '品牌路径须走共享常量');
+    assert.match(wd, /<Library className="h-3\.5 w-3\.5" aria-hidden="true" \/>/, '其他作品前须有作品集图标');
+    // 作品名就紧跟在后，弹窗内不再挂数字角标（角标是页脚折叠入口才需要的计数提示）
+    assert.doesNotMatch(wd, /min-w-\[0\.95rem\]/, '弹窗内的其他作品不得再挂数字角标');
+    assert.doesNotMatch(wd, /bg-\[#C71D23\]/, '弹窗内不得出现品牌红角标');
+    assert.match(wd, /<img src=\{w\.icon\} alt="" width="12" height="12" className="shrink-0 rounded-\[3px\] object-contain" \/>/, '姊妹作品胶囊须带图标');
+    assert.doesNotMatch(wd, /welcomeMaintainPrefix|welcomeFeedbackBubbleA/, '多行开源/反馈大框须已彻底废除');
+    // ⑤ Header 帮助入口串到 Tab 2
+    assert.match(hd, /HelpCircle className="w-4 h-4"/, 'Header 须有 w-4 h-4 的 HelpCircle');
+    assert.match(hd, /title=\{t.helpTitle\}/, '帮助按钮须有中英悬停 title');
+    assert.match(hd, /onOpenGuide/, 'Header 须接收打开回调');
+    assert.match(app, /setWelcomeTab\('guide'\)/, '帮助入口须把分区指到 guide');
+    assert.match(app, /initialTab=\{welcomeTab\}/, 'App 须把分区传给弹窗');
+    assert.match(app, /useState<'overview' \| 'guide'>\('overview'\)/, '初始分区须为 overview（首开不跳 Tab）');
+    // ⑥ i18n 双语齐备 + 概览工具模块已同步 3D 能力
+    for (const k of ['welcomeTabOverview', 'welcomeTabGuide', 'welcomeTabsAria', 'helpTitle', 'guideCard1Title', 'guideCard4Desc']) {
+      const n = (i18n.match(new RegExp(`${k}:`, 'g')) ?? []).length;
+      assert.equal(n, 2, `${k} 须 zh/en 各一份（实测 ${n}）`);
+    }
+    assert.ok(i18n.includes('3D 空间原子模型 · 实物展台 · 语音跟读'), '概览的工具模块文案须同步 3D 能力');
+    assert.ok(i18n.includes('3D atom model · specimen dashboard · recite mode'), '英文概览同样须同步');
+    // ⑥b 导语已移除：能力说明只在工具模块里讲一次，不得回潮成弹窗顶部的长段落
+    assert.doesNotMatch(wd, /welcomeIntro/, '概览导语须已彻底移除（避免与四学科卡片重复）');
+    assert.doesNotMatch(i18n, /welcomeIntro:/, 'i18n 不得再保留导语文案');
+    for (const kw of ['微观 3D 空间原子模型', '实物展台', '语音跟读']) {
+      assert.ok(i18n.includes(kw), `工具模块须包含关键能力「${kw}」`);
+    }
+    // ⑦ 指引页结构锁定为「4 张卡片 + 1 条底部提示」；多出来的重复块一律不得回潮
+    assert.match(wd, /import \{[^}]*\bLightbulb\b[^}]*\} from 'lucide-react'/, '提示须用 Lucide Lightbulb');
+    assert.ok(!/💡/.test(wd) && !/💡/.test(i18n), '不得用 Emoji 充当图标（项目仅用 Lucide）');
+    assert.match(wd, /t\.guideTipLabel/, '须有单行提示');
+    assert.match(wd, /t\.guideTipBody/, '须有单行提示正文');
+    const stepRefs = (wd.match(/t\.guideStep\dTitle/g) ?? []).length;
+    assert.equal(stepRefs, 0, `「探究方法」块须彻底删除（实测残留 ${stepRefs} 处引用）`);
+    assert.doesNotMatch(wd, /guideMethodLabel/, '不得再渲染探究方法小标题');
+    assert.doesNotMatch(i18n, /guideMethodLabel:|guideStep\d(Title|Desc):/, '不得再保留探究方法文案（导语已交代预测/探索/结论）');
+    // ⑧ 事实口径 + 反重复：键盘说明不再出现在导览里（周期表详情卡自带 ← → 按钮），
+    //    且不得再出现「全局方向键漫游」这类失实说法
+    assert.doesNotMatch(i18n, /全局方向键/, '不得宣称周期表全局方向键漫游（实测仅详情卡内 ← →）');
+    assert.doesNotMatch(i18n, /Arrow keys roam/, '英文同样不得宣称');
+    const tipBodies = i18n.match(/guideTipBody:\s*'[^']*'/g) ?? [];
+    assert.equal(tipBodies.length, 2, `单行提示须 zh/en 各一（实测 ${tipBodies.length}）`);
+    for (const tb of tipBodies) {
+      assert.ok(!tb.includes('← →') && !/Esc|Arrow|←|→/.test(tb), `底部提示不得复述键盘键位：${tb.slice(0, 40)}…`);
+    }
+    // 导览第三条 = 工具/速查行（不再单独占用一条讲周期表键盘）
+    assert.match(i18n, /guideCard3Title: '可视化展台与速查'/, '第三条须为「可视化展台与速查」');
+    assert.match(i18n, /guideCard3Title: 'Visual dashboards & references'/, '英文同名');
+    // ⑨ 净化开发/技术机制词：防作弊、防 Bug 说明一律不得留在面向学生的文案里
+    for (const bad of ['防作弊', 'anti-cheat', '首末位', '不环绕', '上一个读音', 'pronunciation', 'cancelled']) {
+      assert.ok(!i18n.includes(bad), `文案不得出现机制/开发词「${bad}」`);
+    }
+    for (const k of ['guideCard1Title', 'guideCard4Desc', 'guideTipLabel', 'guideTipBody']) {
+      const n = (i18n.match(new RegExp(`${k}:`, 'g')) ?? []).length;
+      assert.equal(n, 2, `${k} 须 zh/en 各一份（实测 ${n}）`);
+    }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Physics 全面审计补充：力学 / 电学 / 光学核心公式的行为级单测
+   （2026-10 审计批次。断言全部是数值等式与不变式，不是「源码里出现过某个魔数」）
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe('Physics 力学核：阿基米德原理与弹簧测力计', () => {
+  test('浮力 F浮 = ρ液·g·V排（三种教材液体取整值）', () => {
+    // ρ=1000 水、1200 浓盐水、800 酒精；V=1.5e-4 m³ 全浸；g=10
+    // （体积取 1.5e-4 是为让酒精中每 0.1 档 ΔF浮=0.12N ≥ 0.1N 刻度，见 mechanics-core 注释）
+    assert.ok(Math.abs(buoyantForce(1000, 1) - 1.5) < 1e-9);
+    assert.ok(Math.abs(buoyantForce(1200, 1) - 1.8) < 1e-9);
+    assert.ok(Math.abs(buoyantForce(800, 1) - 1.2) < 1e-9);
+    // 半浸 → 恰好一半
+    assert.ok(Math.abs(buoyantForce(1000, 0.5) - buoyantForce(1000, 1) / 2) < 1e-12);
+    // 未浸入 → 0
+    assert.equal(buoyantForce(1200, 0), 0);
+  });
+
+  test('V排 饱和：完全浸没后继续下沉，浮力不再增大（「深度不影响浮力」考点）', () => {
+    // 关键不变式：vSub ≥ 1 时 V排 恒为物体自身体积
+    for (const rho of [800, 1000, 1200]) {
+      const full = buoyantForce(rho, 1);
+      for (const deeper of [1.2, 1.5, 3, 10]) {
+        assert.equal(
+          buoyantForce(rho, deeper),
+          full,
+          `ρ=${rho} 时 vSub=${deeper} 的浮力应与完全浸没相同（V排 不得超过物体体积）`,
+        );
+        assert.equal(displacedVolume(deeper), STONE_VOLUME);
+      }
+    }
+    // 反向：物体上浮/未浸入的负比例不得产生负浮力
+    assert.equal(buoyantForce(1000, -1), 0);
+  });
+
+  test('弹簧测力计示数 F示 = G − F浮，且读数恒非负', () => {
+    // 体积口径 1.5e-4 m³：全浸浮力 水 1.5N / 盐水 1.8N → 示数 0.5N / 0.2N
+    assert.ok(Math.abs(springReading(1000, 1) - (STONE_WEIGHT - 1.5)) < 1e-9);
+    assert.ok(Math.abs(springReading(1200, 1) - (STONE_WEIGHT - 1.8)) < 1e-9);
+    assert.equal(springReading(1000, 0), STONE_WEIGHT);
+    // 全域扫描：任何液体/浸入比例下读数都在 [0, G] 内（石块演示物恒下沉，F浮 < G）
+    for (const rho of [800, 1000, 1200]) {
+      for (let i = 0; i <= 10; i++) {
+        const r = springReading(rho, i / 10);
+        assert.ok(r >= 0 && r <= STONE_WEIGHT, `ρ=${rho} vSub=${i / 10} 示数越界：${r}`);
+      }
+    }
+    // 完全浸没后示数恒定（用户审计点名项）
+    assert.equal(springReading(1000, 1), springReading(1000, 3));
+    // 浮力随浸入体积单调不减
+    let prev = -1;
+    for (let i = 0; i <= 10; i++) {
+      const f = buoyantForce(1000, i / 10);
+      assert.ok(f >= prev, '浸入体积增大浮力不得减小');
+      prev = f;
+    }
+  });
+});
+
+describe('Physics 力学核：杠杆平衡条件', () => {
+  test('力矩 M = F·l（多挂钩 = 同力臂多份力，力矩相加）', () => {
+    assert.ok(Math.abs(torque(2, 3) - 2 * HOOK_WEIGHT * 3) < 1e-12); // 2 挂钩 × 3 格 = 3.0 N·格
+    assert.ok(Math.abs(torque(2, 3) - 3.0) < 1e-12);
+    // 多挂钩守恒：同一点上 2 + 3 个钩码 = 5 个钩码
+    assert.ok(Math.abs(torque(2, 4) + torque(3, 4) - torque(5, 4)) < 1e-12);
+  });
+
+  test('F₁l₁ = F₂l₂ 判平衡；容差在 0.5N 粒度下等价于精确相等', () => {
+    assert.ok(isLeverBalanced(torque(2, 3), torque(3, 2))); // 3.0 = 3.0
+    assert.ok(!isLeverBalanced(torque(2, 3), torque(3, 3))); // 3.0 ≠ 4.5
+    // 全域：0.5N 粒度 → 力矩差必为 0.5 的倍数，绝无「不相等的力矩被判平衡」
+    let mismatch = 0;
+    for (let m1 = 1; m1 <= 5; m1++) for (let d1 = 1; d1 <= 6; d1++)
+      for (let m2 = 1; m2 <= 5; m2++) for (let d2 = 1; d2 <= 6; d2++) {
+        const t1 = torque(m1, d1), t2 = torque(m2, d2);
+        if (isLeverBalanced(t1, t2) !== (t1 === t2)) mismatch++;
+      }
+    assert.equal(mismatch, 0, '容差把不相等的力矩判成平衡');
+  });
+
+  test('杠杆倾角：平衡为 0、夹在 ±8°、方向随力矩差', () => {
+    assert.equal(leverTilt(3, 3), 0);
+    assert.ok(leverTilt(3, 4.5) > 0, '右侧力矩大 → 顺时针为正');
+    assert.ok(leverTilt(4.5, 3) < 0);
+    // 全域：任何组合都不越界（±8°）——对应 SVG rotate 的角度上限
+    for (let d = -10; d <= 10; d += 0.5) {
+      const a = leverTilt(3, 3 + d);
+      assert.ok(Math.abs(a) <= LEVER_MAX_TILT + 1e-9, `倾角越界：${a}`);
+    }
+    // 单调：力矩差越大（同向）倾角越大，直到夹顶
+    assert.ok(leverTilt(3, 3.5) <= leverTilt(3, 4));
+  });
+});
+
+describe('Physics 力学核：固体压强 p = F/S', () => {
+  test('p = F/S 且量纲为 kPa（1 cm² = 1e-4 m²）', () => {
+    assert.ok(Math.abs(solidPressure(10, 5) - 20) < 1e-9); // 10N / 5cm² = 20 kPa
+    assert.ok(Math.abs(solidPressure(50, 1) - 500) < 1e-9);
+    assert.ok(Math.abs(solidPressure(10, 20) - 5) < 1e-9);
+  });
+
+  test('p 随压力单调增、随受力面积单调减', () => {
+    assert.ok(solidPressure(20, 5) > solidPressure(10, 5));
+    assert.ok(solidPressure(10, 5) > solidPressure(10, 10));
+  });
+
+  test('全域有限：S → 0 不产生 Infinity/NaN（分母有下界）', () => {
+    for (const f of [0, 5, 40]) for (const s of [0, -1, 1, 5, 10]) {
+      const p = solidPressure(f, s);
+      assert.ok(Number.isFinite(p), `F=${f} S=${s} → ${p}`);
+      assert.ok(Number.isFinite(dentAmount(f, s)), `凹陷非有限 F=${f} S=${s}`);
+    }
+    assert.ok(Math.abs(solidPressure(10, 0) - solidPressure(10, 1)) < 1e-9, 'S 下界应为 1cm²');
+  });
+
+  test('凹陷代理量恒在 [0,1]', () => {
+    for (const f of [5, 10, 40]) for (const s of [1, 5, 10]) {
+      const d = dentAmount(f, s);
+      assert.ok(d >= 0 && d <= 1, `凹陷越界：${d}`);
+    }
+  });
+
+  test('常量口径：g = 10 N/kg、石块 2 N / 1.5e-4 m³、每格钩码 0.5 N', () => {
+    assert.equal(MECH_G, 10);
+    assert.equal(STONE_WEIGHT, 2);
+    assert.equal(STONE_VOLUME, 1.5e-4);
+    assert.equal(HOOK_WEIGHT, 0.5);
+  });
+});
+
+describe('Physics 电学核：欧姆定律与分压口径', () => {
+  test('I = U/R 精确值与单调性', () => {
+    assert.ok(Math.abs(coreCurrentOf(6, 10, 'resistor') - 0.6) < 1e-12);
+    assert.ok(Math.abs(coreCurrentOf(12, 4, 'resistor') - 3) < 1e-12);
+    for (const R of [1, 5, 10, 20, 50]) {
+      assert.ok(coreCurrentOf(12, R, 'resistor') > coreCurrentOf(6, R, 'resistor'), 'U 增大 I 必增大');
+      assert.ok(coreCurrentOf(6, R, 'resistor') >= coreCurrentOf(6, R + 5, 'resistor'), 'R 增大 I 不增');
+    }
+  });
+
+  test('分压口径：元件两端 U_elem = U·R/(R+Rp)，且 U_elem + U_rp = U', () => {
+    for (const R of [5, 10, 20]) for (const Rp of [0, 1, 7, 40]) {
+      const I = coreCurrentOf(6, R, 'resistor', Rp);
+      const uElem = I * R;
+      const uRp = I * Rp;
+      assert.ok(Math.abs(uElem - (6 * R) / (R + Rp)) < 1e-12, `R=${R} Rp=${Rp} 分压不符`);
+      assert.ok(Math.abs(uElem + uRp - 6) < 1e-9, `R=${R} Rp=${Rp} 分压之和 ≠ 电源电压`);
+    }
+  });
+
+  test('灯泡非线性：R_eff = R₀ + γU，曲线上翘（斜率递减）', () => {
+    assert.ok(Math.abs(coreElementResistance(10, 'bulb', 6) - (10 + 0.4 * 6)) < 1e-12);
+    assert.equal(coreElementResistance(10, 'resistor', 6), 10);
+    const pts = coreSampleOhm(10, 'bulb');
+    // 灯泡 I-U 曲线必为凹（割线斜率随 U 递减）
+    const slope = (k: number) => pts[k][1] / (pts[k][0] || 1e-9);
+    assert.ok(slope(120) < slope(60), '灯泡曲线应上翘（等效电阻随电压增大）');
+  });
+
+  test('定值电阻 I-U 曲线斜率恒为 1/R（横轴 = 元件真实压降）', () => {
+    for (const R of [5, 10, 20, 50]) {
+      const pts = coreSampleOhm(R, 'resistor');
+      for (const [x, y] of pts) {
+        assert.ok(Math.abs(y - x / R) < 1e-12, `R=${R} 点 (${x}, ${y}) 偏离 1/R`);
+      }
+    }
+  });
+
+  test('采样横轴无浮点累加漂移：121 点、恰为 0.1 的整数倍、末点精确 12', () => {
+    const pts = coreSampleOhm(10, 'resistor');
+    assert.equal(pts.length, 121);
+    assert.equal(pts[120][0], 12, '末点横轴须精确为 12（累加式为 11.999999999999973）');
+    // 循环索引 u = k·0.1 精确；派生坐标 x = i·R 有普通浮点乘除舍入（≤1e-12），
+    // 与「累加漂移到 11.999999999999973」是两回事
+    let worst = 0;
+    for (let k = 0; k <= 120; k++) worst = Math.max(worst, Math.abs(pts[k][0] - k * 0.1));
+    assert.ok(worst < 1e-12, `横轴与 0.1 整数倍的最大偏差 ${worst} 超出浮点舍入量级`);
+  });
+
+  test('数值稳定性：全量程扫描 0 NaN / 0 Infinity 越界', () => {
+    let nan = 0, inf = 0, neg = 0;
+    for (const el of ['resistor', 'bulb'] as const) {
+      for (const R of [0, 1, 5, 10, 20, 50]) {
+        for (const Rp of [0, 1, 7, 40]) {
+          for (const u of [0, 0.5, 6, 12]) {
+            const i = coreCurrentOf(u, R, el, Rp);
+            if (Number.isNaN(i)) nan++;
+            if (!Number.isFinite(i) && !Number.isNaN(i)) inf++;
+            if (i < 0) neg++;
+          }
+          for (const [x, y] of coreSampleOhm(R, el, Rp)) {
+            if (Number.isNaN(x) || Number.isNaN(y)) nan++;
+            if (x < 0 || y < 0) neg++;
+          }
+        }
+      }
+    }
+    assert.equal(nan, 0, '出现 NaN（U=0 且总阻为 0 时曾为 0/0）');
+    assert.equal(neg, 0, '出现负值');
+    // 唯一允许的 Infinity：真短路（U>0 且元件与变阻器总阻为 0）——由组件层显示 "∞"
+    assert.ok(inf >= 0);
+    assert.ok(Number.isFinite(coreCurrentOf(0, 0, 'resistor', 0)), 'U=0 总阻 0 不得为 NaN/Inf');
+    assert.equal(coreCurrentOf(0, 0, 'resistor', 0), 0, '无驱动电压时读数应为 0');
+  });
+});
+
+describe('Physics 电学核：串并联电流电压分配', () => {
+  test('串联：电流处处相等，电压按阻值分配且 U = ΣUᵢ', () => {
+    const rs = [5, 10, 25];
+    const I = seriesCurrent(6, rs);
+    assert.ok(Math.abs(I - 6 / 40) < 1e-12);
+    const us = elementVoltages(6, rs, 'series');
+    assert.ok(Math.abs(us[0] + us[1] + us[2] - 6) < 1e-9, '串联分压之和 = 电源电压');
+    assert.ok(Math.abs(us[1] - I * 10) < 1e-12);
+    // 电流处处相等
+    assert.ok(Math.abs(mainCurrent(6, rs, 'series') - I) < 1e-12);
+  });
+
+  test('并联：各支路电压相等且等于电源电压，干路电流 = 各支路之和', () => {
+    const rs = [10, 20];
+    const u = 6;
+    const is = parallelBranchCurrents(u, rs);
+    assert.ok(Math.abs(is[0] - 0.6) < 1e-12);
+    assert.ok(Math.abs(is[1] - 0.3) < 1e-12);
+    assert.ok(Math.abs(mainCurrent(u, rs, 'parallel') - 0.9) < 1e-12, 'I₀ = I₁ + I₂');
+    const us = elementVoltages(u, rs, 'parallel');
+    assert.ok(Math.abs(us[0] - u) < 1e-12 && Math.abs(us[1] - u) < 1e-12, '并联各支路电压相等');
+  });
+
+  test('并联总电阻小于任一支路', () => {
+    for (const rs of [[10, 10], [5, 20], [4, 6, 12]] as number[][]) {
+      const rp = parallelResistance(rs);
+      assert.ok(rp > 0 && rp < Math.min(...rs), `R总=${rp} 应小于最小支路 ${Math.min(...rs)}`);
+    }
+    assert.ok(Math.abs(parallelResistance([10, 10]) - 5) < 1e-12);
+  });
+
+  test('支路开关：断开的支路电流为 0，其余支路不受影响；干路开关断开则全为 0', () => {
+    const rs = [10, 20];
+    const is = parallelBranchCurrents(6, rs, [true, false]);
+    assert.ok(Math.abs(is[0] - 0.6) < 1e-12);
+    assert.equal(is[1], 0);
+    const off = parallelBranchCurrents(6, rs, undefined, false);
+    assert.deepEqual(off, [0, 0]);
+    assert.equal(seriesCurrent(6, rs, false), 0);
+  });
+
+  test('零阻支路（短路导线）：返回有限值而非 Infinity/NaN', () => {
+    const is = parallelBranchCurrents(6, [0, 10]);
+    assert.ok(is.every(Number.isFinite), `短路支路产生非有限值：${is}`);
+    assert.equal(is[0], 0, '零阻支路按短路导线处理，不给出 Infinity');
+    assert.ok(Math.abs(is[1] - 0.6) < 1e-12);
+    assert.equal(parallelResistance([0, 10]), 0, '含短路支路的并联总阻为 0');
+    // 全短路串联
+    assert.equal(seriesCurrent(12, [0, 0]), 0);
+    assert.ok(Number.isFinite(seriesCurrent(12, [0, 0])));
+  });
+
+  test('功率 P = I²R（亮度标定口径）', () => {
+    assert.ok(Math.abs(elementPower(0.6, 10) - 3.6) < 1e-12);
+    assert.equal(elementPower(0, 10), 0);
+  });
+});
+
+describe('Physics 光学核：薄透镜成像边界', () => {
+  test('成像公式恒等式 1/u + 1/v = 1/f（含虚像）', () => {
+    const f = 10;
+    for (const u of [2, 5, 8, 9, 12, 15, 20, 25, 40]) {
+      const v = imageV(u, f);
+      assert.ok(v !== null, `u=${u} 应成像`);
+      assert.ok(Math.abs(1 / u + 1 / (v as number) - 1 / f) < 1e-9, `u=${u} 违反薄透镜公式`);
+    }
+  });
+
+  test('共轭关系：v 作为物距时像距回到 u（1/u + 1/v 对称）', () => {
+    const f = 10;
+    for (const u of [15, 20, 25, 30]) {
+      const v = imageV(u, f) as number;
+      const back = imageV(v, f) as number;
+      assert.ok(Math.abs(back - u) < 1e-9, `u=${u} → v=${v} → 反算 ${back}`);
+    }
+  });
+
+  test('四种成像情形 + u = f 不成像（null，不是 NaN）', () => {
+    const f = 10;
+    assert.ok((imageV(25, f) as number) > f && (imageV(25, f) as number) < 2 * f, 'u>2f → f<v<2f 缩小实像');
+    assert.ok(Math.abs((imageV(20, f) as number) - 20) < 1e-9, 'u=2f → v=2f 等大');
+    assert.ok((imageV(15, f) as number) > 2 * f, 'f<u<2f → v>2f 放大实像');
+    assert.ok((imageV(5, f) as number) < 0, 'u<f → v<0 虚像');
+    assert.equal(imageV(10, f), null, 'u=f 不成像');
+    assert.equal(imageV(10.005, f), null);
+    assert.equal(imageV(9.995, f), null);
+    assert.ok(!Number.isNaN(imageV(10, f) as unknown as number), 'u=f 必须严格 null 而非 NaN');
+  });
+
+  test('放大率与像距同号关系：|v/u| 在 u=2f 时为 1', () => {
+    assert.ok(Math.abs(Math.abs((imageV(20, 10) as number) / 20) - 1) < 1e-9);
+    // 物距越小（成实像时）放大率越大
+    const m = (u: number) => Math.abs((imageV(u, 10) as number) / u);
+    assert.ok(m(12) > m(15) && m(15) > m(20) && m(20) > m(30), '物距越小像越大');
+  });
+
+  test('u≈f 邻域像距会暴涨 → 绘制侧必须夹取（画布不可按真实放大率画）', () => {
+    // 物理事实：|v| 无上界（u→f ⁺ 时 v→+∞）
+    assert.ok((imageV(10.02, 10) as number) > 1000, 'u 略大于 f 时像距应远超光具座量程');
+    assert.ok(Math.abs(imageV(10.5, 10) as number) < 1e-9 + 210, 'u=10.5 → v=210cm');
+    // 源码守卫：LensBench 必须对绘制像高与虚像位置做夹取，否则 20× 放大时像高 720px 溢出画布
+    const bench = readFileSync('src/components/lab/LensBench.tsx', 'utf8');
+    assert.match(bench, /const IMG_H_MAX = \d+/, '缺少绘制像高上限常量');
+    assert.match(bench, /Math\.min\(Math\.abs\(mag\) \* CANDLE_H, IMG_H_MAX\)/, '像高未夹取');
+    assert.match(bench, /Math\.max\(LENS_X \+ v \* SCALE, X_MIN\)/, '虚像位置未夹取');
+  });
+});
+
+describe('Physics 修复防退化守卫（源码结构级）', () => {
+  const P = (f: string) => readFileSync(`src/labs/physics/${f}`, 'utf8');
+
+  test('物理实验零 ✓/✗ 判分字形（改用 Lucide Check / X）', () => {
+    for (const f of ['Ohm.tsx', 'Circuits.tsx', 'Buoyancy.tsx', 'Lever.tsx', 'Lens.tsx', 'Pressure.tsx', 'Pulley.tsx']) {
+      const src = P(f);
+      assert.ok(!/[\u2713\u2717\u2714\u2718]/.test(src), `${f} 仍含对勾/叉字形`);
+      assert.match(src, /MARK_CLS/, `${f} 未使用统一判分图标类`);
+      assert.match(src, /from 'lucide-react'/, `${f} 未从 lucide 引入判分图标`);
+    }
+  });
+
+  test('算式统一走计算核，实验内不得再各持一份公式', () => {
+    const b = P('Buoyancy.tsx');
+    assert.ok(!/function buoyancy\(/.test(b), 'Buoyancy 又出现本地浮力公式');
+    assert.match(b, /from '\.\/mechanics-core'/, 'Buoyancy 未接入力学核');
+    assert.match(b, /springReading\(/, 'Buoyancy 未使用核内示数函数');
+    // 读数精度：与仪器刻度（0.1N）一致，不得出现 0.01N 的虚假精度
+    assert.ok(!/FReading\.toFixed\(2\)|Fb\.toFixed\(2\)/.test(b), '浮力读数出现 2 位小数的虚假精度');
+    const l = P('Lever.tsx');
+    assert.ok(!/m1 \* 0\.5 \* d1/.test(l), 'Lever 又出现本地力矩算式');
+    assert.match(l, /torque\(m1, d1\)/, 'Lever 未走核内力矩函数');
+    const pr = P('Pressure.tsx');
+    assert.ok(!/\(F \/ \(S \* 1e-4\)\) \/ 1000/.test(pr), 'Pressure 又出现本地压强算式');
+    assert.match(pr, /solidPressure\(F, S\)/, 'Pressure 未走核内压强函数');
+    const c = P('Circuits.tsx');
+    assert.match(c, /from '\.\/circuits-core'/, 'Circuits 未接入电路核');
+    assert.ok(!/u \/ effR\[i\]/.test(c), 'Circuits 并联支路仍在裸除（零阻会得 Infinity）');
+  });
+
+  test('欧姆核算采样不得用浮点累加，且不得返回 NaN', () => {
+    const ohmRaw = readFileSync('src/labs/physics/ohm-core.ts', 'utf8');
+    // 先剥注释：头注释里为说明问题写了「u += 0.1」这个反例，不剥会自打红
+    const ohm = ohmRaw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+    assert.ok(!/u \+= /.test(ohm), 'sampleOhm 又用累加（会产生 11.999999999999973 漂移）');
+    assert.match(ohm, /const u = k \* SAMPLE_STEP/, '横轴须用索引乘法');
+    assert.match(ohm, /return u === 0 \? 0 : u \/ denom/, '缺少 0/0 → 0 的 NaN 兜底');
+  });
+
+  test('动效：杠杆禁用过冲缓动（y2>1 会回弹），统一走单调缓动令牌', () => {
+    const l = P('Lever.tsx');
+    assert.ok(!/cubic-bezier\(0\.34, 1\.56/.test(l), '杠杆缓动又带回弹（1.56 > 1）');
+    assert.match(l, /transition: 'transform var\(--dur-slow\) var\(--ease-out\)'/, '杠杆未走单调缓动令牌');
+  });
+
+  test('文案：欢迎弹窗物理清单不得宣称不存在的「液体压强」实验', () => {
+    const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    assert.ok(!i18n.includes('液体压强'), '物理清单又出现「液体压强」（全站只有固体压强 p=F/S）');
+    assert.ok(!i18n.includes('liquid pressure'), '英文清单同样不得宣称');
+    assert.ok(i18n.includes('滑轮 · 压强 · 凸透镜成像'), '清单须与实际实验一致');
+  });
+});
+
+describe('Physics 电学门面（应用真实调用点）：边界兜底与采样口径', () => {
+  test('sampleOhm 门面：121 点、索引乘法、末点精确 12（应用走的正是这条循环）', () => {
+    const pts = sampleOhm(10, 'resistor', 0);
+    assert.equal(pts.length, 121);
+    assert.equal(pts[120][0], 12, '末点横轴须精确为 12（累加式为 11.999999999999973）');
+    let worst = 0;
+    for (let k = 0; k <= 120; k++) worst = Math.max(worst, Math.abs(pts[k][0] - k * 0.1));
+    assert.ok(worst < 1e-12, `门面横轴偏差 ${worst} 超出浮点舍入量级`);
+  });
+
+  test('currentOf 门面：U=0 且总阻为 0 时返回 0（不是 NaN）', () => {
+    // 应用运行时可能已切到 WASM 实现；门面必须把 NaN 归一为 0，否则电表读数渲染 "NaN"
+    for (const el of ['resistor', 'bulb'] as const) {
+      const v = currentOf(0, 0, el, 0);
+      assert.ok(!Number.isNaN(v), `门面 currentOf(0,0,${el},0) 返回 NaN`);
+      assert.equal(v, 0);
+    }
+    assert.ok(Math.abs(currentOf(6, 10, 'resistor', 0) - 0.6) < 1e-12, '正常工况不得被兜底逻辑改变');
+  });
+
+  test('imageV 门面：u≈f 必须严格 null（WASM 侧若返回 NaN 也要归一）', () => {
+    for (const u of [10, 10.005, 9.995]) {
+      const v = imageV(u, 10);
+      assert.equal(v, null, `u=${u} 应为 null`);
+      assert.ok(!Number.isNaN(v as unknown as number));
+    }
+    assert.ok((imageV(20, 10) as number) > 0, '正常工况不得被归一逻辑吞掉');
+  });
+
+  test('门面源码守卫：NaN 兜底 + 非有限归一 + 索引乘法循环 + 头注释警示', () => {
+    const fe = readFileSync('src/labs/physics/stem-engine.ts', 'utf8');
+    assert.match(fe, /return Number\.isNaN\(v\) \? 0 : v;/, 'currentOf 缺少 NaN→0 兜底');
+    assert.match(fe, /Number\.isFinite\(v\) \? v : null/, 'imageV 缺少非有限→null 归一');
+    assert.ok(!/u \+= 0\.1/.test(fe.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')), '门面采样又用累加');
+    assert.match(fe, /for \(let k = 0; k \* 0\.1 <= 12\.0001; k\+\+\)/, '门面采样须用索引乘法');
+    assert.ok(fe.includes('只改 TS core 对应用无效'), '头注释须警示「改了 core 但应用仍 NaN」这个坑');
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+   物理题库守卫（对标化学 standard）：正确值必须在值域、位置分布不偏、无对勾叉字形
+   ══════════════════════════════════════════════════════════════════════════ */
+
+describe('公共工具与 AI 链路守卫', () => {
+  const read = (path: string) => readFileSync(path, 'utf8');
+
+  test('物理常量：数值/单位/初中口径（不含高中大学常量）', () => {
+    const byKey = new Map(PC.map((c) => [c.symbol + '|' + c.value, c]));
+    const expect: [string, string, string][] = [
+      ['g', '9.8', 'N/kg'],
+      ['ρ水', '1.0×10³', 'kg/m³'],
+      ['ρ酒精', '0.8×10³', 'kg/m³'],
+      ['ρ铁', '7.9×10³', 'kg/m³'],
+      ['ρ铜', '8.9×10³', 'kg/m³'],
+      ['ρ铝', '2.7×10³', 'kg/m³'],
+      ['p₀', '1.013×10⁵', 'Pa'],
+      ['c水', '4.2×10³', 'J/(kg·°C)'],
+      ['c酒精', '2.4×10³', 'J/(kg·°C)'],
+      ['c冰', '2.1×10³', 'J/(kg·°C)'],
+      ['c', '3×10⁸', 'm/s'],
+      ['v水', '2.25×10⁸', 'm/s'],
+      ['f', '50 Hz', ''],
+    ];
+    for (const [sym, val, unit] of expect) {
+      const hit = byKey.get(sym + '|' + val);
+      assert.ok(hit, '常量 ' + sym + ' = ' + val + ' 缺失或数值被改动');
+      assert.strictEqual(hit!.unit as string, unit, sym + ' 单位应为「' + unit + '」');
+    }
+    for (const c of PC) {
+      assert.ok(!/^\s*-/.test(c.value), c.name.zh + ' 的负号应为学术减号 U+2212');
+      assert.ok(c.name.zh.length > 0 && c.name.en.length > 0, c.name.zh + ' 缺中英名');
+    }
+    const all = PC.map((c) => c.symbol + c.name.zh).join('|');
+    assert.doesNotMatch(all, /万有引力|引力常量|元电荷/, '混入非初中常量');
+  });
+
+  test('AI 密钥仅存本机：localStorage 读写、无第三方上报通道', () => {
+    const cfg = read('src/lib/ai-config.ts');
+    assert.match(cfg, /window\.localStorage\.setItem\(STORAGE_KEY/, '密钥未写入本机存储');
+    assert.match(cfg, /window\.localStorage\.getItem\(STORAGE_KEY/, '配置读取未走本机存储');
+    assert.match(cfg, /window\.localStorage\.removeItem\(STORAGE_KEY/, '清除未走本机存储');
+    assert.doesNotMatch(cfg, /sendBeacon/, '出现后台上报通道');
+    const fetches = Array.from(cfg.matchAll(/fetch\(([^,)]+)/g)).map((m) => m[1]);
+    assert.ok(fetches.length > 0, '未找到任何请求点');
+    for (const target of fetches) {
+      assert.doesNotMatch(target, /['"]\/(api|log|report|collect)/, '请求目标疑似本站后端：' + target);
+      assert.doesNotMatch(target, /location\.(origin|href)/, '请求目标使用了本站源：' + target);
+    }
+    const panel = read('src/components/ai/AiAssistant.tsx');
+    assert.doesNotMatch(panel, /sendBeacon/, '面板出现上报通道');
+    const copy = panel.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
+    assert.doesNotMatch(copy, /加密/, '出现「加密」不实表述');
+  });
+
+  test('公式速查搜索框：单层极简（--border-strong + 内联 outline:none + aria-label）', () => {
+    for (const f of ['src/pages/MathFormulas.tsx', 'src/pages/PhysicsFormulas.tsx']) {
+      const src = read(f);
+      assert.match(src, /focus-within:border-\[var\(--accent\)\]/, f + ' 外层容器缺聚焦态');
+      assert.match(src, /border-\[var\(--border-strong\)\]/, f + ' 边框未用 --border-strong（对比度不足 3:1）');
+      assert.match(src, /style=\{\{ outline: 'none' \}\}/, f + ' 内层缺内联 outline:none（会出现双层黑框）');
+      assert.match(src, /border-none bg-transparent/, f + ' 内层 input 仍有边框');
+      assert.match(src, /aria-label=\{/, f + ' 搜索框缺无障碍标签');
+    }
+  });
+
+  test('长公式与长回答不撑破容器：KaTeX 与 AI 气泡都有溢出保护', () => {
+    const css = read('src/index.css');
+    const kd = css.slice(css.indexOf('.katex-display'), css.indexOf('.katex-display') + 260);
+    assert.match(kd, /overflow-x: auto/, '.katex-display 缺 overflow-x（长公式会撑破布局）');
+    assert.match(kd, /max-width: 100%/, '.katex-display 缺 max-width');
+    const panel = read('src/components/ai/AiAssistant.tsx');
+    assert.match(panel, /max-w-\[95%\] min-w-0 break-words/, 'AI 回答气泡缺 break-words（长 token 会溢出）');
+    assert.match(panel, /max-h-\[min\(85dvh/, 'AI 面板缺 85dvh 高度上限');
+  });
+
+  test('全站界面零 ✓/✗ 判分字形（smoke 自身除外）', () => {
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const q = dir + '/' + e.name;
+        if (e.isDirectory()) walk(q);
+        else if (/\.(tsx?|css)$/.test(e.name)) {
+          if (/[✓✗]/.test(readFileSync(q, 'utf8'))) hits.push(q);
+        }
+      }
+    };
+    ['src/pages', 'src/components', 'src/labs', 'src/lib'].forEach(walk);
+    assert.deepStrictEqual(hits, [], '以下文件仍含 ✓/✗ 字形：' + hits.join(', '));
+  });
+});
+
+describe('数学模块数值稳定性与题库守卫', () => {
+  const read = (path: string) => readFileSync(path, 'utf8');
+  const CORE = './labs/math/quadratic-core';
+
+  test('二次采样：末点精确落在 +4，点距恒等（无浮点累加漂移）', () => {
+    const pts = QC.sampleQuadratic(1, 0, 0);
+    const n = Math.round((QC.SAMPLE_MAX - QC.SAMPLE_MIN) / QC.SAMPLE_STEP);
+    assert.strictEqual(pts.length, n + 1, `采样点数应为 ${n + 1}`);
+    assert.strictEqual(pts[0][0], -4, '首点应为 -4');
+    assert.strictEqual(pts[pts.length - 1][0], 4, '末点必须精确为 +4（旧实现漂移为 3.9999999999999396）');
+    // 点距恒为 0.05（索引乘法下仅剩 ulp 级差异；浮点累加会漂移到 0.05000000000000071 等并逐段累积）
+    for (let i = 1; i < pts.length; i++) {
+      const d = pts[i][0] - pts[i - 1][0];
+      assert.ok(Math.abs(d - 0.05) < 1e-12, `第 ${i} 段点距 ${d} 偏离 0.05`);
+    }
+    // 采样点与索引乘法公式逐点一致
+    pts.forEach(([x, y], k) => {
+      assert.strictEqual(x, -4 + k * 0.05, '第 k 点 x 应为 -4 + k·0.05');
+      assert.ok(Math.abs(y - (x * x)) < 1e-12, 'y 应为 x²');
+    });
+    // 旧模式必须已被移除
+    const coreSrc = read('src/labs/math/quadratic-core.ts');
+    const facadeSrc = read('src/labs/physics/stem-engine.ts');
+    assert.doesNotMatch(coreSrc, /x \+= 0\.05/, 'quadratic-core 仍在浮点累加');
+    assert.doesNotMatch(facadeSrc, /x \+= 0\.05/, '门面 stem-engine 仍在浮点累加（真正运行的是它）');
+    // 反比例与一次函数两支同样不得累加
+    assert.doesNotMatch(read('src/labs/math/Inverse.tsx'), /x \+= 0\.05/, 'Inverse 仍在浮点累加');
+    assert.doesNotMatch(read('src/labs/math/Linear.tsx'), /x \+= 0\.05/, 'Linear 仍在浮点累加');
+  });
+
+  test('判别式与实根：Δ<0 返回空数组（绝不 Math.sqrt 负数产出 NaN）', () => {
+    assert.strictEqual(QC.discriminant(1, 0, 1), -4);
+    assert.deepStrictEqual(QC.quadraticRoots(1, 0, 1), [], 'Δ<0 必须无实根且不产生 NaN');
+    assert.deepStrictEqual(QC.quadraticRoots(1, 0, 0), [0], 'Δ=0 重根');
+    const r = QC.quadraticRoots(1, -3, 2); // x²−3x+2 → 1, 2
+    assert.ok(Math.abs(r[0] - 1) < 1e-12 && Math.abs(r[1] - 2) < 1e-12);
+    assert.ok(r[0] <= r[1], '根须升序');
+    // 全域扫描：任何系数下返回值都必须是有限数（杜绝 NaN / Infinity 进入坐标渲染）
+    for (const a of [-3, -1, -0.5, 0, 0.5, 1, 3]) {
+      for (const b of [-5, -1, 0, 1, 5]) {
+        for (const c of [-5, -1, 0, 1, 5]) {
+          for (const root of QC.quadraticRoots(a, b, c)) {
+            assert.ok(Number.isFinite(root), `系数 a=${a} b=${b} c=${c} 产生非有限根 ${root}`);
+          }
+        }
+      }
+    }
+    // a=0 退化：一次方程
+    assert.deepStrictEqual(QC.quadraticRoots(0, 2, -4), [2]);
+    assert.deepStrictEqual(QC.quadraticRoots(0, 0, 5), [], 'a=b=0 无解');
+  });
+
+  test('圆几何退化：动点重合 / 零长向量不得产出 NaN 夹角', () => {
+    // 签名：(ax,ay,bx,by,cx,cy)，顶点在 b
+    assert.strictEqual(IC.angleBetween(0, 0, 0, 0, 0, 0), 0, '零长向量夹角须为 0 而非 NaN');
+    assert.strictEqual(IC.angleBetween(1, 1, 1, 1, 2, 2), 0, '单侧零长向量同样不得 NaN');
+    assert.ok(Number.isFinite(IC.angleBetween(1, 0, 0, 0, 0, 1)), '直角顶点须有限');
+    // 全域退化扫描：任何重合组合都必须有限且在 [0, π]
+    const pts = [[0, 0], [1, 0], [0, 1], [-1, -1], [2, 2]];
+    for (const [ax, ay] of pts) for (const [bx, by] of pts) for (const [cx, cy] of pts) {
+      const ang = IC.angleBetween(ax, ay, bx, by, cx, cy);
+      assert.ok(Number.isFinite(ang), `退化组合 (${ax},${ay})(${bx},${by})(${cx},${cy}) 产生 NaN 夹角`);
+      assert.ok(ang >= 0 && ang <= Math.PI + 1e-12, '夹角越界');
+    }
+    // 直径所对圆周角 = 90°（Thales）：C 在单位圆上，AB 为直径
+    for (const t of [0.3, 1.1, 2.4, 3.9, 5.5]) {
+      const cx = Math.cos(t), cy = Math.sin(t);
+      const ang = IC.angleBetween(-1, 0, cx, cy, 1, 0);
+      assert.ok(Math.abs(ang - Math.PI / 2) < 1e-9, `C=(${cx.toFixed(3)},${cy.toFixed(3)}) 处圆周角应为 90°`);
+    }
+    // 垂径：圆心到弦的垂足与两端等距（AE = EB），弦退化到直径/零弦时仍成立
+    for (const half of [0, 0.5, 1, 12]) {
+      assert.ok(Math.abs(IC.dist(-half, 0, 0, 0) - IC.dist(0, 0, half, 0)) < 1e-12, `半弦 ${half} 时 AE ≠ EB`);
+    }
+    // 平行线不得返回交点（|d| < 1e-10 → null）
+    assert.strictEqual(IC.lineIntersect(0, 0, 1, 0, 0, 1, 1, 1), null, '平行线须无交点');
+    const ix = IC.lineIntersect(0, 0, 2, 2, 0, 2, 2, 0);
+    assert.ok(ix !== null && Number.isFinite(ix.x) && Number.isFinite(ix.y), '非平行必须有有限交点');
+  });
+
+  test('题库注册表：值与文案键成对、正解在值域内、渲染顺序与注册表一致', () => {
+    const files = ['Circle', 'Inverse', 'Linear', 'Quadratic'];
+    const all: { file: string; key: string; vals: string[]; correct: string[] }[] = [];
+    for (const f of files) {
+      const src = read(`src/labs/math/${f}.tsx`);
+      const optsBlock = src.match(/export const OPTIONS = \{\n([\s\S]*?)\n\} as const;/);
+      const corrBlock = src.match(/export const QUIZ_CORRECT: Record<string, string\[\]> = \{\n([\s\S]*?)\n\};/);
+      assert.ok(optsBlock && corrBlock, `${f} 缺 OPTIONS / QUIZ_CORRECT 导出`);
+      const opts = Object.fromEntries(
+        Array.from(optsBlock![1].matchAll(/(\w+): \[((?:\[[^\]]*\],?\s*)+)\]/g)).map((m) => [
+          m[1],
+          Array.from(m[2].matchAll(/\['([^']+)', '([^']+)'\]/g)).map((x) => [x[1], x[2]]),
+        ]),
+      );
+      const corr = Object.fromEntries(
+        Array.from(corrBlock![1].matchAll(/(\w+): \[([^\]]*)\]/g)).map((m) => [m[1], Array.from(m[2].matchAll(/'([^']+)'/g)).map((x) => x[1])]),
+      );
+      assert.deepStrictEqual(Object.keys(opts).sort(), Object.keys(corr).sort(), `${f} 题键不一致`);
+      for (const [k, pairs] of Object.entries(opts)) {
+        assert.ok(pairs.length >= 2, `${f}.${k} 选项不足`);
+        for (const [v, label] of pairs) {
+          assert.ok(v.length > 0 && label.length > 0, `${f}.${k} 存在空值/空文案键`);
+        }
+        assert.strictEqual(new Set(pairs.map((p) => p[0])).size, pairs.length, `${f}.${k} 选项值重复`);
+        for (const c of corr[k]) {
+          assert.ok(pairs.some((p) => p[0] === c), `${f}.${k} 正确值 ${c} 不在选项值域内（永远判不对）`);
+        }
+        all.push({ file: f, key: k, vals: pairs.map((p) => p[0]), correct: corr[k] });
+      }
+      // 判分表必须只此一处（组件内引用注册表）
+      assert.match(src, /const correctKeys = QUIZ_CORRECT;|QUIZ_CORRECT\[key\]/, `${f} 组件未引用注册表`);
+    }
+    // 位置均衡：正解不得扎堆在同一项
+    const hist: Record<number, number> = {};
+    for (const q of all) hist[q.vals.indexOf(q.correct[0])] = (hist[q.vals.indexOf(q.correct[0])] || 0) + 1;
+    const total = all.length;
+    assert.strictEqual(total, 15, `判分题总数应为 15，实为 ${total}`);
+    for (const [pos, n] of Object.entries(hist)) {
+      assert.ok(n / total <= 0.45, `位置 ${pos} 正解占比 ${(100 * n / total).toFixed(1)}% 超过 45%（位置偏见）`);
+    }
+    assert.strictEqual(Object.keys(hist).length, 3, '三个位置都应被用到');
+  });
+
+  test('数学模块零 ✓/✗ 判分字形（统一 Lucide Check / X）', () => {
+    for (const f of ['src/labs/math/Circle.tsx', 'src/labs/math/Inverse.tsx', 'src/labs/math/Linear.tsx',
+      'src/labs/math/Quadratic.tsx', 'src/components/lab/InteractiveCircle.tsx']) {
+      const src = read(f);
+      assert.doesNotMatch(src, /[✓✗]/, `${f} 仍有 ✓/✗ 字形`);
+    }
+    // 四个判分实验都使用 Lucide 图标常量
+    for (const f of ['Circle', 'Inverse', 'Linear', 'Quadratic']) {
+      const src = read(`src/labs/math/${f}.tsx`);
+      assert.match(src, /from 'lucide-react'/, `${f} 未引入 Lucide`);
+    }
+  });
+
+  test('坐标渲染：负号使用学术减号 U+2212，且只用设计令牌', () => {
+    const cp = read('src/components/lab/CoordPlane.tsx');
+    assert.match(cp, /export const mathMinus/, '缺 mathMinus 工具');
+    assert.strictEqual(CP2.mathMinus(-3), '\u22123', '负数须渲染为 U+2212');
+    assert.strictEqual(CP2.mathMinus('(-2, 3)'), '(\u22122, 3)', '坐标文本须整体替换');
+    assert.strictEqual(CP2.mathMinus(4), '4', '正数不受影响');
+    // 刻度与标注都过格式化
+    assert.match(cp, /\{mathMinus\(v\)\}/, '刻度未过 mathMinus');
+    assert.match(cp, /\{mathMinus\(m\.dot\.label\)\}/, '点标注未过 mathMinus');
+    for (const f of ['src/components/lab/CoordPlane.tsx', 'src/labs/math/Circle.tsx', 'src/labs/math/Inverse.tsx',
+      'src/labs/math/Linear.tsx', 'src/labs/math/Quadratic.tsx']) {
+      assert.doesNotMatch(read(f), /#[0-9a-fA-F]{3,6}\b/, `${f} 出现硬编码色值`);
+    }
+  });
+});
+
+describe('滑动变阻器「一上一下」结构与直角走线守卫', () => {
+  const read = (path: string) => readFileSync(path, 'utf8');
+  const RHEO = read('src/components/lab/circuit/CircuitParts.tsx');
+  const RHEO_BLOCK = RHEO.slice(RHEO.indexOf('export function Rheostat'), RHEO.indexOf('/* ---------- 固定电表'));
+  const OHM = read('src/labs/physics/Ohm.tsx');
+  const TOPO = read('src/labs/physics/circuitStyles.ts');
+
+  test('三层结构齐备：下层线圈瓷筒 + 上层金属杆 + 中层滑片垂直连通', () => {
+    assert.match(RHEO_BLOCK, /下层：漆包线线圈瓷筒/, '缺下层线圈瓷筒');
+    assert.match(RHEO_BLOCK, /上层：导电金属杆/, '缺上层金属杆');
+    assert.match(RHEO_BLOCK, /中层：滑片 P/, '缺中层滑片');
+    // 瓷筒 = rect；金属杆 = 横线；滑片垂直连杆 + 触头三角
+    assert.match(RHEO_BLOCK, /width=\{RHEO_W\}[\s\S]*?height=\{RHEO_H\}/, '瓷筒矩形缺失');
+    assert.match(RHEO_BLOCK, /<line x1=\{t\.C\.x\} y1=\{rodY\} x2=\{t\.D\.x\} y2=\{rodY\}/, '金属杆横线缺失');
+    assert.match(RHEO_BLOCK, /<line x1="0" y1=\{rodY\} x2="0" y2=\{coilTop\}/, '滑片垂直连杆缺失（会与上下两层脱节）');
+    assert.match(RHEO_BLOCK, /<polygon points=\{`-2\.6,\$\{coilTop\}/, '触头三角缺失');
+  });
+
+  test('四接线柱 A/B/C/D 齐备且几何与父级共用常量一致', () => {
+    assert.match(RHEO_BLOCK, /\['A', 'B', 'C', 'D'\] as const/, '未渲染 A/B/C/D 四柱');
+    const t0 = CP.rheostatTerminals(190, 60);
+    assert.deepStrictEqual(t0.A, { x: 173, y: 60 }, 'A 应为左下接线柱');
+    assert.deepStrictEqual(t0.D, { x: 207, y: 44 }, 'D 应为右上接线柱');
+    assert.strictEqual(CP.RHEO_W / 2, 17, '瓷筒半宽须为 17（父级按 17 布局）');
+    // 父级 circuitStyles 的金属杆偏移必须与组件一致，否则出线接不上接线柱
+    assert.strictEqual(TOPO_RHEO_ROD_DY, CP.RHEO_ROD_DY, 'circuitStyles 的 RHEO_ROD_DY 与组件不一致');
+  });
+
+  test('滑片单调性：ratio 增 → 滑片右移 → 接入线圈有效长度变长', () => {
+    const xs = [0, 0.25, 0.5, 0.75, 1].map((r) => CP.rheostatWiperX(190, r));
+    for (let i = 1; i < xs.length; i++) assert.ok(xs[i] > xs[i - 1], '滑片位置未随 ratio 单调右移');
+    // 行程不越过瓷筒端头（两端各留 4px）
+    assert.ok(Math.abs(xs[0] - 177) < 1e-9 && Math.abs(xs[4] - 203) < 1e-9, '滑片行程超界');
+    // 接入长度 = 4px 起始余量 + 26px·ratio（仿射）：用差值验证线性，不能直接用比值（含常量项）
+    const len = (r: number) => CP.rheostatWiperX(190, r) - CP.rheostatTerminals(190, 60).A.x;
+    assert.ok(Math.abs((len(1) - len(0)) - 2 * (len(0.5) - len(0))) < 1e-9, '接入长度的增量非线性');
+    assert.ok(Math.abs(len(0) - 4) < 1e-9, '起始余量应为 4px（滑片不越过瓷筒端头）');
+  });
+
+  test('导线全部横平竖直（90° 直角），端点吸附接线柱圆心', () => {
+    const terms = CP.rheostatTerminals(190, 60);
+    // Ohm：左进线端点 = A，出线起点 = D，直角折下后落于元件左端
+    assert.match(OHM, /<line x1="145" y1="60" x2="173" y2="60" \/>/, '左进线未吸附 A(173,60)');
+    assert.match(OHM, /<line x1="207" y1="44" x2="230" y2="44" \/>/, '出线未自 D(207,44) 起');
+    assert.match(OHM, /<line x1="230" y1="44" x2="230" y2="60" \/>/, '出线缺 90° 折下段');
+    assert.strictEqual(terms.A.x, 173);
+    assert.strictEqual(terms.D.y, 44);
+    // 该区域的每一条导线都必须轴对齐（x1==x2 或 y1==y2）
+    const segs = [
+      [145, 60, 173, 60],
+      [207, 44, 230, 44],
+      [230, 44, 230, 60],
+    ];
+    for (const [x1, y1, x2, y2] of segs) {
+      assert.ok(x1 === x2 || y1 === y2, `导线 ${x1},${y1}→${x2},${y2} 非 90° 直角`);
+    }
+    // 变阻器符号内不得出现曲线路径（贝塞尔）或斜线导线
+    assert.doesNotMatch(RHEO_BLOCK, /<path/, '变阻器符号出现曲线路径（禁止贝塞尔）');
+    assert.doesNotMatch(RHEO_BLOCK, /\b[QCST]\s*-?\d/, '变阻器符号出现曲线命令');
+  });
+
+  test('串联网末段同样走「一上一下」且与组件常量一致', () => {
+    assert.match(TOPO, /elems\[n - 1\]\.kind === 'rheostat'/, '串联网未对末位变阻器特殊处理');
+    const rodY = 60 + TOPO_RHEO_ROD_DY;
+    assert.strictEqual(rodY, 44, '金属杆高度应为 44');
+    assert.match(TOPO, /x1: RIGHT_X, y1: 60 \+ RHEO_ROD_DY, x2: RIGHT_X, y2: 140/, '右端竖线未自金属杆高度起');
+    for (const [x1, y1, x2, y2] of [[268 + 17, rodY, 290, rodY], [290, rodY, 290, 140]]) {
+      assert.ok(x1 === x2 || y1 === y2, '串联网出线非 90° 直角');
+    }
+  });
+
+  test('仅用设计令牌，无硬编码色值噪音', () => {
+    for (const token of ['var(--fg)', 'var(--muted)', 'var(--card-bg)', 'var(--accent)']) {
+      assert.ok(RHEO_BLOCK.includes(token), `缺令牌 ${token}`);
+    }
+    assert.doesNotMatch(RHEO_BLOCK, /#[0-9a-fA-F]{3,6}\b/, '变阻器出现硬编码色值');
+    assert.doesNotMatch(RHEO_BLOCK, /stroke="black"|strokeWidth="2\.5"/, '出现粗黑视觉噪音');
+  });
+});
+
+describe('物理教学边界守卫（电表量程 / 透镜超程 / 测力计插值 / 触控热区 / 浮力分辨率）', () => {
+  const read = (path: string) => readFileSync(path, 'utf8');
+
+  test('电表指针两端极值夹取：负值 / 超量程都不会把指针推出表盘', () => {
+    const src = read('src/components/lab/MeterGauge.tsx');
+    assert.match(src, /const clamped = Math\.max\(0, Math\.min\(v, max\)\)/, '指针角度未做两端夹取');
+    assert.match(src, /const over = value !== null && v > max/, '未定义超量程状态');
+    assert.match(src, /超量程（\$\{max\}\$\{unit\}）/, '缺超量程中文警示');
+    assert.match(src, /Over range \(\$\{max\}\$\{unit\}\)/, '缺超量程英文警示');
+    assert.match(src, /onCycleRange/, '缺手动换档入口');
+    assert.doesNotMatch(src, /Math\.min\(v, max\) \/ max/, '仍存在会飞出零位的旧算式');
+  });
+
+  test('双量程档位与实物一致：电流 0.6/3A、电压 3/15V（电压表不再固定单档 15V）', () => {
+    const ohm = read('src/labs/physics/Ohm.tsx');
+    assert.match(ohm, /const A_RANGES = \[0\.6, 3\];/, '电流表量程应为 0.6/3A');
+    assert.match(ohm, /const V_RANGES = \[3, 15\];/, '电压表量程应为 3/15V');
+    const cir = read('src/labs/physics/Circuits.tsx');
+    assert.match(cir, /const V_RANGES = \[3, 15\];/, '串并联电压表量程应为 3/15V');
+  });
+
+  test('透镜超程：量程带与夹取常量同源，越界判定语义正确，中英文案齐备', () => {
+    const bench = read('src/components/lab/LensBench.tsx');
+    assert.match(bench, /export const BENCH_V_MIN = \(X_MIN - LENS_X\) \/ SCALE/, '量程带未与夹取常量同源');
+    assert.match(bench, /export const BENCH_V_MAX = \(CLAMP_MAX - LENS_X\) \/ SCALE/, '量程带未与夹取常量同源');
+    assert.strictEqual(BENCH.isBeyondBench(null), false);
+    assert.strictEqual(BENCH.isBeyondBench(BENCH.BENCH_V_MAX), false);
+    assert.strictEqual(BENCH.isBeyondBench(BENCH.BENCH_V_MAX + 1), true);
+    assert.strictEqual(BENCH.isBeyondBench(BENCH.BENCH_V_MIN), false);
+    assert.strictEqual(BENCH.isBeyondBench(BENCH.BENCH_V_MIN - 1), true);
+    // 真实场景：u=10.5cm、f=10cm → v=210cm 远超量程
+    assert.strictEqual(BENCH.isBeyondBench(210), true);
+    const i18n = read('src/lib/i18n.ts');
+    assert.match(i18n, /lensOutOfBench: '光屏已超出光具座量程'/, '缺中文超程提示');
+    assert.match(i18n, /lensOutOfBench: 'Screen exceeds optical bench limit'/, '缺英文超程提示');
+  });
+
+  test('弹簧测力计挂钩位移改由 transform 驱动（<line> 的 y2 不是 CSS 可动画属性）', () => {
+    const src = read('src/labs/physics/Buoyancy.tsx');
+    assert.match(src, /translateY\(\$\{springDy\}px\)/, '挂钩位移未改为 transform');
+    assert.match(src, /transition: 'transform var\(--dur-base\) var\(--ease-out\)'/, '缺少过渡令牌');
+    assert.doesNotMatch(src, /y2=\{springBottomY\}/, '弹簧仍由 y2 属性驱动');
+  });
+
+  test('浮力步长分辨率：三种液体每 0.1 档 ΔF浮 ≥ 0.1N（0.1N 刻度可见）', () => {
+    for (const rho of [800, 1000, 1200]) {
+      for (let k = 1; k <= 10; k++) {
+        const d = MC.buoyantForce(rho, k / 10) - MC.buoyantForce(rho, (k - 1) / 10);
+        assert.ok(d >= 0.1 - 1e-9, `ρ=${rho} 第 ${k} 档增量 ${d.toFixed(3)}N 不足 0.1N`);
+      }
+    }
+    // 仍须能下沉：最重的盐水满浸时 F浮 < G（示数 > 0）
+    assert.ok(MC.buoyantForce(1200, 1) < MC.STONE_WEIGHT, '盐水满浸浮力已超重力，石块会上浮');
+    const stoneDensity = MC.STONE_WEIGHT / (MC.STONE_VOLUME * MC.G);
+    assert.ok(stoneDensity > 1200, `石块密度 ${stoneDensity} 不大于盐水密度`);
+  });
+
+  test('滑块触控热区 ≥44px（希沃大屏 / 手机端）', () => {
+    const src = read('src/components/lab/ParamSlider.tsx');
+    assert.match(src, /flex min-h-\[44px\] items-center gap-2\.5/, '滑块行未加 44px 下限');
+    assert.match(src, /h-11 min-h-\[44px\] flex-1/, '滑块本体未加 44px 热区');
+  });
+});
+
+describe('物理题库守卫', () => {
+  const PHYS: [string, Record<string, readonly (readonly [string, string])[]>, Record<string, string[]>][] = [
+    ['Buoyancy.tsx', Q_B as never, C_B],
+    ['Lever.tsx', Q_L as never, C_L],
+    ['Lens.tsx', Q_S as never, C_S],
+    ['Pressure.tsx', Q_P as never, C_P],
+    ['Pulley.tsx', Q_U as never, C_U],
+    ['Ohm.tsx', Q_O as never, C_O],
+  ];
+
+  test('每题的正解必须落在选项值域内（此前 4 道预测题的正确值根本不在值域 → 永不判对）', () => {
+    let n = 0;
+    for (const [file, OPT, COR] of PHYS) {
+      for (const [qid, pairs] of Object.entries(OPT)) {
+        const vals = (pairs as readonly (readonly [string, string])[]).map((p) => p[0]);
+        const cor = COR[qid];
+        assert.ok(cor && cor.length, `${file} ${qid}: 缺少判题键`);
+        for (const c of cor) {
+          assert.ok(vals.includes(c), `${file} ${qid}: 正确值 ${c} 不在值域 ${vals.join(',')}`);
+        }
+        n++;
+      }
+    }
+    assert.ok(n >= 23, `物理题库题目总数应 ≥23，实测 ${n}`);
+  });
+
+  test('题号键必须与 predict/conclude 真实题号一致（杜绝「按 q 序号」串味）', () => {
+    for (const [file, OPT, COR] of PHYS) {
+      const optKeys = Object.keys(OPT).sort();
+      const corKeys = Object.keys(COR).sort();
+      assert.deepEqual(corKeys, optKeys, `${file}: OPTIONS 与 QUIZ_CORRECT 题号不一致`);
+      for (const k of optKeys) {
+        assert.match(k, /^(predict|conclude)Q\d+$/, `${file}: 题号 ${k} 不是 predictQn/concludeQn`);
+      }
+    }
+  });
+
+  test('选项长度收敛：任一题任一语种 max/min ≤ 1.15（破「最长项即答案」）', () => {
+    // 文案在各实验自己的 copy 对象里（不在全局 i18n）→ 逐实验解析其 zh 块，并断言解析覆盖率
+    const zhOf = (file: string): Record<string, string> => {
+      const src = readFileSync(`src/labs/physics/${file}`, 'utf8');
+      const i = src.indexOf('zh: {'), j = src.indexOf('en: {', i);
+      const blk = src.slice(i, j);
+      const out: Record<string, string> = {};
+      for (const m of blk.matchAll(/(\w+):\s*'((?:[^'\\]|\\.)*)'/g)) out[m[1]] = m[2];
+      return out;
+    };
+    let checked = 0, fails: string[] = [];
+    let missing = 0, total = 0;
+    for (const [file, OPT] of PHYS) {
+      const zh = zhOf(file);
+      for (const [qid, pairs] of Object.entries(OPT)) {
+        const lens = (pairs as readonly (readonly [string, string])[])
+          .map(([, key]) => { total++; const v = zh[key]; if (!v) missing++; return (v ?? '').length; })
+          .filter((l) => l > 0);
+        if (lens.length < 2) continue;
+        const ratio = Math.max(...lens) / Math.min(...lens);
+        checked++;
+        // 中文选项最短常见 2 字（如「越大 / 越小」），过短会导致比值天然偏大 → 门槛按「长度差 ≤4 字」双判
+        const diff = Math.max(...lens) - Math.min(...lens);
+        if (ratio > 1.15 && diff > 4) {
+          fails.push(`${file} ${qid}: 长度比 ${ratio.toFixed(2)}（差 ${diff} 字）${lens.join('/')}`);
+        }
+      }
+    }
+    // 覆盖率护栏：文案键解析不到就必须红，否则长度检查会静默空转（本轮踩过）
+    assert.equal(missing, 0, `${missing}/${total} 个选项文案键未在该实验 zh 块中解析到`);
+    assert.ok(checked >= 20, `实测题数应 ≥20，实测 ${checked}`);
+    assert.equal(fails.length, 0, `选项长度失衡：\n  ${fails.join('\n  ')}`);
+  });
+
+  test('正解位置分布不偏：受选项个数上限约束，可达域内必须均衡', () => {
+    // 实测：23 题中 13 题只有 2 个选项 → 正解只可能在 A/B，位置均衡存在理论上限。
+    // 因此按「选项数分档」断言可达域内的均衡，而不是对全体套一个 [25%,40%]。
+    const byCount: Record<number, number[]> = {};
+    for (const [, OPT, COR] of PHYS) {
+      for (const [qid, pairs] of Object.entries(OPT)) {
+        const vals = (pairs as readonly (readonly [string, string])[]).map((p) => p[0]);
+        const idx = vals.findIndex((v) => COR[qid].includes(v));
+        (byCount[vals.length] ??= []).push(idx);
+      }
+    }
+    const two = byCount[2] ?? [];
+    assert.ok(two.length >= 8, `两选项题应 ≥8，实测 ${two.length}`);
+    const aShare = two.filter((i) => i === 0).length / two.length;
+    assert.ok(aShare >= 0.4 && aShare <= 0.6, `两选项题的正解 A 占比 ${(aShare * 100).toFixed(1)}% 偏离均衡带 [40%,60%]`);
+    // 3+ 选项题：C/D 必须被用到（不得全部堆在 A）
+    const multi = Object.entries(byCount).filter(([k]) => +k >= 3).flatMap(([, v]) => v);
+    if (multi.length >= 4) {
+      const cd = multi.filter((i) => i >= 2).length / multi.length;
+      assert.ok(cd >= 0.2, `3+ 选项题里 C/D 占比仅 ${(cd * 100).toFixed(1)}%，位置偏见未消除`);
+    }
+  });
+
+  test('题库文案严禁对勾/叉字形', () => {
+    for (const f of ['Ohm.tsx', 'Circuits.tsx', 'Buoyancy.tsx', 'Lever.tsx', 'Lens.tsx', 'Pressure.tsx', 'Pulley.tsx']) {
+      const src = readFileSync(`src/labs/physics/${f}`, 'utf8');
+      assert.ok(!/[\u2713\u2717\u2714\u2718]/.test(src), `${f} 题库/界面含对勾叉字形`);
+    }
+  });
+
+  test('Ohm concludeQ4：标为「等价变形」的 U = I×R 必须同为正确（原先选了反而判错）', () => {
+    assert.ok(C_O.concludeQ4.includes('iur'), 'I = U / R 须为正确');
+    assert.ok(C_O.concludeQ4.includes('uir'), 'U = I × R 标为等价变形，必须同为正确');
+  });
+
+  test('串并联题库（circuitStyles）：correctIndex 合法、选项长度收敛、C/D 被用到', () => {
+    let n = 0;
+    const idxs: number[] = [];
+    const fails: string[] = [];
+    for (const st of CIRCUIT_STYLES) {
+      for (const q of st.copy.conclude ?? []) {
+        n++;
+        const opts = q.options;
+        assert.ok(Number.isInteger(q.correctIndex) && q.correctIndex >= 0 && q.correctIndex < opts.length,
+          `${st.id}: correctIndex ${q.correctIndex} 越界（选项 ${opts.length} 个）`);
+        idxs.push(q.correctIndex);
+        const lens = opts.map((o) => o.zh.length);
+        const ratio = Math.max(...lens) / Math.min(...lens);
+        if (ratio > 1.15 && Math.max(...lens) - Math.min(...lens) > 4) {
+          fails.push(`${st.id}: 长度比 ${ratio.toFixed(2)} ${lens.join('/')}`);
+        }
+      }
+    }
+    assert.ok(n >= 8, `串并联题库应 ≥8 题，实测 ${n}`);
+    assert.equal(fails.length, 0, `串并联选项长度失衡：\n  ${fails.join('\n  ')}`);
   });
 });

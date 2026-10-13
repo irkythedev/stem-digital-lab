@@ -46,7 +46,8 @@ export default function ParamSlider({
           {format ? format(value) : value}
         </span>
       </div>
-      <div className="flex items-center gap-2.5">
+      {/* 触控热区：滑块行 ≥44px（希沃大屏 / 手机端），滑块本体 44px 高，整条可拖 */}
+      <div className="flex min-h-[44px] items-center gap-2.5">
         <button
           type="button"
           disabled={disabled || value <= min}
@@ -68,7 +69,7 @@ export default function ParamSlider({
             const rounded = step >= 1 ? Math.round(raw) : step >= 0.1 ? Math.round(raw * 10) / 10 : Math.round(raw * 100) / 100;
             onChange(rounded);
           }}
-          className="flex-1 cursor-pointer accent-[var(--fg)] touch-manipulation"
+          className="h-11 min-h-[44px] flex-1 cursor-pointer accent-[var(--fg)] touch-manipulation"
         />
         <button
           type="button"

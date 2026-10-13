@@ -138,15 +138,19 @@ export default function MathFormulas() {
           <div className="text-[0.6875rem] mono-font text-[var(--muted)]">
             {lang === 'zh' ? '检索公式' : 'Search'}
           </div>
-          <div className="relative w-full sm:max-w-xs">
+          <div className="relative mb-3 sm:mb-5 w-full sm:max-w-xs border border-[var(--border-strong)] rounded-lg transition-colors focus-within:border-[var(--accent)]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)] pointer-events-none" aria-hidden="true" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={lang === 'zh' ? '输入公式名，如 勾股 / 顶点 / 概率' : 'Type a formula name, e.g. vertex / probability'}
-              className="w-full border border-[var(--border)] bg-[var(--bg)] px-3 py-2 pr-8 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+              aria-label={lang === 'zh' ? '检索公式' : 'Search formulas'}
+              /* 内层 input 零边框零轮廓：边框与聚焦态交给外层容器，全局只有一层框。
+                 index.css 的 :focus-visible 焦点环在 @layer 之外，只有内联 outline:none 挡得住。 */
+              style={{ outline: 'none' }}
+              className="min-h-10 w-full border-none bg-transparent pl-8 pr-3 py-2 text-sm text-[var(--fg)] outline-none focus:outline-none focus:ring-0"
             />
-            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)] pointer-events-none" />
           </div>
         </div>
         {/* 分类筛选 */}

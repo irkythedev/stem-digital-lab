@@ -5,6 +5,8 @@
  * 三幕式探究 · 幕 1「预测」：学生先对 a²+b² 与 c² 的关系作出猜想。
  * 不判对错，只记录猜想；探索阶段会实时对照「猜想 vs 现实」。
  */
+import { Check } from 'lucide-react';
+
 export type Prediction = 'eq' | 'gt' | 'lt' | 'unsure';
 
 interface PredictStageProps {
@@ -21,6 +23,8 @@ interface PredictStageProps {
     hint: string;
   };
 }
+
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
 export default function PredictStage({ prediction, onPredict, labels }: PredictStageProps) {
   const options: { value: Prediction; label: string }[] = [
@@ -61,7 +65,7 @@ export default function PredictStage({ prediction, onPredict, labels }: PredictS
       </div>
 
       {prediction ? (
-        <p className="text-xs 2xl:text-sm mono-font text-[var(--fg)] font-medium">✓ {labels.done}</p>
+        <p className="text-xs 2xl:text-sm mono-font text-[var(--fg)] font-medium">{CHECK_ICON} {labels.done}</p>
       ) : (
         <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font italic">{labels.hint}</p>
       )}

@@ -7,7 +7,7 @@
  * 未配置或离线时保存在本机队列，联网后自动补传。以右下角浮动卡片形式呈现。
  */
 import { useState } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { makeFeedbackId, submitFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
 
@@ -105,7 +105,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
           </div>
           {done ? (
             <div className="flex items-center justify-between gap-3 text-sm text-[var(--fg)]">
-              <span>{done === 'sent' ? `✓ ${l.sent}` : `✓ ${l.queued}`}</span>
+              <span className="inline-flex items-center gap-1.5"><Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />{done === 'sent' ? l.sent : l.queued}</span>
               <button type="button" onClick={onClose} className="text-xs underline shrink-0">{l.close}</button>
             </div>
           ) : (

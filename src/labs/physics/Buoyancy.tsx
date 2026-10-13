@@ -18,6 +18,11 @@ import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import { Check, X } from 'lucide-react';
+import { STONE_WEIGHT, buoyantForce, springReading } from './mechanics-core';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -31,13 +36,6 @@ const LIQUIDS = [
   { id: 'brine', zh: '浓盐水', en: 'Brine', rho: 1200 },
   { id: 'alcohol', zh: '酒精', en: 'Alcohol', rho: 800 },
 ];
-
-/** 浮力计算：F浮 = ρ液 g V排 */
-function buoyancy(rho: number, vSubRatio: number): number {
-  // V排 = 石块体积(固定) × 浸入比例；G 取 10N/kg，石块体积取 1×10^-4 m³
-  const V = 1e-4 * vSubRatio;
-  return rho * 10 * V;
-}
 
 const copy = {
   zh: {
@@ -146,11 +144,24 @@ const copy = {
 
 type Lang = 'zh' | 'en';
 
-const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['yes'],
-  q2: ['prop'],
-  q3: ['up'],
+/** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  predictQ1: [['yes', 'predictQ1Yes'], ['no', 'predictQ1No']],
+  predictQ2: [['den', 'predictQ2Den'], ['vol', 'predictQ2Vol'], ['mass', 'predictQ2Mass']],
+  concludeQ1: [['yes', 'concludeQ1Yes'], ['no', 'concludeQ1No']],
+  concludeQ2: [['inv', 'concludeQ2Inv'], ['prop', 'concludeQ2Prop']],
+  concludeQ3: [['up', 'concludeQ3Up'], ['down', 'concludeQ3Down']],
+} as const;
+
+/** 题号 → 正确答案值（**按题号**而非 q 序号，杜绝 predict/conclude 同名串味） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  predictQ1: ['yes'],
+  predictQ2: ['vol', 'den'],
+  concludeQ1: ['yes'],
+  concludeQ2: ['prop'],
+  concludeQ3: ['up'],
 };
+
 
 export default function Buoyancy() {
   const { lang } = useApp();
@@ -169,10 +180,17 @@ export default function Buoyancy() {
   const predComplete = predict1 !== null && predict2 !== null;
   const concludeComplete = Boolean(concl.q1 && concl.q2 && concl.q3);
 
-  const G = 2; // 石块重 2N
+  const G = STONE_WEIGHT; // 石块重 2N（力学核常量）
   const liquid = LIQUIDS.find((l) => l.id === liquidId)!;
-  const Fb = buoyancy(liquid.rho, vSub);
-  const FReading = Math.max(0, G - Fb);
+  const Fb = buoyantForce(liquid.rho, vSub);
+  const FReading = springReading(liquid.rho, vSub);
+  /**
+   * 弹簧伸长量 = 示数占比 × 25px（挂钩位移）。
+   * 用 transform 驱动而非直接改 <line> 的 y2：SVG 的 y1/y2 不是 CSS 可动画属性，
+   * 只有 transform 才能吃到 --dur/--ease 与全局 prefers-reduced-motion 规范。
+   */
+  const springDy = 25 * (FReading / G);
+  const springBottomY = 80 + springDy; // 挂钩 Y（吊线上端）
 
   function redoAll() {
     setStage('predict');
@@ -192,8 +210,8 @@ export default function Buoyancy() {
         snapshot: [
           { label: '液体', value: liquid[lang as Lang] },
           { label: '浸入', value: `${(vSub * 100).toFixed(0)}%` },
-          { label: '示数', value: `${FReading.toFixed(2)}N` },
-          { label: 'F浮', value: `${Fb.toFixed(2)}N` },
+          { label: '示数', value: `${FReading.toFixed(1)}N` },
+          { label: 'F浮', value: `${Fb.toFixed(1)}N` },
         ],
         note,
       },
@@ -218,8 +236,14 @@ export default function Buoyancy() {
     [c],
   );
 
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
   function renderConcludeQ(key: string, question: string, options: { value: string; label: string }[], selected: string | null, onSelect: (v: string) => void) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key] ?? [];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -236,7 +260,7 @@ export default function Buoyancy() {
             } else {
               cls += isSel ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
+            const prefix = showFeedback ? (isCorrect ? <Check className={MARK_CLS} aria-hidden /> : isSel ? <X className={MARK_CLS} aria-hidden /> : null) : null;
             return (
               <button key={opt.value} type="button" onClick={() => onSelect(opt.value)} disabled={showFeedback}
                 className={`${cls} ${showFeedback ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -291,7 +315,15 @@ export default function Buoyancy() {
           <line x1="120" y1="200" x2="400" y2="200" stroke="var(--fg)" strokeWidth="1.2" strokeDasharray="5 3" />
           <text x="130" y="220" fontSize="11" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '液面' : 'Surface'}</text>
 
-          {/* 弹簧测力计外壳 (固定在顶部 x: 235~285, y: 15~75) */}
+          {/* 弹簧 + 挂钩：位移由 transform 驱动（可 CSS 过渡 / 尊重 reduced-motion）。
+              组绘制在外壳之前，故 y<80 的一段被外壳不透明填充自然遮住，看起来就是弹簧在外壳内伸缩。 */}
+          <g style={{ transform: `translateY(${springDy}px)`, transition: 'transform var(--dur-base) var(--ease-out)' }}>
+            <line x1="260" y1="35" x2="260" y2="80" stroke="var(--fg)" strokeWidth="2" />
+            {/* 挂钩横杆（指针位） */}
+            <line x1="253" y1="80" x2="267" y2="80" stroke="var(--fg)" strokeWidth="2" />
+          </g>
+
+                    {/* 弹簧测力计外壳 (固定在顶部 x: 235~285, y: 15~75) */}
           <rect x="235" y="15" width="50" height="65" rx="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
           <text x="260" y="32" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '测力计' : 'Dynamometer'}</text>
           <text x="260" y="58" textAnchor="middle" fontSize="14" fontWeight="bold" fill="var(--fg)" fontFamily="var(--f-mono)">
@@ -305,12 +337,9 @@ export default function Buoyancy() {
             const stoneW = 44;
             const stoneX = 260 - stoneW / 2;
             const stoneY = 200 - stoneH * (1 - vSub); // 石块顶部 Y 坐标
-            const springBottomY = 80 + 25 * (FReading / G); // 测力计挂钩随拉力伸长
 
             return (
               <g>
-                {/* 测力计弹簧挂钩 */}
-                <line x1="260" y1="80" x2="260" y2={springBottomY} stroke="var(--fg)" strokeWidth="2" />
                 {/* 细吊线 */}
                 <line x1="260" y1={springBottomY} x2="260" y2={stoneY} stroke="var(--fg)" strokeWidth="1.2" strokeDasharray="3 2" />
 
@@ -383,10 +412,10 @@ export default function Buoyancy() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
-          {renderConcludeQ('q1', c.predictQ1, [{ value: 'yes', label: c.predictQ1Yes }, { value: 'no', label: c.predictQ1No }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
-          {renderConcludeQ('q2', c.predictQ2, [{ value: 'vol', label: c.predictQ2Vol }, { value: 'den', label: c.predictQ2Den }, { value: 'mass', label: c.predictQ2Mass }], predict2 as string, (v) => setPredict2(v as PredictQ2))}
+          {renderConcludeQ('predictQ1', c.predictQ1, opts('predictQ1'), predict1 as string, (v) => setPredict1(v as PredictQ1))}
+          {renderConcludeQ('predictQ2', c.predictQ2, opts('predictQ2'), predict2 as string, (v) => setPredict2(v as PredictQ2))}
           {predComplete ? (
-            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">✓ {c.predictDone} — {c.revealLabel}</button>
+            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"><Check className={MARK_CLS} aria-hidden />{c.predictDone} — {c.revealLabel}</button>
           ) : (
             <p className="text-xs text-[var(--muted)] serif-font italic">{c.predictHint}</p>
           )}
@@ -411,9 +440,9 @@ export default function Buoyancy() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
-          {renderConcludeQ('q1', c.concludeQ1, [{ value: 'yes', label: c.concludeQ1Yes }, { value: 'no', label: c.concludeQ1No }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
-          {renderConcludeQ('q2', c.concludeQ2, [{ value: 'prop', label: c.concludeQ2Prop }, { value: 'inv', label: c.concludeQ2Inv }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
-          {renderConcludeQ('q3', c.concludeQ3, [{ value: 'up', label: c.concludeQ3Up }, { value: 'down', label: c.concludeQ3Down }], concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })))}
+          {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
+          {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
+          {renderConcludeQ('concludeQ3', c.concludeQ3, opts('concludeQ3'), concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })))}
           {concludeComplete && !showFeedback && (
             <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}

@@ -11,7 +11,7 @@
  * 教材依据：ch11「活动 11.2 探究定滑轮和动滑轮的特点」
  */
 import { useMemo, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
@@ -19,6 +19,9 @@ import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -62,8 +65,8 @@ const copy = {
       '滑轮组：既能省力又能改变方向',
     ],
     concludeQ1: '定滑轮的特点？',
-    concludeQ1Dir: '不省力，但改变方向',
-    concludeQ1Save: '省一半力',
+    concludeQ1Dir: '不省力，只改变方向',
+    concludeQ1Save: '省一半力，不改变方向',
     concludeQ2: '动滑轮的特点？',
     concludeQ2Half: '最多省一半力，不改变方向',
     concludeQ2None: '不省力，改变方向',
@@ -105,8 +108,8 @@ const copy = {
       'Pulley system: both saves effort and changes direction',
     ],
     concludeQ1: 'Feature of a fixed pulley?',
-    concludeQ1Dir: 'No effort saved, but changes direction',
-    concludeQ1Save: 'Saves half effort',
+    concludeQ1Dir: 'No effort saved, it changes direction',
+    concludeQ1Save: 'Saves half the effort, keeps direction',
     concludeQ2: 'Feature of a movable pulley?',
     concludeQ2Half: 'Saves at most half effort, no direction change',
     concludeQ2None: 'No effort saved, changes direction',
@@ -115,10 +118,20 @@ const copy = {
 
 type Lang = 'zh' | 'en';
 
-const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['dir'],
-  q2: ['half'],
+/** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  predictQ1: [['none', 'predictQ1None'], ['half', 'predictQ1Half']],
+  concludeQ1: [['dir', 'concludeQ1Dir'], ['save', 'concludeQ1Save']],
+  concludeQ2: [['none', 'concludeQ2None'], ['half', 'concludeQ2Half']],
+} as const;
+
+/** 题号 → 正确答案值（**按题号**而非 q 序号，杜绝 predict/conclude 同名串味） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  predictQ1: ['half'],
+  concludeQ1: ['dir'],
+  concludeQ2: ['half'],
 };
+
 
 export default function Pulley() {
   const { lang } = useApp();
@@ -179,8 +192,14 @@ export default function Pulley() {
     [c],
   );
 
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
   function renderConcludeQ(key: string, question: string, options: { value: string; label: string }[], selected: string | null, onSelect: (v: string) => void) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key] ?? [];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -197,7 +216,7 @@ export default function Pulley() {
             } else {
               cls += isSel ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
+            const prefix = showFeedback ? (isCorrect ? <Check className={MARK_CLS} aria-hidden /> : isSel ? <X className={MARK_CLS} aria-hidden /> : null) : null;
             return (
               <button key={opt.value} type="button" onClick={() => onSelect(opt.value)} disabled={showFeedback}
                 className={`${cls} ${showFeedback ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -345,9 +364,9 @@ export default function Pulley() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
-          {renderConcludeQ('q1', c.predictQ1, [{ value: 'half', label: c.predictQ1Half }, { value: 'none', label: c.predictQ1None }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
+          {renderConcludeQ('predictQ1', c.predictQ1, opts('predictQ1'), predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {predComplete ? (
-            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">✓ {c.predictDone} — {c.revealLabel}</button>
+            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"><Check className={MARK_CLS} aria-hidden />{c.predictDone} — {c.revealLabel}</button>
           ) : (
             <p className="text-xs text-[var(--muted)] serif-font italic">{c.predictHint}</p>
           )}
@@ -372,8 +391,8 @@ export default function Pulley() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
-          {renderConcludeQ('q1', c.concludeQ1, [{ value: 'dir', label: c.concludeQ1Dir }, { value: 'save', label: c.concludeQ1Save }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
-          {renderConcludeQ('q2', c.concludeQ2, [{ value: 'half', label: c.concludeQ2Half }, { value: 'none', label: c.concludeQ2None }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
+          {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
+          {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
           {concludeComplete && !showFeedback && (
             <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}

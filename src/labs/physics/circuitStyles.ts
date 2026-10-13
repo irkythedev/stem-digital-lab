@@ -73,7 +73,13 @@ export const SW_X1 = 60; // 总开关左触点
 export const SW_X2 = 110; // 总开关右触点
 export const NODE_X = 135; // 干路节点
 export const RIGHT_X = 290; // 右端汇合/回线 x
-export const RETURN_Y = 195; // 并联回流线 y（三支路底部留充足间距）
+export const RETURN_Y = 195;
+/**
+ * 滑动变阻器金属杆相对主回路线的偏移（负 = 上方）。
+ * 必须与 components/lab/circuit/CircuitParts.tsx 的 RHEO_ROD_DY 一致（smoke 守卫会断言两者相等）：
+ * 「一上一下」接法下，出线取自右上金属杆端子，干路末段须上移到该高度。
+ */
+export const RHEO_ROD_DY = -16; // 并联回流线 y（三支路底部留充足间距）
 export const LAMP_R = 12;
 /** 并联支路 y（两支路间距 100px、三支路 75px，均 ≥75px 保证「下方标签」与「上方电压表」互不遮挡） */
 const BRANCH_YS_2 = [40, 140];
@@ -404,7 +410,8 @@ function genSeries(config: StyleConfig): GeneratedTopology {
     { id: 'dry-mid', x1: SW_X2, y1: 60, x2: NODE_X, y2: 60, current: 'i0' },
     { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 94, current: 'i0' },
     { id: 'dry-batt-bot', x1: BATT_X, y1: 106, x2: BATT_X, y2: 140, current: 'i0' },
-    { id: 'dry-right', x1: RIGHT_X, y1: 60, x2: RIGHT_X, y2: 140, current: 'i0' },
+    // 右端竖线自金属杆高度(44)下到回流线，与变阻器出线段闭合
+    { id: 'dry-right', x1: RIGHT_X, y1: 60 + RHEO_ROD_DY, x2: RIGHT_X, y2: 140, current: 'i0' },
     { id: 'dry-bottom', x1: RIGHT_X, y1: 140, x2: BATT_X, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
@@ -432,7 +439,13 @@ function genSeries(config: StyleConfig): GeneratedTopology {
     }
     prevX = right;
   });
-  wires.push({ id: `seg${n}`, x1: prevX, y1: 60, x2: RIGHT_X, y2: 60, current: 'i0' });
+  // 末元件为滑动变阻器时走「一上一下」：出线取右上金属杆端子（上移 |RHEO_ROD_DY|）
+  if (elems[n - 1].kind === 'rheostat') {
+    const rodY = 60 + RHEO_ROD_DY;
+    wires.push({ id: `seg${n}`, x1: prevX, y1: rodY, x2: RIGHT_X, y2: rodY, current: 'i0' });
+  } else {
+    wires.push({ id: `seg${n}`, x1: prevX, y1: 60, x2: RIGHT_X, y2: 60, current: 'i0' });
+  }
   const path = `M40,60 H290 V140 H40 V60`;
   return {
     wires,

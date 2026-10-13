@@ -11,7 +11,7 @@
  * 教材依据：ch11「学生实验 探究杠杆的平衡条件」+ 杠杆原理（阿基米德）
  */
 import { useEffect, useMemo, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
@@ -20,6 +20,10 @@ import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import { isLeverBalanced, leverTilt, torque } from './mechanics-core';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -35,8 +39,8 @@ const copy = {
     predictTitle: '预测',
     predictQuestion: '杠杆平衡时，动力与阻力、动力臂与阻力臂有什么关系？',
     predictQ1: '杠杆平衡时，动力×动力臂 与 阻力×阻力臂 的关系是？',
-    predictQ1Prop: '相等（F₁l₁ = F₂l₂）',
-    predictQ1Inv: '不相等',
+    predictQ1Prop: '两边相等（杠杆平衡）',
+    predictQ1Inv: '两边不相等（会偏转）',
     predictDone: '已记录你的预测', predictHint: '猜完，就可以揭示实验',
     revealLabel: '揭示实验 →',
     exploreTitle: '探索',
@@ -119,10 +123,20 @@ const copy = {
 
 type Lang = 'zh' | 'en';
 
-const CORRECT_KEYS: Record<string, string[]> = {
-  q1: ['save'],
-  q2: ['opener'],
+/** 测评题选项（值 → i18n 键）：渲染与 smoke 守卫共用同一份数据 */
+export const OPTIONS = {
+  predictQ1: [['inv', 'predictQ1Inv'], ['prop', 'predictQ1Prop']],
+  concludeQ1: [['save', 'concludeQ1Save'], ['cost', 'concludeQ1Cost']],
+  concludeQ2: [['rod', 'concludeQ2Rod'], ['opener', 'concludeQ2Opener']],
+} as const;
+
+/** 题号 → 正确答案值（**按题号**而非 q 序号，杜绝 predict/conclude 同名串味） */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  predictQ1: ['prop'],
+  concludeQ1: ['save'],
+  concludeQ2: ['opener'],
 };
+
 
 export default function Lever() {
   const { lang } = useApp();
@@ -144,9 +158,9 @@ export default function Lever() {
   const concludeComplete = !!(concl.q1 && concl.q2);
 
   // 力矩计算：每格钩码产生 F = m × 0.5N，力矩 = F × d
-  const torque1 = m1 * 0.5 * d1;
-  const torque2 = m2 * 0.5 * d2;
-  const isBalanced = Math.abs(torque1 - torque2) < 0.05;
+  const torque1 = torque(m1, d1);
+  const torque2 = torque(m2, d2);
+  const isBalanced = isLeverBalanced(torque1, torque2);
 
   // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
   useEffect(() => {
@@ -161,10 +175,8 @@ export default function Lever() {
     [m1, d1, m2, d2, isBalanced, lang, staticAiQuestion],
   );
 
-  // 倾角计算（力矩不平衡时小幅倾斜，顺时针为正，限制在 [-8, 8] 度）
-  const tiltAngle = isBalanced
-    ? 0
-    : Math.max(-8, Math.min(8, (torque2 - torque1) * 3.5));
+  // 倾角：力矩不平衡时小幅倾斜，顺时针为正，夹在 ±LEVER_MAX_TILT（力学核导出，可单测）
+  const tiltAngle = leverTilt(torque1, torque2);
 
   function redoAll() {
     setStage('predict');
@@ -207,8 +219,14 @@ export default function Lever() {
     [c],
   );
 
+  /** 按 OPTIONS 定义顺序生成选项（文案键 → 当前语言文案） */
+  const opts = (key: keyof typeof OPTIONS) =>
+    OPTIONS[key].map(([value, labelKey]) => ({
+      value: value as string,
+      label: (c as unknown as Record<string, string>)[labelKey],
+    }));
   function renderConcludeQ(key: string, question: string, options: { value: string; label: string }[], selected: string | null, onSelect: (v: string) => void) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key] ?? [];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -225,7 +243,7 @@ export default function Lever() {
             } else {
               cls += isSel ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-semibold' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback ? (isCorrect ? '✓ ' : isSel ? '✗ ' : '') : '';
+            const prefix = showFeedback ? (isCorrect ? <Check className={MARK_CLS} aria-hidden /> : isSel ? <X className={MARK_CLS} aria-hidden /> : null) : null;
             return (
               <button key={opt.value} type="button" onClick={() => onSelect(opt.value)} disabled={showFeedback}
                 className={`${cls} ${showFeedback ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -273,7 +291,7 @@ export default function Lever() {
           <line x1="240" y1="205" x2="280" y2="205" stroke="var(--fg)" strokeWidth="1.5" />
 
           {/* 旋转杠杆本体组（以支点 260, 180 为中心旋转） */}
-          <g transform={`rotate(${tiltAngle}, 260, 180)`} style={{ transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
+          <g transform={`rotate(${tiltAngle}, 260, 180)`} style={{ transition: 'transform var(--dur-slow) var(--ease-out)' }}>
             {/* 杠杆横梁 */}
             <line x1="80" y1="180" x2="440" y2="180" stroke="var(--fg)" strokeWidth="3" />
 
@@ -346,7 +364,7 @@ export default function Lever() {
 
           {/* 平衡状态徽标 */}
           <text x="260" y="55" textAnchor="middle" fontSize="13" fontWeight="bold" fill={isBalanced ? 'var(--fg)' : 'var(--error)'} fontFamily="var(--f-mono)">
-            {isBalanced ? (lang === 'zh' ? '✓ 杠杆水平平衡' : '✓ Lever Balanced') : (lang === 'zh' ? '× 力矩不平衡（发生偏转）' : '× Unbalanced (Tilted)')}
+            {isBalanced ? (lang === 'zh' ? '杠杆水平平衡' : 'Lever Balanced') : (lang === 'zh' ? '力矩不平衡（发生偏转）' : 'Unbalanced (Tilted)')}
           </text>
         </svg>
       </div>
@@ -369,9 +387,9 @@ export default function Lever() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.predictTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.predictQuestion}</p>
-          {renderConcludeQ('q1', c.predictQ1, [{ value: 'prop', label: c.predictQ1Prop }, { value: 'inv', label: c.predictQ1Inv }], predict1 as string, (v) => setPredict1(v as PredictQ1))}
+          {renderConcludeQ('predictQ1', c.predictQ1, opts('predictQ1'), predict1 as string, (v) => setPredict1(v as PredictQ1))}
           {predComplete ? (
-            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">✓ {c.predictDone} — {c.revealLabel}</button>
+            <button type="button" onClick={() => setStage('explore')} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"><Check className={MARK_CLS} aria-hidden />{c.predictDone} — {c.revealLabel}</button>
           ) : (
             <p className="text-xs text-[var(--muted)] serif-font italic">{c.predictHint}</p>
           )}
@@ -396,8 +414,8 @@ export default function Lever() {
         <div className="border border-[var(--border)] p-4 space-y-4">
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.concludeTitle}</h3>
           <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{c.concludeQuestion}</p>
-          {renderConcludeQ('q1', c.concludeQ1, [{ value: 'save', label: c.concludeQ1Save }, { value: 'cost', label: c.concludeQ1Cost }], concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
-          {renderConcludeQ('q2', c.concludeQ2, [{ value: 'opener', label: c.concludeQ2Opener }, { value: 'rod', label: c.concludeQ2Rod }], concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
+          {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
+          {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
           {concludeComplete && !showFeedback && (
             <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}

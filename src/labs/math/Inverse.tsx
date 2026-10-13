@@ -14,6 +14,7 @@ import { useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
+import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
@@ -36,8 +37,13 @@ function sampleInverse(k: number): [number, number][][] {
   if (k === 0) return [[], []];
   const neg: [number, number][] = [];
   const pos: [number, number][] = [];
-  for (let x = -4; x <= -0.15; x += 0.05) neg.push([x, k / x]);
-  for (let x = 0.15; x <= 4.0001; x += 0.05) pos.push([x, k / x]);
+  // 索引乘法取点（勿用逐点浮点累加：末点会漂移成 3.9999… 并对不齐坐标刻度）
+  const N = Math.round((4 - 0.15) / 0.05);
+  for (let i = 0; i <= N; i++) {
+    const x = 0.15 + i * 0.05;
+    neg.push([-4 + i * 0.05, k / (-4 + i * 0.05)]); // 左支：-4 → -0.15（与右支同为升序，点序与旧实现一致）
+    pos.push([x, k / x]); // 右支：0.15 → 4
+  }
   return [neg, pos];
 }
 
@@ -230,6 +236,29 @@ const copy = {
 /** 预测目标函数：y = 4/x */
 const TARGET_K = 4;
 
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+const X_ICON = <X className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+
+
+/**
+ * 题库注册表：选项顺序与判分答案的单一事实源。
+ * 渲染侧按同一顺序排布；smoke 守卫解析源码断言二者一致（防「改了渲染忘了改注册表」）。
+ */
+export const OPTIONS = {
+  q1: [['quad', 'concludeQ1Quad'], ['shape', 'concludeQ1Shape'], ['none', 'concludeQ1None']],
+  q2: [['near', 'concludeQ2Near'], ['far', 'concludeQ2Far'], ['none', 'concludeQ2None']],
+  q3: [['diff', 'concludeQ3Diff'], ['none', 'concludeQ3None'], ['same', 'concludeQ3Same']],
+  q4: [['nocross', 'concludeQ4NoCross'], ['cross', 'concludeQ4Cross'], ['none', 'concludeQ4None']],
+} as const;
+
+/** 每题正确选项值（多解用数组）。 */
+export const QUIZ_CORRECT: Record<string, string[]> = {
+  q1: ['quad'],
+  q2: ['far'],
+  q3: ['same'],
+  q4: ['nocross'],
+};
+
 export default function Inverse() {
   const { lang } = useApp();
   const t = copy[lang];
@@ -248,7 +277,8 @@ export default function Inverse() {
     q4: 'nocross' | 'cross' | 'none' | null;
   }>({ q1: null, q2: null, q3: null, q4: null });
 
-  const correctKeys = { q1: 'quad', q2: 'far', q3: 'same', q4: 'nocross' } as const;
+  /** 判分表：引用导出的注册表（单一事实源） */
+  const correctKeys = QUIZ_CORRECT;
   const conclusionComplete =
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predQuadrant !== null && predQuadrantNeg !== null;
@@ -495,7 +525,7 @@ export default function Inverse() {
                   onClick={reveal}
                   className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
-                  ✓ {t.predictDone} — {t.revealLabel}
+                  {CHECK_ICON} {t.predictDone} — {t.revealLabel}
                 </button>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictHint}</p>
@@ -576,11 +606,10 @@ export default function Inverse() {
                     [
                       ['quad', t.concludeQ1Quad],
                       ['shape', t.concludeQ1Shape],
-                      ['none', t.concludeQ1None],
-                    ] as ['quad' | 'shape' | 'none', string][]
+                      ['none', t.concludeQ1None],] as ['quad' | 'shape' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q1 === v;
-                    const correct = correctKeys.q1 === v;
+                    const correct = correctKeys.q1.includes(v);
                     const showFeedback = conclusion.q1 !== null;
                     return (
                       <button
@@ -597,8 +626,8 @@ export default function Inverse() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -614,11 +643,10 @@ export default function Inverse() {
                     [
                       ['near', t.concludeQ2Near],
                       ['far', t.concludeQ2Far],
-                      ['none', t.concludeQ2None],
-                    ] as ['near' | 'far' | 'none', string][]
+                      ['none', t.concludeQ2None],] as ['near' | 'far' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q2 === v;
-                    const correct = correctKeys.q2 === v;
+                    const correct = correctKeys.q2.includes(v);
                     const showFeedback = conclusion.q2 !== null;
                     return (
                       <button
@@ -635,8 +663,8 @@ export default function Inverse() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -650,13 +678,12 @@ export default function Inverse() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {(
                     [
-                      ['same', t.concludeQ3Same],
                       ['diff', t.concludeQ3Diff],
                       ['none', t.concludeQ3None],
-                    ] as ['same' | 'diff' | 'none', string][]
+                      ['same', t.concludeQ3Same],] as ['same' | 'diff' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q3 === v;
-                    const correct = correctKeys.q3 === v;
+                    const correct = correctKeys.q3.includes(v);
                     const showFeedback = conclusion.q3 !== null;
                     return (
                       <button
@@ -673,8 +700,8 @@ export default function Inverse() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -690,11 +717,10 @@ export default function Inverse() {
                     [
                       ['nocross', t.concludeQ4NoCross],
                       ['cross', t.concludeQ4Cross],
-                      ['none', t.concludeQ4None],
-                    ] as ['nocross' | 'cross' | 'none', string][]
+                      ['none', t.concludeQ4None],] as ['nocross' | 'cross' | 'none', string][]
                   ).map(([v, label]) => {
                     const selected = conclusion.q4 === v;
-                    const correct = correctKeys.q4 === v;
+                    const correct = correctKeys.q4.includes(v);
                     const showFeedback = conclusion.q4 !== null;
                     return (
                       <button
@@ -711,8 +737,8 @@ export default function Inverse() {
                               : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                         }`}
                       >
-                        {selected && (correct ? '✓ ' : '✗ ')}
-                        {showFeedback && !selected && correct && '✓ '}
+                        {selected && (correct ? CHECK_ICON : X_ICON)}
+                        {showFeedback && !selected && correct && CHECK_ICON}
                         {label}
                       </button>
                     );
@@ -721,7 +747,7 @@ export default function Inverse() {
               </div>
 
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]">✓ {t.concludeHint}</p>
+                <p className="text-xs mono-font flex items-center gap-1 text-[var(--fg)]">{CHECK_ICON} {t.concludeHint}</p>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
@@ -731,7 +757,7 @@ export default function Inverse() {
           {/* 完成态 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]">✓ {t.stageDone}</p>
+              <p className="text-sm font-bold mono-font flex items-center gap-1 text-[var(--fg)]">{CHECK_ICON} {t.stageDone}</p>
               <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
               <button
                 type="button"

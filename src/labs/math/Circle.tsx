@@ -14,6 +14,7 @@
 import { useMemo, useState } from 'react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
+import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import InteractiveCircle, { type CircleMode } from '../../components/lab/InteractiveCircle';
@@ -104,7 +105,7 @@ const copy = {
     proofHint: '按逻辑顺序依次点击步骤（每步只能点一次）。排列完成后点「验证」。',
     proofVerify: '验证',
     proofReset: '重排',
-    proofCorrect: '✓ 正确！推理步骤逻辑严密，你已经掌握了证明思路。',
+    proofCorrect: '正确！推理步骤逻辑严密，你已经掌握了证明思路。',
     proofWrong: '推理顺序还有误，再想想：哪一步应该在前面？',
     proofChord: {
       title: '证明垂径定理：垂直于弦的直径平分弦',
@@ -213,7 +214,7 @@ const copy = {
     proofHint: 'Tap the steps in logical order (each once). Then tap Verify.',
     proofVerify: 'Verify',
     proofReset: 'Reset',
-    proofCorrect: '✓ Correct! The steps follow rigorous logic — you understand the proof idea.',
+    proofCorrect: 'Correct! The steps follow rigorous logic — you understand the proof idea.',
     proofWrong: 'The order is still off. Think again: which step comes first?',
     proofChord: {
       title: 'Prove: a diameter perpendicular to a chord bisects the chord',
@@ -250,7 +251,24 @@ const copy = {
 type Lang = 'zh' | 'en';
 
 /** 结论题正确选项 */
-const CORRECT_KEYS: Record<string, string[]> = {
+
+
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+const X_ICON = <X className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+
+
+/**
+ * 题库注册表：选项顺序与判分答案的单一事实源。
+ * 渲染侧按同一顺序排布；smoke 守卫解析源码断言二者一致（防「改了渲染忘了改注册表」）。
+ */
+export const OPTIONS = {
+  q1: [['bisect', 'concludeQ1Bisect'], ['perp', 'concludeQ1Perp'], ['none', 'concludeQ1None']],
+  q2: [['diff', 'concludeQ2Diff'], ['equal', 'concludeQ2Equal'], ['sum', 'concludeQ2Sum']],
+  q3: [['180', 'concludeQ3_180'], ['45', 'concludeQ3_45'], ['90', 'concludeQ3_90']],
+} as const;
+
+/** 每题正确选项值（多解用数组）。 */
+export const QUIZ_CORRECT: Record<string, string[]> = {
   q1: ['bisect'],
   q2: ['equal'],
   q3: ['90'],
@@ -335,7 +353,7 @@ export default function Circle() {
     selected: string | null,
     onSelect: (v: string) => void,
   ) {
-    const correctKeys = CORRECT_KEYS[key];
+    const correctKeys = QUIZ_CORRECT[key];
     return (
       <div className="space-y-2">
         <p className="text-sm serif-font text-[var(--fg)]">{question}</p>
@@ -354,13 +372,17 @@ export default function Circle() {
                 ? 'border-[var(--fg)] text-[var(--fg)]'
                 : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]';
             }
-            const prefix = showFeedback
-              ? isCorrect
-                ? '✓ '
-                : isSel
-                  ? '✗ '
-                  : ''
-              : '';
+            const prefix = showFeedback ? (
+              isCorrect ? (
+                CHECK_ICON
+              ) : isSel ? (
+                X_ICON
+              ) : (
+                ''
+              )
+            ) : (
+              ''
+            );
             return (
               <button
                 key={opt.value}
@@ -408,7 +430,7 @@ export default function Circle() {
                     : 'border-[var(--border)] text-[var(--muted)] opacity-60'
               }`}
             >
-              {isDone && stage !== s ? `✓ ${label}` : label}
+              <>{isDone && stage !== s ? CHECK_ICON : null}{isDone && stage !== s ? ' ' : ''}{label}</>
             </button>
           );
         })}
@@ -556,8 +578,7 @@ export default function Circle() {
             [
               { value: 'bisect', label: c.concludeQ1Bisect },
               { value: 'perp', label: c.concludeQ1Perp },
-              { value: 'none', label: c.concludeQ1None },
-            ],
+              { value: 'none', label: c.concludeQ1None },],
             conclude1,
             setConclude1,
           )}
@@ -566,10 +587,9 @@ export default function Circle() {
             'q2',
             c.concludeQ2,
             [
-              { value: 'equal', label: c.concludeQ2Equal },
-              { value: 'sum', label: c.concludeQ2Sum },
               { value: 'diff', label: c.concludeQ2Diff },
-            ],
+              { value: 'equal', label: c.concludeQ2Equal },
+              { value: 'sum', label: c.concludeQ2Sum },],
             conclude2,
             setConclude2,
           )}
@@ -578,10 +598,9 @@ export default function Circle() {
             'q3',
             c.concludeQ3,
             [
-              { value: '90', label: c.concludeQ3_90 },
               { value: '180', label: c.concludeQ3_180 },
               { value: '45', label: c.concludeQ3_45 },
-            ],
+              { value: '90', label: c.concludeQ3_90 },],
             conclude3,
             setConclude3,
           )}

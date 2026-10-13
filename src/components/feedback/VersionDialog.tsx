@@ -5,7 +5,7 @@
  * 版本历史面板：点击 Header 版本号弹出，展示面向用户的更新记录。
  */
 import { useState } from 'react';
-import { HardDrive } from 'lucide-react';
+import { HardDrive, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import OfflinePackPanel from './OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
@@ -14,6 +14,8 @@ import { CHANGELOG } from '../../lib/changelog';
 interface VersionDialogProps {
   onClose: () => void;
 }
+
+const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
 export default function VersionDialog({ onClose }: VersionDialogProps) {
   const { lang, t } = useApp();
@@ -52,7 +54,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
             {packStatus && !packStatus.supported
               ? '—'
               : packStatus?.isFull
-                ? '✓'
+                ? CHECK_ICON
                 : `${packStatus?.cachedCount ?? 0}/${packStatus?.totalCount ?? 0}`}
           </span>
         </button>

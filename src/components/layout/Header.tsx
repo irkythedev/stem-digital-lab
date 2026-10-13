@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
 import { APP_VERSION } from '../../lib/changelog';
@@ -17,7 +17,7 @@ import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import type { ThemeMode } from '../../lib/app-context';
 
-export default function Header() {
+export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const { t, lang, setLang, themeMode, setThemeMode, isOffline } = useApp();
   const { open: aiOpen, setOpen: setAiOpen, configured: aiConfigured } = useAiContext();
   const [showVersion, setShowVersion] = useState(false);
@@ -235,6 +235,19 @@ export default function Header() {
           />
           {t.guide}
         </Link>
+
+        {/* 帮助入口：幽灵图标按钮，点击打开欢迎弹窗并默认停在「快速上手指引」 */}
+        {onOpenGuide && (
+          <button
+            type="button"
+            onClick={onOpenGuide}
+            title={t.helpTitle}
+            aria-label={t.helpTitle}
+            className="flex items-center justify-center p-2 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
+          >
+            <HelpCircle className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )}
       </div>
       {showVersion && <VersionDialog onClose={() => setShowVersion(false)} />}
       {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}

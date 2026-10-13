@@ -15,7 +15,7 @@
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
 import { useMemo, useState, type MouseEvent } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { Check, RotateCcw, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
@@ -40,6 +40,10 @@ import {
 } from './circuitStyles';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import StageNav from '../../components/lab/StageNav';
+import { parallelBranchCurrents, seriesCurrent } from './circuits-core';
+
+/* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
+const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -182,6 +186,9 @@ export default function Circuits() {
   const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-mid', x: 125, y: 60 });
   const [meterV, setMeterV] = useState<MeterTarget | null>({ id: 'battery', x: 72, y: 100 });
   const [meterErr, setMeterErr] = useState<string | null>(null);
+  /** 表盘手动量程：null = 自动选档；点击表盘锁定后用于观察超量程保护 */
+  const [aRange, setARange] = useState<number | null>(null);
+  const [vRange, setVRange] = useState<number | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
 
@@ -240,10 +247,10 @@ export default function Circuits() {
   /* ---------- 物理（通用引擎：串联分压 / 并联分流） ---------- */
   const effR = style.elements.map((e, i) => (e.kind === 'rheostat' ? rp : rValues[i]));
   const totalR = effR.reduce((a, b) => a + b, 0);
-  const seriesI = isSeries && switchOn && totalR > 0 ? u / totalR : 0;
-  const branchI = style.elements.map((_, i) =>
-    isSeries ? seriesI : switchOn && (!style.branchSwitches || branchSw[i]) ? u / effR[i] : 0
-  );
+  // 串联 = I=U/ΣR；并联 = 各支路 I=U/R（零阻支路按短路导线处理，返回 0 而非 Infinity）
+  const seriesI = isSeries ? seriesCurrent(u, effR, switchOn) : 0;
+  const parallelI = parallelBranchCurrents(u, effR, style.branchSwitches ? branchSw : undefined, switchOn);
+  const branchI = isSeries ? style.elements.map(() => seriesI) : parallelI;
   const i0 = isSeries ? seriesI : branchI.reduce((a, b) => a + b, 0);
   const vPerElem = style.elements.map((_, i) =>
     isSeries ? seriesI * effR[i] : switchOn && (!style.branchSwitches || branchSw[i]) ? u : 0
@@ -313,8 +320,30 @@ export default function Circuits() {
     return vPerElem[idx] ?? null;
   };
 
-  const gaugeMax = (kind: 'current' | 'voltage', target: MeterTarget | null): number =>
-    kind === 'current' ? ((gaugeValue(kind, target) ?? 0) <= 0.6 ? 0.6 : 3) : isHouse ? 250 : 15;
+  /** 双量程档位（实物接线柱）：电流 0.6A/3A；电压 3V/15V（家庭电路单独用 250V 档，不参与换档） */
+  const A_RANGES = [0.6, 3];
+  const V_RANGES = [3, 15];
+
+  /** 量程：默认自动选档；点击表盘手动换档后锁定（读数超过本档满偏 → 超量程警示，指针停满偏） */
+  const gaugeMax = (kind: 'current' | 'voltage', target: MeterTarget | null): number => {
+    const val = gaugeValue(kind, target) ?? 0;
+    if (kind === 'current') {
+      return aRange ?? (val <= A_RANGES[0] ? A_RANGES[0] : A_RANGES[1]);
+    }
+    if (isHouse) return 250;
+    return vRange ?? (val <= V_RANGES[0] ? V_RANGES[0] : V_RANGES[1]);
+  };
+
+  /** 点击表盘换档（家庭电路 250V 档不参与） */
+  const cycleRange = (kind: 'current' | 'voltage') => {
+    const list = kind === 'current' ? A_RANGES : V_RANGES;
+    if (kind === 'voltage' && isHouse) return;
+    const val = gaugeValue(kind, kind === 'current' ? meterA : meterV) ?? 0;
+    const cur = (kind === 'current' ? aRange : vRange) ?? (val <= list[0] ? list[0] : list[1]);
+    const next = list[(list.indexOf(cur) + 1) % list.length];
+    if (kind === 'current') setARange(next);
+    else setVRange(next);
+  };
 
   const gaugeLabel = (kind: 'current' | 'voltage'): string => {
     const target = kind === 'current' ? meterA : meterV;
@@ -387,12 +416,14 @@ export default function Circuits() {
                 max={gaugeMax('current', meterA)}
                 unit="A"
                 label={isHouse ? t.readoutI0 : style.fixedMeters ? t.readoutSplit : gaugeLabel('current')}
+                onCycleRange={() => cycleRange('current')}
               />
               <MeterGauge
                 value={isHouse || style.fixedMeters ? u : gaugeValue('voltage', meterV)}
                 max={gaugeMax('voltage', meterV)}
                 unit="V"
                 label={isHouse ? 'L–N' : style.fixedMeters ? t.readoutParallelV : gaugeLabel('voltage')}
+                onCycleRange={() => cycleRange('voltage')}
               />
             </div>
             <svg viewBox={`0 0 ${SVG_W} ${topo.svgH ?? SVG_H}`} className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
@@ -792,7 +823,7 @@ export default function Circuits() {
                   onClick={reveal}
                   className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
-                  ✓ {t.predictDone} — {t.revealLabel}
+                  <Check className={MARK_CLS} aria-hidden />{t.predictDone} — {t.revealLabel}
                 </button>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictHint}</p>
@@ -854,8 +885,8 @@ export default function Circuits() {
                                 : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                           }`}
                         >
-                          {selected && (correct ? '✓ ' : '✗ ')}
-                          {showFeedback && !selected && correct && '✓ '}
+                          {selected && (correct ? <Check className={MARK_CLS} aria-hidden /> : <X className={MARK_CLS} aria-hidden />)}
+                          {showFeedback && !selected && correct && <Check className={MARK_CLS} aria-hidden />}
                           {opt}
                         </button>
                       );
@@ -864,7 +895,7 @@ export default function Circuits() {
                 </div>
               ))}
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]">✓ {t.concludeHint}</p>
+                <p className="text-xs mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.concludeHint}</p>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
@@ -874,7 +905,7 @@ export default function Circuits() {
           {/* 完成态 */}
           {stage === 'conclude' && conclusionComplete && (
             <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]">✓ {t.stageDone}</p>
+              <p className="text-sm font-bold mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.stageDone}</p>
               <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
               <button
                 type="button"

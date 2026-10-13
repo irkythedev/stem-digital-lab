@@ -48,6 +48,8 @@ export default function App() {
 
   // 首开欢迎弹窗：localStorage 标记 'stem-welcome-seen' 不存在时显示
   const [showWelcome, setShowWelcome] = useState(false);
+  // 欢迎弹窗的默认分区：首开自动弹出停在「实验室概览」；Header 帮助入口会先把它指到「快速上手指引」
+  const [welcomeTab, setWelcomeTab] = useState<'overview' | 'guide'>('overview');
   useEffect(() => {
     try {
       if (!window.localStorage.getItem('stem-welcome-seen')) {
@@ -72,10 +74,15 @@ export default function App() {
   return (
     <AppProvider>
       <AiProvider>
-      {showWelcome && <WelcomeDialog onClose={closeWelcome} />}
+      {showWelcome && <WelcomeDialog onClose={closeWelcome} initialTab={welcomeTab} />}
       <div id="app-main" className="min-h-dvh w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
         <SkipLink />
-        <Header />
+        <Header
+          onOpenGuide={() => {
+            setWelcomeTab('guide');
+            setShowWelcome(true);
+          }}
+        />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/guide" element={<GuidePage />} />

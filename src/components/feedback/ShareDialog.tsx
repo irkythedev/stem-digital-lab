@@ -7,6 +7,7 @@
  */
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { isWechat } from '../../lib/is-wechat';
 
@@ -103,7 +104,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
           onClick={handleCopy}
           className="border border-[var(--border)] px-4 py-2 text-xs text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] min-h-[40px] touch-manipulation"
         >
-          {copied ? `✓ ${t.copied}` : t.copyLink}
+          {copied ? <span className="inline-flex items-center gap-1.5"><Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />{t.copied}</span> : t.copyLink}
         </button>
         {copyFailed && (
           <p className="text-xs text-[var(--error)] serif-font" role="alert">⚠ {t.copyFailed}</p>

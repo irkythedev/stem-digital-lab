@@ -69,7 +69,7 @@ export default function FormulaDiagram({ type, className = '' }: FormulaDiagramP
 
   if (type === 'chord') {
     // 垂径定理：满足 r²=半弦²+弦距² 的整数组合
-    // r=65, 半弦=56, 弦距=33（56²+33²=3136+1089=4225=65² ✓）
+    // r=65, 半弦=56, 弦距=33（56²+33²=3136+1089=4225=65²，校验通过）
     const cx = 150, cy = 100, r = 65;
     const half = 56, dist = 33; // 弦距 33，弦 y = cy - dist = 67
     const chordY = cy - dist;
