@@ -904,8 +904,8 @@ export default function AiAssistant() {
               {
                 role: 'user',
                 content: lang === 'zh'
-                  ? `上一次输出${parsed.reason}。请只补出缺失的题目，沿用同一格式与字段名，写完输出 ${QUIZ_SENTINEL}；不要重复已出过的考点（已出：${parsed.items.map((q) => q.question.slice(0, 12)).join('、') || '无'}）。`
-                  : `The previous answer ${parsed.reason}. Output ONLY the missing questions in the same format and field names, then print ${QUIZ_SENTINEL}; do not repeat topics already covered (${parsed.items.map((q) => q.question.slice(0, 12)).join(', ') || 'none'}).`,
+                  ? `上一次输出${parsed.reason}。请只补出缺失的题目，沿用同一格式与字段名，写完输出 ${QUIZ_SENTINEL}；直接从缺失的【第N题】开始输出，不要输出任何寒暄或解释前缀；不要重复已出过的考点（已出：${parsed.items.map((q) => q.question.slice(0, 12)).join('、') || '无'}）。`
+                  : `The previous answer ${parsed.reason}. Output ONLY the missing questions in the same format and field names, then print ${QUIZ_SENTINEL}; start directly with the missing question number — no greeting or explanation prefix; do not repeat topics already covered (${parsed.items.map((q) => q.question.slice(0, 12)).join(', ') || 'none'}).`,
               },
             ],
             () => {},
@@ -2012,7 +2012,7 @@ export default function AiAssistant() {
       messages.push({ role: 'user', content: lastExchange.current.user });
       messages.push({ role: 'assistant', content: lastExchange.current.assistant });
     }
-    messages.push({ role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的追问问题（每行一个，编号 1. 2. 3.，不要解释）' : 'Give 3 different follow-up questions on the topic just discussed (one per line, numbered 1. 2. 3., no explanation)' });
+    messages.push({ role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的学生视角独立追问（每行一个，编号 1. 2. 3.，不要解释；必须写明具体物理量、化学式或术语，严禁用「它」「这个」等指代，也不是确认类反问）' : 'Based only on the topic just discussed, give 3 new self-contained follow-up questions from a student\'s perspective (one per line, numbered 1. 2. 3., no explanation; name the specific quantity, formula or substance — no pronouns like "it" or "this", and no confirmation questions).' });
     try {
       const t0 = performance.now();
       const res = await streamChat(config, messages, () => {}, undefined, CHAIN_MAX_TOKENS.chat);
@@ -2222,7 +2222,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => setView('settings')}
               aria-label={lang === 'zh' ? '设置' : 'Settings'}
               title={lang === 'zh' ? '设置模型与接口' : 'Settings'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer">
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md">
               <Settings className="w-4 h-4" />
             </button>
           )}
@@ -2231,7 +2231,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
               title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer">
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md">
               <History className="w-4 h-4" />
               {persistHistory.length > 0 && (
                 <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
