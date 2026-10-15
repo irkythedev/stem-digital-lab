@@ -401,7 +401,7 @@ export default function Lens() {
           {options.map((opt) => {
             const isSel = selected === opt.value;
             const isCorrect = correctKeys.includes(opt.value);
-            let cls = 'text-left text-sm px-3 py-2 border transition-colors ';
+            let cls = 'rounded text-left text-sm px-3 py-2 border transition-colors ';
             if (showFeedback) {
               if (isSel && isCorrect) cls += 'border-[var(--fg)] text-[var(--fg)]';
               else if (isSel && !isCorrect) cls += 'border-[var(--error)] text-[var(--error)]';
@@ -566,7 +566,7 @@ export default function Lens() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPredict1(opt.value as PredictType)}
-                  className={`text-left text-sm px-3 py-2 border transition-colors ${
+                  className={`rounded text-left text-sm px-3 py-2 border transition-colors ${
                     predict1 === opt.value
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -592,7 +592,7 @@ export default function Lens() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPredict2(opt.value as PredictType)}
-                  className={`text-left text-sm px-3 py-2 border transition-colors ${
+                  className={`rounded text-left text-sm px-3 py-2 border transition-colors ${
                     predict2 === opt.value
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
@@ -618,7 +618,7 @@ export default function Lens() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPredict3(opt.value as PredictType)}
-                  className={`text-left text-sm px-3 py-2 border transition-colors ${
+                  className={`rounded text-left text-sm px-3 py-2 border transition-colors ${
                     predict3 === opt.value
                       ? 'border-[var(--fg)] text-[var(--fg)]'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'

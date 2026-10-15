@@ -136,7 +136,7 @@ export default function Footer() {
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}
             aria-expanded={showDisclaimer}
-            className="underline hover:text-[var(--fg)] transition-colors"
+            className="rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
           >
             {t.disclaimerLabel}
           </button>
@@ -145,7 +145,7 @@ export default function Footer() {
             onClick={() => setShowLicense(true)}
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
-            className="underline hover:text-[var(--fg)] transition-colors"
+            className="rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
           >
             {t.licenseLabel}
           </button>

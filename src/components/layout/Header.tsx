@@ -128,7 +128,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           }}
           title={t.versionTitle.replace('{version}', APP_VERSION)}
           aria-label={t.versionAria}
-          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 rounded text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
             v{APP_VERSION}

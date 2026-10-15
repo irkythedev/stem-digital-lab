@@ -10,7 +10,8 @@
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { House, Search, X } from 'lucide-react';
+import BackLink from '../components/layout/BackLink';
+import { Search, X } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
@@ -90,22 +91,10 @@ export default function PhysicalConstants() {
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
-      {/* 面包屑导航：返回物理 + 首页 */}
-      <nav className="flex items-center gap-3 text-xs mono-font">
-        <Link to="/subject/physics" className="text-[var(--muted)] underline hover:text-[var(--fg)] tap-area">
-          ← {lang === 'zh' ? '返回物理' : 'Back to Physics'}
-        </Link>
-        <Link
-          to="/"
-          aria-label={t.homeIcon}
-          title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
-        >
-          <House className="w-3.5 h-3.5" />
-        </Link>
-      </nav>
+      {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
+      <BackLink to="/subject/physics">{lang === 'zh' ? '返回物理' : 'Back to Physics'}</BackLink>
 
-      <div className="mt-5 mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
           <ShareInline
@@ -136,7 +125,7 @@ export default function PhysicalConstants() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={lang === 'zh' ? '输入符号或名称，如 g / 水 / 光速' : 'Type a symbol or name, e.g. g / water'}
-              className="w-full border border-[var(--border)] bg-[var(--bg)] px-3 py-2 pr-8 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2 pr-8 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]"
             />
             <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)] pointer-events-none" />
           </div>

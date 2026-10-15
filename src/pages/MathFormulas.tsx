@@ -9,7 +9,8 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { House, Image as ImageIcon, Search, X } from 'lucide-react';
+import BackLink from '../components/layout/BackLink';
+import { Image as ImageIcon, Search, X } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
@@ -98,22 +99,10 @@ export default function MathFormulas() {
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
-      {/* 面包屑导航：返回数学 + 首页 */}
-      <nav className="flex items-center gap-3 text-xs mono-font">
-        <Link to="/subject/math" className="text-[var(--muted)] underline hover:text-[var(--fg)] tap-area">
-          ← {lang === 'zh' ? '返回数学' : 'Back to Math'}
-        </Link>
-        <Link
-          to="/"
-          aria-label={t.homeIcon}
-          title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
-        >
-          <House className="w-3.5 h-3.5" />
-        </Link>
-      </nav>
+      {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
+      <BackLink to="/subject/math">{lang === 'zh' ? '返回数学' : 'Back to Math'}</BackLink>
 
-      <div className="mt-5 mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
           <ShareInline
@@ -149,7 +138,7 @@ export default function MathFormulas() {
               /* 内层 input 零边框零轮廓：边框与聚焦态交给外层容器，全局只有一层框。
                  index.css 的 :focus-visible 焦点环在 @layer 之外，只有内联 outline:none 挡得住。 */
               style={{ outline: 'none' }}
-              className="min-h-10 w-full border-none bg-transparent pl-8 pr-3 py-2 text-sm text-[var(--fg)] outline-none focus:outline-none focus:ring-0"
+              className="min-h-10 w-full rounded-md border-none bg-transparent pl-8 pr-3 py-2 text-sm text-[var(--fg)] outline-none focus:outline-none focus:ring-0"
             />
           </div>
         </div>

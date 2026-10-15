@@ -788,7 +788,7 @@ export default function Circuits() {
             <button
               type="button"
               onClick={reset}
-              className="text-xs mono-font uppercase underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+              className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
             >
               {t.reset}
             </button>
@@ -808,7 +808,7 @@ export default function Circuits() {
                       key={i}
                       type="button"
                       onClick={() => setPredIdx(i)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                      className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                         predIdx === i ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -875,7 +875,7 @@ export default function Circuits() {
                             next[qi] = oi;
                             return next;
                           })}
-                          className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                          className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                             selected
                               ? correct
                                 ? 'border-[var(--fg)] text-[var(--fg)]'

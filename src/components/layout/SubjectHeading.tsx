@@ -19,7 +19,7 @@ export default function SubjectHeading({ subjectId, name, caption }: SubjectHead
   return (
     <div className="flex items-center space-x-4">
       <div className="w-12 h-12 shrink-0 flex items-center justify-center text-[var(--fg)]">
-        <SubjectIcon subjectId={subjectId} className="w-10 h-10 stroke-[1.0]" glyphClassName="text-4xl font-light" />
+        <SubjectIcon subjectId={subjectId} className="w-10 h-10 stroke-[1.0]" />
       </div>
       <div className="flex flex-col items-start leading-tight">
         <h1 className="t-h1 font-medium serif-font text-[var(--fg)]">

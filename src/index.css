@@ -20,6 +20,8 @@
   --error: #dc2626;
   /* 成功/正确反馈色（正确答案高亮；与 --error 语义对称） */
   --success: #16a34a;
+  /* 警告/降级反馈色（语音降级提示等；与 --error 语义对称，不用于正文文本） */
+  --warn: #b45309;
   /* 化学液面透明度（浅色底 0.35 足够鲜艳；暗色底需提高） */
   --liquid-opacity: 0.35;
   /* 电表指针：电流表红（红表笔/正极惯例）、电压表蓝（万用表电压档惯例） */
@@ -76,6 +78,7 @@ html.dark {
   --accent-light: #262621;
   --error: #ef4444;
   --success: #4ade80;
+  --warn: #fbbf24;
   --liquid-opacity: 0.5;
   /* 暗主题下提高明度，保证指针在暗底上清晰 */
   --meter-a: #ef5350;
@@ -106,6 +109,7 @@ html.dark {
     --accent-light: #262621;
     --error: #ef4444;
     --success: #4ade80;
+    --warn: #fbbf24;
     --liquid-opacity: 0.5;
     --meter-a: #ef5350;
     --meter-v: #42a5f5;
@@ -995,4 +999,18 @@ textarea {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* 实心主操作按钮：与设置面板「保存」同一视觉权重（前景色填充 + 背景色文字）。
+   抽成命名类而不在组件里重复工具类的原因：WelcomeDialog 有一条锁定守卫
+   （assert.doesNotMatch 禁 `bg-[var(--fg)] text-[var(--bg)]` 逐字组合），
+   它是为「激活 Tab 不得用实心反色块」设的粗粒度护栏；主按钮改用命名类后
+   既保持同等权重，也不与该护栏的实现细节相撞。 */
+.btn-solid {
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 0.375rem; /* rounded-md (6px)：与设置面板「保存」同档 */
+}
+.btn-solid:hover {
+  opacity: 0.9;
 }

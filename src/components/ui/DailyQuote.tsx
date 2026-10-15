@@ -146,7 +146,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setStoryModal(true)}
-                  className="mt-1 inline-block text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                  className="mt-1 inline-block rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
                 >
                   {lang === 'zh' ? '阅读完整故事 →' : 'Read full story →'}
                 </button>
@@ -163,7 +163,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                   <button
                     type="button"
                     onClick={() => setShowStory(false)}
-                    className="mt-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                    className="mt-1.5 rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
                   >
                     {lang === 'zh' ? '收起' : 'Collapse'}
                   </button>
@@ -172,7 +172,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setShowStory(true)}
-                  className="text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline"
+                  className="rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
                 >
                   {lang === 'zh' ? '▸ 人物小故事' : '▸ Story'}
                 </button>

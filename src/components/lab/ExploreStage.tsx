@@ -143,7 +143,7 @@ export default function ExploreStage({
               <button
                 type="button"
                 onClick={onClearObservations}
-                className="text-xs mono-font underline text-[var(--muted)] hover:text-[var(--fg)]"
+                className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
               >
                 {clearLabel}
               </button>

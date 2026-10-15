@@ -2,15 +2,36 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * TTS 朗读 hook：文本 → 腾讯云 SCF（edge-tts 代理）→ MP3 播放。
- * 长文本自动分句（每段 ≤800 字，云函数单次上限 1000），逐段合成、播放完自动接下一段。
- * 状态机：idle → synthesizing → playing ↔ paused → playing → ... → idle。
- * Web Audio API 播放（点击时同步解锁自动播放策略）；暂停/继续记录断点。
+ * TTS 朗读 hook（去中心化：默认端侧离线，云端为可选扩展）。
+ *
+ * 引擎选择（配置存 localStorage 键 stem-tts-config，见 src/lib/tts-config.ts）：
+ *   ① **默认 local**：直接调用 window.speechSynthesis 朗读，不触网、不依赖任何固定服务商，
+ *      断网/离线 100% 可用；
+ *   ② **可选 cloud**：使用者在设置面板自填兼容 /v1/audio/speech 的端点与 Key 后，
+ *      优先走该端点合成（费用与调用由使用者自理）；请求失败（网络错误/Key 失效/超限/端点非法）
+ *      一律**静默回退**到端侧语音，并给一句克制轻提示，绝不把状态码当界面文案。
+ *
+ * 状态机：idle → synthesizing → playing ↔ paused → playing → ... → idle（云端路径按段推进）。
+ * 端侧语音不支持断点续播：暂停即取消、继续时从本段开头重读。
+ * 播放与取消：云端走 Web Audio（点击时同步解锁自动播放策略），端侧走 speechSynthesis；
+ * 两条路径在 stop() / 组件卸载 / 重新朗读前都会取消，避免叠音。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getTtsUrl, TTS_CONFIG } from './tts-config';
-import { latexToSpeech, PHYS_UNIT_ZH, PHYS_UNIT_KEYS_SORTED, type SpeechMode } from './latex-speech';
+import {
+  loadTtsConfig,
+  isCloudTtsReady,
+  normalizeSpeechEndpoint,
+  preferredLocalVoice,
+  voiceRank,
+  isBlockedLocalVoice,
+  getTtsUrl,
+  getTtsVoice,
+  type LocalVoice,
+  type TtsConfig,
+} from './tts-config';
+import { setTtsStatus } from './tts-status';
 import { scfUrlWithToken } from './scf-token';
+import { latexToSpeech, PHYS_UNIT_ZH, PHYS_UNIT_KEYS_SORTED, type SpeechMode } from './latex-speech';
 
 export type SpeakState = 'idle' | 'synthesizing' | 'playing' | 'paused' | 'finished' | 'error';
 
@@ -109,6 +130,171 @@ export function splitForTTS(text: string, maxSeg = 800): string[] {
   return segs;
 }
 
+/** 浏览器 speechSynthesis 的最小结构：抽成接口便于在 Node 里用假宿主做降级分支测试 */
+export interface LocalSpeechHost {
+  speechSynthesis?: {
+    speak: (u: unknown) => void;
+    cancel: () => void;
+    getVoices?: () => LocalVoice[];
+  };
+  SpeechSynthesisUtterance?: new (text: string) => {
+    lang: string;
+    rate?: number;
+    voice?: unknown;
+    onstart?: (() => void) | null;
+    onend?: (() => void) | null;
+    onerror?: ((e?: unknown) => void) | null;
+  };
+}
+
+/** 语言 → 端侧语音标签（中文 zh-CN / 英文 en-US） */
+export const localVoiceLang = (lang: 'zh' | 'en'): string => (lang === 'en' ? 'en-US' : 'zh-CN');
+
+/**
+ * 从设备语音表挑最匹配的语音：只接受同语种，绝不为「有声」硬塞一个不相干的音色；
+ * 同语种内按与设置面板一致的权重排序（语言档 → 自然音色 → 玩具音色垫底），
+ * 取最优；无同语种返回 null（交给浏览器按 lang 自选）。
+ */
+export function pickLocalVoice<T extends { name?: string; lang: string; voiceURI?: string }>(voices: T[], want: string): T | null {
+  const norm = (v: string) => v.toLowerCase().replace(/_/g, '-');
+  const w = norm(want);
+  const base: 'zh' | 'en' = w.startsWith('en') ? 'en' : 'zh';
+  const candidates = voices
+    .filter((v) => !isBlockedLocalVoice(v)) // 合规：外域语音服务音色不参与优选
+    .filter((v) => norm(v.lang).split('-')[0] === w.split('-')[0])
+    .slice()
+    .sort((a, b) => voiceRank(a, base) - voiceRank(b, base));
+  return candidates[0] ?? null;
+}
+
+/**
+ * 按「用户显式选择 → 语言匹配 → 无」三级解析端侧发音人。
+ * 用户选择按 voiceURI 或 name 匹配（不同浏览器给的标识不同，故两者都认）。
+ */
+export function resolveLocalVoice(
+  voices: LocalVoice[],
+  preferredUri: string,
+  lang: 'zh' | 'en',
+): LocalVoice | null {
+  const want = preferredUri.trim();
+  if (want) {
+    // 历史保存值可能是外域音色（合规更新前选的）：不认它，退回按语言自动挑
+    const hit = voices.find((v) => !isBlockedLocalVoice(v) && (v.voiceURI === want || v.name === want));
+    if (hit) return hit;
+  }
+  return pickLocalVoice(voices, localVoiceLang(lang));
+}
+
+/**
+ * 端侧朗读：**全程不抛异常**，设备不支持（或宿主自身抛错）返回 false。
+ * 调用顺序恒为 先 cancel() 再 speak()——切页 / 连点 / 云端与端侧切换都可能留下残响。
+ */
+export function speakLocally(
+  text: string,
+  lang: 'zh' | 'en',
+  host: LocalSpeechHost | undefined,
+  opts?: { preferredVoice?: string; onStart?: () => void; onDone?: () => void },
+): boolean {
+  try {
+    const ss = host?.speechSynthesis;
+    const Utter = host?.SpeechSynthesisUtterance;
+    if (!ss || !Utter) return false;
+    ss.cancel();
+    const u = new Utter(text);
+    u.lang = localVoiceLang(lang);
+    u.rate = 0.95;
+    const v = resolveLocalVoice(ss.getVoices?.() ?? [], opts?.preferredVoice ?? '', lang);
+    if (v) u.voice = v;
+    u.onstart = () => opts?.onStart?.();
+    u.onend = () => opts?.onDone?.();
+    u.onerror = () => opts?.onDone?.();
+    ss.speak(u);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 云端失败后回落端侧时的克制提示（不含任何状态码或异常原文） */
+export const LOCAL_FALLBACK_NOTICE = '已切换为本地离线语音';
+
+/**
+ * 音频负载 → ArrayBuffer：兼容裸 MP3 与「base64 文本」两种返回
+ * （自有代理 / 部分第三方端点会返回 base64，前端保持双格式兼容）。
+ */
+export function toAudioBytes(raw: ArrayBuffer): ArrayBuffer {
+  try {
+    const view = new Uint8Array(raw, 0, Math.min(raw.byteLength, 4));
+    if (view.length >= 2 && (view[0] & 0xff) === 0xff && (view[1] & 0xe0) === 0xe0) return raw;
+    const text = new TextDecoder().decode(raw);
+    const binary = atob(text.replace(/\s/g, '').replace(/^data:audio\/[^,]+,/, ''));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  } catch {
+    return raw;
+  }
+}
+
+/**
+ * 向使用者自配的云端端点请求合成（POST，兼容 OpenAI /v1/audio/speech）。
+ * 失败一律抛错，由调用方决定回落端侧；错误信息只用于日志，不作界面文案。
+ */
+/**
+ * 内置云函数合成（免配置）：GET {SCF}?text=&voice=&token= → 裸 MP3 或 base64，
+ * 冷启动失败自动重试一次。失败抛错（信息只用于日志），由调用方静默回退系统语音。
+ */
+export async function fetchScfSpeech(
+  text: string,
+  voice: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ArrayBuffer> {
+  const base = getTtsUrl();
+  // 先拼完整 query，再用 scfUrlWithToken 以 & 挂 token（避免双问号导致 SCF 校验 403）
+  const url = scfUrlWithToken(`${base}?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voice)}`);
+  const doFetch = async (attempt: number): Promise<Response> => {
+    try {
+      const resp = await fetchImpl(url);
+      if (attempt < 1 && !resp.ok) {
+        await new Promise((r) => setTimeout(r, 600));
+        return doFetch(attempt + 1);
+      }
+      return resp;
+    } catch {
+      if (attempt < 1) {
+        await new Promise((r) => setTimeout(r, 600));
+        return doFetch(attempt + 1);
+      }
+      throw new Error('network failed');
+    }
+  };
+  const resp = await doFetch(0);
+  if (!resp.ok) throw new Error(`synthesis unavailable (status ${resp.status})`);
+  return toAudioBytes(await resp.arrayBuffer());
+}
+
+export async function fetchCloudSpeech(
+  text: string,
+  cfg: TtsConfig,
+  voiceHint: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ArrayBuffer> {
+  const url = normalizeSpeechEndpoint(cfg.endpoint);
+  if (!url) throw new Error('invalid endpoint');
+  const resp = await fetchImpl(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
+    body: JSON.stringify({
+      model: cfg.model || 'tts-1',
+      input: text,
+      voice: cfg.voice || voiceHint || 'alloy',
+      response_format: 'mp3',
+    }),
+  });
+  if (!resp.ok) throw new Error(`synthesis unavailable (status ${resp.status})`);
+  return toAudioBytes(await resp.arrayBuffer());
+}
+
 export function useSpeak() {
   const [state, setState] = useState<SpeakState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -134,10 +320,20 @@ export function useSpeak() {
   /** 当前段播完后的回调（接下一段或结束） */
   const onNaturalEndRef = useRef<(() => void) | null>(null);
   /** 当前朗读语音（speak 时设置；分段串行播放时贯通使用，避免每段都走默认中文） */
-  const voiceRef = useRef<string>(TTS_CONFIG.DEFAULT_VOICE);
+  const voiceRef = useRef<string>(''); // 云端音色名（speak 时由调用方给出；端侧路径不用它）
   /** 最近一次朗读的原始文本（finished 态下仅该文本的条目显示重播） */
   const rawTextRef = useRef('');
   const [finishedText, setFinishedText] = useState('');
+  /** 端侧兜底模式：true = 当前朗读由设备内置语音完成（暂停语义与云端音频不同） */
+  const localModeRef = useRef(false);
+  /** playSegment 的前向引用（resume 声明早于它，避免 TDZ） */
+  const playSegmentRef = useRef<((seg: string) => void) | null>(null);
+  /** 端侧看门狗：个别设备既不触发 onstart 也不触发 onend，避免按钮卡在「合成中」 */
+  const localWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** 当前朗读语言与配置快照（端侧发音人按语言取） */
+  const voiceLangRef = useRef<'zh' | 'en'>('zh');
+  /** 降级轻提示（云端失败回落端侧时出现；正常路径为空） */
+  const [notice, setNotice] = useState('');
 
   const unlockAudio = useCallback(() => {
     try {
@@ -187,8 +383,18 @@ export function useSpeak() {
     sourceRef.current = null;
   }, []);
 
-  /** 暂停：记录已播时长，停止当前 source */
+  /** 暂停：记录已播时长，停止当前 source（端侧语音不支持断点续播，暂停即取消） */
   const pause = useCallback(() => {
+    if (localModeRef.current) {
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        /* 忽略 */
+      }
+      localModeRef.current = false;
+      setState('paused');
+      return;
+    }
     const ctx = ctxRef.current;
     if (!ctx || !sourceRef.current) return;
     const elapsed = ctx.currentTime - startTimeRef.current;
@@ -200,16 +406,34 @@ export function useSpeak() {
 
   /** 继续：从暂停位置重播当前段 */
   const resume = useCallback(() => {
+    if (state === 'paused' && elapsedRef.current <= 0) {
+      // 端侧暂停没有断点：重走当前段（命中文档缓存则秒播）
+      const seg = segsRef.current[idxRef.current];
+      if (seg) void playSegmentRef.current?.(seg);
+      return;
+    }
     if (elapsedRef.current <= 0) return;
     startSource(elapsedRef.current);
     elapsedRef.current = 0;
-  }, [startSource]);
+  }, [startSource, state]);
 
   /** 停止（归零）：清队列与缓存，下次从头合成 */
   const stop = useCallback(() => {
     wasStoppedRef.current = true;
     onNaturalEndRef.current = null;
     stopSource();
+    // 端侧语音同样要停：否则切页 / 重新朗读会与上一段叠音
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {
+      /* 个别环境没有 speechSynthesis，忽略 */
+    }
+    localModeRef.current = false;
+    if (localWatchdogRef.current) {
+      clearTimeout(localWatchdogRef.current);
+      localWatchdogRef.current = null;
+    }
+    setNotice('');
     elapsedRef.current = 0;
     audioBufferRef.current = null;
     segsRef.current = [];
@@ -238,6 +462,48 @@ export function useSpeak() {
 
   const waitingLong = elapsedSec > 4;
 
+  /**
+   * 端侧朗读（默认路径与云端回落的共同出口）：交给设备内置语音，接上同一套状态回调。
+   * fellBack=true 时给一句克制轻提示。返回 false = 设备不支持（调用方进入错误态）。
+   */
+  const speakTextLocally = useCallback(
+    (text: string, lang: 'zh' | 'en', fellBack: boolean): boolean => {
+      const cfg = loadTtsConfig();
+      const ok = speakLocally(text, lang, window as unknown as LocalSpeechHost, {
+        preferredVoice: preferredLocalVoice(cfg, lang),
+        onStart: () => {
+          localModeRef.current = true;
+          clearTimer();
+          setState('playing');
+        },
+        onDone: () => {
+          if (!localModeRef.current) return; // 已被 stop()/切页取消：不再改状态
+          localModeRef.current = false;
+          if (localWatchdogRef.current) clearTimeout(localWatchdogRef.current);
+          clearTimer();
+          setFinishedText(rawTextRef.current);
+          setState('finished');
+          onNaturalEndRef.current?.();
+        },
+      });
+      if (!ok) return false;
+      localModeRef.current = true;
+      if (fellBack) setNotice(LOCAL_FALLBACK_NOTICE);
+      startTimer();
+      setState('synthesizing');
+      if (localWatchdogRef.current) clearTimeout(localWatchdogRef.current);
+      localWatchdogRef.current = setTimeout(() => {
+        if (localModeRef.current) {
+          localModeRef.current = false;
+          clearTimer();
+          setState('idle');
+        }
+      }, 8000);
+      return true;
+    },
+    [clearTimer, startTimer],
+  );
+
   /** 合成一段文本并播放；播完自动接下一段。命中缓存的段直接播放，不再请求合成 */
   const playSegment = useCallback(
     async (seg: string) => {
@@ -252,43 +518,24 @@ export function useSpeak() {
       setState('synthesizing');
       startTimer();
       try {
-        const base = getTtsUrl();
-        // 先拼完整 query（text/voice），再用 scfUrlWithToken 把 token 用 & 挂上
-        // （避免 base 已带 ?token= 再拼 ?text= 产生双问号 → SCF 校验失败 403）
-        const url = scfUrlWithToken(`${base}?text=${encodeURIComponent(seg)}&voice=${encodeURIComponent(voiceRef.current)}`);
-        // 冷启动容错：失败自动重试一次
-        const doFetch = async (attempt: number): Promise<Response> => {
+        const cfg = loadTtsConfig();
+        // 使用自配云端端点（OpenAI 兼容 /v1/audio/speech）；失败自动重试一次
+        const doFetch = async (attempt: number): Promise<ArrayBuffer> => {
           try {
-            const resp = await fetch(url);
-            if (attempt < 1 && !resp.ok) {
-              await new Promise((r) => setTimeout(r, 600));
-              return doFetch(attempt + 1);
-            }
-            return resp;
-          } catch {
+            return cfg.engine === 'scf'
+              ? await fetchScfSpeech(seg, voiceRef.current)
+              : await fetchCloudSpeech(seg, cfg, voiceRef.current);
+          } catch (err) {
             if (attempt < 1) {
               await new Promise((r) => setTimeout(r, 600));
               return doFetch(attempt + 1);
             }
-            throw new Error('network failed');
+            throw err;
           }
         };
-        const resp = await doFetch(0);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-
-        // 兼容裸 MP3 与 base64 文本两种格式
-        const raw = await resp.arrayBuffer();
-        const view = new Uint8Array(raw, 0, Math.min(raw.byteLength, 4));
-        let audioBytes: ArrayBuffer;
-        if (view.length >= 2 && (view[0] & 0xff) === 0xff && (view[1] & 0xe0) === 0xe0) {
-          audioBytes = raw;
-        } else {
-          const text = new TextDecoder().decode(raw);
-          const binary = atob(text.replace(/\s/g, ''));
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          audioBytes = bytes.buffer;
-        }
+        const audioBytes = await doFetch(0);
+        // 状态指示器：真拿到音频才算「通道就绪」（不是发出请求就算）
+        setTtsStatus('ready');
 
         const ctx = ctxRef.current;
         if (!ctx) throw new Error('no audio context');
@@ -304,12 +551,25 @@ export function useSpeak() {
         clearTimer();
         startSource(0);
       } catch (e) {
-        clearTimer();
-        setErrorMsg(e instanceof Error ? e.message : String(e));
-        setState('error');
+        // 云端不可用（断网 / Key 失效 / 超限 / 端点非法）→ 静默回落端侧语音。
+        // 真实原因只进控制台：界面文案由 LOCAL_FALLBACK_NOTICE 统一给出，永不出现状态码。
+        console.warn('[tts] cloud synthesis unavailable, falling back to local speech:', e);
+        // 状态指示器：内置通道不可用＝平滑降级；自定义端点/Key 出问题＝连接异常
+        const engineNow = loadTtsConfig().engine;
+        setTtsStatus(
+          engineNow === 'cloud' ? 'error' : 'fallback',
+          engineNow === 'cloud'
+            ? '自定义云端不可用（端点或 Key），已改用系统语音'
+            : '内置云端通道不可用，已改用系统语音',
+        );
+        if (!speakTextLocally(seg, voiceLangRef.current, true)) {
+          clearTimer();
+          setErrorMsg('朗读暂不可用：设备未提供语音，且云端未配置');
+          setState('error');
+        }
       }
     },
-    [startSource, startTimer, clearTimer],
+    [startSource, startTimer, clearTimer, speakTextLocally],
   );
 
   /** 当前段自然播完：接下一段或结束 */
@@ -327,6 +587,8 @@ export function useSpeak() {
     }
   }, [playSegment]);
 
+  playSegmentRef.current = (seg: string) => void playSegment(seg);
+
   onNaturalEndRef.current = onSegmentEnd;
 
   /** 重新朗读：从第一段起用缓存音频秒播（命中缓存不重新合成）；缓存失效则回退重新合成 */
@@ -343,10 +605,33 @@ export function useSpeak() {
       unlockAudio();
       stop();
       rawTextRef.current = rawText;
-      voiceRef.current = voice ?? TTS_CONFIG.DEFAULT_VOICE;
+      voiceRef.current = voice ?? '';
+      voiceLangRef.current = lang;
 
       const text = cleanTextForTTS(rawText, lang, opts);
       if (!text) return;
+
+      const cfg = loadTtsConfig();
+      if (!voiceRef.current) voiceRef.current = cfg.engine === 'scf' ? getTtsVoice(lang) : '';
+      if (cfg.engine === 'cloud' && !isCloudTtsReady(cfg)) {
+        // 选了自定义云端但配置不完整 → 直接系统语音（不视为错误、不弹状态码）
+        segsRef.current = [text];
+        idxRef.current = 0;
+        if (!speakTextLocally(text, lang, false)) {
+          setErrorMsg('当前设备未提供语音朗读能力，可在设置中填写云端语音端点');
+          setState('error');
+        }
+        return;
+      }
+      if (false) {
+        segsRef.current = [text];
+        idxRef.current = 0;
+        if (!speakTextLocally(text, lang, false)) {
+          setErrorMsg('当前设备未提供语音朗读能力，可在设置中填写云端语音端点');
+          setState('error');
+        }
+        return;
+      }
 
       const segs = splitForTTS(text);
       if (segs.length === 0) return;
@@ -354,8 +639,8 @@ export function useSpeak() {
       idxRef.current = 0;
       void playSegment(segs[0]);
     },
-    [unlockAudio, stop, playSegment],
+    [unlockAudio, stop, playSegment, speakTextLocally],
   );
 
-  return { state, errorMsg, finishedText, speak, pause, resume, replay, stop, waitingLong };
+  return { state, errorMsg, notice, finishedText, speak, pause, resume, replay, stop, waitingLong };
 }

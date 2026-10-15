@@ -142,7 +142,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-none pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={t.share}

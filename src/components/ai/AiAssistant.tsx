@@ -16,12 +16,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
+import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
+import { useTtsPreview, TTS_SAMPLE } from '../../lib/use-tts-preview';
+import { resetTtsStatus, useTtsStatus } from '../../lib/tts-status';
+import TtsStatusBadge from './TtsStatusBadge';
 import { symbolsForTopic } from '../../lib/physics-speech-symbols';
-import { getTtsVoice } from '../../lib/tts-config';
+import {
+  loadTtsConfig,
+  saveTtsConfig,
+  groupLocalVoices,
+  type TtsConfig,
+  type LocalVoice,
+} from '../../lib/tts-config';
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
@@ -224,7 +233,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
 
 export default function AiAssistant() {
   const { lang, t, isOffline } = useApp();
-  const { state: speakState, errorMsg, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
+  const { state: speakState, errorMsg, notice: speakNotice, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal } = useAiContext();
@@ -260,7 +269,7 @@ export default function AiAssistant() {
           else if (speakState === 'paused') resume();
           else if (speakState === 'synthesizing') stopSpeak();
           else if (isReplay) replay();
-          else speak(text, getTtsVoice(lang), lang, speechOpts);
+          else speak(text, '', lang, speechOpts);
         }}
         title={
           speakState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
@@ -311,6 +320,10 @@ export default function AiAssistant() {
           {errorMsg}
         </span>
       )}
+      {/* 云端不可用静默回落端侧时的克制提示（一行小字，不打断朗读） */}
+      {speakNotice && speakState !== 'error' && (
+        <span className="text-[0.625rem] text-[var(--muted)] mono-font ml-1">{speakNotice}</span>
+      )}
     </div>
   );
   };
@@ -322,6 +335,33 @@ export default function AiAssistant() {
   const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
   const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
   const [apiKey, setApiKey] = useState('');
+  /** 语音朗读配置（默认端侧离线；云端为使用者自配的可选扩展，仅存本机） */
+  const [ttsCfg, setTtsCfg] = useState<TtsConfig>(() => loadTtsConfig());
+  /** 系统可用语音（设置面板里选端侧发音人） */
+  const [localVoices, setLocalVoices] = useState<LocalVoice[]>([]);
+  const groupedVoices = groupLocalVoices(localVoices);
+  /** 设置视图内的 Tab：model = 大模型设置（默认）；speech = 语音朗读。切换不触发保存 */
+  const [settingsTab, setSettingsTab] = useState<'model' | 'speech'>('model');
+  /** 原位试听（独立于朗读主链路：试听失败不静默换声） */
+  const ttsPreview = useTtsPreview();
+  /** 语音通道状态（就绪 / 已降级 / 连接异常）：供状态胶囊与试听按钮共用 */
+  const { status: ttsStatus } = useTtsStatus();
+  /**
+   * 打开语音页即做一次轻量探测：未核验就展示「就绪」等于虚报状态，故初始为「未检测」，
+   * 由这次真实合成把它变成就绪 / 降级 / 异常。probe 自取已保存配置，不依赖 ttsCfg（避免输入时反复探测）。
+   */
+  useEffect(() => {
+    if (view !== 'settings' || settingsTab !== 'speech' || ttsStatus !== 'unknown') return;
+    void ttsPreview.probe();
+  }, [view, settingsTab, ttsStatus, ttsPreview]);
+  /** 云端 TTS 的 API Key 明文/隐藏切换（与大模型设置的 showKey 同一范式） */
+  const [showTtsKey, setShowTtsKey] = useState(false);
+  const updateTts = (patch: Partial<TtsConfig>) =>
+    setTtsCfg((prev) => {
+      const next = { ...prev, ...patch };
+      saveTtsConfig(next);
+      return next;
+    });
   const [customUrl, setCustomUrl] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [model, setModel] = useState('');
@@ -1411,6 +1451,15 @@ export default function AiAssistant() {
 
   // 进入设置视图时回填已保存配置（刷新/重开不丢 provider/key/端点/模型）
   useEffect(() => {
+    // 系统语音列表：部分浏览器要等 voiceschanged 才有（语音包异步加载）
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const readVoices = () => setLocalVoices((window.speechSynthesis.getVoices() || []) as unknown as LocalVoice[]);
+    readVoices();
+    window.speechSynthesis.addEventListener?.('voiceschanged', readVoices);
+    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', readVoices);
+  }, []);
+
+  useEffect(() => {
     if (view === 'settings' && config) {
       const keys = keysByProviderOf(config);
       setKeyByProvider(keys);
@@ -2167,19 +2216,22 @@ export default function AiAssistant() {
           </span>
         </h2>
         <div className="-my-1.5 -mr-1 flex items-center gap-1">
-          {/* 功能区：设置/返回、历史（窄屏与子视图自适应） */}
-          <button type="button" onClick={() => setView(view === 'chat' ? 'settings' : 'chat')}
-            aria-label={view === 'chat' ? (lang === 'zh' ? '设置' : 'Settings') : (lang === 'zh' ? '返回' : 'Back')}
-            title={view === 'chat' ? (lang === 'zh' ? '设置模型与接口' : 'Settings') : (lang === 'zh' ? '返回对话' : 'Back to chat')}
-            className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
-            {view === 'chat' ? <Settings className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-          </button>
-          {/* 问答历史入口：仅对话视图显示（子视图由返回箭头回对话）；有记录时挂一个小圆点 */}
+          {/* 设置入口：仅对话视图显示。子视图不再挂左上角返回箭头 ——
+              弹窗不是多级页面跳转，返回一律走底部左侧的「返回对话」，关闭只留右上角 ✕ */}
+          {view === 'chat' && (
+            <button type="button" onClick={() => setView('settings')}
+              aria-label={lang === 'zh' ? '设置' : 'Settings'}
+              title={lang === 'zh' ? '设置模型与接口' : 'Settings'}
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer">
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
+          {/* 问答历史入口：仅对话视图显示（子视图回对话走底部左侧「返回对话」）；有记录时挂一个小圆点 */}
           {config && view === 'chat' && (
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
               title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer">
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer">
               <History className="w-4 h-4" />
               {persistHistory.length > 0 && (
                 <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
@@ -2192,12 +2244,12 @@ export default function AiAssistant() {
           <button type="button" onClick={collapseToCapsule}
             aria-label={lang === 'zh' ? '最小化' : 'Minimize'}
             title={lang === 'zh' ? '收起为胶囊（Esc 也可）' : 'Minimize'}
-            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors cursor-pointer${isMobile ? ' hidden' : ''}`}>
+            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md${isMobile ? ' hidden' : ''}`}>
             <Minus className="w-4 h-4" />
           </button>
           <button type="button" onClick={closePanel}
             aria-label="Close" title={lang === 'zh' ? '关闭助手 (Esc)' : 'Close (Esc)'}
-            className="flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors cursor-pointer">
+            className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 active:bg-[var(--error)] active:text-white transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2324,11 +2376,29 @@ export default function AiAssistant() {
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-0 space-y-3 text-sm serif-font">
+          {/* 设置 Tab：大模型设置 / 语音朗读。两栏共享同一份配置状态，切换不需要重新保存 */}
+          <div className="flex items-center gap-1 border-b border-[var(--border)]" role="tablist" aria-label={lang === 'zh' ? '设置分类' : 'Settings sections'}>
+            {([['model', lang === 'zh' ? '大模型设置' : 'Model setup'], ['speech', lang === 'zh' ? '语音朗读' : 'Speech']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={settingsTab === id}
+                onClick={() => setSettingsTab(id)}
+                className={`tap-area -mb-px border-b-2 px-3 py-2 text-[0.6875rem] mono-font leading-none transition-colors ${settingsTab === id ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {settingsTab === 'model' ? (
+            <>
           {/* 服务商预设 */}
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
-              <button type="button" onClick={() => setView('terms')} className="text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] shrink-0">
+              <button type="button" onClick={() => setView('terms')} className="shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">
                 {lang === 'zh' ? '查看须知' : 'View terms'}
               </button>
             </div>
@@ -2357,7 +2427,7 @@ export default function AiAssistant() {
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
                 placeholder={lang === 'zh' ? 'https://your-proxy.example.com/v1 或完整端点 /chat/completions' : 'https://your-proxy.example.com/v1 or full endpoint /chat/completions'}
-                className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
               <p className="mt-1 text-[0.625rem] leading-snug text-[var(--muted)]">
                 {lang === 'zh'
@@ -2376,13 +2446,13 @@ export default function AiAssistant() {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk-..."
-                className="w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 pr-8 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 pr-8 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
               <button
                 type="button"
                 onClick={() => setShowKey((v) => !v)}
                 aria-label={showKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
-                className="tap-icon absolute right-2 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--fg)]"
+                className="tap-icon absolute right-2 top-1/2 -translate-y-1/2 rounded-md text-[var(--muted)] hover:text-[var(--fg)]"
               >
                 {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -2420,7 +2490,7 @@ export default function AiAssistant() {
                   value={model}
                   onChange={(e) => setModel(e.target.value.trim())}
                   onClick={() => { if (liveModels.length > 0) setModelMenuOpen(true); }}
-                  className="w-full min-w-0 border border-[var(--border)] bg-[var(--bg)] py-1.5 pl-2 pr-7 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                  className="w-full min-w-0 rounded-md border border-[var(--border)] bg-[var(--bg)] py-1.5 pl-2 pr-7 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
                 />
                 {/* ▾ 内嵌在输入框右侧；未拉取到列表时禁用并说明原因 */}
                 <button
@@ -2431,7 +2501,7 @@ export default function AiAssistant() {
                   title={liveModels.length > 0
                     ? (lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list')
                     : (lang === 'zh' ? '先点「获取模型」拉取可用列表' : 'Click "Fetch models" first')}
-                  className="tap-icon absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="tap-icon absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
@@ -2565,7 +2635,7 @@ export default function AiAssistant() {
                 value={maxTokensText}
                 onChange={(e) => setMaxTokensText(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
                 placeholder={lang === 'zh' ? '留空＝不限' : 'blank = no limit'}
-                className="w-24 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
               <span className="text-[0.625rem] mono-font text-[var(--muted)]">tokens</span>
             </div>
@@ -2597,7 +2667,7 @@ export default function AiAssistant() {
                       onChange={(e) => setExtraParamsText(e.target.value)}
                       rows={3}
                       placeholder={'{"reasoning_effort": "high"}'}
-                      className="mt-1 w-full border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
+                      className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
                     />
                     {!extraParamsValid && (
                       <p className="text-[0.625rem] text-[var(--error)] mt-0.5 leading-snug">
@@ -2638,7 +2708,7 @@ export default function AiAssistant() {
                   <button
                     type="button"
                     onClick={() => { clearTokenUsage(); refreshTokenUsage(); }}
-                    className="text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--error)] transition-colors"
+                    className="rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_10%,transparent)] active:bg-[color-mix(in_srgb,var(--error)_20%,transparent)] active:text-[var(--error)] transition-colors"
                   >
                     {lang === 'zh' ? '清零' : 'Reset'}
                   </button>
@@ -2662,6 +2732,176 @@ export default function AiAssistant() {
               : (lang === 'zh' ? '还没有保存过配置：先「测试连接」，确认可用后点「保存」。' : 'Nothing saved yet: run Test connection, then press Save.')}
           </p>
         )}
+          </>
+          ) : (
+            <>
+              {/* 引擎：默认端侧离线（零配置、断网可用）；云端为使用者自配的可选扩展。
+                  通道状态胶囊与引擎栏标题同行右对齐：切换栏本身已占满面板宽度（实测需 473px、可用 350px），
+                  胶囊与两个 Tab 按钮无法真正同行，故贴在标题行右端，窄屏自动换行、间距保持紧凑 */}
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mb-1.5">
+                  <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '朗读引擎' : 'Speech engine'}</p>
+                  <TtsStatusBadge />
+                </div>
+                <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '朗读引擎' : 'Speech engine'}>
+                    {([['scf', lang === 'zh' ? '内置高质量语音（推荐，免配置）' : 'Built-in HD voice (recommended)'], ['cloud', lang === 'zh' ? '自定义云端' : 'Custom cloud']] as const).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        aria-pressed={ttsCfg.engine === id}
+                        onClick={() => { ttsPreview.stop(); updateTts({ engine: id }); resetTtsStatus(); }}
+                        className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${ttsCfg.engine === id ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs' : 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              {ttsCfg.engine === 'scf' ? (
+                <div className="space-y-2">
+                  <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
+                    {lang === 'zh'
+                      ? '内置高拟真语音（晓晓 / Aria 等自然音色）：免配置开箱即用，Windows / macOS / Linux / 移动端音色一致。'
+                      : 'Built-in lifelike voices (Xiaoxiao / Aria and other natural voices): zero-config out of the box; the same voice on Windows, macOS, Linux and mobile.'}
+                  </p>
+                  <div className="flex items-center flex-wrap gap-2.5">
+                    {(['zh', 'en'] as const).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => void ttsPreview.preview(key, ttsCfg)}
+                        aria-label={lang === 'zh' ? `试听内置${key === 'zh' ? '中文' : '英文'}语音` : `Preview built-in ${key === 'zh' ? 'Chinese' : 'English'}`}
+                        title={TTS_SAMPLE[key]}
+                        className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                      >
+                        {ttsPreview.activeKey === key && ttsStatus === 'probing'
+                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
+                        {ttsPreview.activeKey === key
+                          ? (ttsStatus === 'probing'
+                            ? (lang === 'zh' ? '检测中…' : 'Checking…')
+                            : (lang === 'zh' ? '播放中…' : 'Playing…'))
+                          : (lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}` : `Preview ${key === 'zh' ? 'Chinese' : 'English'}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {ttsPreview.error && (
+                    <p className="text-[0.625rem] text-[var(--error)] leading-snug" role="alert">{ttsPreview.error}</p>
+                  )}
+                  <div className="border-t border-[var(--border)]/60 pt-2">
+                    <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
+                      {lang === 'zh' ? '回退语音（内置语音不可用时自动使用）' : 'Fallback voice (used automatically when the built-in voice is unavailable)'}
+                    </p>
+                    {(['zh', 'en'] as const).map((key) => {
+                      const label = key === 'zh' ? (lang === 'zh' ? '中文发音人' : 'Chinese voice') : (lang === 'zh' ? '英文发音人' : 'English voice');
+                      const value = key === 'zh' ? ttsCfg.localVoiceZh : ttsCfg.localVoiceEn;
+                      return (
+                        <div key={key} className="flex items-center gap-2.5 mb-1.5">
+                          <span className="w-20 shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">{label}</span>
+                          <select
+                            value={value}
+                            onChange={(e) => updateTts(key === 'zh' ? { localVoiceZh: e.target.value } : { localVoiceEn: e.target.value })}
+                            aria-label={label}
+                            className="min-h-9 w-full sm:w-72 max-w-xs rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                          >
+                            <option value="">{lang === 'zh' ? '自动（按语言选择）' : 'Automatic (by language)'}</option>
+                            {(key === 'zh' ? groupedVoices.zh : groupedVoices.en).map((v) => (
+                              <option key={v.voiceURI || v.name} value={v.voiceURI || v.name}>{`${v.name} · ${v.lang}`}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => void ttsPreview.preview(key, ttsCfg)}
+                            aria-label={lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}发音人` : `Preview ${key === 'zh' ? 'Chinese' : 'English'} voice`}
+                            title={TTS_SAMPLE[key]}
+                            className={`tap-area inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                          >
+                            {ttsPreview.activeKey === key && ttsStatus === 'probing'
+                              ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                              : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
+                            {ttsPreview.activeKey === key
+                              ? (ttsStatus === 'probing'
+                                ? (lang === 'zh' ? '检测中…' : 'Checking…')
+                                : (lang === 'zh' ? '播放中…' : 'Playing…'))
+                              : (lang === 'zh' ? '试听' : 'Preview')}
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
+                      {groupedVoices.zh.length + groupedVoices.en.length === 0
+                        ? (lang === 'zh' ? '当前浏览器未提供系统语音包：内置语音失败时可能无声，建议先安装中文/英文语音。' : 'No system voices detected: install a Chinese/English voice pack for fallback.')
+                        : (lang === 'zh' ? '自动模式优先挑选自然、拟真的系统音色。断网或云端异常时会静默改用这里的发音人，并提示「已切换为本地离线语音」。' : 'Automatic mode prefers natural, lifelike system voices. If cloud reading fails it switches silently to these voices.')}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {([['endpoint', lang === 'zh' ? 'API 端点' : 'API endpoint', lang === 'zh' ? 'https://.../v1/audio/speech（填接口根地址亦可）' : 'https://.../v1/audio/speech (a base URL also works)', ttsCfg.endpoint, (v: string) => updateTts({ endpoint: v })],
+                     ['apiKey', 'API Key', 'sk-…', ttsCfg.apiKey, (v: string) => updateTts({ apiKey: v })],
+                     ['model', lang === 'zh' ? '模型（选填）' : 'Model (optional)', 'tts-1', ttsCfg.model, (v: string) => updateTts({ model: v })],
+                     ['voice', lang === 'zh' ? '音色（选填）' : 'Voice (optional)', 'alloy', ttsCfg.voice, (v: string) => updateTts({ voice: v })]] as const).map(([key, label, ph, value, onChange]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className="w-20 shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">{label}</span>
+                      <div className="relative flex-1 min-w-0">
+                        <input
+                          type={key === 'apiKey' ? (showTtsKey ? 'text' : 'password') : 'text'}
+                          value={value}
+                          onChange={(e) => onChange(e.target.value)}
+                          placeholder={ph}
+                          aria-label={label}
+                          className={`min-h-9 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] ${key === 'endpoint' ? 'w-full sm:w-96 max-w-md' : key === 'apiKey' ? 'w-full sm:w-96 max-w-md pr-8' : 'w-full sm:w-72 max-w-xs'}`}
+                        />
+                        {key === 'apiKey' && (
+                          <button
+                            type="button"
+                            onClick={() => setShowTtsKey((v) => !v)}
+                            aria-label={showTtsKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
+                            /* 刻意不用 tap-icon：锁定用例限定该标记只允许 2 处（密钥眼睛 + 模型下拉箭头）。
+                               这里用 32×32 自身盒尺寸达到同等热区（图标仍 14px），视觉与范式保持一致 */
+                            className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 text-[var(--muted)] hover:text-[var(--fg)]"
+                          >
+                            {showTtsKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center flex-wrap gap-2.5">
+                    {(['zh', 'en'] as const).map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => void ttsPreview.preview(key, ttsCfg)}
+                        aria-label={lang === 'zh' ? `试听云端${key === 'zh' ? '中文' : '英文'}` : `Preview cloud ${key === 'zh' ? 'Chinese' : 'English'}`}
+                        title={TTS_SAMPLE[key]}
+                        className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                      >
+                        {ttsPreview.activeKey === key && ttsStatus === 'probing'
+                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
+                        {ttsPreview.activeKey === key
+                          ? (ttsStatus === 'probing'
+                            ? (lang === 'zh' ? '检测中…' : 'Checking…')
+                            : (lang === 'zh' ? '播放中…' : 'Playing…'))
+                          : (lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}` : `Preview ${key === 'zh' ? 'Chinese' : 'English'}`)}
+                      </button>
+                    ))}
+                  </div>
+                  {ttsPreview.error && (
+                    <p className="text-[0.625rem] text-[var(--error)] leading-snug" role="alert">{ttsPreview.error}</p>
+                  )}
+                  <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
+                    {lang === 'zh'
+                      ? '兼容标准 /v1/audio/speech 协议；端点与 Key 仅存本机浏览器，调用与费用由使用者自理。朗读失败时仍会自动回退系统语音。'
+                      : 'Compatible with the standard /v1/audio/speech API. Endpoint and key stay in this browser only; usage and cost are yours. Falls back to system speech on failure.'}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
         {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
           <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
@@ -2675,7 +2915,7 @@ export default function AiAssistant() {
               </button>
             )}
             <button type="button" onClick={save} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font font-bold border border-transparent bg-[var(--fg)] text-[var(--bg)] transition-colors hover:opacity-90">
-              {lang === 'zh' ? '保存' : 'Save'}
+              {lang === 'zh' ? '保存配置' : 'Save settings'}
             </button>
             <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto tap-area inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]">
               <Trash2 className="w-3 h-3" />
@@ -2747,7 +2987,7 @@ export default function AiAssistant() {
                   <button
                     type="button"
                     onClick={() => { setSubjFilter(null); setTopicFilter(null); }}
-                    className="ml-auto text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
+                    className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
                   >
                     {lang === 'zh' ? '清除筛选' : 'Clear filters'}
                   </button>
@@ -3277,7 +3517,7 @@ export default function AiAssistant() {
                     <button
                       type="button"
                       onClick={() => { setQuizSubjFilter(null); setQuizTopicFilter(null); }}
-                      className="ml-auto text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
+                      className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
                     >
                       {lang === 'zh' ? '清除筛选' : 'Clear filters'}
                     </button>
@@ -3480,6 +3720,12 @@ export default function AiAssistant() {
             </div>
           </div>
           )}
+          {/* 返回对话：子视图无左上角箭头后，返回由本栏左侧承担（与设置页同一形态） */}
+          <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center">
+            <button type="button" onClick={() => setView('chat')} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
+              {lang === 'zh' ? '返回对话' : 'Back to chat'}
+            </button>
+          </div>
         </div>
       ) : view === 'quiz' ? (
         /* ── 考考你：AI 批量出单选题，本地判分 ── */
@@ -3682,7 +3928,7 @@ export default function AiAssistant() {
                         disabled={quizSelected !== null || fillJudging}
                         placeholder={lang === 'zh' ? '输入你的答案…' : 'Type your answer…'}
                         maxLength={60}
-                        className="flex-1 border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)] disabled:opacity-60"
+                        className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)] disabled:opacity-60"
                       />
                       <button
                         type="button"
@@ -3954,7 +4200,7 @@ export default function AiAssistant() {
                         <button
                           type="button"
                           onClick={() => { setView('settings'); setFailure(null); }}
-                          className="shrink-0 inline-flex items-center px-1.5 py-1.5 text-[0.6875rem] mono-font underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+                          className="shrink-0 inline-flex items-center rounded px-1.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
                         >
                           {lang === 'zh' ? '修改配置' : 'Fix config'}
                         </button>
@@ -3985,7 +4231,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => void refreshRecs()}
-                        className="mt-1.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] underline hover:text-[var(--fg)] disabled:opacity-50"
+                        className="mt-1.5 rounded px-1 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 transition-colors"
                         disabled={refreshingRecs}
                       >
                         {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
@@ -4020,7 +4266,7 @@ export default function AiAssistant() {
             )}
             {busy && (
               <div className="pt-1 flex justify-end">
-                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] underline">
+                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="rounded px-1 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>

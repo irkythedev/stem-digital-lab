@@ -453,7 +453,7 @@ export default function Inverse() {
             <button
               type="button"
               onClick={reset}
-              className="text-xs mono-font uppercase underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+              className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
             >
               {t.reset}
             </button>

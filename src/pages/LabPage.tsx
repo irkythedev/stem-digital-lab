@@ -6,8 +6,8 @@
  * 依据路由参数 /lab/:labId 从实验注册表读取实验并渲染其组件；
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
-import { Link, useParams } from 'react-router-dom';
-import { House    } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import BackLink from '../components/layout/BackLink';
 import { useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
 import { translations } from '../lib/i18n';
@@ -71,11 +71,7 @@ export default function LabPage() {
 
         <UnderConstruction />
 
-        <div className="mt-10">
-          <Link to="/" className="text-xs mono-font text-[var(--muted)] underline">
-            ← {t.backHome}
-          </Link>
-        </div>
+        <BackLink to="/">{t.backHome}</BackLink>
       </main>
     );
   }
@@ -84,25 +80,12 @@ export default function LabPage() {
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
-      {/* 面包屑导航：返回学科（主）+ 首页（图标）——py-2 扩大触控热区（移动端 ≥24px） */}
-      <nav className="flex items-center gap-1 text-xs mono-font">
-        <Link
-          to={subjects[lab.subjectId].path}
-          className="py-2 -my-2 text-[var(--muted)] underline hover:text-[var(--fg)] tap-area"
-        >
-          ← {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
-        </Link>
-        <Link
-          to="/"
-          aria-label={t.homeIcon}
-          title={t.homeIcon}
-          className="py-2 -my-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
-        >
-          <House className="w-3.5 h-3.5" />
-        </Link>
-      </nav>
+      {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
+      <BackLink to={subjects[lab.subjectId].path}>
+        {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
+      </BackLink>
 
-      <div className="rise mt-5 mb-8">
+      <div className="rise mb-8">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 shrink-0 flex items-center justify-center text-[var(--fg)]">
             <lab.icon className="w-10 h-10" />

@@ -2016,7 +2016,7 @@ describe('Feedback push path (one push per submission)', () => {
     }
   });
 
-  testAsync('并发补传同一条只推一次（在途去重）', async () => {
+  testAsync('并发补传同一条只推一次（防止连点重复发送）', async () => {
     install();
     try {
       responder = async () => { await sleep(15); return okRes(); };
@@ -5234,12 +5234,14 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.match(wd, /min-w-0 text-\[0\.6875rem\] mono-font font-bold tracking-widest/, '标题须紧跟徽标右侧');
     const w5 = wd.match(/className="w-5 h-5"/g) ?? [];
     assert.ok(w5.length >= 4, `学科/导览图标须统一 20px（实测 ${w5.length} 处）`);
-    assert.match(wd, /subjectId="math" glyphClassName="text-2xl font-bold leading-none"/, 'π 须与 20px 图标墨迹等高');
-    // 生成 CSS 里 .font-light 排在 .font-bold 之后 → SubjectIcon 绝不能硬编码字重，否则静默吃掉调用方的加粗
+    assert.match(wd, /subjectId="math" className="w-5 h-5"/, '数学图标须与物理/化学同为 20px 矢量图标');
+    // 数学图标已从字体字形 π 换成 24 栅格矢量：字体字形横细竖粗、末端带弯钩，
+    // 且字宽字重随字体与平台漂移，靠 font-bold 硬贴墨迹属补偿式对齐，三科永远凑不齐。
     const si = readFileSync('src/components/ui/SubjectIcon.tsx', 'utf8');
-    const siClass = si.match(/className=\{`serif-font[^`]*`\}/) ?? [];
-    assert.equal(siClass.length, 1, 'SubjectIcon 的 π 类名须唯一');
-    assert.doesNotMatch(siClass[0], /font-(light|normal|medium|semibold|bold)/, 'π 类名不得含字重（会吃掉调用方的 font-bold）');
+    assert.doesNotMatch(si, /glyphClassName/, '学科图标不得再保留字体字形分支');
+    assert.match(si, /viewBox="0 0 24 24"/, '数学图标须为 24 栅格矢量');
+    assert.match(si, /strokeWidth=\{2\}/, '数学图标须为 2px 固定线宽');
+    assert.match(si, /strokeLinecap="round"/, '数学图标须为圆头端点');
     // ④d 底栏级底注：开源协议 / 作者 / 反馈 一行收敛 + 姊妹作品胶囊
     assert.match(wd, /justify-between gap-x-4 gap-y-2 px-0\.5 text-\[0\.6875rem\]/, '次级底注须为一行 justify-between');
     for (const k of ['welcomeLicenseLabel', 'welcomeFeedbackLabel']) {

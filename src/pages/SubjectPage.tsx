@@ -7,6 +7,7 @@
  * 实验列表由 labs 注册表动态填充。
  */
 import { Link, useParams } from 'react-router-dom';
+import BackLink from '../components/layout/BackLink';
 import { Calculator, Gauge, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
@@ -30,9 +31,7 @@ export default function SubjectPage() {
     return (
       <main className="grow shrink-0 flex flex-col items-center justify-center my-[var(--sp-block)] px-2 sm:px-6 text-center">
         <h1 className="text-2xl serif-font text-[var(--fg)] mb-4">{t.pageNotFound}</h1>
-        <Link to="/" className="text-xs mono-font text-[var(--muted)] underline">
-          {t.backToHome}
-        </Link>
+        <BackLink to="/">{t.backToHome}</BackLink>
       </main>
     );
   }
@@ -42,11 +41,9 @@ export default function SubjectPage() {
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
-      <Link to="/" className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]">
-        ← {t.backHome}
-      </Link>
+      <BackLink to="/">{t.backHome}</BackLink>
 
-      <div className="mt-5 mb-10">
+      <div className="mb-10">
         <SubjectHeading
           subjectId={subject.id}
           name={meta.title}

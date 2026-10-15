@@ -4,7 +4,7 @@
  *
  * 使用说明：课堂与个人探究的简明操作指南。
  */
-import { Link } from 'react-router-dom';
+import BackLink from '../components/layout/BackLink';
 import { BookOpen, Coins, MessageSquare, NotebookPen, Scale, ShieldCheck, Sparkles } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { usePageMeta } from '../lib/use-page-meta';
@@ -102,13 +102,8 @@ export default function GuidePage() {
   return (
     <main className="grow shrink-0 my-[var(--sp-block)] px-2 sm:px-6">
       <div className="mx-auto w-full max-w-5xl">
-      <Link
-        to="/"
-        className="text-xs mono-font text-[var(--muted)] underline hover:text-[var(--fg)]"
-      >
-        ← {c.backHome}
-      </Link>
-      <div className="mb-8 mt-5">
+      <BackLink to="/">{c.backHome}</BackLink>
+      <div className="mb-8">
         <h1 className="t-h1 font-bold serif-font text-[var(--fg)] mb-4">{c.title}</h1>
         <p className="text-sm serif-font leading-relaxed text-[var(--muted)] w-full">{c.intro}</p>
       </div>

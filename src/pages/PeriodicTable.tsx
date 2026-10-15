@@ -13,8 +13,8 @@
  * 用不同颜色区分，标出相对原子质量；元素周期表是学习和研究化学的重要工具。
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
-import { Link } from 'react-router-dom';
-import { House, Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
+import BackLink from '../components/layout/BackLink';
+import { Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import OfflinePackPanel from '../components/feedback/OfflinePackPanel';
 import { useOfflinePack } from '../lib/use-offline-pack';
@@ -719,22 +719,10 @@ export default function PeriodicTable() {
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
-      {/* 面包屑导航：返回化学（主）+ 首页（图标） */}
-      <nav className="flex items-center gap-3 text-xs mono-font">
-        <Link to="/subject/chemistry" className="text-[var(--muted)] underline hover:text-[var(--fg)] tap-area">
-          ← {lang === 'zh' ? '返回化学' : 'Back to Chemistry'}
-        </Link>
-        <Link
-          to="/"
-          aria-label={t.homeIcon}
-          title={t.homeIcon}
-          className="text-[var(--muted)] hover:text-[var(--fg)] transition-colors inline-flex items-center tap-area"
-        >
-          <House className="w-3.5 h-3.5" />
-        </Link>
-      </nav>
+      {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
+      <BackLink to="/subject/chemistry">{lang === 'zh' ? '返回化学' : 'Back to Chemistry'}</BackLink>
 
-      <div className="mt-5 mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
           <AskAiButton
@@ -778,7 +766,7 @@ export default function PeriodicTable() {
              故只写分层的 outline-none / focus:ring-0 挡不住它（实测聚焦时内层 2px 实心环
              与外层边框叠加，正是「双层黑框」）。 */
           style={{ outline: 'none' }}
-          className="min-h-10 w-full border-none bg-transparent pl-8 pr-3 py-2 text-sm text-[var(--fg)] outline-none focus:outline-none focus:ring-0"
+          className="min-h-10 w-full rounded-md border-none bg-transparent pl-8 pr-3 py-2 text-sm text-[var(--fg)] outline-none focus:outline-none focus:ring-0"
         />
       </div>
       {/* 类别图例：只在 <640px 保留 —— ≥sm 时展台默认态已用同一份 CAT_COLOR 渲染「分类图例」，
@@ -1787,7 +1775,7 @@ export default function PeriodicTable() {
               <button
                 type="button"
                 onClick={() => setPhotoZoom(false)}
-                className="text-xs mono-font text-white/80 hover:text-white underline min-h-[36px] px-2 flex items-center touch-manipulation"
+                className="text-xs mono-font text-white/80 hover:text-white hover:bg-white/10 active:bg-white/25 active:text-white rounded transition-colors min-h-[36px] px-2 flex items-center touch-manipulation"
               >
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>

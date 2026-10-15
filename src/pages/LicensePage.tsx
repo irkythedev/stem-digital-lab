@@ -6,8 +6,7 @@
  * 从弹窗 / 页脚的「AGPL-3.0」站内跳转查看，不依赖外网仓库。
  */
 import { useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { House } from 'lucide-react';
+import BackLink from '../components/layout/BackLink';
 import { useApp } from '../lib/app-context';
 import { AGPL_LICENSE_TEXT } from '../lib/license-text';
 import { usePageMeta } from '../lib/use-page-meta';
@@ -32,13 +31,7 @@ export default function LicensePage() {
 
   return (
     <div className="space-y-4">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1.5 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-      >
-        <House className="w-4 h-4" />
-        {t.backHome}
-      </Link>
+      <BackLink to="/">{t.backHome}</BackLink>
       <div className="flex flex-col gap-1">
         <h1 className="text-lg font-bold mono-font tracking-widest">AGPL-3.0</h1>
         <p className="text-[0.6875rem] mono-font text-[var(--muted)]">

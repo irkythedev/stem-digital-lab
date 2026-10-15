@@ -214,10 +214,10 @@ export default function WelcomeDialog({
           </div>
 
           {/* 四大板块：无边柔和填充 + 圆形图标底衬（手机单列 / ≥sm 双列）
-              图标校准：π 与 Atom/FlaskConical/Calculator 的墨迹体量对齐（见 smoke 守卫 ④e） */}
+              图标校准：四科同为 24 栅格矢量图标，统一 20px + stroke-width 2（见 smoke 守卫 ④e） */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" glyphClassName="text-2xl font-bold leading-none" /> },
+              { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" className="w-5 h-5" /> },
               { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-5 h-5" /> },
               { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-5 h-5" /> },
               { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-5 h-5" /> },
@@ -399,7 +399,7 @@ export default function WelcomeDialog({
             ref={gotItRef}
             type="button"
             onClick={close}
-            className="shrink-0 px-5 py-2 text-sm mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors min-h-11 touch-manipulation"
+            className="btn-solid shrink-0 px-5 py-2 text-sm mono-font font-bold border border-transparent transition-colors min-h-11 touch-manipulation rounded-md"
           >
             {t.welcomeGotIt}
           </button>

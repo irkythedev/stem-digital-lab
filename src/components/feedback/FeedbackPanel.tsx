@@ -90,7 +90,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-sm overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={type === 'experiment' ? l.experimentTitle : l.projectTitle}
@@ -101,27 +101,27 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
               <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
               {type === 'experiment' ? l.experimentTitle : l.projectTitle}
             </h2>
-            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="rounded-md p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
           </div>
           {done ? (
             <div className="flex items-center justify-between gap-3 text-sm text-[var(--fg)]">
               <span className="inline-flex items-center gap-1.5"><Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />{done === 'sent' ? l.sent : l.queued}</span>
-              <button type="button" onClick={onClose} className="text-xs underline shrink-0">{l.close}</button>
+              <button type="button" onClick={onClose} className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">{l.close}</button>
             </div>
           ) : (
             <>
-              {type === 'experiment' && <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.rating}</p><div className="flex gap-2">{(['helpful', 'neutral', 'not-helpful'] as FeedbackRating[]).map((r) => <button key={r} type="button" onClick={() => setRating(r)} className={`border px-3 py-1.5 text-xs ${rating === r ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{r === 'helpful' ? l.helpful : r === 'neutral' ? l.neutral : l.notHelpful}</button>)}</div></div>}
-              <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.question}</p><div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => toggleCategory(category)} className={`border px-3 py-1.5 text-xs ${selected.includes(category) ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{l.categories[category]}</button>)}</div></div>
-              <label className="block text-xs text-[var(--muted)]">{l.message}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={l.placeholder} rows={2} maxLength={2000} className="mt-1.5 w-full resize-y border border-[var(--border)] bg-transparent p-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+              {type === 'experiment' && <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.rating}</p><div className="flex gap-2">{(['helpful', 'neutral', 'not-helpful'] as FeedbackRating[]).map((r) => <button key={r} type="button" onClick={() => setRating(r)} className={`rounded-md border px-3 py-1.5 text-xs ${rating === r ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{r === 'helpful' ? l.helpful : r === 'neutral' ? l.neutral : l.notHelpful}</button>)}</div></div>}
+              <div><p className="mb-1.5 text-xs text-[var(--muted)]">{l.question}</p><div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} type="button" onClick={() => toggleCategory(category)} className={`rounded-md border px-3 py-1.5 text-xs ${selected.includes(category) ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{l.categories[category]}</button>)}</div></div>
+              <label className="block text-xs text-[var(--muted)]">{l.message}<textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder={l.placeholder} rows={2} maxLength={2000} className="mt-1.5 w-full resize-y rounded-md border border-[var(--border)] bg-transparent p-2 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               {/* 可选身份信息：年级/班级 + 联系方式（仅用于回访，用户自主决定填写） */}
-              <label className="block text-xs text-[var(--muted)]">{l.grade}<input type="text" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder={l.gradePlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+              <label className="block text-xs text-[var(--muted)]">{l.grade}<input type="text" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder={l.gradePlaceholder} maxLength={100} className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               {/* 称呼 + 联系方式：一行两列 */}
               <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs text-[var(--muted)]">{l.name}<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={l.namePlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
-                <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} maxLength={100} className="mt-1.5 w-full border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+                <label className="block text-xs text-[var(--muted)]">{l.name}<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={l.namePlaceholder} maxLength={100} className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
+                <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} maxLength={100} className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               </div>
               <p className="text-[0.625rem] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
-              <button type="button" onClick={submit} disabled={sending || !message.trim() || selected.length === 0 || (type === 'experiment' && !rating)} className="border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
+              <button type="button" onClick={submit} disabled={sending || !message.trim() || selected.length === 0 || (type === 'experiment' && !rating)} className="rounded-md border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
             </>
           )}
         </div>

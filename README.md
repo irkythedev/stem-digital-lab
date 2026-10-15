@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/v0.39.0-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
+![version](https://img.shields.io/badge/v0.40.0-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
 ![stack](https://img.shields.io/badge/React%20%2B%20Vite%20%2B%20KaTeX-087ea4?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
@@ -83,7 +83,7 @@
 #### 校园学情收集与教学分析对接
 
 - **教学偏误透视**：支持可选对接轻量校园服务端，帮助教研组与任课教师归纳班级高频错题分布、易混淆考点与实验高频提问。
-- **极简与隐私优先**：无需复杂账号与密码体系，基于班级代号 / 机位号匿名化流转，不采集任何个人隐私。
+- **极简与本地数据安全**：无需复杂账号与密码体系，基于班级代号 / 机位号匿名化流转，不采集任何个人隐私。
 - **纯静态底色不妥协**：核心功能始终保持 100% 独立离线可用，学情同步仅作为可插拔的外设通道。
 
 > 两项都在探索中，且都属于**可选接入**：核心功能保持纯静态、无需登录、离网可用；端侧模型权重与校园学情对接都不会成为必需依赖。

@@ -1039,7 +1039,7 @@ export default function Ohm() {
             <button
               type="button"
               onClick={reset}
-              className="text-xs mono-font uppercase underline text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+              className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
             >
               {t.reset}
             </button>
@@ -1068,7 +1068,7 @@ export default function Ohm() {
                       key={v}
                       type="button"
                       onClick={() => setPredShape(v)}
-                      className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                      className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                         predShape === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -1179,7 +1179,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: vv }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1216,7 +1216,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: vv }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1253,7 +1253,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: vv }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1290,7 +1290,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: vv }))}
-                        className={`text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'

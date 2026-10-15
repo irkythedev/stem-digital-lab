@@ -99,7 +99,7 @@ export default function InstallAppButton() {
       <button
         type="button"
         onClick={handleInstall}
-        className="underline hover:text-[var(--fg)] transition-colors"
+        className="rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
       >
         {buttonLabel}
       </button>

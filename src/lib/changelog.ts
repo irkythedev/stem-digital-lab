@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.39.0';
+export const APP_VERSION = '0.40.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.0',
+    date: '2026-10',
+    zh: [
+      '[新增] AI 助教语音朗读功能，支持多端一致的自然语音播报与云端连接状态展示',
+      '[优化] 全站交互体验与界面细节，统一导航操作与幽灵按钮视觉样式',
+      '[优化] 完善组件圆角规范与各学科视觉符号的几何对齐',
+    ],
+    en: [
+      '[New] AI assistant text-to-speech support with natural voice playback and live connection status',
+      '[Improved] Overall interaction experience and interface details with unified ghost button styling',
+      '[Improved] Refined component border-radius and geometric alignment for subject icons',
+    ],
+  },
   {
     version: '0.39.0',
     date: '2026-10',

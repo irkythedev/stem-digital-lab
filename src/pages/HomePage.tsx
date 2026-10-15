@@ -121,7 +121,6 @@ export default function HomePage() {
                 <SubjectIcon
                   subjectId={subject.id}
                   className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform duration-[var(--dur-slow)] group-hover:scale-110"
-                  glyphClassName="text-3xl sm:text-4xl font-light transition-transform duration-[var(--dur-slow)] group-hover:scale-110"
                 />
               </div>
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">

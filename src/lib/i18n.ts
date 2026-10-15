@@ -140,7 +140,7 @@ export const translations = {
     pageNotFound: '页面不存在',
     backToHome: '返回',
     // 首开欢迎弹窗
-    welcomeTag: '2026 全国青少年科学探究建模大赛 · 参赛作品',
+    welcomeTag: '2026 全国青少年科学探究建模能力大赛 · 初中组 · 参赛作品',
     welcomeMath: '一次 / 二次 / 反比例函数图像探究 · 圆的性质（垂径定理、圆周角、直径对直角）',
     welcomePhysics: '欧姆定律 · 串并联电路 · 浮力 · 杠杆 · 滑轮 · 压强 · 凸透镜成像',
     welcomeChemistry: '质量守恒 · 电解水 · 金属活动性 · 中和反应',
@@ -338,7 +338,7 @@ export const translations = {
     pageNotFound: 'Page Not Found',
     backToHome: 'Back',
     // Welcome dialog
-    welcomeTag: 'Entry for 2026 National Youth Scientific Inquiry & Modeling Competition',
+    welcomeTag: 'Entry for the 2026 National Youth Scientific Inquiry & Modeling Ability Competition · Junior Division',
     welcomeMath: 'Linear / quadratic / inverse functions · circle theorems (perpendicular bisector, inscribed angles, Thales)',
     welcomePhysics: "Ohm's law · series & parallel circuits · buoyancy · levers · pulleys · pressure · convex lens",
     welcomeChemistry: 'mass conservation · water electrolysis · metal activity · neutralization',

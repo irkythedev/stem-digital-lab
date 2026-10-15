@@ -48,7 +48,7 @@ export default function WechatShareOverlay() {
           strokeLinecap="round"
           strokeDasharray="5 5"
         />
-        <path d="M92 10 l-9 -15 M92 10 l-16 -1" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path d="M92 10 l-15 2 M92 10 l-5 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       </svg>
       <p className="mt-6 px-8 text-center text-sm leading-relaxed text-white serif-font">{t.wechatOverlayHint}</p>
       <p className="mt-3 text-xs text-white/70">{t.wechatOverlayDismiss}</p>
