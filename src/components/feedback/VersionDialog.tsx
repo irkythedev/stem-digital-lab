@@ -10,6 +10,7 @@ import { useApp } from '../../lib/app-context';
 import OfflinePackPanel from './OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import { CHANGELOG } from '../../lib/changelog';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 interface VersionDialogProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ interface VersionDialogProps {
 const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
 export default function VersionDialog({ onClose }: VersionDialogProps) {
+  useEscapeKey(onClose);
   const { lang, t } = useApp();
   const { status: packStatus } = useOfflinePack();
   const [showPack, setShowPack] = useState(false);
@@ -26,7 +28,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
   return (
     <div
       className="fixed top-16 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-      role="dialog"
+      role="dialog" aria-modal="true"
       aria-label="version"
     >
       <div className="space-y-3">
@@ -39,7 +41,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
             </svg>
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
         </div>
         {/* 离线教学包入口：放在更新日志上方，属于「应用级」设置 */}
         <button

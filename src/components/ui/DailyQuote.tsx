@@ -13,6 +13,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import { SCIENCE_QUOTES, type ScienceQuote } from '../../lib/quotes';
 import { DAILY_TIPS, type DailyTip } from '../../lib/daily-tips';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 interface DailyQuoteProps {
   lang: 'zh' | 'en';
@@ -36,6 +37,9 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
   const [idx, setIdx] = useState(dayIndex);
   const [showStory, setShowStory] = useState(false);
   const [storyModal, setStoryModal] = useState(false);
+
+  // Esc：两层浮层各自可退出（外链确认 / 故事弹窗）
+  useEscapeKey(() => setStoryModal(false), storyModal);
   // 「翻一翻」图标翻转动画：每次点击递增 key 强制重挂载，触发一次性翻转
   const [flipKey, setFlipKey] = useState(0);
   // 移动端故事是否被截断（决定是否显示「阅读完整故事」按钮）
@@ -43,6 +47,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
   const storyRef = useRef<HTMLParagraphElement>(null);
   // 彩蛋外链确认弹窗：点击 favicon 先确认再跳转
   const [pendingLink, setPendingLink] = useState<ScienceQuote['link'] | null>(null);
+  useEscapeKey(() => setPendingLink(null), !!pendingLink);
   const entry: DailyEntry = POOL[idx];
 
   // 渲染后测量：line-clamp-3 生效（scrollHeight > clientHeight）才算截断
@@ -185,7 +190,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
       {/* 彩蛋外链确认弹窗：确认后再跳转 100ye.irky.dev */}
       {pendingLink && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '前往外部网站' : 'Open external site'}
@@ -227,7 +232,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
       {/* 移动端完整故事浮窗（仅故事被截断时才可达） */}
       {storyModal && q && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '人物小故事' : 'Story'}
@@ -245,7 +250,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 type="button"
                 onClick={() => setStoryModal(false)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="w-7 h-7 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] rounded-md transition-colors touch-manipulation active:scale-95"
+                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

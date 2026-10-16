@@ -221,7 +221,7 @@ export default function TtsTestPage() {
                     {isPlaying && playState === 'loading' ? (
                       <span className="animate-spin inline-block w-2.5 h-2.5 border-2 border-[var(--fg)] border-t-transparent rounded-full" />
                     ) : isPlaying && playState === 'playing' ? (
-                      <span className="text-[9px]">●</span>
+                      <span className="text-[0.5625rem]">●</span>
                     ) : (
                       <span className="text-xs">▶</span>
                     )}
@@ -229,7 +229,7 @@ export default function TtsTestPage() {
 
                   <div className="flex-1 min-w-0 leading-tight">
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-[10px] text-[var(--muted)] shrink-0">{c.label}</span>
+                      <span className="text-[0.625rem] text-[var(--muted)] shrink-0">{c.label}</span>
                       <span className="text-xs text-[var(--fg)] whitespace-nowrap overflow-hidden">
                         <Formula tex={c.tex} />
                       </span>

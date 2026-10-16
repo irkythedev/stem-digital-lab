@@ -25,6 +25,7 @@ import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
 import PhysicsDiagram from '../components/ui/PhysicsDiagram';
+import { useEscapeKey } from '../lib/use-escape-key';
 
 const CATEGORIES: PhysicsFormulaCategory[] = ['mech', 'thermal', 'optics', 'sound', 'elec'];
 
@@ -49,6 +50,10 @@ export default function PhysicsFormulas() {
   const [cat, setCat] = useState<PhysicsFormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
   const [zoomDiagram, setZoomDiagram] = useState(false);
+
+  // Esc：先关最上层（放大层 → 详情层），与点击遮罩一致
+  useEscapeKey(() => setZoomDiagram(false), zoomDiagram);
+  useEscapeKey(() => setSelected(null), !!selected && !zoomDiagram);
   const { setAiCtx } = useAiContext();
   // AI 上下文：选中公式时注入公式/说明/单位/适用条件/相关常量数值
   useEffect(() => {
@@ -216,7 +221,7 @@ export default function PhysicsFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
             className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -237,7 +242,7 @@ export default function PhysicsFormulas() {
                 type="button"
                 onClick={() => setSelected(null)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="shrink-0 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -337,7 +342,7 @@ export default function PhysicsFormulas() {
 
       {/* 配图放大层（点击遮罩只关放大层，不关详情卡） */}
       {zoomDiagram && selected?.diagram && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-xs" onClick={() => setZoomDiagram(false)} role="presentation">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs" onClick={() => setZoomDiagram(false)} role="dialog" aria-modal="true" aria-label={lang === 'zh' ? '示意图放大' : 'Zoomed diagram'}>
           <div className="relative max-w-xl w-full max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="border border-[var(--border)] bg-white p-3 sm:p-4 flex items-center justify-center flex-1 overflow-hidden rounded-lg">
               <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[460px] max-h-[60dvh] object-contain" />

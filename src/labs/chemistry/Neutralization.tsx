@@ -648,7 +648,7 @@ export default function Neutralization() {
                       key={v}
                       type="button"
                       onClick={() => setPredTrend(v)}
-                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                         predTrend === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -751,7 +751,7 @@ export default function Neutralization() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: v as 's' | 'l' | 'none' }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -785,7 +785,7 @@ export default function Neutralization() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: v as 'ph7' | 'ph0' | 'none' }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -819,7 +819,7 @@ export default function Neutralization() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: v as 'steep' | 'mild' | 'none' }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -853,7 +853,7 @@ export default function Neutralization() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: v as 'basic' | 'acid' | 'none' }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'

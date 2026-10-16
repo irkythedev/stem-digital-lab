@@ -75,7 +75,7 @@ export default function App() {
     <AppProvider>
       <AiProvider>
       {showWelcome && <WelcomeDialog onClose={closeWelcome} initialTab={welcomeTab} />}
-      <div id="app-main" className="min-h-dvh w-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
+      <div id="app-main" className="min-h-dvh w-full flex flex-col justify-between py-4 sm:py-6 selection:bg-[var(--accent-light)] selection:text-[var(--fg)]">
         <SkipLink />
         <Header
           onOpenGuide={() => {
@@ -83,19 +83,25 @@ export default function App() {
             setShowWelcome(true);
           }}
         />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/subject/:subjectId" element={<SubjectPage />} />
-          <Route path="/periodic-table" element={<PeriodicTable />} />
-          <Route path="/physics-constants" element={<PhysicalConstants />} />
-          <Route path="/math-formulas" element={<MathFormulas />} />
-          <Route path="/physics-formulas" element={<PhysicsFormulas />} />
-          <Route path="/license" element={<LicensePage />} />
-          <Route path="/tts-test" element={<TtsTestPage />} />
-          <Route path="/lab/:labId" element={<LabPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        {/* 内容列：外壳不再限宽（使页头/页脚的分隔线能满幅通栏），
+            限宽与水平内边距改由这一层承担，正文列位置与宽度保持不变。
+            页头/页脚的内容容器用 px-6 sm:px-12 lg:px-14（= 本层 px + <main> 的 px-2 sm:px-6），
+            三区内容的左右边界因此严格同界。 */}
+        <div className="mx-auto w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/guide" element={<GuidePage />} />
+            <Route path="/subject/:subjectId" element={<SubjectPage />} />
+            <Route path="/periodic-table" element={<PeriodicTable />} />
+            <Route path="/physics-constants" element={<PhysicalConstants />} />
+            <Route path="/math-formulas" element={<MathFormulas />} />
+            <Route path="/physics-formulas" element={<PhysicsFormulas />} />
+            <Route path="/license" element={<LicensePage />} />
+            <Route path="/tts-test" element={<TtsTestPage />} />
+            <Route path="/lab/:labId" element={<LabPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </div>
         <Footer />
         <WechatShareOverlay />
         <FeedbackFab />

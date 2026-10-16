@@ -7,6 +7,7 @@
  * 未配置或离线时保存在本机队列，联网后自动补传。以右下角浮动卡片形式呈现。
  */
 import { useState } from 'react';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import { MessageSquare, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { makeFeedbackId, submitFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
@@ -51,6 +52,7 @@ const labels = {
 } as const;
 
 export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelProps) {
+  useEscapeKey(onClose);
   const { lang } = useApp();
   const l = labels[lang];
   const [rating, setRating] = useState<FeedbackRating | undefined>();
@@ -86,13 +88,13 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/40 sm:bg-transparent backdrop-blur-[1px] sm:backdrop-blur-none"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/45 sm:bg-black/20 backdrop-blur-[1px] sm:backdrop-blur-none"
       onClick={onClose}
     >
       <div
         className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="dialog" aria-modal="true"
         aria-label={type === 'experiment' ? l.experimentTitle : l.projectTitle}
       >
         <div className="space-y-3">
@@ -101,7 +103,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
               <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
               {type === 'experiment' ? l.experimentTitle : l.projectTitle}
             </h2>
-            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="rounded-md p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
           </div>
           {done ? (
             <div className="flex items-center justify-between gap-3 text-sm text-[var(--fg)]">

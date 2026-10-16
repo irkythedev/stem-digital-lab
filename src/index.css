@@ -367,6 +367,15 @@ button,
   -webkit-user-select: none;
 }
 
+/* 手型光标：浏览器对 <button> 默认给箭头（cursor: default），
+   而站内少数按钮点明了 cursor-pointer —— 同为按钮两种光标。
+   此处统一，role="button" 一并覆盖（判定见审计报告 A#5）。
+   注：input[type=range] 的 thumb 用 grab/grabbing，是伪元素规则，不受本条影响。 */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 button:active:not(:disabled),
 .btn:active:not(:disabled),
 [role="button"]:active:not([aria-disabled="true"]) {

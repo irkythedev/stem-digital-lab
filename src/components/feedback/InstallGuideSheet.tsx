@@ -15,6 +15,7 @@
  */
 import { CheckCircle2, ExternalLink, MoreHorizontal, MoreVertical, Share, SquarePlus } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 export type InstallGuideKind = 'ios' | 'wechat' | 'webview' | 'menu';
 
@@ -59,6 +60,7 @@ function TimelineStep({
 }
 
 export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetProps) {
+  useEscapeKey(onClose);
   const { t, lang } = useApp();
 
   const title =
@@ -71,13 +73,13 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/40 sm:bg-transparent backdrop-blur-[1px] sm:backdrop-blur-none"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 sm:bg-black/20 backdrop-blur-[1px] sm:backdrop-blur-none"
       onClick={onClose}
     >
       <div
         className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="dialog" aria-modal="true"
         aria-label={title}
       >
         <div className="space-y-3">
@@ -108,7 +110,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
               onClick={onClose}
               aria-label={lang === 'zh' ? '关闭' : 'Close'}
               title={lang === 'zh' ? '关闭' : 'Close'}
-              className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]"
+              className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none"
             >
               ×
             </button>

@@ -30,9 +30,9 @@ export default function Footer() {
   const archUrl = `/architecture.html?theme=${archTheme}`;
 
   return (
-    <footer className="relative w-full px-2 sm:px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
-      {/* 顶线同 Header：内缩伪线，与正文列左右严格对齐（超出量 0） */}
-      <span aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-0 border-t border-[var(--border)] sm:inset-x-6" />
+    <footer className="w-full border-t border-[var(--border)] py-6 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+      {/* 顶线满幅通栏：border 落在满宽 footer 上；内容由内层容器收回正文列（同 Header 算法） */}
+      <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-col sm:flex-row justify-between items-center gap-4 px-6 sm:px-12 lg:px-14">
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
         {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
         <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
@@ -81,7 +81,7 @@ export default function Footer() {
               {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
               <span className="relative inline-flex">
                 <Library className="w-4 h-4" />
-                <span className="absolute -top-1.5 -right-1.5 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
+                <span className="absolute -top-2.5 -right-1.5 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
                   {t.works.length}
                 </span>
               </span>
@@ -108,7 +108,38 @@ export default function Footer() {
       </div>
 
       <div className="flex flex-col items-center gap-1.5 text-center">
+        {/* 顺序：文本项在前、图标项在后（纯文字 → 小图标，视觉过渡平滑）。
+            安装引导按钮渲染为文字按钮，故并入文本组（在 AGPL-3.0 之后）。 */}
         <div className="flex items-center gap-5 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setShowDisclaimer((v) => !v)}
+            aria-expanded={showDisclaimer}
+            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+          >
+            {t.disclaimerLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowLicense(true)}
+            title="AGPL-3.0"
+            aria-label="AGPL-3.0"
+            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+          >
+            {t.licenseLabel}
+          </button>
+          <InstallAppButton />
+          {/* 运行架构：新标签打开脱敏后的架构演示页（完整查看器，非站内 iframe 裁剪版） */}
+          <a
+            href={archUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={t.architecture}
+            aria-label={t.architecture}
+            className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
+          >
+            <Network className="w-3.5 h-3.5" />
+          </a>
           {/* 分享：icon + hover 显示「分享」；二维码从按钮位置向上弹出（anchored popover，移动端/PC 一致） */}
           <span className="relative">
             <button
@@ -122,42 +153,13 @@ export default function Footer() {
             </button>
             {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} anchored />}
           </span>
-          <InstallAppButton />
-          {/* 运行架构：新标签打开脱敏后的架构演示页（完整查看器，非站内 iframe 裁剪版） */}
-          <a
-            href={archUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={t.architecture}
-            aria-label={t.architecture}
-            className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
-          >
-            <Network className="w-3.5 h-3.5" />
-          </a>
-          <button
-            type="button"
-            onClick={() => setShowDisclaimer((v) => !v)}
-            aria-expanded={showDisclaimer}
-            className="rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
-          >
-            {t.disclaimerLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowLicense(true)}
-            title="AGPL-3.0"
-            aria-label="AGPL-3.0"
-            className="rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
-          >
-            {t.licenseLabel}
-          </button>
         </div>
         {showDisclaimer && (
           <span className="max-w-xs normal-case leading-snug">{t.disclaimer}</span>
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-2 sm:gap-y-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-2.5 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
           target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
@@ -197,6 +199,7 @@ export default function Footer() {
             <path d={GITHUB_PATH} />
           </svg>
         </ExternalLinkConfirm>
+      </div>
       </div>
       {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
     </footer>

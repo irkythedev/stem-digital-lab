@@ -577,7 +577,7 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredOpen(v)}
-                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                         predOpen === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -601,7 +601,7 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredVertex(v)}
-                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                         predVertex === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -626,7 +626,7 @@ export default function Quadratic() {
                       key={v}
                       type="button"
                       onClick={() => setPredIntercept(v)}
-                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                      className={`text-center text-xs px-3 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                         predIntercept === v ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -733,7 +733,7 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: v }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -770,7 +770,7 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: v }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -807,7 +807,7 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: v }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
@@ -844,7 +844,7 @@ export default function Quadratic() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: v }))}
-                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors whitespace-nowrap ${
+                        className={`text-center text-xs px-2.5 py-2 border rounded-lg transition-colors min-h-[44px] whitespace-normal break-words leading-snug ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'

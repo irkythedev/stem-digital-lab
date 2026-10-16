@@ -23,6 +23,7 @@ import AskQuizButton from '../components/ai/AskQuizButton';
 import FormulaDiagram from '../components/ui/FormulaDiagram';
 import FunctionDiagram from '../components/ui/FunctionDiagram';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
+import { useEscapeKey } from '../lib/use-escape-key';
 
 const CATEGORIES: FormulaCategory[] = ['algebra', 'geometry', 'function', 'stats'];
 
@@ -58,6 +59,10 @@ export default function MathFormulas() {
   const [cat, setCat] = useState<FormulaCategory | 'all'>('all');
   // 配图放大预览（null=未打开）
   const [zoomDiagram, setZoomDiagram] = useState(false);
+
+  // Esc：先关最上层（放大层 → 详情层），与点击遮罩一致
+  useEscapeKey(() => setZoomDiagram(false), zoomDiagram);
+  useEscapeKey(() => setSelected(null), !!selected && !zoomDiagram);
   const { setAiCtx } = useAiContext();
   // AI 上下文：选中公式时注入公式/说明/易错/常量
   useEffect(() => {
@@ -199,7 +204,7 @@ export default function MathFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
             className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -220,7 +225,7 @@ export default function MathFormulas() {
                 type="button"
                 onClick={() => setSelected(null)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="shrink-0 w-8 h-8 flex items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--card-bg)] rounded-lg transition-colors touch-manipulation active:scale-95"
+                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -293,7 +298,7 @@ export default function MathFormulas() {
       {/* 配图放大预览（全屏） */}
       {zoomDiagram && selected?.diagram && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-3 sm:p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
           onClick={() => setZoomDiagram(false)}
           role="dialog"
           aria-label={`${selected.name.zh} ${selected.name.en}`}

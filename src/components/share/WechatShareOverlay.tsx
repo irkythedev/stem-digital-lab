@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { isWechat } from '../../lib/is-wechat';
 import { useApp } from '../../lib/app-context';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 const SESSION_KEY = 'stem-wechat-overlay';
 
@@ -28,6 +29,9 @@ export default function WechatShareOverlay() {
     sessionStorage.setItem(SESSION_KEY, '1');
     setShow(false);
   };
+
+  // Esc 与点按同样退出（全屏层无 ✕，键盘用户原本无出口）
+  useEscapeKey(dismiss, show);
 
   if (!show) return null;
 

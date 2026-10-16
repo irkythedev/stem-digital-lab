@@ -10,6 +10,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { isWechat } from '../../lib/is-wechat';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 interface ShareDialogProps {
   url: string;
@@ -23,6 +24,7 @@ interface ShareDialogProps {
 }
 
 export default function ShareDialog({ url, onClose, title, text, anchored = false }: ShareDialogProps) {
+  useEscapeKey(onClose);
   const { t } = useApp();
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
@@ -75,7 +77,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {t.share}</h2>
-        <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="p-1.5 -m-1.5 text-lg leading-none text-[var(--muted)] hover:text-[var(--fg)]">×</button>
+        <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
       </div>
 
       {/* 二维码 */}
@@ -122,7 +124,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
         <div
           className="absolute bottom-full mb-2.5 left-0 sm:left-1/2 sm:-translate-x-1/2 z-[51] w-[min(18rem,calc(100vw-2rem))] max-h-[70dvh] overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-lg"
           onClick={(e) => e.stopPropagation()}
-          role="dialog"
+          role="dialog" aria-modal="true"
           aria-label={t.share}
         >
           <span
@@ -138,13 +140,13 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
   // 默认模式：移动端底部 sheet / 桌面右下角卡片
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/40 sm:bg-transparent backdrop-blur-[1px] sm:backdrop-blur-none"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/45 sm:bg-black/20 backdrop-blur-[1px] sm:backdrop-blur-none"
       onClick={onClose}
     >
       <div
         className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="dialog" aria-modal="true"
         aria-label={t.share}
       >
         {body}

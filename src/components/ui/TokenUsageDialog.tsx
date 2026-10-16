@@ -18,6 +18,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import { buildDailyBars, tokenUsageModelTotal, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import { translations } from '../../lib/i18n';
 import TokenUsageChart, { OTHER_COLOR } from './TokenUsageChart';
@@ -38,6 +39,7 @@ function defaultWindowDays(): number {
 }
 
 export default function TokenUsageDialog({ usage, onClose, lang }: TokenUsageDialogProps) {
+  useEscapeKey(onClose);
   useLockBodyScroll(true);
   const u = translations[lang].usage;
   const [windowDays, setWindowDays] = useState<number>(defaultWindowDays);
@@ -84,7 +86,7 @@ export default function TokenUsageDialog({ usage, onClose, lang }: TokenUsageDia
               {u.totalPrefix}{total.toLocaleString()}{u.totalSuffix}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label={u.close} title={u.close} className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} aria-label={u.close} title={u.close} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
         </div>
 
         {/* 堆叠柱总览（没有任何按天记录时不渲染空图，只留空态文案） */}

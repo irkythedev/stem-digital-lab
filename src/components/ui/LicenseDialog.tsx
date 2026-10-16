@@ -8,6 +8,7 @@
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import { AGPL_LICENSE_TEXT } from '../../lib/license-text';
 
 interface LicenseDialogProps {
@@ -16,6 +17,7 @@ interface LicenseDialogProps {
 
 export default function LicenseDialog({ onClose }: LicenseDialogProps) {
   useLockBodyScroll(true);
+  useEscapeKey(onClose);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="AGPL-3.0 License">
@@ -35,7 +37,7 @@ export default function LicenseDialog({ onClose }: LicenseDialogProps) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="p-1.5 -m-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none"
+            className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none"
           >×</button>
         </div>
         {/* 协议全文（滚动） */}

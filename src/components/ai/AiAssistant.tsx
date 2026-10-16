@@ -2101,7 +2101,7 @@ export default function AiAssistant() {
       {/* 移动端遮罩层：点击空白处安全关闭，同时给软键盘弹出提供稳定视口边界 */}
       {isMobile && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-none sm:bg-black/40 sm:backdrop-blur-[1px]"
+          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-none sm:backdrop-blur-[1px]"
           onClick={() => { resetConversation(); setOpen(false); setPending(null); }}
           aria-hidden="true"
         />

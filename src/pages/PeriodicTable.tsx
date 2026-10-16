@@ -672,6 +672,8 @@ export default function PeriodicTable() {
   const mainRows = ELEMENTS.filter((e) => e.y <= 7);
   const lanthanides = ELEMENTS.filter((e) => e.period === 6 && e.y === 9);
   const actinides = ELEMENTS.filter((e) => e.period === 7 && e.y === 10);
+  /** 检索无命中：与数学公式/物理公式/物理常量三页同构的空状态判据 */
+  const noSearchMatch = !!queryLower && !ELEMENTS.some((e) => matchN(e));
 
   /** 跟读当前预设与元素（用于进度显示 + 格子高亮） */
   const recitePreset = recite ? RECITE_PRESETS.find((p) => p.id === recite.presetId) : undefined;
@@ -780,6 +782,13 @@ export default function PeriodicTable() {
           </span>
         ))}
       </div>
+
+      {/* 检索无命中提示：与 MathFormulas / PhysicsFormulas / PhysicalConstants 完全同构 */}
+      {noSearchMatch && (
+        <p className="mt-8 text-center text-xs serif-font italic text-[var(--muted)]">
+          {lang === 'zh' ? '没有匹配的元素，换个关键词试试。' : 'No matching element. Try another keyword.'}
+        </p>
+      )}
 
       {/* 中考跟读（播放器：选预设 → 设置次数/间隔 → 播放，右侧进度条 + 播放控制） */}
       <div className="recite-panel mb-5 border border-[var(--border)] bg-[var(--card-bg)] p-3">
@@ -1196,7 +1205,7 @@ export default function PeriodicTable() {
       {/* 元素详情卡 */}
       {selected && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-2 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]"
           onClick={() => setSelected(null)}
         >
           <div
@@ -1756,7 +1765,7 @@ export default function PeriodicTable() {
       {/* 实物照片放大预览（全屏） */}
       {photoZoom && selected && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
           onClick={() => setPhotoZoom(false)}
           role="dialog"
           aria-label={`${selected.zh} ${selected.symbol}`}
