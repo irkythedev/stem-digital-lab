@@ -70,8 +70,8 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
   const storyText = q ? (lang === 'zh' ? q.story.zh : q.story.en) : '';
 
   return (
-    <div className="mb-8 w-full max-w-2xl mx-auto">
-      <div className="flex items-center justify-between mb-2">
+    <div className="dq-root mb-8 w-full max-w-2xl mx-auto">
+      <div className="dq-head flex items-center justify-between mb-2">
         <span className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
           // {lang === 'zh' ? '每日科学' : 'Daily Science'}
         </span>
@@ -87,7 +87,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
 
       {tip ? (
         /* 考点速记卡 */
-        <blockquote className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2.5 sm:px-5 sm:py-4">
+        <blockquote className="dq-quote border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2.5 sm:px-5 sm:py-4">
           <p className="text-xs sm:text-base serif-font text-[var(--fg)] leading-relaxed">
             {lang === 'zh' ? tip.zh : tip.en}
           </p>
@@ -103,7 +103,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
         </blockquote>
       ) : (
         /* 名言 / 成就卡 */
-        <blockquote className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2.5 sm:px-5 sm:py-4">
+        <blockquote className="dq-quote border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2.5 sm:px-5 sm:py-4">
           {q && q.quote ? (
             <p className="text-xs sm:text-base serif-font italic text-[var(--fg)] leading-relaxed">
               {lang === 'zh' ? q.quote.zh : q.quote.en}

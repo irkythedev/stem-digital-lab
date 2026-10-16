@@ -979,6 +979,63 @@ input[type="range"]::-moz-range-thumb:active {
   outline-offset: 2px;
 }
 
+/* ── 短视口紧凑（14" MacBook Pro 等「宽而矮」笔记本）──────────────────
+   病灶：宏环节奏令牌 --sp-block = clamp(2.5rem, 4vw, 3.5rem) 随**宽度**伸缩，
+   1512 宽（14" MBP 默认）取到最大值 56px；而同一台机器的可用高度只有 ~790px。
+   即「宽度换来的最大留白」被施加到「高度最紧张」的屏幕上：4 处章节间距共 224px，
+   页脚被挤出首屏 275px（实测 1512×790：scrollHeight 1065 / innerHeight 790）。
+
+   处置：只在「桌面宽度 且 视口高度 ≤ 940px」时收紧留白与卡片内边距。
+   · 不改字号（--t-hero/--t-lead 等一律不动）
+   · 不删任何内容（区块、卡片、图标、文案全保留）
+   · 断点取 940px：覆盖常见笔记本（≤900）又远离 1080p，1080p/2K 完全不受影响，
+     保留大屏的舒展节奏。
+   · Footer 的 padding-bottom 由内联 style 给出（含安全区），故用 !important 覆盖，
+     并保留 env(safe-area-inset-bottom)。 */
+@media (min-width: 1024px) and (max-height: 940px) {
+  :root {
+    --sp-block: 0.875rem; /* 56 → 14px：4 处章节间距共省 168px */
+  }
+  #app-main {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem; /* 32 → 8px */
+  }
+  #app-main > header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem; /* 28 → 16px */
+  }
+  #app-main > footer {
+    padding-top: 0.75rem !important;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)) !important; /* 48 → 24px */
+  }
+  /* 首页标题区：标题行与副标题的下边距各收一档 */
+  .home-title > div {
+    margin-bottom: 0.25rem;
+  }
+  .home-title > p.t-lead {
+    margin-bottom: 0.25rem;
+  }
+  /* 学科卡片：上下内边距 + 卡内首块下边距 */
+  .home-subjects > button {
+    padding-top: 0.625rem;
+    padding-bottom: 0.75rem;
+  }
+  .home-subjects > button > div:first-child {
+    margin-bottom: 0.375rem;
+  }
+  /* 每日科学：外层下边距 + 头部间距 + 引用块内边距 */
+  .dq-root {
+    margin-bottom: 0.75rem;
+  }
+  .dq-head {
+    margin-bottom: 0.25rem;
+  }
+  .dq-quote {
+    padding-top: 0.625rem;
+    padding-bottom: 0.625rem;
+  }
+}
+
 /* 焦点环裁切修正（实测：首页学科卡/实验卡等 19 个可聚焦元素位于 .overflow-hidden 容器内，
    外置 4px 焦点环被裁掉，键盘用户看不到任何指示）。
    命中该类祖先时把环改为内缩绘制，仍在元素边界内可见。 */

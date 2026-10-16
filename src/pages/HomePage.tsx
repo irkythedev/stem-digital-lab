@@ -75,7 +75,7 @@ export default function HomePage() {
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
       {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
-      <div className="rise mb-[var(--sp-block)] flex flex-col items-start max-w-2xl">
+      <div className="rise home-title mb-[var(--sp-block)] flex flex-col items-start max-w-2xl">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">
           <h1 className="t-hero serif-font text-[var(--fg)]">
             {t.brandName}
@@ -95,7 +95,7 @@ export default function HomePage() {
       </div>
 
       {/* ── 学科切换卡片 ── */}
-      <div className="rise rise-2 grid grid-cols-3 gap-3 sm:gap-6 w-full mb-[var(--sp-block)]">
+      <div className="rise rise-2 home-subjects grid grid-cols-3 gap-3 sm:gap-6 w-full mb-[var(--sp-block)]">
         {subjectList.map((subject) => {
           const meta = t.subjects[subject.id];
           const isActive = activeSubject === subject.id;
@@ -290,7 +290,7 @@ export default function HomePage() {
       </div>
 
       {/* ── 每日科学：名人名言与故事（当天固定 + 可换一条） ── */}
-      <div className="rise rise-3">
+      <div className="rise rise-3 home-daily">
         <DailyQuote lang={lang} />
       </div>
     </main>
