@@ -74,7 +74,11 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   };
 
   return (
-    <header className="flex justify-between items-center w-full pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] border-b border-[var(--border)]/70 transition-colors duration-[var(--dur-base)]">
+    <header className="relative flex justify-between items-center w-full px-2 sm:px-6 pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)]">
+      {/* 底线不再用 border-b（会横贯外壳整幅，比正文列左右各宽 24px）。
+          改为内缩伪线：内缩量与 <main> 的 px-2 sm:px-6 同源，四条视口下超出量恒为 0。
+          absolute 元素脱离流，不参与 justify-between。 */}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-2 bottom-0 border-b border-[var(--border)]/70 sm:inset-x-6" />
       <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors tap-area" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}

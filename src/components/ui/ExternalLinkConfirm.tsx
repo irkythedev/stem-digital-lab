@@ -77,13 +77,16 @@ export default function ExternalLinkConfirm({
           <p className="text-[0.6875rem] leading-snug text-[var(--fg)]">{hint}</p>
           <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all">{target.url}</p>
           <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => window.open(target.url, '_blank', 'noopener,noreferrer')}
+            {/* 用真锚点而非 window.open：target/rel 显式落在 DOM 上，
+                键盘 Enter、中键、右键「新标签打开」都成立，禁用 JS 时仍可跳转。 */}
+            <a
+              href={target.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-2.5 py-1 text-[0.625rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
             >
               {openLabel}
-            </button>
+            </a>
             <button
               type="button"
               onClick={() => setOpen(false)}

@@ -5,7 +5,7 @@
  * 页脚：作者信息 + 免责声明 + Gitee 外链 + 版权。
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
-import { GITHUB_PATH, GITEE_PATH } from '../../lib/brand-icons';
+import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
 import { useState } from 'react';
 import { Share2, Library, Mail, Network } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
@@ -30,7 +30,9 @@ export default function Footer() {
   const archUrl = `/architecture.html?theme=${archTheme}`;
 
   return (
-    <footer className="w-full py-6 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <footer className="relative w-full px-2 sm:px-6 py-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+      {/* 顶线同 Header：内缩伪线，与正文列左右严格对齐（超出量 0） */}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-2 top-0 border-t border-[var(--border)] sm:inset-x-6" />
       <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
         {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
         <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
@@ -158,7 +160,7 @@ export default function Footer() {
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-2 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
-          target={{ url: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues', name: 'Gitee' }}
+          target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
           hint={t.externalLinkHint}
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}
@@ -173,11 +175,11 @@ export default function Footer() {
             className="flex-shrink-0"
             aria-hidden="true"
           >
-            <path d="{GITEE_PATH}" />
+            <path d={GITEE_PATH} />
           </svg>
         </ExternalLinkConfirm>
         <ExternalLinkConfirm
-          target={{ url: 'https://github.com/irkythedev/stem-digital-lab/issues', name: 'GitHub' }}
+          target={{ url: ISSUE_URLS.github, name: 'GitHub' }}
           hint={t.externalLinkHint}
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}
@@ -192,7 +194,7 @@ export default function Footer() {
             className="flex-shrink-0"
             aria-hidden="true"
           >
-            <path d="{GITHUB_PATH}" />
+            <path d={GITHUB_PATH} />
           </svg>
         </ExternalLinkConfirm>
       </div>
