@@ -6,6 +6,7 @@
  * 样式说明：1px 描边 var(--fg)、card-bg 填充、无阴影无渐变。
  * 8 例经典电路图样式共享这些零件，避免重复绘制。
  */
+import { FLOW_DOT_R, FLOW_DOT_OPACITY } from './use-flow-dots';
 import { useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useApp } from '../../../lib/app-context';
 
@@ -337,8 +338,8 @@ export function HouseholdCircuit({
             <Bulb cx={bx} cy={bulbY} glow={glow[i] ?? 0} label={`L${i + 1}=${effR[i]}Ω`} labelY={bulbY + 24} />
             {/* 电流小点：闭合且有电流时沿支路流动 */}
             {current > 0.01 && (
-              <g fill="var(--fg)" opacity="0.85">
-                <circle r="2.4">
+              <g fill="var(--fg)" opacity={FLOW_DOT_OPACITY}>
+                <circle r={FLOW_DOT_R}>
                   <animateMotion
                     dur={`${Math.max(0.45, 2.2 / current).toFixed(2)}s`}
                     begin={`${i * 0.5}s`}

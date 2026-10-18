@@ -23,7 +23,7 @@ import ExploreStage, { type Observation, type ExploreCard } from '../../componen
 import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
 import { BladeSwitch, Bulb, Rheostat, rheostatWiperX } from '../../components/lab/circuit/CircuitParts';
-import { useFlowDots, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
+import { useFlowDots, FLOW_DOT_R, FLOW_DOT_OPACITY, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import EngineBadge from '../../components/lab/EngineBadge';
 import Formula from '../../components/ui/Formula';
@@ -711,9 +711,9 @@ export default function Ohm() {
                  路径走变阻器「一上一下」的实际导电通路（见上方 flowPoints），滑片拖动时连续跟随、不跳变；
                  开关断开 / 电流过小时整组不渲染。 */}
               {effectiveI > 0.01 && (
-                <g fill="var(--fg)" opacity="0.85">
+                <g fill="var(--fg)" opacity={FLOW_DOT_OPACITY}>
                   {[0, 1.1].map((offset, di) => (
-                    <circle key={offset} r="2.6" cx={flowPoints[0][0]} cy={flowPoints[0][1]} ref={setFlowDotRef(0, di)} />
+                    <circle key={offset} r={FLOW_DOT_R} cx={flowPoints[0][0]} cy={flowPoints[0][1]} ref={setFlowDotRef(0, di)} />
                   ))}
                 </g>
               )}

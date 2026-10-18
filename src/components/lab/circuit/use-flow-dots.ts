@@ -14,6 +14,14 @@
 
 import { useEffect, useRef } from 'react';
 
+/**
+ * 电流流动小点的半径与不透明度（唯一事实源）。
+ * 必须与接线圆点（r=2.6、完全不透明）拉开层级：小点表示「流动的电荷」，
+ * 若与节点圆点同尺寸同实色，静态截图/录屏时会被误认为残留的接线柱或焊盘。
+ */
+export const FLOW_DOT_R = 2.0;
+export const FLOW_DOT_OPACITY = 0.6;
+
 export type FlowPolyline = ReadonlyArray<readonly [number, number]>;
 
 export interface FlowTrack {

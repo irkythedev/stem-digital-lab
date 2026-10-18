@@ -405,13 +405,19 @@ function genSeries(config: StyleConfig): GeneratedTopology {
   const elems = config.elements;
   const n = elems.length;
   const r = LAMP_R;
+  /**
+   * 末位是否为滑动变阻器。右端竖线的起点高度必须与「出线段」同源：
+   * 有变阻器时自右上金属杆高度(44)下行，否则自主回路 y=60 直接直角下行——
+   * 若写成无条件 60+RHEO_ROD_DY，无变阻器的串联样式会在右上角露出一截悬空竖线（幽灵图元）。
+   */
+  const lastIsRheo = elems[n - 1].kind === 'rheostat';
   const wires: MeasurableWire[] = [
     { id: 'dry-left', x1: BATT_X, y1: 60, x2: SW_X1, y2: 60, current: 'i0' },
     { id: 'dry-mid', x1: SW_X2, y1: 60, x2: NODE_X, y2: 60, current: 'i0' },
     { id: 'dry-batt-top', x1: BATT_X, y1: 60, x2: BATT_X, y2: 94, current: 'i0' },
     { id: 'dry-batt-bot', x1: BATT_X, y1: 106, x2: BATT_X, y2: 140, current: 'i0' },
-    // 右端竖线自金属杆高度(44)下到回流线，与变阻器出线段闭合
-    { id: 'dry-right', x1: RIGHT_X, y1: 60 + RHEO_ROD_DY, x2: RIGHT_X, y2: 140, current: 'i0' },
+    // 右端竖线：末位是变阻器时自金属杆高度(44)下到回流线（与出线段闭合），否则自 y=60 直角下行
+    { id: 'dry-right', x1: RIGHT_X, y1: lastIsRheo ? 60 + RHEO_ROD_DY : 60, x2: RIGHT_X, y2: 140, current: 'i0' },
     { id: 'dry-bottom', x1: RIGHT_X, y1: 140, x2: BATT_X, y2: 140, current: 'i0' },
   ];
   const comps: MeasurableComp[] = [
@@ -440,7 +446,7 @@ function genSeries(config: StyleConfig): GeneratedTopology {
     prevX = right;
   });
   // 末元件为滑动变阻器时走「一上一下」：出线取右上金属杆端子（上移 |RHEO_ROD_DY|）
-  if (elems[n - 1].kind === 'rheostat') {
+  if (lastIsRheo) {
     const rodY = 60 + RHEO_ROD_DY;
     wires.push({ id: `seg${n}`, x1: prevX, y1: rodY, x2: RIGHT_X, y2: rodY, current: 'i0' });
   } else {

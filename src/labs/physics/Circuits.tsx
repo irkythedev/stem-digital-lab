@@ -25,7 +25,7 @@ import MeterProbe, { type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
 import Formula from '../../components/ui/Formula';
 import { Bulb, BladeSwitch, Battery, HouseholdCircuit, Fuse, Rheostat, FixedMeter, RHEO_ROD_DY, RHEO_W, rheostatWiperX } from '../../components/lab/circuit/CircuitParts';
-import { useFlowDots, parsePolyline, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
+import { useFlowDots, FLOW_DOT_R, FLOW_DOT_OPACITY, parsePolyline, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
 
 /**
  * 串联电流小点回路（折线）。末位为滑动变阻器时必须走「A(左下) → 接入线圈段 → 滑片 P → 金属杆 → D(右上)」的实际导电通路，
@@ -627,12 +627,12 @@ export default function Circuits() {
                     <g
                       key={`flow-${styleId}-${pi}`}
                       fill="var(--fg)"
-                      opacity="0.85"
+                      opacity={FLOW_DOT_OPACITY}
                     >
                       {[0, 1.1].map((offset, di) => (
                         <circle
                           key={offset}
-                          r="2.4"
+                          r={FLOW_DOT_R}
                           cx={flowTracks[pi].points[0][0]}
                           cy={flowTracks[pi].points[0][1]}
                           ref={setFlowDotRef(pi, di)}

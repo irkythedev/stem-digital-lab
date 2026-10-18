@@ -207,7 +207,7 @@ import * as IC from './components/lab/InteractiveCircle';
 import * as CP2 from './components/lab/CoordPlane';
 import * as BENCH from './components/lab/LensBench';
 import * as CP from './components/lab/circuit/CircuitParts';
-import { RHEO_ROD_DY as TOPO_RHEO_ROD_DY } from './labs/physics/circuitStyles';
+import { RHEO_ROD_DY as TOPO_RHEO_ROD_DY, genTopology as TOPO_GEN, RIGHT_X as TOPO_RIGHT_X } from './labs/physics/circuitStyles';
 import { quadraticY, sampleQuadratic } from './labs/math/quadratic-core';
 import {
   imageV as stemImageV,
@@ -6028,7 +6028,19 @@ describe('滑动变阻器「一上一下」结构与直角走线守卫', () => {
     assert.match(TOPO, /elems\[n - 1\]\.kind === 'rheostat'/, '串联网未对末位变阻器特殊处理');
     const rodY = 60 + TOPO_RHEO_ROD_DY;
     assert.strictEqual(rodY, 44, '金属杆高度应为 44');
-    assert.match(TOPO, /x1: RIGHT_X, y1: 60 \+ RHEO_ROD_DY, x2: RIGHT_X, y2: 140/, '右端竖线未自金属杆高度起');
+    // 行为断言（取代原「源码正则」）：右端竖线起点必须与末位元件同源 ——
+    // 末位是变阻器时自金属杆高度(44)起（与出线段闭合），否则自主回路 y=60；
+    // 原正则把「无条件自 60+RHEO_ROD_DY 起」写死，等于放行了无变阻器样式的悬空露头。
+    for (const st of CIRCUIT_STYLES.filter((x) => x.kind === 'series')) {
+      const topo = TOPO_GEN(st);
+      const right = topo.wires.find((w) => w.id === 'dry-right');
+      assert.ok(right, `${st.id} 缺右端竖线`);
+      const lastKind = st.elements[st.elements.length - 1].kind;
+      assert.strictEqual(right!.y1, lastKind === 'rheostat' ? rodY : 60,
+        `${st.id}：右端竖线起点应为 ${lastKind === 'rheostat' ? rodY : 60}（末位元件 ${lastKind}），否则右上角出现悬空露头`);
+      assert.strictEqual(right!.x1, TOPO_RIGHT_X, `${st.id}：右端竖线须落在汇合母线 x 上`);
+      assert.strictEqual(right!.x2, TOPO_RIGHT_X, `${st.id}：右端竖线须垂直`);
+    }
     for (const [x1, y1, x2, y2] of [[268 + 17, rodY, 290, rodY], [290, rodY, 290, 140]]) {
       assert.ok(x1 === x2 || y1 === y2, '串联网出线非 90° 直角');
     }
