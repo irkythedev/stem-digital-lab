@@ -167,7 +167,7 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
     kind: 'series',
     elements: [
       { kind: 'bulb', r: 10, label: '灯泡', x: 200 },
-      { kind: 'rheostat', r: 15, label: 'R_p', x: 268 },
+      { kind: 'rheostat', r: 15, label: 'Rₚ', x: 268 },
     ],
     branchSwitches: false,
     fuse: false,
@@ -176,7 +176,7 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
     copy: {
       title: { zh: '滑动变阻器调光', en: 'Rheostat dimmer' },
       predict: {
-        question: { zh: '串联电路里变阻器阻值 R_p 增大，灯泡会？', en: 'R_p increases in series — the bulb gets?' },
+        question: { zh: '串联电路里变阻器阻值 Rₚ 增大，灯泡会？', en: 'Rₚ increases in series — the bulb gets?' },
         options: [
           { zh: '变暗', en: 'Dimmer' },
           { zh: '变亮', en: 'Brighter' },
@@ -185,15 +185,15 @@ export const CIRCUIT_STYLES: StyleConfig[] = [
         hint: { zh: '猜完，就可以揭示电路', en: 'After guessing, reveal the circuit' },
       },
       cards: [
-        { title: { zh: '调光实验', en: 'Dimming experiment' }, prompt: { zh: '拖动 R_p 滑块，观察灯泡亮度与电流表读数的变化。', en: 'Drag the R_p slider — watch brightness and current.' } },
-        { title: { zh: '变阻器的作用', en: 'Role of the rheostat' }, prompt: { zh: 'R_p 增大时电流怎么变？总电阻怎么变？', en: 'When R_p grows, how do current and total R change?' } },
+        { title: { zh: '调光实验', en: 'Dimming experiment' }, prompt: { zh: '拖动 Rₚ 滑块，观察灯泡亮度与电流表读数的变化。', en: 'Drag the Rₚ slider — watch brightness and current.' } },
+        { title: { zh: '变阻器的作用', en: 'Role of the rheostat' }, prompt: { zh: 'Rₚ 增大时电流怎么变？总电阻怎么变？', en: 'When Rₚ grows, how do current and total R change?' } },
       ],
       conclude: [
-        { question: { zh: 'R_p 增大，电路总电流？', en: 'R_p increases — total current?' }, options: [{ zh: '减小', en: 'Decreases' }, { zh: '增大', en: 'Increases' }], correctIndex: 0 },
+        { question: { zh: 'Rₚ 增大，电路总电流？', en: 'Rₚ increases — total current?' }, options: [{ zh: '减小', en: 'Decreases' }, { zh: '增大', en: 'Increases' }], correctIndex: 0 },
         { question: { zh: '滑动变阻器在这里的作用是？', en: 'The rheostat acts as?' }, options: [{ zh: '改变电路电流（调光）', en: 'Current control (dimming)' }, { zh: '保护灯泡不受温度影响', en: 'Thermal protection' }], correctIndex: 0 },
       ],
       tips: [
-        { zh: '串联变阻器 R_p 增大 → 总电阻增大 → 电流减小 → 灯变暗', en: 'R_p up → total R up → I down → bulb dims' },
+        { zh: '串联变阻器 Rₚ 增大 → 总电阻增大 → 电流减小 → 灯变暗', en: 'Rₚ up → total R up → I down → bulb dims' },
         { zh: '滑动变阻器通过改变接入电阻丝长度改变阻值', en: 'Rheostat changes R via wiper position' },
         { zh: '调光台灯就是串联变阻器原理', en: 'Dimmer lamps use series rheostats' },
       ],

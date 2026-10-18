@@ -15,7 +15,7 @@
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
 import { useMemo, useState, type MouseEvent } from 'react';
-import { Check, RotateCcw, X } from 'lucide-react';
+import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { useApp } from '../../lib/app-context';
@@ -23,9 +23,30 @@ import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MeterProbe, { type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
-import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
-import { Bulb, BladeSwitch, Battery, HouseholdCircuit, Fuse, Rheostat, FixedMeter } from '../../components/lab/circuit/CircuitParts';
+import { Bulb, BladeSwitch, Battery, HouseholdCircuit, Fuse, Rheostat, FixedMeter, RHEO_ROD_DY, RHEO_W, rheostatWiperX } from '../../components/lab/circuit/CircuitParts';
+import { useFlowDots, parsePolyline, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
+
+/**
+ * 串联电流小点回路（折线）。末位为滑动变阻器时必须走「A(左下) → 接入线圈段 → 滑片 P → 金属杆 → D(右上)」的实际导电通路，
+ * 与接入电路的有效线圈长度严格吻合；若直穿瓷筒，学生会看到「电流没经过滑片」的错误流向。
+ * 返回折线而非 path 字符串：小点由 useFlowDots 按弧长驱动，形状逐帧变化也不跳变。
+ */
+function seriesFlowPoints(rheoX: number | null, rp: number): FlowPolyline {
+  if (rheoX === null) return parsePolyline(`M40,60 H${RIGHT_X} V140 H40 V60`);
+  const rodY = 60 + RHEO_ROD_DY;
+  const wiperX = rheostatWiperX(rheoX, rp / 40);
+  return [
+    [40, 60],
+    [wiperX, 60],
+    [wiperX, rodY],
+    [rheoX + RHEO_W / 2, rodY],
+    [RIGHT_X, rodY],
+    [RIGHT_X, 140],
+    [40, 140],
+    [40, 60],
+  ];
+}
 import {
   CIRCUIT_STYLES,
   genTopology,
@@ -102,7 +123,7 @@ const baseCopy = {
     tipParallelSplit: { formula: 'I₀ = I₁ + I₂', principle: '干路电流等于各支路电流之和（并联分流）' },
     tipSeriesCurrent: { formula: 'I = I₁ = I₂', principle: '串联电路电流处处相等' },
     tipSeriesVoltage: { formula: 'U = U₁ + U₂', principle: '串联电路总电压等于各元件电压之和（分压）' },
-    meterHint: '拖动电流表(A)到导线上测电流、电压表(V)到元件两端测电压',
+    meterHint: '调节右侧滑块、切换样式或闭合开关，观察读数与电流小点的变化',
     meterAmmeterErr: '电流表不能并联在元件两端——内阻极小会短路！应串在导线上。',
     meterVoltmeterErr: '电压表要并联在元件两端测电压，不能串在导线上。',
   },
@@ -159,7 +180,7 @@ const baseCopy = {
     tipParallelSplit: { formula: 'I₀ = I₁ + I₂', principle: 'The main-line current equals the sum of branch currents (parallel splitting)' },
     tipSeriesCurrent: { formula: 'I = I₁ = I₂', principle: 'In series, the current is the same everywhere' },
     tipSeriesVoltage: { formula: 'U = U₁ + U₂', principle: 'In series, the total voltage is the sum of the element voltages (division)' },
-    meterHint: 'Drag ammeter (A) onto a wire for current, voltmeter (V) across a component for voltage',
+    meterHint: 'Adjust the sliders, switch styles or close the switch to see how the circuit responds',
     meterAmmeterErr: 'An ammeter cannot be connected in parallel across a component — its tiny internal resistance would short-circuit it! It must be in series on a wire.',
     meterVoltmeterErr: 'A voltmeter must be connected in parallel across a component, not in series on a wire.',
   },
@@ -259,6 +280,25 @@ export default function Circuits() {
   // 相对功率亮度：同电路内按最大功率标定（√(P/Pmax)），饱和不丢失排序
   const pMax = pPerElem.length ? Math.max(...pPerElem) : 0;
   const glowOf = (i: number): number => (pMax > 1e-6 ? Math.sqrt(pPerElem[i] / pMax) : 0);
+
+  /**
+   * 电流小点回路（每条支路/串联回路一条）：
+   * 串联末位为变阻器时走「一上一下」实际通路；并联各支路走自己的回路。
+   * 小点由 useFlowDots 按弧长驱动 → 拖动滑片改变形状时不跳变、不重挂。
+   */
+  const flowLastEl = isSeries ? style.elements[style.elements.length - 1] : undefined;
+  const flowTracks = useMemo(
+    () =>
+      topo.flowPaths.map((p, pi) => ({
+        points:
+          flowLastEl?.kind === 'rheostat' && pi === 0
+            ? seriesFlowPoints(flowLastEl.x, rp)
+            : parsePolyline(p),
+        current: isSeries ? seriesI : branchI[pi],
+      })),
+    [topo, isSeries, seriesI, branchI, rp, flowLastEl?.kind, flowLastEl?.x]
+  );
+  const setFlowDotRef = useFlowDots(flowTracks, isSeries ? seriesI > 0.01 : branchI.some((v) => v > 0.01));
 
   const reset = () => {
     applyDefaults(style);
@@ -511,7 +551,7 @@ export default function Circuits() {
                       {e.kind === 'bulb' ? (
                         <Bulb cx={e.x} cy={60} glow={glowOf(i)} label={`${e.label}=${effR[i]}Ω`} labelY={80} />
                       ) : (
-                        <Rheostat x={e.x} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
+                        <Rheostat x={e.x} y={60} value={rp} max={40} label={`Rₚ=${rp}Ω`} onChange={setRp} />
                       )}
                     </g>
                   ))
@@ -578,25 +618,25 @@ export default function Circuits() {
               </>
               )}
 
-              {/* 电流小点：每条路径用自己的电流（串联 i0；并联各支路） */}
-              {topo.flowPaths.map((p, pi) => {
+              {/* 电流小点：位置由 useFlowDots 按弧长逐帧写入 cx/cy（不触发重渲染）；每条路径用自己的电流
+                  （串联 i0；并联各支路），断开的支路（flowI ≤ 0.01）直接不渲染，不留残余流动动画 */}
+              {topo.flowPaths.map((_, pi) => {
                 const flowI = isSeries ? seriesI : branchI[pi];
                 return (
                   flowI > 0.01 && (
                     <g
-                      key={`flow-${styleId}-${pi}-${flowI.toFixed(2)}-${switchOn}-${branchSw.join('')}`}
+                      key={`flow-${styleId}-${pi}`}
                       fill="var(--fg)"
                       opacity="0.85"
                     >
-                      {[0, 1.1].map((offset) => (
-                        <circle key={offset} r="2.4">
-                          <animateMotion
-                            dur={`${Math.max(0.45, 2.2 / flowI).toFixed(2)}s`}
-                            begin={`${offset}s`}
-                            repeatCount="indefinite"
-                            path={p}
-                          />
-                        </circle>
+                      {[0, 1.1].map((offset, di) => (
+                        <circle
+                          key={offset}
+                          r="2.4"
+                          cx={flowTracks[pi].points[0][0]}
+                          cy={flowTracks[pi].points[0][1]}
+                          ref={setFlowDotRef(pi, di)}
+                        />
                       ))}
                     </g>
                   )
@@ -651,7 +691,7 @@ export default function Circuits() {
             {/* 拖拽测量提示（家庭电路无探针交互，不显示） */}
             {!isHouse && (
               <p className="mt-1 flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
-                <GrabIcon className="h-3.5 w-3.5 shrink-0" />
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {t.meterHint}
               </p>
             )}
@@ -769,7 +809,7 @@ export default function Circuits() {
               style.elements.map((e, i) =>
                 e.kind === 'rheostat' ? (
                   <div key={`sl${i}`}>
-                    <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
+                    <ParamSlider label="Rₚ" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
                   </div>
                 ) : (
                   <div key={`sl${i}`}>

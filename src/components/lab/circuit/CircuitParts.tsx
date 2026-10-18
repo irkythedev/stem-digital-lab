@@ -6,7 +6,7 @@
  * 样式说明：1px 描边 var(--fg)、card-bg 填充、无阴影无渐变。
  * 8 例经典电路图样式共享这些零件，避免重复绘制。
  */
-import type { ReactNode } from 'react';
+import { useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useApp } from '../../../lib/app-context';
 
 /* ---------- 灯泡（灯丝发光 + 玻璃透亮 + 分层光晕，亮度随功率） ---------- */
@@ -437,12 +437,15 @@ export function Rheostat({
   value = 0,
   max = 20,
   label,
+  onChange,
 }: {
   x: number;
   y: number;
   value?: number;
   max?: number;
   label?: ReactNode;
+  /** 直接拖动滑片回传新阻值（不传则滑片不可拖，纯展示用法） */
+  onChange?: (rp: number) => void;
 }) {
   const ratio = Math.max(0, Math.min(1, value / max));
   const t = rheostatTerminals(x, y);
@@ -454,6 +457,55 @@ export function Rheostat({
   /** 接入线圈的有效长度（px），与滑片同步伸缩 */
   const activeW = wiperX - t.A.x;
   const turns = 8;
+  /** 拖动中：禁用 CSS 过渡，让滑片严格跟随指针（松手后恢复过渡） */
+  const [dragging, setDragging] = useState(false);
+
+  /** 滑片有效行程（与 rheostatWiperX 同一组常量：两端各留 4px），拖动时严格夹取在此区间 */
+  const xMin = t.A.x + 4;
+  const xMax = t.B.x - 4;
+
+  /**
+   * 客户端屏幕坐标 → SVG 视口局部 x。
+   * 用最近 <svg> 的 getScreenCTM().inverse() 做逆映射（与 InteractiveCircle 同一手法），
+   * 画布缩放、页面滚动、父级 transform 下都不会漂移。
+   */
+  const localX = (e: ReactPointerEvent<SVGGElement>): number | null => {
+    const svg = e.currentTarget.ownerSVGElement;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    return pt.matrixTransform(ctm.inverse()).x;
+  };
+
+  /** 按指针位置折算阻值：与右侧参数滑块共用同一 0..max 口径（整数档，对应 step=1） */
+  const applyFromPointer = (e: ReactPointerEvent<SVGGElement>) => {
+    if (!onChange) return;
+    const lx = localX(e);
+    if (lx === null) return;
+    const clamped = Math.max(xMin, Math.min(xMax, lx));
+    onChange(Math.round(((clamped - xMin) / (xMax - xMin)) * max));
+  };
+
+  const startDrag = (e: ReactPointerEvent<SVGGElement>) => {
+    if (!onChange) return;
+    e.preventDefault(); // 拖滑片时不选中文本，也不夺走父级 tooltip 的焦点语义
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId); // 指针移出元件/窗口也继续跟随
+    setDragging(true);
+    applyFromPointer(e); // 按下即定位，无需先移动
+  };
+
+  const moveDrag = (e: ReactPointerEvent<SVGGElement>) => {
+    if (dragging) applyFromPointer(e);
+  };
+
+  const endDrag = (e: ReactPointerEvent<SVGGElement>) => {
+    if (!dragging) return;
+    setDragging(false);
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+  };
 
   return (
     <g>
@@ -481,12 +533,27 @@ export function Rheostat({
         height="3"
         fill="var(--accent)"
         opacity="0.16"
-        style={{ transition: 'width 0.18s ease-out' }}
+        style={{ transition: dragging ? 'none' : 'width 0.18s ease-out' }}
       />
       {/* ── 上层：导电金属杆（接线柱 C / D 在其两端） ── */}
       <line x1={t.C.x} y1={rodY} x2={t.D.x} y2={rodY} stroke="var(--fg)" strokeWidth="1.6" />
-      {/* ── 中层：滑片 P —— 实体垂直连通金属杆与线圈，随调参连续水平位移 ── */}
-      <g style={{ transform: `translateX(${wiperX}px)`, transition: 'transform 0.18s ease-out' }}>
+      {/* ── 中层：滑片 P —— 实体垂直连通金属杆与线圈，随调参连续水平位移；支持鼠标/触控直接拖动 ── */}
+      <g
+        style={{
+          transform: `translateX(${wiperX}px)`,
+          // 拖动中取消过渡：滑片严格跟随指针；松手后回到平滑过渡
+          transition: dragging ? 'none' : 'transform 0.18s ease-out',
+          cursor: onChange ? (dragging ? 'grabbing' : 'grab') : undefined,
+          // 触屏拖动必须禁用默认手势，否则手指一动被判成滚动 → pointercancel（沿用探针的做法）
+          touchAction: onChange ? 'none' : undefined,
+        }}
+        onPointerDown={onChange ? startDrag : undefined}
+        onPointerMove={onChange ? moveDrag : undefined}
+        onPointerUp={onChange ? endDrag : undefined}
+        onPointerCancel={onChange ? endDrag : undefined}
+      >
+        {/* 透明命中区 44×44（覆盖杆上滑块与垂直连杆，鼠标/触屏都能稳定抓住滑片） */}
+        {onChange && <rect x={-22} y={rodY - 9} width="44" height="44" fill="transparent" />}
         {/* 杆上滑块：滑片与金属杆的接触点 */}
         <rect x="-3.2" y={rodY - 2.2} width="6.4" height="4.4" rx="1" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.1" />
         {/* 垂直连杆：金属杆 → 瓷筒上沿（一体化，行程内始终连通，不脱节） */}

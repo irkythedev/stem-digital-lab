@@ -36,6 +36,19 @@ import Pulley from '../labs/physics/Pulley';
 import Electrolysis from '../labs/chemistry/Electrolysis';
 import MetalActivity from '../labs/chemistry/MetalActivity';
 
+/**
+ * 科目页卡片的徽标元信息（可选字段：缺省则该徽标不渲染）。
+ * 全部取值来自各实验源码头注释的教材定位与实验自身的核心公式，不含推测内容。
+ */
+export interface LabCardMeta {
+  /** 教材定位（第 5 项为章节） */
+  grade: { zh: string; en: string };
+  /** 核心公式或一句话学科要义（Unicode 纯文本：避免内嵌 KaTeX 的双反斜杠坑，卡片内也更紧凑） */
+  formula: string;
+  /** 是否由 C++ / WebAssembly 计算核驱动（全站三处：欧姆定律 / 凸透镜成像 / 二次函数） */
+  core?: boolean;
+}
+
 export interface LabMeta {
   /** 路由 id，如 'quadratic' → /lab/quadratic */
   id: string;
@@ -50,6 +63,8 @@ export interface LabMeta {
   component: ComponentType;
   /** 领域分类（首页学科展开 tab，按教材领域组织） */
   category: LabCategoryId;
+  /** 科目页卡片徽标（教材 / 核心公式 / C++ 核）；缺省时卡片退化为「标题 + 描述」 */
+  meta?: LabCardMeta;
 }
 
 /** 领域分类 id：函数/几何（数学）、电学/力学/光学（物理）、物质变化/金属与酸碱（化学） */
@@ -89,6 +104,11 @@ export const labs: LabMeta[] = [
     icon: ParabolaIcon,
     component: Quadratic,
     category: 'function',
+    meta: {
+      grade: { zh: '人教版 九上第22章', en: 'PEP · G9 Ch.22' },
+      formula: 'y = ax² + bx + c',
+      core: true,
+    },
   },
   {
     id: 'inverse',
@@ -99,6 +119,10 @@ export const labs: LabMeta[] = [
     icon: HyperbolaIcon,
     component: Inverse,
     category: 'function',
+    meta: {
+      grade: { zh: '人教版 九上第26章', en: 'PEP · G9 Ch.26' },
+      formula: 'y = k / x',
+    },
   },
   {
     id: 'linear',
@@ -109,6 +133,10 @@ export const labs: LabMeta[] = [
     icon: LinearIcon,
     component: Linear,
     category: 'function',
+    meta: {
+      grade: { zh: '人教版 八下第19章', en: 'PEP · G8 Ch.19' },
+      formula: 'y = kx + b',
+    },
   },
   {
     id: 'ohm',
@@ -119,6 +147,11 @@ export const labs: LabMeta[] = [
     icon: OhmIcon,
     component: Ohm,
     category: 'electric',
+    meta: {
+      grade: { zh: '苏科版 九上', en: 'SJ · G9' },
+      formula: 'I = U / R',
+      core: true,
+    },
   },
   {
     id: 'circuits',
@@ -129,6 +162,10 @@ export const labs: LabMeta[] = [
     icon: CircuitsIcon,
     component: Circuits,
     category: 'electric',
+    meta: {
+      grade: { zh: '苏科版 九上', en: 'SJ · G9' },
+      formula: '串联 I = I₁ = I₂｜并联 I = I₁ + I₂',
+    },
   },
   {
     id: 'lens',
@@ -139,6 +176,11 @@ export const labs: LabMeta[] = [
     icon: LensIcon,
     component: Lens,
     category: 'optics',
+    meta: {
+      grade: { zh: '苏科版 八上第3章', en: 'SJ · G8 Ch.3' },
+      formula: '1 / u + 1 / v = 1 / f',
+      core: true,
+    },
   },
   {
     id: 'circle',
@@ -149,6 +191,10 @@ export const labs: LabMeta[] = [
     icon: CircleIcon,
     component: Circle,
     category: 'geometry',
+    meta: {
+      grade: { zh: '人教版 九上第24章', en: 'PEP · G9 Ch.24' },
+      formula: '垂径定理：直径所对圆周角 = 90°',
+    },
   },
   {
     id: 'mass-conservation',
@@ -159,6 +205,10 @@ export const labs: LabMeta[] = [
     icon: MassIcon,
     component: MassConservation,
     category: 'matterChange',
+    meta: {
+      grade: { zh: '人教版 九上第5单元', en: 'PEP · G9 Unit 5' },
+      formula: 'm(反应物) = m(生成物)',
+    },
   },
   {
     id: 'neutralization',
@@ -169,6 +219,10 @@ export const labs: LabMeta[] = [
     icon: NeutralizationIcon,
     component: Neutralization,
     category: 'metalAcid',
+    meta: {
+      grade: { zh: '人教版 九下第十单元', en: 'PEP · G9 Unit 10' },
+      formula: 'H⁺ + OH⁻ = H₂O',
+    },
   },
   {
     id: 'buoyancy',
@@ -179,6 +233,10 @@ export const labs: LabMeta[] = [
     icon: BuoyancyIcon,
     component: Buoyancy,
     category: 'mechanics',
+    meta: {
+      grade: { zh: '苏科版 九上第9章', en: 'SJ · G9 Ch.9' },
+      formula: 'F浮 = ρ液 g V排',
+    },
   },
   {
     id: 'lever',
@@ -189,6 +247,10 @@ export const labs: LabMeta[] = [
     icon: LeverIcon,
     component: Lever,
     category: 'mechanics',
+    meta: {
+      grade: { zh: '苏科版 九上第11章', en: 'SJ · G9 Ch.11' },
+      formula: 'F₁l₁ = F₂l₂',
+    },
   },
   {
     id: 'pressure',
@@ -199,6 +261,10 @@ export const labs: LabMeta[] = [
     icon: PressureIcon,
     component: Pressure,
     category: 'mechanics',
+    meta: {
+      grade: { zh: '苏科版 九上第9章', en: 'SJ · G9 Ch.9' },
+      formula: 'p = F / S',
+    },
   },
   {
     id: 'pulley',
@@ -209,6 +275,10 @@ export const labs: LabMeta[] = [
     icon: PulleyIcon,
     component: Pulley,
     category: 'mechanics',
+    meta: {
+      grade: { zh: '苏科版 九上第11章', en: 'SJ · G9 Ch.11' },
+      formula: '定滑轮 F = G｜动滑轮 F = G / 2',
+    },
   },
   {
     id: 'electrolysis',
@@ -219,6 +289,10 @@ export const labs: LabMeta[] = [
     icon: ElectrolysisIcon,
     component: Electrolysis,
     category: 'matterChange',
+    meta: {
+      grade: { zh: '人教版 九上第四单元 课题2', en: 'PEP · G9 Unit 4.2' },
+      formula: '2H₂O → 2H₂↑ + O₂↑（体积比 2 : 1）',
+    },
   },
   {
     id: 'metal-activity',
@@ -229,6 +303,10 @@ export const labs: LabMeta[] = [
     icon: MetalIcon,
     component: MetalActivity,
     category: 'metalAcid',
+    meta: {
+      grade: { zh: '人教版 九下第八单元 课题2', en: 'PEP · G9 Unit 8.2' },
+      formula: 'K Ca Na Mg Al Zn Fe Sn Pb (H) Cu Hg Ag Pt Au',
+    },
   },
 ];
 

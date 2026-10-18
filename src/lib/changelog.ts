@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.0';
+export const APP_VERSION = '0.40.1';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.1',
+    date: '2026-10',
+    zh: [
+      '[优化] 欧姆定律与串并联电路实验的滑动变阻器可直接拖动滑片调节，电流小点会跟着滑片连续流动、不再跳变',
+      '[优化] 电路图更贴合课本：开关标上 S、定值电阻改为白底黑边矩形、变阻器阻值统一写成下标形式',
+      '[优化] 学科页的工具与实验改为网格卡片，一屏能看到更多实验，卡片上直接标出教材位置与核心公式',
+    ],
+    en: [
+      '[Improved] The rheostat wiper can be dragged directly in the Ohm\'s Law and series/parallel circuits labs, and the current dots now flow continuously with the wiper instead of jumping',
+      '[Improved] Circuit diagrams match the textbook more closely: the switch is labelled S, the fixed resistor is drawn as a white rectangle with a dark outline, and the rheostat value uses subscript notation',
+      '[Improved] The subject pages list tools and labs as grid cards, fitting more labs on screen with the textbook position and core formula shown on each card',
+    ],
+  },
   {
     version: '0.40.0',
     date: '2026-10',

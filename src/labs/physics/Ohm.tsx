@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
-import { Check, RotateCcw, X } from 'lucide-react';
+import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import AskAiButton from '../../components/ai/AskAiButton';
 import AskQuizButton from '../../components/ai/AskQuizButton';
 import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
@@ -22,10 +22,10 @@ import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
-import { Bulb, Rheostat } from '../../components/lab/circuit/CircuitParts';
+import { BladeSwitch, Bulb, Rheostat, rheostatWiperX } from '../../components/lab/circuit/CircuitParts';
+import { useFlowDots, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import EngineBadge from '../../components/lab/EngineBadge';
-import { GrabIcon } from '../../components/ui/LabIcon';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
 
@@ -85,7 +85,7 @@ const copy = {
     recordDisabledHint: '开关断开，电路中没有电流，先合上开关再记录观察。',
     currentDirLabel: '电流方向（传统）：正极 → 负极',
     currentDirNote: '实际金属导体中是电子从负极流向正极，方向相反。',
-    meterHint: '拖动电流表(A)到导线上测电流、电压表(V)到元件两端测电压',
+    meterHint: '调节右侧滑块，观察电路状态与实验数据的变化',
     meterAmmeterErr: '电流表不能并联在元件两端——内阻极小会短路！应串在导线上。',
     meterVoltmeterErr: '电压表要并联在元件两端测电压，不能串在导线上。',
     stagePredict: '预测',
@@ -205,7 +205,7 @@ const copy = {
     recordDisabledHint: 'The switch is open — no current flows. Close it before noting an observation.',
     currentDirLabel: 'Conventional current: positive → negative',
     currentDirNote: 'In metal conductors, electrons actually flow from negative to positive — the opposite direction.',
-    meterHint: 'Drag ammeter (A) onto a wire for current, voltmeter (V) across a component for voltage',
+    meterHint: 'Adjust the sliders on the right to change the circuit and watch the readings',
     meterAmmeterErr: 'An ammeter cannot be connected in parallel across a component — its tiny internal resistance would short-circuit it! It must be in series on a wire.',
     meterVoltmeterErr: 'A voltmeter must be connected in parallel across a component, not in series on a wire.',
     stagePredict: 'Predict',
@@ -395,10 +395,29 @@ export default function Ohm() {
     dashed: true,
     label:
       (p.element === 'bulb' ? `灯泡 R₀=${p.r}Ω` : `R = ${p.r}Ω`) +
-      (p.rp > 0 ? ` (Rp=${p.rp}Ω)` : ''),
+      (p.rp > 0 ? ` (Rₚ=${p.rp}Ω)` : ''),
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
+
+  /**
+   * 电流小点回路（用户坐标）：走变阻器「一上一下」的实际导电通路
+   * A(173,60) → 接入线圈段 → 滑片 P → 金属杆(y=44) → D(207,44) → 元件 → 回流。
+   * 滑片坐标逐帧取自 rp；弧长驱动保证路径形状连续变化时小点不跳变。
+   */
+  const flowPoints: FlowPolyline = [
+    [40, 60],
+    [rheostatWiperX(190, rp / 40), 60],
+    [rheostatWiperX(190, rp / 40), 44],
+    [207, 44],
+    [230, 44],
+    [230, 60],
+    [270, 60],
+    [270, 140],
+    [40, 140],
+    [40, 60],
+  ];
+  const setFlowDotRef = useFlowDots([{ points: flowPoints, current: effectiveI }], effectiveI > 0.01);
 
   /** 可测量目标图：导线（电流归属）+ 元件（电压归属）——自由放置判定用 */
   const wires: MeasurableWire[] = [
@@ -666,31 +685,16 @@ export default function Ohm() {
                 {/* 电池支路竖线由电池符号补齐 70-82 间隙；电压表并联引线由探针吸附时动态绘制 */}
               </g>
               {/* 开关：可点击，闭合/断开切换 */}
-              <g
-                role="button"
-                aria-label={`${t.switchLabel}: ${switchOn ? t.switchOn : t.switchOff}`}
-                onClick={() => setSwitchOn((s) => !s)}
-                className="cursor-pointer"
-              >
-                {/* 透明命中区：扩大触屏点击区域 */}
-                <rect x="85" y="40" width="70" height="40" fill="transparent" />
-                {/* 开关两端触点 */}
-                <circle cx="95" cy="60" r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-                <circle cx="145" cy="60" r="3" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-                {/* 刀片：闭合=水平接到右触点；断开=绕左触点大角度翘起（transform rotate 过渡） */}
-                <line
-                  x1="0"
-                  y1="0"
-                  x2="50"
-                  y2="0"
-                  stroke="var(--fg)"
-                  strokeWidth="1.5"
-                  style={{
-                    transform: `translate(95px, 60px) rotate(${switchOn ? 0 : -60}deg)`,
-                    transition: 'transform 0.18s ease-out',
-                  }}
-                />
-              </g>
+              {/* 干路总开关：复用公共零件 BladeSwitch（与 Circuits 同一套规范画法，带标准物理标注 S） */}
+              <BladeSwitch
+                x1={95}
+                y1={60}
+                x2={145}
+                y2={60}
+                on={switchOn}
+                onToggle={() => setSwitchOn((s) => !s)}
+                label="S"
+              />
               {/* 电池：长线 + 短线（一长一短平行粗线），标注正负极 */}
               <g stroke="var(--fg)" strokeWidth="2">
                 <line x1="22" y1="70" x2="58" y2="70" />
@@ -703,18 +707,13 @@ export default function Ohm() {
               <text x="18" y="90" textAnchor="middle" fontSize="11" fill="var(--fg)" fontFamily="var(--f-mono)">
                 −
               </text>
-              {/* 电流小点：沿回路流动（穿过元件），速度随有效电流；开关断开时消失 */}
+              {/* 电流小点：位置由 useFlowDots 按弧长逐帧写入 cx/cy（不触发重渲染）。
+                 路径走变阻器「一上一下」的实际导电通路（见上方 flowPoints），滑片拖动时连续跟随、不跳变；
+                 开关断开 / 电流过小时整组不渲染。 */}
               {effectiveI > 0.01 && (
-                <g key={`flow-${effectiveI.toFixed(2)}-${switchOn}`} fill="var(--fg)" opacity="0.85">
-                  {[0, 1.1].map((offset) => (
-                    <circle key={offset} r="2.6">
-                      <animateMotion
-                        dur={`${Math.max(0.45, 2.2 / effectiveI).toFixed(2)}s`}
-                        begin={`${offset}s`}
-                        repeatCount="indefinite"
-                        path="M40,60 H270 V140 H40 V60"
-                      />
-                    </circle>
+                <g fill="var(--fg)" opacity="0.85">
+                  {[0, 1.1].map((offset, di) => (
+                    <circle key={offset} r="2.6" cx={flowPoints[0][0]} cy={flowPoints[0][1]} ref={setFlowDotRef(0, di)} />
                   ))}
                 </g>
               )}
@@ -729,7 +728,7 @@ export default function Ohm() {
                 onBlur={() => setTip(null)}
                 className="outline-none"
               >
-                <Rheostat x={190} y={60} value={rp} max={40} label={`R_p=${rp}Ω`} />
+                <Rheostat x={190} y={60} value={rp} max={40} label={`Rₚ=${rp}Ω`} onChange={setRp} />
               </g>
               {/* 元件：定值电阻（矩形，发热随电流）或小灯泡（发光随电流） */}
               {element === 'bulb' ? (
@@ -767,14 +766,15 @@ export default function Ohm() {
                   onBlur={() => setTip(null)}
                   className="outline-none"
                 >
+                {/* 教科书电阻符号：白底空矩形 + 深色边框（不是实心色块）；发热只淡叠暖色，边框不受影响 */}
                 <rect
                   x="230"
                   y="53"
                   width="40"
                   height="14"
-                  fill={heat > 0.12 ? `rgba(255, 140, 60, ${0.3 + 0.6 * heat})` : 'var(--muted)'}
-                  fillOpacity={0.9}
-                  style={{ transition: 'fill 0.3s ease-out' }}
+                  fill="rgb(255, 140, 60)"
+                  fillOpacity={0.05 + 0.35 * heat}
+                  style={{ transition: 'fill-opacity 0.3s ease-out' }}
                   stroke={heat > 0.5 ? '#e25822' : 'var(--fg)'}
                   strokeWidth="1.2"
                 />
@@ -828,9 +828,9 @@ export default function Ohm() {
             {!switchOn && (
               <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>
             )}
-            {/* 拖拽测量提示 + 错误反馈 */}
+            {/* 调节指引（本实验主交互 = 右侧参数滑块；电表错误反馈见下） */}
             <p className="mt-1 flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
-              <GrabIcon className="h-3.5 w-3.5 shrink-0" />
+              <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {t.meterHint}
             </p>
             {meterErr && (
@@ -1016,7 +1016,7 @@ export default function Ohm() {
             )}
 
             <ParamSlider label="U" value={u} min={0} max={12} step={0.5} onChange={setU} format={(v) => `${v.toFixed(1)}V`} />
-            <ParamSlider label="R_p" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
+            <ParamSlider label="Rₚ" value={rp} min={0} max={40} step={1} onChange={setRp} format={(v) => `${v.toFixed(0)}Ω`} />
             <ParamSlider
               label={element === 'bulb' ? 'R₀' : 'R'}
               value={r}
