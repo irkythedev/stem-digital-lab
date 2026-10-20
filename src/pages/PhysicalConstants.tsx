@@ -108,6 +108,9 @@ export default function PhysicalConstants() {
                 : 'Quick reference for middle-school physics constants by category, with meanings and usage. Free to use!'
             }
           />
+        
+          <AskAiButton question={lang === 'zh' ? '请介绍物理常量速查表包含哪些常量、在初中物理里分别怎么用' : 'Introduce the physical constants reference: what it covers and how each constant is used in middle-school physics'} className="ml-3" />
+          <AskQuizButton className="ml-2 align-middle" />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

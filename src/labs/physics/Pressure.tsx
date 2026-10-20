@@ -10,9 +10,9 @@
  *
  * 教材依据：ch09「活动 9.1 探究影响压力作用效果的因素」
  */
-import { useMemo, useState } from 'react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { useMemo, useState, useEffect } from 'react';
+import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import StageNav from '../../components/lab/StageNav';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -240,29 +240,31 @@ export default function Pressure() {
     );
   }
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('pressure', { stage, F, S });
+  }, [stage, F, S]);
+  // 「问 AI」：有实时读数就带上，否则回退静态文案
+  const staticAiQuestion = lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('pressure', { stage, F, S }, lang, staticAiQuestion)[0],
+    [F, S, lang, staticAiQuestion],
+  );
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('pressure', aiQuestion);
+  }, [aiQuestion]);
+
   return (
     <div className="space-y-6">
-      {/* ── 幕导航 ── */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs 2xl:text-sm mono-font tracking-wider">
-        {(['predict', 'explore', 'conclude'] as Stage[]).map((s) => {
-          const label = s === 'predict' ? c.stagePredict : s === 'explore' ? c.stageExplore : c.stageConclude;
-          const isDone = s === 'predict' ? predComplete : s === 'explore' ? observations.length > 0 : concludeComplete;
-          return (
-            <button key={s} type="button" onClick={() => setStage(s)}
-              className={`min-h-[38px] px-3.5 py-1.5 border transition-all rounded-sm font-medium touch-manipulation active:scale-95 ${stage === s ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] shadow-xs' : isDone ? 'border-[var(--border)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] opacity-60'}`}>
-              {isDone && stage !== s ? (<><Check className={MARK_CLS} aria-hidden />{label}</>) : label}
-            </button>
-          );
-        })}
-        <div className="ml-auto">
-          <button type="button" onClick={redoAll} className="min-h-[38px] px-3.5 py-1.5 border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all rounded-sm touch-manipulation active:scale-95">{c.redoLabel}</button>
-        </div>
-      </div>
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it'} />
-        <AskQuizButton />
-      </div>
+            {/* ── 幕导航 ── 与其余实验统一：StageNav 胶囊 + 右侧动作簇（下一步 / 重置 / 问 AI / 考考你） */}
+      <StageNav
+        stage={stage}
+        setStage={setStage}
+        labels={{ predict: c.stagePredict, explore: c.stageExplore, conclude: c.stageConclude, redo: c.redoLabel }}
+        onRedo={redoAll}
+        isDone={{ predict: !!predComplete, explore: observations.length > 0, conclude: !!concludeComplete }}
+      />
 
 
       {/* ── 压强示意 ── */}

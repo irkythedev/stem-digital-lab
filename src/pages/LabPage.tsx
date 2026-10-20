@@ -16,6 +16,8 @@ import { useAiContext } from '../lib/ai-context';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
+import AskAiButton from '../components/ai/AskAiButton';
+import AskQuizButton from '../components/ai/AskQuizButton';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
 export default function LabPage() {
@@ -77,6 +79,10 @@ export default function LabPage() {
   }
 
   const Lab = lab.component;
+  // 页面级「问 AI」的兜底问句：实验自身若注册了更贴切的（含实时读数）问句，点击时以注册的为准
+  const pageAiQuestion = lang === 'zh'
+    ? `请讲解${lab.name.zh}实验的原理、操作要点与观察重点`
+    : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
@@ -96,13 +102,25 @@ export default function LabPage() {
               <span className="t-eyebrow ml-3 text-[var(--muted)] mono-font align-middle">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
               </span>
-              <ShareInline
-                title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
-                text={lang === 'zh'
-                  ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
-                  : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
-              />
-
+              {/* 标题右侧的工具簇：分享 + 问 AI + 考考你。
+                  三者放进同一个 inline-flex 容器，**对齐由 items-center 保证、间距由同一个 gap 保证**——
+                  此前各写 ml-3 / ml-2 且只有其中一个带 align-middle，导致「问 AI」比两侧低 3.2px、三处间距 6/8px 不等。
+                  容器整体 align-middle，与年级 eyebrow 的中线对齐。 */}
+              <span className="ml-3 inline-flex items-center gap-3 align-middle">
+                {/* 分享按钮自带 p-1.5 -m-1.5（撑触屏热区、视觉不动），其 -6px 右边距会把
+                    与「问 AI」的间距吃掉一截（实测光学间距 18 vs 24px）。用 mr-1.5 补回，
+                    让两段光学间距都回到 24px；热区逻辑不动。 */}
+                <span className="inline-flex mr-1.5">
+                  <ShareInline
+                    title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+                    text={lang === 'zh'
+                      ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                      : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+                  />
+                </span>
+                <AskAiButton labId={lab.id} question={pageAiQuestion} />
+                <AskQuizButton />
+              </span>
             </h1>
           </div>
         </div>

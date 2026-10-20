@@ -3742,7 +3742,18 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     };
     roots.forEach(walk);
     const paired = files.filter((f) => readFileSync(f, 'utf8').includes('<AskAiButton'));
-    assert.ok(paired.length >= 19, '须覆盖全部实验与工具页，当前 ' + paired.length + ' 个文件');
+    // 断言改写说明：实验页的入口已统一收口到 LabPage 的标题行（与 4 个工具页策略一致），
+    // 15 个实验不再各写一份——原断言「须覆盖全部实验与工具页、≥19 个文件」锁的正是被替换掉的结构。
+    // 新契约保留「凡有问 AI 必成对挂载考考你」的意图，并**反向禁止实验内自带入口**：
+    // 历史上周期表就是因为页头与自己各挂一份，才出现两个「考考你」并排。
+    assert.ok(paired.includes('src/pages/LabPage.tsx'), '实验页入口须由 LabPage 统一挂载');
+    assert.ok(paired.length >= 5, '须覆盖 LabPage 与全部工具页，当前 ' + paired.length + ' 个文件');
+    for (const f of files.filter((x) => x.startsWith('src/labs/'))) {
+      assert.ok(
+        !readFileSync(f, 'utf8').includes('<AskAiButton'),
+        f + ' 实验内不得再自带入口：入口统一由 LabPage 提供，自带会与页头重复',
+      );
+    }
     for (const f of paired) {
       const src = readFileSync(f, 'utf8');
       assert.ok(/import AskQuizButton from/.test(src), f + ' 须引入 AskQuizButton');
@@ -4314,13 +4325,23 @@ describe('AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承
   });
 
   test('操作栏 / Prompt chips / 思考折叠：去硬描边、微底色、各带触屏热区', () => {
+    // 断言改写说明：推荐追问由「微底色 chip」升级为「细描边交互卡片」后，
+    // 原两条断言（微底色计数 ≥2、chip 字符串）断言的正是被替换掉的旧设计，会让改版永远红。
+    // 这里保留原意图（复制回答仍为微底色、控件仍承托触屏热区、不得用字符符号），
+    // 并把追问项换成新契约：细描边 + 卡片底 + 右侧箭头 + 悬停位移。
     const subtle = ai.match(/border border-transparent bg-\[var\(--accent-light\)\]\/50/g) ?? [];
-    assert.ok(subtle.length >= 2, `复制回答与推荐追问须改微底色（实测 ${subtle.length} 处）`);
+    assert.ok(subtle.length >= 1, `复制回答须保持微底色（实测 ${subtle.length} 处）`);
+    assert.ok(
+      // 用纯字符串包含断言：类名里有 [ ] ( ) 等字符，写正则容易在转义上悄悄失配
+      ai.includes('group flex w-full items-center justify-between gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-left text-xs leading-snug text-[var(--fg)]'),
+      '推荐追问须为细描边卡片、文字左对齐，并挂 tap-area 兜触屏热区',
+    );
     assert.match(
       ai,
-      /tap-area rounded-md text-left text-\[0\.6875rem\] serif-font leading-snug px-2\.5 py-1\.5/,
-      '推荐追问 chip 须紧凑且挂 tap-area',
+      /mono-font text-xs text-\[var\(--muted\)\] transition-transform group-hover:translate-x-0\.5 group-hover:text-\[var\(--fg\)\]">→</,
+      '追问卡片右侧须有箭头指示（悬停轻微右移并提亮）',
     );
+    assert.match(ai, /<RotateCw className="h-3 w-3"/, '「换一批」须带 Lucide 旋转图标，不得用字符符号');
     assert.ok(!ai.includes("'▾ '") && !ai.includes("'▸ '"), '思考折叠不得再用 ▾/▸ 字符符号，应换 Lucide 图标');
     assert.match(
       ai,

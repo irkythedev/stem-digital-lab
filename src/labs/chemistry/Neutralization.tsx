@@ -14,8 +14,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
@@ -452,6 +451,15 @@ export default function Neutralization() {
   const stageOrder: Stage[] = ['predict', 'explore', 'conclude'];
   const stageIdx = stageOrder.indexOf(stage);
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('neutralization', { stage, volume, acidM });
+  }, [stage, volume, acidM]);
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('neutralization', lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint');
+  }, [lang]);
+
   return (
     <div className="flex flex-col space-y-6">
 
@@ -478,12 +486,6 @@ export default function Neutralization() {
           conclude: conclusionComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint'} />
-        <AskQuizButton />
-      </div>
-
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：烧杯 + pH 曲线 + 读数 */}

@@ -12,8 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MicroAnimation from '../../components/lab/MicroAnimation';
@@ -413,6 +412,15 @@ export default function Electrolysis() {
     );
   }
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('electrolysis', { stage, power, elapsed });
+  }, [stage, power, elapsed]);
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('electrolysis', lang === 'zh' ? '请讲解电解水的实验现象：正负极各产生什么气体，体积比是多少' : 'Explain the electrolysis of water: which gas forms at each electrode and the 2:1 volume ratio');
+  }, [lang]);
+
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
@@ -433,12 +441,6 @@ export default function Electrolysis() {
           conclude: concludeComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解电解水的实验现象：正负极各产生什么气体，体积比是多少' : 'Explain the electrolysis of water: which gas forms at each electrode and the 2:1 volume ratio'} />
-        <AskQuizButton />
-      </div>
-
 
       {/* ── 电解器示意 ── */}
       <div className={`border p-3 space-y-2 transition-colors ${

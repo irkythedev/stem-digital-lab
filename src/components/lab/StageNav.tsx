@@ -93,8 +93,8 @@ export default function StageNav({
         })}
       </div>
 
-      {/* 右侧下一步 / 重置操作 */}
-      <div className="ml-auto flex gap-2">
+      {/* 右侧操作簇：下一步 / 重置 + 页面动作（问 AI、考考你）并排，不额外占一行 */}
+      <div className="ml-auto flex flex-wrap items-center gap-2.5">
         {stageIdx < stageOrder.length - 1 ? (
           <button
             type="button"

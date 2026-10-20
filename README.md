@@ -2,7 +2,7 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/v0.40.1-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
+![version](https://img.shields.io/badge/v0.40.2-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
 ![stack](https://img.shields.io/badge/React%20%2B%20Vite%20%2B%20KaTeX-087ea4?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat)
 
 <p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
@@ -57,6 +57,7 @@
 - 🤖 AI 学习助手（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - 📦 可安装为应用离线使用（PWA）
 - 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
+- 📘 **使用说明与版本历史**：顶栏内置交互式使用指引（`/guide`）与版本更新日志弹窗，右下角提供快速反馈通道
 
 ### 实验与工具清单
 
@@ -125,7 +126,7 @@ npm run test       # 运行测试
 npm test           # 运行全部测试（无需任何服务）
 ```
 
-内置测试套件 **237 项全绿**，秒级完成，**100% 离线**：仅使用 Node 内置模块（`node:assert` / `node:fs`），不启动服务器、不访问网络、不需要数据库或环境变量。三类断言并存：
+内置测试套件 **405 项全绿**，秒级完成，**100% 离线**：仅使用 Node 内置模块（`node:assert` / `node:fs`），不启动服务器、不访问网络、不需要数据库或环境变量。三类断言并存：
 
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
 - **源码级约束**：触控命中区 ≥40px、不引入第三方图表库、界面不出现 Emoji、中英文案必须对称；
@@ -235,6 +236,7 @@ src/
 - 🤖 AI assistant (header entry): renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - 📦 Installable as an app for offline use (PWA)
 - 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
+- 📘 **Guide & Version History**: Built-in interactive user guide (`/guide`), release changelog dialog, and a persistent feedback entry
 
 ### Labs & Tools
 
@@ -303,7 +305,7 @@ npm run test       # Run tests
 npm test           # Run the whole suite (no service required)
 ```
 
-The built-in suite runs **237 assertions, all green**, in seconds and is **100% offline**: it only uses Node built-ins (`node:assert` / `node:fs`) — no server, no network, no database, no environment variables. Three kinds of checks live side by side:
+The built-in suite runs **405 assertions, all green**, in seconds and is **100% offline**: it only uses Node built-ins (`node:assert` / `node:fs`) — no server, no network, no database, no environment variables. Three kinds of checks live side by side:
 
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;
 - **Source-level constraints**: touch targets ≥40px, no third-party chart library, no emoji in the UI, zh/en copy must stay symmetric;

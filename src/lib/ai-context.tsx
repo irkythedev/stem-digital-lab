@@ -8,6 +8,8 @@
  * - ask/askAi：页面「问 AI」按钮一键触发——携带预填问题，自动打开面板
  */
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { loadAiConfig } from './ai-config';
+import { refreshAiStatus } from './ai-status';
 
 export interface AiPageContext {
   /** 当前主题（如「欧姆定律实验」「浮力公式」） */
@@ -51,15 +53,11 @@ const AiContext = createContext<AiContextValue>({
 export function AiProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [configured, setConfigured] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const raw = window.localStorage.getItem('stem-ai-config');
-      if (!raw) return false;
-      const c = JSON.parse(raw) as { apiKey?: string; baseUrl?: string; model?: string; agreed?: boolean };
-      return !!(c.apiKey && c.baseUrl && c.model && c.agreed);
-    } catch {
-      return false;
-    }
+    // 复用 loadAiConfig 的完整校验（含端点协议白名单），不再各写一份解析。
+    // 同时在此刻把顶栏四态算好：本初始化在首帧渲染前执行，图标不会先闪一下未配置。
+    const saved = loadAiConfig();
+    refreshAiStatus(saved);
+    return !!saved;
   });
   const [aiCtx, setAiCtx] = useState<AiPageContext>({});
   const [ask, setAsk] = useState<string | null>(null);

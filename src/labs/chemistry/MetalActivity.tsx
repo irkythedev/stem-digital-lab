@@ -12,8 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import StageNav from '../../components/lab/StageNav';
@@ -336,6 +335,15 @@ export default function MetalActivity() {
     );
   }
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('metal-activity', { stage, react, done, polished });
+  }, [stage, react, done, polished]);
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('metal-activity', lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag');
+  }, [lang]);
+
   return (
     <div className="space-y-6">
       {/* ── 幕导航：全站共享 StageNav，胶囊槽样式/高度/触控与四实验保持一致 ── */}
@@ -356,12 +364,6 @@ export default function MetalActivity() {
           conclude: concludeComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag'} />
-        <AskQuizButton />
-      </div>
-
 
       {/* ── 反应卡切换（换一根金属丝 → 打磨状态归零） ── */}
       <div className="flex gap-2">

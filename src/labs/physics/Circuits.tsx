@@ -14,10 +14,9 @@
  * 可视化：SVG 电路图（导线/灯泡/闸刀开关/电池/保险丝/变阻器/固定电表）
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -277,6 +276,37 @@ export default function Circuits() {
     isSeries ? seriesI * effR[i] : switchOn && (!style.branchSwitches || branchSw[i]) ? u : 0
   );
   const pPerElem = style.elements.map((_, i) => branchI[i] * branchI[i] * effR[i]);
+
+  // AI：把当前拓扑、开关、干路电流与各元件阻值写入易失注册表
+  // （系统提示词读阶段与拓扑，「问 AI」动态问句读电流与阻值）
+  useEffect(() => {
+    setLabState('circuits', {
+      stage,
+      styleZh: style.copy.title.zh,
+      styleEn: style.copy.title.en,
+      switchOn,
+      i0,
+      rList: effR.map((v) => Math.round(v)),
+    });
+  }, [stage, style.id, switchOn, i0, effR, style.copy.title.zh, style.copy.title.en]);
+  // 「问 AI」的问题：有动态读数就带上当前拓扑与电流，否则回退静态文案
+  const staticAiQuestion = lang === 'zh'
+    ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别'
+    : 'Compare how current and voltage distribute in series vs parallel circuits';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('circuits', {
+      styleZh: style.copy.title.zh,
+      styleEn: style.copy.title.en,
+      switchOn,
+      i0,
+      rList: effR,
+    }, lang, staticAiQuestion)[0],
+    [style.id, switchOn, i0, effR, lang, staticAiQuestion],
+  );
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('circuits', aiQuestion);
+  }, [aiQuestion]);
   // 相对功率亮度：同电路内按最大功率标定（√(P/Pmax)），饱和不丢失排序
   const pMax = pPerElem.length ? Math.max(...pPerElem) : 0;
   const glowOf = (i: number): number => (pMax > 1e-6 ? Math.sqrt(pPerElem[i] / pMax) : 0);
@@ -435,12 +465,6 @@ export default function Circuits() {
           conclude: conclusionComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别' : 'Compare how current and voltage distribute in series vs parallel circuits'} />
-        <AskQuizButton />
-      </div>
-
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + 读数 */}

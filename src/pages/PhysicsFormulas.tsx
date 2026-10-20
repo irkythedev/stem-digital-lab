@@ -136,6 +136,9 @@ export default function PhysicsFormulas() {
                 : 'Core middle-school physics formulas with units, conditions and pitfalls. Free to use!'
             }
           />
+        
+          <AskAiButton question={lang === 'zh' ? '请介绍物理公式速查表包含哪些公式、各自的适用条件是什么' : 'Introduce the physics formula reference: what it covers and the conditions for each formula'} className="ml-3" />
+          <AskQuizButton className="ml-2 align-middle" />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'

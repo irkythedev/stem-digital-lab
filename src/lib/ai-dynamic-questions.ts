@@ -42,6 +42,105 @@ function clean(q: DynamicQuestion): boolean {
   return !!s && !/undefined|NaN|null/.test(s);
 }
 
+/**
+ * 页级「问 AI」问句注册表：实验页把「此刻该问什么」登记进来（可含当前读数）。
+ * 与 setLabState 同为易失注册表；区别是这里的值在**点击瞬间**才被读取，
+ * 所以不需要订阅机制、也不会因为读数变化引起任何重渲染。
+ */
+const pageQuestions = new Map<string, string>();
+
+export function setPageQuestion(labId: string, question: string): void {
+  if (!labId || !question) return;
+  pageQuestions.set(labId, question);
+}
+
+export function getPageQuestion(labId: string): string {
+  return pageQuestions.get(labId) ?? '';
+}
+
+/** 实时状态的字段词表：zh/en 名称 + 单位 + 布尔型的两态说法。顺序即输出顺序（稳定）。 */
+const FIELD_LABEL: Record<string, { zh: string; en: string; unit?: string; bool?: { on: { zh: string; en: string }; off: { zh: string; en: string } } }> = {
+  u: { zh: '电源电压', en: 'supply voltage', unit: 'V' },
+  i: { zh: '电流读数', en: 'current', unit: 'A' },
+  elemVoltage: { zh: '元件两端电压', en: 'voltage across the element', unit: 'V' },
+  r: { zh: '定值电阻', en: 'fixed resistance', unit: 'Ω' },
+  rp: { zh: '滑动变阻器', en: 'rheostat', unit: 'Ω' },
+  switchOn: { zh: '开关', en: 'switch', bool: { on: { zh: '闭合', en: 'closed' }, off: { zh: '断开', en: 'open' } } },
+  element: { zh: '当前元件', en: 'element' },
+  styleZh: { zh: '电路拓扑', en: 'topology' },
+  styleEn: { zh: '电路拓扑', en: 'topology' },   // 英文语境下的取值来源，不进输出列表
+  i0: { zh: '干路电流', en: 'main current', unit: 'A' },
+  f: { zh: '焦距', en: 'focal length', unit: 'cm' },
+  v: { zh: '像距', en: 'image distance', unit: 'cm' },
+  m1: { zh: '左侧钩码', en: 'left weights' },
+  d1: { zh: '左力臂', en: 'left arm' },
+  m2: { zh: '右侧钩码', en: 'right weights' },
+  d2: { zh: '右力臂', en: 'right arm' },
+  balanced: { zh: '杠杆', en: 'lever', bool: { on: { zh: '平衡', en: 'balanced' }, off: { zh: '不平衡', en: 'not balanced' } } },
+  k: { zh: 'k 值', en: 'k' },
+  b: { zh: 'b 值', en: 'b' },
+  a: { zh: 'a 值', en: 'a' },
+  c: { zh: 'c 值', en: 'c' },
+  circleMode: { zh: '当前定理', en: 'theorem' },
+  vSub: { zh: '浸入体积比例', en: 'submerged fraction' },
+  liquidZh: { zh: '液体', en: 'liquid' },
+  F: { zh: '压力', en: 'force', unit: 'N' },
+  S: { zh: '受力面积', en: 'area', unit: 'cm²' },
+  type: { zh: '滑轮类型', en: 'pulley type' },
+  G: { zh: '重物重力', en: 'load weight', unit: 'N' },
+  activeScheme: { zh: '当前方案', en: 'current scheme' },
+  volume: { zh: '滴入液体积', en: 'titrant volume', unit: 'mL' },
+  acidM: { zh: '酸的浓度', en: 'acid concentration' },
+  power: { zh: '电源', en: 'power supply', bool: { on: { zh: '已接通', en: 'on' }, off: { zh: '未接通', en: 'off' } } },
+  elapsed: { zh: '通电时长', en: 'elapsed', unit: 's' },
+  react: { zh: '当前反应', en: 'reaction' },
+  done: { zh: '反应', en: 'reaction', bool: { on: { zh: '已发生', en: 'yes' }, off: { zh: '未发生', en: 'no' } } },
+  polished: { zh: '金属丝', en: 'metal wire', bool: { on: { zh: '已打磨', en: 'polished' }, off: { zh: '未打磨', en: 'not polished' } } },
+  stage: { zh: '当前阶段', en: 'stage' },
+};
+
+const STAGE_TEXT: Record<string, { zh: string; en: string }> = {
+  predict: { zh: '预测', en: 'Predict' },
+  explore: { zh: '探索', en: 'Explore' },
+  conclude: { zh: '结论', en: 'Conclude' },
+};
+
+/**
+ * 把易失注册表里的实时状态压成一行人类可读文本，供**系统提示词**与**「考考你」出题提示词**共用。
+ * 空状态返回空串（调用方直接拼接即可，无需分支）。
+ * 刻意不复用 DYNAMIC_QUESTION_BUILDERS：那里是「问句」，这里要的是「陈述式上下文」。
+ */
+export function formatLabState(state: Record<string, unknown> | undefined | null, lang: 'zh' | 'en'): string {
+  if (!state) return '';
+  const zh = lang === 'zh';
+  const parts: string[] = [];
+  const stage = state.stage;
+  if (typeof stage === 'string' && STAGE_TEXT[stage]) {
+    parts.push(zh ? `当前阶段：${STAGE_TEXT[stage].zh}` : `stage: ${STAGE_TEXT[stage].en}`);
+  }
+  for (const [key, def] of Object.entries(FIELD_LABEL)) {
+    if (key === 'stage') continue;
+    const v = state[key];
+    if (def.bool) {
+      if (typeof v === 'boolean') {
+        const k = zh ? 'zh' : 'en';
+        parts.push(zh ? `${def.zh}：${v ? def.bool.on.zh : def.bool.off.zh}` : `${def.en}: ${v ? def.bool.on.en : def.bool.off.en}`);
+      }
+      continue;
+    }
+    if (typeof v === 'number' && Number.isFinite(v)) parts.push(`${zh ? def.zh : def.en} ${Number.isInteger(v) ? v : f2(v)}${def.unit ?? ''}`);
+    else if (typeof v === 'string' && v) {
+      // 英文语境下若该字段另有 *En 版本（如 styleZh/styleEn），取英文那份，避免提示词里串中文
+      const enTwin = !zh && typeof state[`${key}En`] === 'string' ? String(state[`${key}En`]) : '';
+      if (key === 'styleZh' && zh) parts.push(`${def.zh} ${v}`);
+      else if (key === 'styleZh' && enTwin) parts.push(`${def.en} ${enTwin}`);
+      else if (key !== 'styleEn') parts.push(`${zh ? def.zh : def.en} ${v}`);
+    }
+  }
+  if (!parts.length) return '';
+  return zh ? `【当前实验实时状态】${parts.join('；')}` : `[Live lab state] ${parts.join('; ')}`;
+}
+
 export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> = {
   /** 欧姆定律：u 电压 / r 定值电阻 / element（resistor|bulb）/ i 电流读数 */
   ohm: (s) => {
@@ -51,6 +150,15 @@ export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> =
     if (!num(u) || !num(i)) return [];
     const part = isBulb ? '灯泡' : '定值电阻';
     const partEn = isBulb ? 'bulb' : 'fixed resistor';
+    // 以下四项有则追加、无则跳过：让「刚闭合开关 / 刚拖过变阻器」这类动作也能被模型看见
+    const extraZh: string[] = [];
+    const extraEn: string[] = [];
+    if (s.switchOn === false) { extraZh.push('开关断开（电路无电流）'); extraEn.push('switch open (no current)'); }
+    if (num(s.elemVoltage)) { extraZh.push(`元件两端电压 ${f2(s.elemVoltage)}V`); extraEn.push(`voltage across the element ${f2(s.elemVoltage)}V`); }
+    if (num(s.rp)) { extraZh.push(`滑动变阻器 ${f2(s.rp)}Ω`); extraEn.push(`rheostat ${f2(s.rp)}Ω`); }
+    if (num(s.r)) { extraZh.push(`${part}阻值 ${f2(s.r)}Ω`); extraEn.push(`${partEn} resistance ${f2(s.r)}Ω`); }
+    const tailExtraZh = extraZh.length ? `；${extraZh.join('、')}` : '';
+    const tailExtraEn = extraEn.length ? `; ${extraEn.join(', ')}` : '';
     const tailZh = isBulb
       ? '同样的电压加在定值电阻上，电流读数更大，为什么灯泡的电流涨得慢？'
       : '我把电压调小一半，电流为什么会跟着一起变小？';
@@ -59,9 +167,85 @@ export const DYNAMIC_QUESTION_BUILDERS: Record<string, DynamicQuestionBuilder> =
       : 'If I halve the voltage, why does the current fall by half as well?';
     return [
       {
-        values: { u, i, element: isBulb ? 'bulb' : 'resistor' },
-        zh: `<当前读数>电压 ${f2(u)}V，${part}电流 ${f2(i)}A</当前读数>${tailZh}`,
-        en: `<current_reading>voltage ${f2(u)}V, ${partEn} current ${f2(i)}A</current_reading> ${tailEn}`,
+        values: { u, i, element: isBulb ? 'bulb' : 'resistor', ...(num(s.elemVoltage) ? { elemVoltage: s.elemVoltage } : {}), ...(num(s.rp) ? { rp: s.rp } : {}), ...(num(s.r) ? { r: s.r } : {}), ...(s.switchOn === false ? { switchOn: 0 } : {}) },
+        zh: `<当前读数>电压 ${f2(u)}V，${part}电流 ${f2(i)}A${tailExtraZh}</当前读数>${tailZh}`,
+        en: `<current_reading>voltage ${f2(u)}V, ${partEn} current ${f2(i)}A${tailExtraEn}</current_reading> ${tailEn}`,
+        requires: 'compare',
+      },
+    ];
+  },
+
+  /**
+   * 串并联电路：styleZh / styleEn 当前拓扑名、switchOn 干路开关、i0 干路电流、rList 各元件阻值。
+   * 8 种拓扑共用本模板——模板只描述「看到了什么」，不描述「应该是什么」。
+   */
+  circuits: (s) => {
+    const i0 = s.i0;
+    const styleZh = typeof s.styleZh === 'string' ? s.styleZh : '';
+    const styleEn = typeof s.styleEn === 'string' ? s.styleEn : '';
+    const rList = Array.isArray(s.rList) ? (s.rList as unknown[]).filter(num) : [];
+    if (!num(i0) || !styleZh || !rList.length) return [];
+    const closed = s.switchOn === true;
+    const rZh = rList.map((v) => `${(v as number).toFixed(0)}Ω`).join(' 与 ');
+    const rEn = rList.map((v) => `${(v as number).toFixed(0)}Ω`).join(' and ');
+    return [
+      {
+        values: { i0, switchOn: closed ? 1 : 0, elements: rList.length },
+        zh: `<当前读数>拓扑「${styleZh}」、${closed ? '开关闭合' : '开关断开'}、各元件阻值 ${rZh}、干路电流 ${f2(i0)}A</当前读数>我这组连接里，电流的分配跟我预想的差在哪里？`,
+        en: `<current_reading>topology "${styleEn || styleZh}", ${closed ? 'switch closed' : 'switch open'}, element resistances ${rEn}, main current ${f2(i0)}A</current_reading> Where does the current distribution here differ from what I expected?`,
+        requires: 'compare',
+      },
+    ];
+  },
+
+  /** 浮力：vSub 浸入体积比例(0-1) / liquidZh|liquidEn 液体名 / rho 液体密度 */
+  buoyancy: (s) => {
+    const vSub = s.vSub;
+    if (!num(vSub)) return [];
+    const liquidZh = typeof s.liquidZh === 'string' ? s.liquidZh : '';
+    const liquidEn = typeof s.liquidEn === 'string' ? s.liquidEn : '';
+    const rho = num(s.rho) ? s.rho : null;
+    if (!liquidZh) return [];
+    const pct = Math.round(vSub * 100);
+    const rhoZh = rho ? `（密度 ${rho} kg/m³）` : '';
+    const rhoEn = rho ? ` (density ${rho} kg/m³)` : '';
+    return [
+      {
+        values: { vSub, ...(rho ? { rho } : {}) },
+        zh: `<当前读数>浸入体积约 ${pct}%、液体为${liquidZh}${rhoZh}</当前读数>把物体再往下按一些，弹簧测力计读数会怎么变？`,
+        en: `<current_reading>submerged volume about ${pct}%, liquid: ${liquidEn || liquidZh}${rhoEn}</current_reading> If I push the object down a little more, what happens to the spring-scale reading?`,
+        requires: 'trend',
+      },
+    ];
+  },
+
+  /** 压强：F 压力(N) / S 受力面积(cm²) */
+  pressure: (s) => {
+    const F = s.F;
+    const area = s.S;
+    if (!num(F) || !num(area)) return [];
+    return [
+      {
+        values: { F, S: area },
+        zh: `<当前读数>压力 ${f2(F)}N、受力面积 ${f2(area)}cm²</当前读数>保持压力不变、把受力面积减半，形变程度会怎样？`,
+        en: `<current_reading>force ${f2(F)}N on area ${f2(area)}cm²</current_reading> Keep the force fixed and halve the area — what happens to the deformation?`,
+        requires: 'trend',
+      },
+    ];
+  },
+
+  /** 滑轮：type 定/动滑轮 / G 重物重力(N) */
+  pulley: (s) => {
+    const G = s.G;
+    const type = s.type === 'moving' ? 'moving' : s.type === 'fixed' ? 'fixed' : '';
+    if (!num(G) || !type) return [];
+    const zhKind = type === 'moving' ? '动滑轮' : '定滑轮';
+    const enKind = type;
+    return [
+      {
+        values: { G, type },
+        zh: `<当前读数>当前用${zhKind}、重物 ${f2(G)}N</current_reading>换成另一种滑轮后，拉力和绳端移动距离各有什么变化？`,
+        en: `<current_reading>${enKind} pulley, load ${f2(G)}N</current_reading> If I switch to the other pulley, how do the pull force and the rope distance change?`,
         requires: 'compare',
       },
     ];

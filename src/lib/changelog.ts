@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.1';
+export const APP_VERSION = '0.40.2';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.2',
+    date: '2026-10',
+    zh: [
+      '[优化] 顶栏 AI 图标会显示当前状态：未配置、待验证、已就绪、连接异常，一眼看出能不能用',
+      '[优化] 「问 AI」和「考考你」移到页面标题旁，并带上你此刻的实验读数与所处阶段——每个实验、每一步的位置都一样',
+      '[优化] 追问推荐改为带箭头的卡片式引导，「换一批」收进标题行，整块更紧凑',
+      '[优化] 介绍视频更新为最新版',
+    ],
+    en: [
+      '[Improved] The header AI icon now shows its state — not configured, unverified, ready, or connection error',
+      '[Improved] Ask AI and Quiz moved beside the page title and now take your current readings and stage into account, in the same place on every lab and every stage',
+      '[Improved] Follow-up suggestions are card-style links with an arrow, and "more" moved into the header row',
+      '[Improved] The intro video has been updated to the latest cut',
+    ],
+  },
   {
     version: '0.40.1',
     date: '2026-10',

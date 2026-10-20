@@ -12,8 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -442,6 +441,15 @@ export default function Quadratic() {
     label: exprOf(TARGET_A, TARGET_B, TARGET_C),
   };
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('quadratic', { stage, a, b, c });
+  }, [stage, a, b, c]);
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('quadratic', lang === 'zh' ? '请讲解二次函数 y=ax²+bx+c 中 a、b、c 三个参数分别对抛物线有什么影响' : 'Explain how a, b, c in y=ax²+bx+c affect the parabola');
+  }, [lang]);
+
   return (
     <div className="flex flex-col space-y-6">
 
@@ -468,12 +476,6 @@ export default function Quadratic() {
           conclude: conclusionComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解二次函数 y=ax²+bx+c 中 a、b、c 三个参数分别对抛物线有什么影响' : 'Explain how a, b, c in y=ax²+bx+c affect the parabola'} />
-        <AskQuizButton />
-      </div>
-
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}

@@ -12,9 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
-import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
+import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -174,6 +172,10 @@ export default function Lever() {
     () => getDynamicQuestions('lever', { m1, d1, m2, d2, balanced: isBalanced }, lang, staticAiQuestion)[0],
     [m1, d1, m2, d2, isBalanced, lang, staticAiQuestion],
   );
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('lever', aiQuestion);
+  }, [aiQuestion]);
 
   // 倾角：力矩不平衡时小幅倾斜，顺时针为正，夹在 ±LEVER_MAX_TILT（力学核导出，可单测）
   const tiltAngle = leverTilt(torque1, torque2);
@@ -276,12 +278,6 @@ export default function Lever() {
           conclude: concludeComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={aiQuestion} />
-        <AskQuizButton />
-      </div>
-
 
       {/* ── 杠杆示意 ── */}
       <div className="border border-[var(--border)] p-3">

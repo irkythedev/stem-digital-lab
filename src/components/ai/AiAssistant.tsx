@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff} from 'lucide-react';
+import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -34,7 +34,7 @@ import {
 import { labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
-import { getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
+import { formatLabState, getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
 import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
 import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
@@ -42,8 +42,9 @@ import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, t
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
+import { reportAiFailure, reportAiSuccess } from '../../lib/ai-status';
 import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
-import AnswerRich, { InlineAnswer } from './AnswerRich';
+import AnswerRich, { InlineAnswer, prettyScripts } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import {
   AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
@@ -861,7 +862,13 @@ export default function AiAssistant() {
     setQuizError(null);
     quizAbortRef.current = new AbortController();
     const messages: { role: 'system' | 'user'; content: string }[] = [
-      { role: 'system', content: buildQuizPrompt(lang, aiCtx.topic ?? pageSubject(location.pathname, lang), aiCtx.knowledge, count, angle, timeLimit, qtype) },
+      { role: 'system', content: buildQuizPrompt(
+        lang,
+        aiCtx.topic ?? pageSubject(location.pathname, lang),
+        // 「考考你」与「问 AI」读同一份实时状态：出题也能落到学生此刻的读数上
+        [aiCtx.knowledge, formatLabState(getLabState(labIdFromPath(location.pathname)), lang)].filter(Boolean).join('\n'),
+        count, angle, timeLimit, qtype,
+      ) },
       { role: 'user', content: lang === 'zh' ? `请围绕当前页面知识点（${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? '当前主题'}）按格式出 ${count} 道题。` : `Please create ${count} questions in the specified format, based on the current page knowledge (${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? 'current topic'}).` },
     ];
     try {
@@ -1590,6 +1597,8 @@ export default function AiAssistant() {
     setTestResult(null);
     try {
       const ids = await fetchModels(baseUrl, apiKey);
+      // 能列出模型 = 鉴权与端点已被该服务商确认接受；模型名待用户选，故只置 valid 不改模型
+      if (ids.length > 0 && formMatchesSaved && config) reportAiSuccess(config);
       if (ids.length > 0) {
         setLiveModels(ids);
         setModel(ids[0]);
@@ -1603,6 +1612,7 @@ export default function AiAssistant() {
         flashToast(false, lang === 'zh' ? '该端点未返回模型列表' : 'No model list from this endpoint');
       }
     } catch (e) {
+      if (formMatchesSaved && config) reportAiFailure(config, e);
       const msg = (e as Error).message;
       setLiveModels([]);
       setTestResult({
@@ -1637,15 +1647,20 @@ export default function AiAssistant() {
         body: JSON.stringify({ model: probeModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
       });
       if (res.ok) {
+        // 实战联动：表单与「已保存配置」一致时，这次成功就是当前生效配置的连通性证据。
+        // 不一致（正在改配置还没保存）则不动状态——角标只对「生效中的配置」负责。
+        if (formMatchesSaved && config) reportAiSuccess(config);
         setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功：模型 ${probeModel} 可正常对话` : `Connected — ${probeModel} responds` });
         flashToast(true, lang === 'zh' ? '连接成功' : 'Connected');
       } else {
+        if (formMatchesSaved && config) reportAiFailure(config, { status: res.status });
         const j = await res.json().catch(() => null);
         const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
         setTestResult({ ok: false, msg: detail });
         flashToast(false, lang === 'zh' ? '连接失败，详见下方说明' : 'Connection failed — see the message below');
       }
     } catch (e) {
+      if (formMatchesSaved && config) reportAiFailure(config, e);
       const msg = (e as Error).message;
       setTestResult({
         ok: false,
@@ -1775,10 +1790,14 @@ export default function AiAssistant() {
   const systemPromptForPage = () => {
     const labId = labIdFromPath(location.pathname);
     const lab = labId ? labMap[labId] : undefined;
+    // 实时状态与静态页面知识同源拼接：预设问题、自由提问、以及随后的「考考你」看到的上下文完全一致
+    // （阶段 + 画布读数来自 ai-dynamic-questions 的易失注册表，见 formatLabState）
+    const liveState = formatLabState(getLabState(labId), lang);
+    const pageKnowledge = [aiCtx.knowledge, liveState].filter(Boolean).join('\n');
     return buildSystemPrompt(
       lang,
       aiCtx.topic ?? pageSubject(location.pathname, lang),
-      aiCtx.knowledge,
+      pageKnowledge,
       stageLabel(getLabState(labId)?.stage, lang),
       // 实验页用注册表里的学科判定（显示名里没有「物理」二字）；非实验页留给主题串回退
       lab ? lab.subjectId === 'physics' : undefined,
@@ -4210,33 +4229,38 @@ export default function AiAssistant() {
                 )}
                 {/* AI 推荐的追问（由 prompt 约束生成，内容可控；可翻页换一批） */}
                 {!busy && recs.length > 0 && (
-                  <div className="pt-1">
-                    <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">
-                      {lang === 'zh' ? '可以继续了解：' : 'You can also explore:'}
-                    </p>
+                  /* 追问区：宽度与上方回答正文框同口径（max-w-[95%]），左右边界对齐，不再向右撑满越界 */
+                  <div className="pt-1.5 max-w-[95%]">
+                    {/* 头部栏：左标题 + 右「换一批」同行两端对齐；原先「换一批」独占底部一行，白费一行高度 */}
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <p className="text-xs font-medium text-[var(--muted)]">
+                        {lang === 'zh' ? '可以继续了解' : 'Follow-up questions'}
+                      </p>
+                      {/* 换一批：每次请求 AI 重新生成 3 个不同追问（方案二，费 token 换质量） */}
+                      <button
+                        type="button"
+                        onClick={() => void refreshRecs()}
+                        disabled={refreshingRecs}
+                        className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 transition-colors tap-area"
+                      >
+                        <RotateCw className="h-3 w-3" aria-hidden="true" />
+                        {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
+                      </button>
+                    </div>
+                    {/* 追问条目：细描边交互卡片（与全站组件同族），右侧箭头明示可点击 */}
                     <div className="flex flex-col gap-1.5">
                       {recs.slice(0, 3).map((q, i) => (
                         <button
                           key={i}
                           type="button"
                           onClick={() => askRecommended(q)}
-                          className="tap-area rounded-md text-left text-[0.6875rem] serif-font leading-snug px-2.5 py-1.5 border border-transparent bg-[var(--accent-light)]/50 transition-colors hover:bg-[var(--accent-light)]"
+                          className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-left text-xs leading-snug text-[var(--fg)] transition-colors hover:border-[var(--fg)] hover:bg-[var(--accent-light)] tap-area"
                         >
-                          <InlineAnswer text={q} />
+                          <span className="min-w-0"><InlineAnswer text={prettyScripts(q)} /></span>
+                          <span aria-hidden="true" className="shrink-0 mono-font text-xs text-[var(--muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--fg)]">→</span>
                         </button>
                       ))}
                     </div>
-                    {/* 换一批：每次请求 AI 重新生成 3 个不同追问（方案二，费 token 换质量） */}
-                    {recs.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => void refreshRecs()}
-                        className="mt-1.5 rounded px-1 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 transition-colors"
-                        disabled={refreshingRecs}
-                      >
-                        {refreshingRecs ? (lang === 'zh' ? '获取中…' : 'Loading…') : (lang === 'zh' ? '换一批' : 'More')}
-                      </button>
-                    )}
                   </div>
                 )}
               </>

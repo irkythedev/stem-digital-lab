@@ -15,10 +15,9 @@
  *
  * 复用组件：BalanceScale（天平）、MicroAnimation（微观动画）、ExploreStage。
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Check, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import BalanceScale from '../../components/lab/BalanceScale';
@@ -442,6 +441,15 @@ export default function MassConservation() {
     );
   }
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('mass-conservation', { stage, activeScheme });
+  }, [stage, activeScheme]);
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('mass-conservation', lang === 'zh' ? '请讲解质量守恒定律的实质，以及本实验三个方案为什么要分别设计' : 'Explain the essence of conservation of mass and why this lab uses three designs');
+  }, [lang]);
+
   return (
     <div className="space-y-6">
       {/* ── 幕导航：全站共享 StageNav，胶囊槽样式/高度/触控与四实验保持一致 ── */}
@@ -462,12 +470,6 @@ export default function MassConservation() {
           conclude: concludeComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解质量守恒定律的实质，以及本实验三个方案为什么要分别设计' : 'Explain the essence of conservation of mass and why this lab uses three designs'} />
-        <AskQuizButton />
-      </div>
-
 
       {/* ── 天平 ── */}
       <div className="border border-[var(--border)] p-3">

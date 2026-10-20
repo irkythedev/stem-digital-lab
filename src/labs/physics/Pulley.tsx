@@ -10,10 +10,9 @@
  *
  * 教材依据：ch11「活动 11.2 探究定滑轮和动滑轮的特点」
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
+import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -229,6 +228,21 @@ export default function Pulley() {
     );
   }
 
+  // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
+  useEffect(() => {
+    setLabState('pulley', { stage, type, G });
+  }, [stage, type, G]);
+  // 「问 AI」：有实时读数就带上，否则回退静态文案
+  const staticAiQuestion = lang === 'zh' ? '请讲解定滑轮与动滑轮各有什么特点，滑轮组怎么判断省力情况' : 'Explain fixed vs movable pulleys and how to determine the effort saved by a pulley system';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('pulley', { stage, type, G }, lang, staticAiQuestion)[0],
+    [type, G, lang, staticAiQuestion],
+  );
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('pulley', aiQuestion);
+  }, [aiQuestion]);
+
   return (
     <div className="space-y-6">
       {/* ── 幕导航 ── */}
@@ -249,12 +263,6 @@ export default function Pulley() {
           conclude: concludeComplete,
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={lang === 'zh' ? '请讲解定滑轮与动滑轮各有什么特点，滑轮组怎么判断省力情况' : 'Explain fixed vs movable pulleys and how to determine the effort saved by a pulley system'} />
-        <AskQuizButton />
-      </div>
-
 
       {/* ── 滑轮示意 ── */}
       <div className="border border-[var(--border)] p-3">

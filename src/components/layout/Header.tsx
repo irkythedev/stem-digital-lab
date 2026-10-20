@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
+import { AI_STATUS_DOT, AI_STATUS_LABEL, useAiStatus } from '../../lib/ai-status';
 import { APP_VERSION } from '../../lib/changelog';
 import { useVersionCheck } from '../../lib/use-version-check';
 import VersionDialog from '../feedback/VersionDialog';
@@ -19,7 +20,11 @@ import type { ThemeMode } from '../../lib/app-context';
 
 export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const { t, lang, setLang, themeMode, setThemeMode, isOffline } = useApp();
-  const { open: aiOpen, setOpen: setAiOpen, configured: aiConfigured } = useAiContext();
+  const { open: aiOpen, setOpen: setAiOpen } = useAiContext();
+  // 顶栏 AI 图标四态（unconfigured / configured / valid / invalid）——状态本身来自 lib/ai-status，
+  // 只在「配置变更 / 主动测试 / 实战请求」时推进，页面加载绝不自动 Ping。标题与角标同源同一状态。
+  const aiStatus = useAiStatus();
+  const aiLabel = AI_STATUS_LABEL[aiStatus.status][lang].replace('{model}', aiStatus.model);
   const [showVersion, setShowVersion] = useState(false);
   const [showPack, setShowPack] = useState(false);
   // 离线教学包状态：只在「下载中 / 已就绪」时于顶栏露出徽标，平时不占位置
@@ -187,17 +192,21 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         <button
           type="button"
           onClick={() => setAiOpen(!aiOpen)}
-          aria-label={isOffline ? t.offlineAi.hint : lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
-          title={isOffline ? t.offlineAi.hint : lang === 'zh' ? 'AI 学习助手' : 'AI assistant'}
+          aria-label={isOffline ? t.offlineAi.hint : aiLabel}
+          title={isOffline ? t.offlineAi.hint : aiLabel}
           className={`relative flex items-center justify-center p-2 rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
         >
           <Sparkles className="w-3.5 h-3.5" />
           {isOffline ? (
             <WifiOff className="absolute bottom-1 right-1 w-2.5 h-2.5 text-[var(--error)]" aria-hidden="true" />
           ) : (
-            !aiConfigured && (
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--error)]" aria-hidden="true" />
-            )
+            /* 四态角标：6px 圆点 + ring-2 镂空描边（与图标底色分离，深色主题下也看得清）。
+               颜色语义只用设计令牌：--warn 未配置 / --muted 待验证 / --success 已就绪 / --error 连接异常。
+               静态常亮，不做呼吸闪烁——状态点不是装饰，闪动会分散注意力。 */
+            <span
+              className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[aiStatus.status]}`}
+              aria-hidden="true"
+            />
           )}
         </button>
 

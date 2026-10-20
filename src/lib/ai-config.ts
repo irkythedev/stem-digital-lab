@@ -15,6 +15,8 @@
  * 提示词版本号：任何系统提示词的语义改动都要同步递增。
  * 解析失败 / 兜底重试 / 判分降级都会经 logPromptIssue 带出版本号，便于灰度与回滚排查。
  */
+import { refreshAiStatus, reportAiFailure, reportAiSuccess } from './ai-status';
+
 export const PROMPT_VERSION = '2026.10.v2';
 
 /** 出题输出的结束标记：提示词要求模型写完所有题后输出它，解析端据此判断末题是否被截断。 */
@@ -199,12 +201,15 @@ export function loadAiConfig(): AiConfig | null {
 export function saveAiConfig(config: AiConfig): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  // 配置变更即重算顶栏状态：换了 Key/模型/端点则指纹不再匹配，旧结论作废、退回「待验证」
+  refreshAiStatus(config);
 }
 
 /** 清除全部 AI 数据（key + 配置） */
 export function clearAiConfig(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(STORAGE_KEY);
+  refreshAiStatus(null);
 }
 
 /** 系统提示词：限定初中数理化学习辅助 + 教材口径 + 页面知识锚定 */
@@ -1044,6 +1049,9 @@ export async function streamChat(
     signal: ctrl.signal,
   }).catch((e: unknown) => {
     detach();
+    // 被动实战联动：网络无法到达 / 首包超时 → 顶栏图标转「连接异常」。
+    // 学生主动点停止的 AbortError 由 reportAiFailure 内部识别并跳过，不误判为故障。
+    reportAiFailure(cfg, e);
     throw firstPacketTimedOut ? new Error(`no response in ${Math.round(FIRST_PACKET_TIMEOUT_MS / 1000)}s`) : e;
   });
   if (!res.ok) {
@@ -1061,8 +1069,11 @@ export async function streamChat(
     httpErr.status = res.status;
     const retryAfter = Number(res.headers.get('retry-after'));
     if (Number.isFinite(retryAfter) && retryAfter > 0) httpErr.retryAfterSec = Math.min(300, Math.round(retryAfter));
+    reportAiFailure(cfg, httpErr);
     throw httpErr;
   }
+  // HTTP 200：鉴权、端点、模型三者已被服务商确认可用，这是最强的「配置有效」证据
+  reportAiSuccess(cfg);
   const reader = res.body?.getReader();
   if (!reader) {
     detach();

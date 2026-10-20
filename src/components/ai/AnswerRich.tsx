@@ -173,6 +173,29 @@ function AnswerRich({ text, caret = false, caretFading = false }: { text: string
  * 行内富文本（用于问题行 / 推荐追问按钮等单行场景）：
  * 只处理行内公式 \(...\) / $...$ 与 **加粗**，不引入块级结构。
  */
+/** Unicode 上标表（幂次美化用） */
+const SUP: Record<string, string> = {
+  '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+  '-': '⁻', '+': '⁺', n: 'ⁿ',
+};
+
+/**
+ * 幂次美化：把**行内纯文本**里的 `^2` / `^{2}` / `^-1` / `^n` 转成 Unicode 上标
+ * （`(a+b)^2` → `(a+b)²`），避免脱字符裸露。
+ * 只处理公式片段之外的文本：`$...$` 与 `\(...\)` 里的 `^` 留给 KaTeX，
+ * 否则会把 `$x^2$` 的源码改坏（KaTeX 看到的是源码而非渲染结果）。
+ */
+export function prettyScripts(text: string): string {
+  return text
+    .split(/(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$)/g)
+    .map((seg, i) => {
+      if (i % 2 === 1) return seg;                     // 公式片段：原样
+      return seg.replace(/\^\{?([0-9n+\-]+)\}?/g, (_m, g1: string) =>
+        [...g1].map((c) => SUP[c] ?? c).join(''));
+    })
+    .join('');
+}
+
 export function InlineAnswer({ text }: { text: string }) {
   const nodes = useMemo(() => renderInline(text, 1), [text]);
   return <>{nodes}</>;

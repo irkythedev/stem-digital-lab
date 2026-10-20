@@ -13,9 +13,7 @@
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
 import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
-import AskAiButton from '../../components/ai/AskAiButton';
-import AskQuizButton from '../../components/ai/AskQuizButton';
-import { getDynamicQuestions, setLabState } from '../../lib/ai-dynamic-questions';
+import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
@@ -359,18 +357,6 @@ export default function Ohm() {
 
   const i = currentOf(u, r, element, rp);
 
-  // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
-  useEffect(() => {
-    setLabState('ohm', { stage, u, r, element, rp, i });
-  }, [stage, u, r, element, rp, i]);
-  // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
-  const staticAiQuestion = lang === 'zh'
-    ? '请讲解欧姆定律 I=U/R 的定量关系，以及实验中的操作要点'
-    : 'Explain Ohm\'s law I=U/R and the key steps of this experiment';
-  const aiQuestion = useMemo(
-    () => getDynamicQuestions('ohm', { u, element, i }, lang, staticAiQuestion)[0],
-    [u, element, i, lang, staticAiQuestion],
-  );
   /** 短路：定值电阻 R=0（相当于导线）且变阻器 R_p=0 → 电源两极直接相连，电流趋近无穷大（防 NaN/防表盘溢出） */
   const shortCircuit = switchOn && element === 'resistor' && r === 0 && rp === 0 && u > 0;
   /** 有效电流：开关断开时为 0；短路时 i=∞ 不参与常规计算 */
@@ -379,6 +365,23 @@ export default function Ohm() {
   const elemVoltage = switchOn && !shortCircuit ? i * elementResistance(r, element, u) : 0;
   /** 元件发热（焦耳定律 Q∝I²）：电流越大发热越明显，短路时达最大 */
   const heat = shortCircuit ? 1 : Math.min(1, (effectiveI / 1.2) ** 2);
+
+  // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
+  useEffect(() => {
+    setLabState('ohm', { stage, u, r, element, rp, i, switchOn, elemVoltage });
+  }, [stage, u, r, element, rp, i, switchOn, elemVoltage]);
+  // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
+  const staticAiQuestion = lang === 'zh'
+    ? '请讲解欧姆定律 I=U/R 的定量关系，以及实验中的操作要点'
+    : 'Explain Ohm\'s law I=U/R and the key steps of this experiment';
+  const aiQuestion = useMemo(
+    () => getDynamicQuestions('ohm', { u, element, i, switchOn, rp, r, elemVoltage }, lang, staticAiQuestion)[0],
+    [u, element, i, switchOn, rp, r, elemVoltage, lang, staticAiQuestion],
+  );
+  // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
+  useEffect(() => {
+    setPageQuestion('ohm', aiQuestion);
+  }, [aiQuestion]);
 
   const currentCurve: CoordCurve = useMemo(
     () => ({
@@ -635,12 +638,6 @@ export default function Ohm() {
           conclude: Object.values(conclusion).every((v) => v !== null),
         }}
       />
-      {/* AI 工具行：问 AI + 考考你 并排 */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <AskAiButton question={aiQuestion} />
-        <AskQuizButton />
-      </div>
-
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + I-U 图像 + 读数 */}

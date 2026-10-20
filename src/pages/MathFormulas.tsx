@@ -118,6 +118,9 @@ export default function MathFormulas() {
                 : 'Core middle-school math formulas with mnemonics and pitfalls. Free to use!'
             }
           />
+        
+          <AskAiButton question={lang === 'zh' ? '请介绍数学公式速查表包含哪些常用公式、各自适用哪类题型' : 'Introduce the math formula reference: which formulas it covers and what question types each applies to'} className="ml-3" />
+          <AskQuizButton className="ml-2 align-middle" />
         </h1>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'
