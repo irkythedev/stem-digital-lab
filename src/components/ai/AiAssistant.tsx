@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
+import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Lightbulb, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -42,7 +42,7 @@ import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, t
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
-import { reportAiFailure, reportAiSuccess } from '../../lib/ai-status';
+import { reportAiFailure, reportAiSuccess, verifyAiStatus } from '../../lib/ai-status';
 import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer, prettyScripts } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
@@ -237,7 +237,7 @@ export default function AiAssistant() {
   const { state: speakState, errorMsg, notice: speakNotice, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
-  const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal } = useAiContext();
+  const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal, settingsSignal } = useAiContext();
   useEffect(() => {
     if (!open) {
       stopSpeak();
@@ -783,6 +783,7 @@ export default function AiAssistant() {
   const [quizDone, setQuizDone] = useState(false); // 本轮结束（显示小结）
   const quizAbortRef = useRef<AbortController | null>(null);
   const quizOpenedRef = useRef(false); // 标记面板由 openQuiz 打开，open effect 不覆盖 view
+  const settingsOpenedRef = useRef(false); // 标记面板由顶栏健康卡片「去设置」打开，open effect 不覆盖 view
   // 计时：每题限时倒计时（秒）
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -802,6 +803,15 @@ export default function AiAssistant() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quizSignal]);
+
+  // 顶栏健康卡片「去设置」：自增信号 → 打开面板并直接落到设置视图（不回须知页）
+  useEffect(() => {
+    if (settingsSignal > 0) {
+      settingsOpenedRef.current = true;
+      setView('settings');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsSignal]);
 
   // 当前题变化时重置选择与计时
   useEffect(() => {
@@ -1076,9 +1086,22 @@ export default function AiAssistant() {
   // 本回合的思考草稿按问答对暂存在内存（不落盘）：回答入历史后当前轮会被清空，
   // 没有这份映射，思考过程就只能在流式那几秒里看到
   const [reasoningByTurn, setReasoningByTurn] = useState<Record<string, { text: string; sec: number }>>({});
+  /**
+   * 思考是否仍在推进（只对当前轮有意义）。
+   * 不能拿 busy 代替：busy 覆盖「正文流式」整段，那时思考早结束了，灯泡会一直闪。
+   * 故只在思考增量到达时置 true，正文首包 / 请求收尾时置 false。
+   */
+  const [reasoningStreaming, setReasoningStreaming] = useState(false);
   /** 思考草稿折叠区：默认折叠，标题写明它可能直接写出结论（与「探究型不给结论」的口径并存） */
   const renderReasoning = (text: string, sec: number, id: string) => {
     const open = openReasoningId === id;
+    // 只有「当前轮 + 思考仍在推进」才呼吸；历史轮次永远是已完成的静态灯泡
+    const thinking = id === 'live' && reasoningStreaming;
+    /**
+     * 秒数是否已定稿。sec 只在「首个正文 token 到达」时写入（且 ≥1），
+     * 故 sec === 0 就代表「还在想 / 被中止在思考阶段」——此时任何秒数都是编的。
+     */
+    const settled = sec > 0;
     return (
       <div className="inline-block max-w-[95%] mb-1 rounded-md border border-[var(--border)]/60 bg-[var(--accent-light)]/40">
         <button
@@ -1086,10 +1109,32 @@ export default function AiAssistant() {
           onClick={() => setOpenReasoningId(open ? null : id)}
           className="tap-area w-full text-left inline-flex items-center gap-1 px-2.5 py-1.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
+          {/* 呼吸灯：正在想＝琥珀黄 + 1.8s 呼吸；想完＝中性灰常亮静置。
+              黄色走 --warn 令牌（浅色 #b45309 / 深色 #fbbf24），两套主题各自一档、不写死色值；
+              呼吸用 index.css 的 .bulb-breathe（1→0.72，reduced-motion 下自动停），
+              比 animate-pulse 的 1→0.5 更保色——后者在浅色主题下会把琥珀洗成浅金。
+              两个分支写成互斥整串（而非叠加两个 text-* 类）：同权重任意值类谁生效取决于 CSS 顺序，
+              不是 class 书写顺序。 */}
+          <Lightbulb
+            className={
+              thinking
+                ? 'h-3.5 w-3.5 shrink-0 text-[var(--warn)] bulb-breathe'
+                : 'h-3.5 w-3.5 shrink-0 text-[var(--muted)]'
+            }
+            aria-hidden="true"
+          />
           <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
           {lang === 'zh'
-            ? `思考过程（约 ${sec}s · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`
-            : `Thinking (≈${sec}s · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`}
+            ? (settled
+              /* 首包已到：秒数定稿，口径写「首字约」——它测的是「请求发出→首个正文字符」，
+                 含网络与排队，不是纯思考时长，写「思考用时」属于夸大口径。 */
+              ? `思考过程（首字约 ${sec}s · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`
+              /* 还在想：**绝不显示 0s**。此阶段秒数尚未定稿，写「约 0s」是在说谎，
+                 而且与同一行正在增长的字数自相矛盾。改为语义化提示，进展感交给文字本身。 */
+              : `思考过程（正在思考 · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`)
+            : (settled
+              ? `Thinking (first token in ≈${sec}s · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`
+              : `Thinking (in progress · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`)}
         </button>
         {open && (
           <div className="px-2.5 pb-2 pt-1 text-[0.6875rem] leading-relaxed whitespace-pre-wrap text-[var(--muted)] border-t border-[var(--border)]">
@@ -1445,14 +1490,19 @@ export default function AiAssistant() {
   })();
 
   // 打开时：已配置 → 对话视图；未配置 → 须知视图（两步流程第一步）
-  // 例外：openQuiz 打开的面板已在 quizSignal effect 设过 view，不覆盖
+  // 例外：openQuiz / 顶栏「去设置」打开的面板已在各自 effect 设过 view，不覆盖
   useEffect(() => {
     if (open) {
-      if (quizOpenedRef.current) {
+      if (quizOpenedRef.current || settingsOpenedRef.current) {
         quizOpenedRef.current = false;
+        settingsOpenedRef.current = false;
         return;
       }
       setView(config ? 'chat' : 'terms');
+      // 面板首开即静默验证：configured（待验证）对用户是个死胡同——除了进设置页没有别的出路。
+      // 用户打开面板就是想用了，此刻查一次成本最低；auto 模式只在结论缺失/过期时动手，
+      // 已就绪且未过期不发任何请求（0 轮询纪律不变）。
+      if (config) void verifyAiStatus(config, { auto: true });
     }
   }, [open, config]);
 
@@ -1597,8 +1647,9 @@ export default function AiAssistant() {
     setTestResult(null);
     try {
       const ids = await fetchModels(baseUrl, apiKey);
-      // 能列出模型 = 鉴权与端点已被该服务商确认接受；模型名待用户选，故只置 valid 不改模型
-      if (ids.length > 0 && formMatchesSaved && config) reportAiSuccess(config);
+      // 注意：列出模型**不置绿**。GET /models 只证明「凭证与端点通」，不证明当前选的模型能对话；
+      // 早期版本在这里调用 reportAiSuccess，导致「列表拿到了、模型名却不存在」也显示已就绪（假绿）。
+      // 置绿只有两条路：设置页「测试连接」的真实 200，或顶栏角标/面板首开的 verifyAiStatus。
       if (ids.length > 0) {
         setLiveModels(ids);
         setModel(ids[0]);
@@ -1823,6 +1874,7 @@ export default function AiAssistant() {
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
     setAnswer('');
     setReasoning('');
+    setReasoningStreaming(false);
     setOpenReasoningId('live');
     setReasoningSec(0);
     setRecs([]);
@@ -1858,6 +1910,7 @@ export default function AiAssistant() {
     let firstContentAt = 0; // 首个正文 token 的时刻（用来算「思考了几秒」并自动折叠）
     let reasoningText = '';   // 本轮思考全文（闭包内累积，结束后挂到本轮问答对上）
     let reasoningSecLocal = 0;
+    let reasoningStarted = false; // 呼吸灯只需置位一次：每个思考增量都 setState 是纯浪费
     try {
       const res = await streamChat(
         config,
@@ -1868,6 +1921,7 @@ export default function AiAssistant() {
             reasoningSecLocal = Math.max(1, Math.round((firstContentAt - t0) / 1000));
             setReasoningSec(reasoningSecLocal);
             setOpenReasoningId(null); // 正文开始 → 思考区自动折叠（默认不看）
+            setReasoningStreaming(false); // 思考到此结束：灯泡停止呼吸（此后是正文在流）
           }
           setAnswer((a) => a + delta);
           accText += delta;
@@ -1890,6 +1944,10 @@ export default function AiAssistant() {
           accLen += r.length;
           accCjk += countCjk(r);
           reasoningText += r;
+          if (!reasoningStarted) {
+            reasoningStarted = true;
+            setReasoningStreaming(true); // 首个思考增量 → 灯泡开始呼吸
+          }
           setReasoning((x) => x + r);
         },
       );
@@ -1977,6 +2035,7 @@ export default function AiAssistant() {
         setFailure({ ...classified, attempts: attemptsRef.current });
       }
     }
+    setReasoningStreaming(false); // 收尾兜底：失败/中止/正常结束一律停止呼吸
     setBusy(false);
   };
 

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.2';
+export const APP_VERSION = '0.40.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.3',
+    date: '2026-10',
+    zh: [
+      '[优化] 顶栏 AI 状态点显示真实连通性：未验证是空心环、验证中是呼吸，点它就能直接看状态并重新验证，不必先进设置页',
+      '[优化] 打开 AI 面板时会自动确认一次连接，配好之后打开就能用，不再出现「已配置但要自己找地方验」的死角',
+      '[优化] 思考过程头部改为「正在思考 · 字数」，出字后显示「首字约 N 秒」，不再固定显示 0 秒；思考时灯泡以琥珀色呼吸，结束后转为静态',
+    ],
+    en: [
+      '[Improved] The header AI dot now reflects real connectivity: a hollow ring while unverified, a breathing ring while checking, and clicking it opens the status and re-checks without going to settings',
+      '[Improved] Opening the AI panel now confirms the connection once, so a configured assistant is usable straight away instead of waiting to be verified somewhere else',
+      '[Improved] The thinking header reads "in progress · N chars" while the model thinks, then "first token in ≈Ns"; a lightbulb breathes in amber during thinking and settles once the answer starts',
+    ],
+  },
   {
     version: '0.40.2',
     date: '2026-10',

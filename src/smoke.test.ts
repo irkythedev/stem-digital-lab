@@ -133,6 +133,11 @@ import {
   type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind} from './lib/ai-config';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS, type ElementInfo } from './lib/elements';
+import {
+  AI_STATUS_DETAIL, AI_STATUS_DOT, AI_STATUS_HOLLOW, AI_STATUS_LABEL, AI_STATUS_TTL_MS,
+  aiCheckedAtLabel, aiConfigFingerprint, getAiStatus, isHollowStatus, isStatusFresh,
+  refreshAiStatus, verifyAiStatus,
+} from './lib/ai-status';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
 import {
   buildQuizPaper, normalizeTopic, optionLabel, correctTextOf, wrongTextOf,
@@ -4343,11 +4348,44 @@ describe('AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承
     );
     assert.match(ai, /<RotateCw className="h-3 w-3"/, '「换一批」须带 Lucide 旋转图标，不得用字符符号');
     assert.ok(!ai.includes("'▾ '") && !ai.includes("'▸ '"), '思考折叠不得再用 ▾/▸ 字符符号，应换 Lucide 图标');
-    assert.match(
-      ai,
-      /renderReasoning[\s\S]{0,900}<ChevronDown className=\{`h-3 w-3 shrink-0 transition-transform/,
-      '思考折叠须用 Lucide ChevronDown 表达展开态',
+    // 守卫升级：原断言是「renderReasoning 之后 900 字符内出现 ChevronDown」——
+    // 窗口式断言在头部插任何东西都会红，且对「灯泡呼吸灯」毫无约束。改为先切出 renderReasoning
+    // 片段（到下一个 hook 声明为止）再逐条断言，窗口大小不再影响判定。
+    const rrStart = ai.indexOf('renderReasoning = (text');
+    const rrEnd = ai.indexOf('const [reasoningSec', rrStart);
+    assert.ok(rrStart > 0 && rrEnd > rrStart, '思考折叠函数须可定位且未被改名');
+    // 注释里会提到被否决的写法（如 animate-pulse），断言前先剥注释，否则守的是注释不是代码
+    const rr = ai.slice(rrStart, rrEnd).replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.match(rr, /<ChevronDown className=\{`h-3 w-3 shrink-0 transition-transform/, '思考折叠须用 Lucide ChevronDown 表达展开态');
+    // 呼吸灯：灯泡在折叠箭头之前（头部最左侧）、14px；正在想＝琥珀黄呼吸，想完＝中性灰静态
+    const bulbAt = rr.indexOf('<Lightbulb');
+    const chevAt = rr.indexOf('<ChevronDown');
+    assert.ok(bulbAt > 0 && bulbAt < chevAt, '灯泡须位于折叠箭头之前（头部最左侧）');
+    assert.ok(rr.includes('h-3.5 w-3.5 shrink-0 text-[var(--warn)] bulb-breathe'), '思考中须为琥珀黄（--warn 令牌）+ 呼吸');
+    assert.ok(rr.includes('h-3.5 w-3.5 shrink-0 text-[var(--muted)]'), '思考结束须回中性灰静态（不抢正文视线）');
+    // 呼吸用自建键帧而非 animate-pulse：后者 1→0.5 会把浅色主题的琥珀洗成浅金
+    const cssBulb = readFileSync('src/index.css', 'utf8');
+    assert.match(cssBulb, /@keyframes bulb-breathe \{\s*0%, 100% \{ opacity: 1; \}\s*50% \{ opacity: 0\.72; \}/, '呼吸键帧须为 1→0.72（保住黄色可辨性）');
+    assert.match(cssBulb, /\.bulb-breathe \{ animation: bulb-breathe 1\.8s ease-in-out infinite; \}/, '呼吸周期须 1.8s（1.5–2s 区间）');
+    assert.match(cssBulb, /prefers-reduced-motion: reduce\) \{\s*\.bulb-breathe \{ animation: none; opacity: 1; \}/, '减少动效下须停呼吸并回满不透明');
+    assert.ok(!rr.includes('animate-pulse'), '灯泡不得再用 animate-pulse（透明度压到 0.5，浅色下黄色失真）');
+    // 两个分支必须是互斥整串：同时挂 text-[var(--warn)] 与 text-[var(--muted)] 时，
+    // 谁生效取决于 Tailwind 产出的 CSS 顺序（不是 class 书写顺序），等于把颜色交给运气
+    assert.doesNotMatch(rr, /text-\[var\(--muted\)\][^'"`]*text-\[var\(--warn\)\]/, '灯泡颜色不得靠类名叠加实现');
+    assert.ok(!rr.includes('text-amber') && !/text-\[#[0-9a-f]{3,8}\]/i.test(rr), '黄色须走 --warn 令牌，不得用调色板色或写死色值（深色主题会失真）');
+    // 耗时口径：思考中不得出现任何秒数（旧版写「约 ${sec}s」而 sec 恒为 0 → 界面宣称「想了 0 秒」）
+    assert.ok(rr.includes('正在思考 · ${text.length} 字'), '思考中须为语义化提示（正在思考 · N 字）');
+    assert.ok(rr.includes('首字约 ${sec}s · ${text.length} 字'), '定稿后口径须为「首字约 Ns」（测的是首包时间，不是纯思考时长）');
+    assert.doesNotMatch(rr.replace(/\/\*[\s\S]*?\*\//g, ''), /（约 \$\{sec\}s \(≈\$\{sec\}s/, '旧写法「约 Ns」不得回潮（口径已改为「首字约 Ns」）');
+    assert.ok(rr.includes('const settled = sec > 0'), '思考/定稿必须由 sec 是否定稿来分派（sec=0 即未定稿）');
+    assert.ok(
+      rr.includes("id === 'live' && reasoningStreaming"),
+      '只有「当前轮且思考仍在推进」才呼吸：历史轮次与正文流式阶段都必须静止',
     );
+    // 呼吸的起停在状态机里落点必须齐备，缺一个就会出现「一直闪」或「不闪」
+    assert.match(ai, /setReasoningStreaming\(true\); \/\/ 首个思考增量/, '首个思考增量须点亮呼吸灯');
+    assert.match(ai, /setReasoningStreaming\(false\); \/\/ 思考到此结束/, '正文首包须停止呼吸');
+    assert.match(ai, /setReasoningStreaming\(false\); \/\/ 收尾兜底/, '请求收尾（含失败/中止）须停止呼吸');
   });
 
   test('尺寸规范：主胶囊内边距统一 px-2.5 py-1.5 + leading-none（≈26–28px 视觉）', () => {
@@ -5181,11 +5219,12 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.ok((pick('c')?.n ?? 99) <= 6, `「c」应取 Z 最小的命中（实测 ${pick('c')?.symbol}）`);
   });
 
-  test('⑯ 欢迎弹窗双 Tab、Header 帮助入口与多端响应式不变量', () => {
+  test('⑯ 欢迎弹窗双 Tab、Header 帮助入口、AI 角标五态与多端响应式不变量', async () => {
     const wd = readFileSync('src/components/ui/WelcomeDialog.tsx', 'utf8');
     const hd = readFileSync('src/components/layout/Header.tsx', 'utf8');
     const app = readFileSync('src/App.tsx', 'utf8');
     const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
     // ① 双 Tab 分段控件 + 初始分区入参（首开仍停在概览）
     assert.match(wd, /type WelcomeTab = 'overview' \| 'guide'/, '须定义两个分区');
     assert.match(wd, /initialTab = 'overview'/, '默认分区须为「实验室概览」（首开自动弹出）');
@@ -5330,6 +5369,199 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     for (const k of ['guideCard1Title', 'guideCard4Desc', 'guideTipLabel', 'guideTipBody']) {
       const n = (i18n.match(new RegExp(`${k}:`, 'g')) ?? []).length;
       assert.equal(n, 2, `${k} 须 zh/en 各一份（实测 ${n}）`);
+    }
+
+    /* ⑩ AI 连通性状态机 + 顶栏角标（旧版四态守卫并入此处，不新增用例数）
+       ─────────────────────────────────────────────────────────────────────
+       这一节守的是「角标说的话必须为真」：
+       - 结论有时效（checkedAt + 24h），过期必须降级，不许拿旧绿冒充当前状态；
+       - 置绿只能靠真实证据（/models 命中当前模型 或 chat 探针 200），列出模型不算；
+       - 探针先便宜后昂贵（先 /models，0 token），并发去重，页面加载不发请求；
+       - 形状表确定性：待验证/验证中用空心环，实心只用于已有结论的状态。 */
+    {
+      // ⑩a Header：图标开面板、角标单独开卡片（必须是兄弟按钮，不能嵌套 button）
+      assert.equal((hd.match(/data-ai-health-trigger/g) ?? []).length, 1, '角标须有唯一可点入口');
+      assert.equal((hd.match(/data-ai-health-card/g) ?? []).length, 1, '健康卡片须唯一');
+      assert.match(hd, /onClick=\{\(\) => setAiOpen\(!aiOpen\)\}/, '图标本体仍须开 AI 面板');
+      assert.match(
+        hd,
+        /<\/button>\s*\{!isOffline && \(\s*<button/,
+        '角标须是图标按钮的**兄弟**按钮：嵌套 <button> 是非法 HTML，点击会互相抢',
+      );
+      assert.match(hd, /isHollowStatus\(aiStatus\.status\) \?/, '形状须由状态机统一判定（isHollowStatus）');
+      assert.match(hd, /AI_STATUS_HOLLOW\[aiStatus\.status\]/, '空心环类名须来自 AI_STATUS_HOLLOW');
+      assert.match(hd, /AI_STATUS_DOT\[aiStatus\.status\]/, '实心点类名须来自 AI_STATUS_DOT');
+      // 卡片六项：状态标题 / 模型 / 端点 / 上次检测 / 重新验证 / 去设置，缺一项就等于把用户又推回设置页
+      for (const kw of ['模型', 'Endpoint', '上次检测', '重新验证', '去设置']) {
+        assert.ok(hd.includes(kw), `健康卡片须含「${kw}」`);
+      }
+      assert.match(hd, /verifyAiStatus\(loadAiConfig\(\)\)/, '「重新验证」须就地调用 verifyAiStatus（读已保存配置）');
+      assert.match(hd, /disabled=\{aiStatus\.status === 'verifying'\}/, '验证中须禁用按钮，避免叠请求');
+      assert.match(hd, /onClick=\{\(\) => \{ setShowHealth\(false\); openSettings\(\); \}\}/, '「去设置」须直接落到设置视图');
+      assert.match(hd, /aiCheckedAtLabel\(aiStatus\.checkedAt, lang\)/, '须显示「多久以前检测」');
+      assert.match(hd, /checkedStale &&/, '过期须显式标注（不能只显示「3 天前」让人误以为有效）');
+      assert.match(hd, /AI_STATUS_DETAIL\[aiStatus\.detail\]\[lang\]/, 'invalid 须给出可排查的原因');
+
+      // ⑩b AiAssistant：面板首开静默验证；列出模型绝不置绿
+      assert.match(panelSrc, /verifyAiStatus\(config, \{ auto: true \}\)/, '面板首开须静默验证一次（auto 模式）');
+      assert.match(panelSrc, /settingsSignal > 0/, '「去设置」信号须被面板消费');
+      assert.doesNotMatch(
+        panelSrc,
+        /ids\.length > 0 && formMatchesSaved && config\) reportAiSuccess/,
+        '获取模型成功后不得置绿：/models 只证明凭证与端点通，不证明模型能对话',
+      );
+
+      // ⑩c 纯函数：时效判定（含未来时间戳）
+      const now = Date.UTC(2026, 9, 20, 12, 0, 0);
+      assert.equal(isStatusFresh(now - 1000, now), true, '刚刚检测过须算新鲜');
+      assert.equal(isStatusFresh(now - AI_STATUS_TTL_MS, now), true, '恰好 24h 边界内仍算新鲜');
+      assert.equal(isStatusFresh(now - AI_STATUS_TTL_MS - 1, now), false, '超过 24h 必须判过期');
+      assert.equal(isStatusFresh(null, now), false, '从未检测不算新鲜');
+      assert.equal(isStatusFresh(now + 60000, now), false, '未来时间戳不可信（改时钟/漂移）');
+      assert.equal(AI_STATUS_TTL_MS, 24 * 60 * 60 * 1000, 'TTL 须为 24 小时');
+
+      // ⑩d 形状/文案表：五态齐备，空心只给「结论未定」
+      const statuses = ['unconfigured', 'configured', 'verifying', 'valid', 'invalid'] as const;
+      for (const s of statuses) {
+        assert.ok(AI_STATUS_LABEL[s]?.zh && AI_STATUS_LABEL[s]?.en, `状态 ${s} 须中英文案齐备`);
+      }
+      assert.equal(AI_STATUS_DOT.configured, '', '待验证不得再渲染实心点');
+      assert.ok(AI_STATUS_HOLLOW.configured.includes('border-2'), '待验证须为空心环（border-2）');
+      assert.ok(AI_STATUS_HOLLOW.configured.includes('border-[var(--warn)]'), '空心环颜色须走 --warn 令牌');
+      assert.ok(AI_STATUS_HOLLOW.verifying.includes('motion-safe:animate-pulse'), '验证中须有尊重 reduced-motion 的呼吸');
+      assert.equal(isHollowStatus('configured'), true);
+      assert.equal(isHollowStatus('verifying'), true);
+      assert.equal(isHollowStatus('valid'), false, '已就绪须是实心（有确定结论）');
+      assert.equal(isHollowStatus('invalid'), false);
+      for (const d of ['auth', 'notfound', 'model', 'network', 'rejected', 'server', 'badurl'] as const) {
+        assert.ok(AI_STATUS_DETAIL[d]?.zh && AI_STATUS_DETAIL[d]?.en, `原因码 ${d} 须中英文案齐备`);
+      }
+
+      // ⑩e 人话时间
+      assert.equal(aiCheckedAtLabel(null, 'zh'), '从未检测');
+      assert.equal(aiCheckedAtLabel(now - 30000, 'zh', now), '刚刚');
+      assert.equal(aiCheckedAtLabel(now - 5 * 60000, 'zh', now), '5 分钟前');
+      assert.equal(aiCheckedAtLabel(now - 3 * 3600000, 'zh', now), '3 小时前');
+      assert.equal(aiCheckedAtLabel(now - 3 * 86400000, 'en', now), '3 d ago');
+
+      // ⑩f 运行时：真实跑一遍状态机（假 window.localStorage + 假 fetch）
+      const g = globalThis as unknown as { window?: unknown; fetch: typeof fetch };
+      const store = new Map<string, string>();
+      const fakeWindow = {
+        localStorage: {
+          getItem: (k: string) => (store.has(k) ? (store.get(k) as string) : null),
+          setItem: (k: string, v: string) => { store.set(k, v); },
+          removeItem: (k: string) => { store.delete(k); },
+        },
+      };
+      const prevWindow = g.window;
+      const realFetch = g.fetch;
+      const calls: string[] = [];
+      let bodies: string[] = [];
+      const mkRes = (status: number, body: unknown = {}) =>
+        ({ ok: status >= 200 && status < 300, status, json: async () => body }) as unknown as Response;
+      const cfg = {
+        providerId: 'custom',
+        apiKey: 'test-key-placeholder-0000',
+        baseUrl: 'https://api.example.com/v1',
+        model: 'm1',
+        agreed: true,
+      };
+      await (async () => {
+        try {
+          g.window = fakeWindow;
+          g.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+            calls.push(String(url));
+            bodies.push(String(init?.body ?? ''));
+            return mkRes(200, { data: [{ id: 'm1' }, { id: 'm2' }] });
+          }) as typeof fetch;
+
+          // 未配置：不发请求
+          refreshAiStatus(null);
+          assert.equal(getAiStatus().status, 'unconfigured');
+          assert.equal(calls.length, 0, '未配置时不得发任何请求');
+
+          // 配置齐全但无结论 → 待验证；refresh 本身不联网（零轮询）
+          refreshAiStatus(cfg);
+          assert.equal(getAiStatus().status, 'configured');
+          assert.equal(getAiStatus().checkedAt, null);
+          assert.equal(calls.length, 0, 'refreshAiStatus 不得联网');
+
+          // 探针：/models 命中当前模型 → 0 token 置绿
+          assert.equal(await verifyAiStatus(cfg), 'valid');
+          assert.equal(calls.length, 1, '命中 /models 后不得再发 chat 探针');
+          assert.match(calls[0], /\/models$/, '第一跳必须是 /models');
+          const savedAt = getAiStatus().checkedAt;
+          assert.ok(savedAt !== null && Math.abs(Date.now() - savedAt) < 5000, '置绿须记录 checkedAt');
+
+          // 过期降级：25 小时前的结论必须回到待验证，但保留时间供卡片显示
+          const fp = aiConfigFingerprint(cfg);
+          store.set('stem-ai-status', JSON.stringify({
+            fingerprint: fp, status: 'valid', checkedAt: Date.now() - 25 * 3600000, detail: '',
+          }));
+          refreshAiStatus(cfg);
+          assert.equal(getAiStatus().status, 'configured', '超过 24h 的绿点必须降级');
+          assert.ok(getAiStatus().checkedAt !== null, '降级后仍须保留上次检测时间');
+
+          // 指纹变化（换模型）→ 旧结论立即作废
+          store.set('stem-ai-status', JSON.stringify({ fingerprint: fp, status: 'valid', checkedAt: Date.now(), detail: '' }));
+          refreshAiStatus({ ...cfg, model: 'm2' });
+          assert.equal(getAiStatus().status, 'configured', '换模型后不得沿用旧结论');
+          assert.equal(getAiStatus().checkedAt, null, '换配置后旧检测时间不再属于当前配置');
+
+          // 端点不支持 /models（404）→ 降级 chat 探针，且探针必须 max_tokens=1
+          calls.length = 0;
+          bodies = [];
+          let n = 0;
+          g.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
+            calls.push(String(url));
+            bodies.push(String(init?.body ?? ''));
+            n += 1;
+            return n === 1 ? mkRes(404) : mkRes(200, { choices: [{ message: { content: 'p' } }] });
+          }) as typeof fetch;
+          assert.equal(await verifyAiStatus(cfg), 'valid', '/models 不支持时应由 chat 探针给出结论');
+          assert.equal(calls.length, 2);
+          assert.match(calls[1], /\/chat\/completions$/, '第二跳才是 chat 探针');
+          assert.ok(bodies[1].includes('"max_tokens":1'), 'chat 探针必须 max_tokens=1（控成本）');
+
+          // 鉴权失败（401）→ invalid/auth，且不再白跑 chat
+          calls.length = 0;
+          g.fetch = (async (url: string | URL | Request) => {
+            calls.push(String(url));
+            return mkRes(401);
+          }) as typeof fetch;
+          assert.equal(await verifyAiStatus(cfg), 'invalid');
+          assert.equal(getAiStatus().detail, 'auth');
+          assert.equal(calls.length, 1, '401 之后不得再发 chat 探针');
+
+          // 429 → 不判死刑：回到待验证，且不写存档
+          store.delete('stem-ai-status');
+          g.fetch = (async () => mkRes(429)) as typeof fetch;
+          assert.equal(await verifyAiStatus(cfg), 'configured', '限流是服务商此刻状态，不代表配置错');
+          assert.equal(store.has('stem-ai-status'), false, '429 不得写入结论存档');
+
+          // 并发去重：连点只发一次请求
+          calls.length = 0;
+          let release: (() => void) | null = null;
+          const gate = new Promise<void>((res) => { release = () => res(); });
+          g.fetch = (async (url: string | URL | Request) => {
+            calls.push(String(url));
+            await gate;
+            return mkRes(200, { data: [{ id: 'm1' }] });
+          }) as typeof fetch;
+          const p1 = verifyAiStatus(cfg);
+          const p2 = verifyAiStatus(cfg);
+          assert.equal(getAiStatus().status, 'verifying', '验证期间须进入 verifying 态');
+          (release as unknown as () => void)();
+          const [r1, r2] = await Promise.all([p1, p2]);
+          assert.equal(r1, r2, '并发调用须返回同一结论');
+          assert.equal(calls.length, 1, '验证进行中再点不得叠请求');
+        } finally {
+          g.fetch = realFetch;
+          g.window = prevWindow;
+          refreshAiStatus(null);
+        }
+      })();
     }
   });
 });

@@ -34,6 +34,9 @@ interface AiContextValue {
   /** 出题练习：页面按钮触发打开面板并切到 quiz 视图（自增信号） */
   quizSignal: number;
   openQuiz: () => void;
+  /** 打开面板并直接切到设置视图（顶栏健康卡片「去设置」用；自增信号） */
+  settingsSignal: number;
+  openSettings: () => void;
 }
 
 const AiContext = createContext<AiContextValue>({
@@ -48,6 +51,8 @@ const AiContext = createContext<AiContextValue>({
   setAsk: () => undefined,
   quizSignal: 0,
   openQuiz: () => undefined,
+  settingsSignal: 0,
+  openSettings: () => undefined,
 });
 
 export function AiProvider({ children }: { children: ReactNode }) {
@@ -62,6 +67,7 @@ export function AiProvider({ children }: { children: ReactNode }) {
   const [aiCtx, setAiCtx] = useState<AiPageContext>({});
   const [ask, setAsk] = useState<string | null>(null);
   const [quizSignal, setQuizSignal] = useState(0);
+  const [settingsSignal, setSettingsSignal] = useState(0);
 
   const askAi = (question: string) => {
     setAsk(question);
@@ -73,8 +79,13 @@ export function AiProvider({ children }: { children: ReactNode }) {
     setOpen(true);
   };
 
+  const openSettings = () => {
+    setSettingsSignal((s) => s + 1);
+    setOpen(true);
+  };
+
   return (
-    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx, ask, askAi, setAsk, quizSignal, openQuiz }}>
+    <AiContext.Provider value={{ open, setOpen, configured, setConfigured, aiCtx, setAiCtx, ask, askAi, setAsk, quizSignal, openQuiz, settingsSignal, openSettings }}>
       {children}
     </AiContext.Provider>
   );

@@ -7,26 +7,64 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle, RotateCw } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
-import { AI_STATUS_DOT, AI_STATUS_LABEL, useAiStatus } from '../../lib/ai-status';
+import {
+  AI_STATUS_DETAIL,
+  AI_STATUS_DOT,
+  AI_STATUS_HOLLOW,
+  AI_STATUS_LABEL,
+  aiCheckedAtLabel,
+  isHollowStatus,
+  isStatusFresh,
+  useAiStatus,
+  verifyAiStatus,
+} from '../../lib/ai-status';
+import { loadAiConfig } from '../../lib/ai-config';
 import { APP_VERSION } from '../../lib/changelog';
 import { useVersionCheck } from '../../lib/use-version-check';
 import VersionDialog from '../feedback/VersionDialog';
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import type { ThemeMode } from '../../lib/app-context';
+import type { AiStatus } from '../../lib/ai-status';
+
+/**
+ * 健康卡片的标题：刻意不复用 AI_STATUS_LABEL——那是图标的悬浮提示（带「AI 助手（…）」外壳），
+ * 卡片里需要的是「结论本身」，两套文案各自服务一处，避免一处改字另一处跟着变味。
+ */
+const HEALTH_TITLE: Record<AiStatus, { zh: string; en: string }> = {
+  unconfigured: { zh: '尚未配置 AI 助手', en: 'AI assistant not configured' },
+  configured: { zh: '待验证：还没确认能不能用', en: 'Unverified: not confirmed yet' },
+  verifying: { zh: '正在验证连接…', en: 'Verifying connection…' },
+  valid: { zh: '已就绪，可以对话', en: 'Ready to chat' },
+  invalid: { zh: '连接异常', en: 'Connection error' },
+};
 
 export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const { t, lang, setLang, themeMode, setThemeMode, isOffline } = useApp();
-  const { open: aiOpen, setOpen: setAiOpen } = useAiContext();
-  // 顶栏 AI 图标四态（unconfigured / configured / valid / invalid）——状态本身来自 lib/ai-status，
-  // 只在「配置变更 / 主动测试 / 实战请求」时推进，页面加载绝不自动 Ping。标题与角标同源同一状态。
+  const { open: aiOpen, setOpen: setAiOpen, openSettings } = useAiContext();
+  // 顶栏 AI 图标五态（unconfigured / configured / verifying / valid / invalid）——状态来自 lib/ai-status，
+  // 只在「用户主动验证 / 面板首开 / 实战请求」时推进，页面加载绝不自动 Ping。标题与角标同源同一状态。
   const aiStatus = useAiStatus();
   const aiLabel = AI_STATUS_LABEL[aiStatus.status][lang].replace('{model}', aiStatus.model);
+  /** 连通性健康卡片（点角标展开；不打开大面板） */
+  const [showHealth, setShowHealth] = useState(false);
   const [showVersion, setShowVersion] = useState(false);
   const [showPack, setShowPack] = useState(false);
+
+  // 卡片只在自己打开时读一次配置（端点要显示给用户排查用）；关闭即不再读
+  const healthCfg = showHealth ? loadAiConfig() : null;
+  const checkedStale = aiStatus.checkedAt !== null && !isStatusFresh(aiStatus.checkedAt);
+
+  // Esc 关闭健康卡片（外部点击由覆盖层负责，不挂 document 监听）
+  useEffect(() => {
+    if (!showHealth) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHealth(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showHealth]);
   // 离线教学包状态：只在「下载中 / 已就绪」时于顶栏露出徽标，平时不占位置
   const { status: packStatus, progress: packProgress, running: packRunning } = useOfflinePack();
   const [toast, setToast] = useState(false);
@@ -188,27 +226,111 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           </button>
         )}
 
-        {/* AI Assistant entry */}
-        <button
-          type="button"
-          onClick={() => setAiOpen(!aiOpen)}
-          aria-label={isOffline ? t.offlineAi.hint : aiLabel}
-          title={isOffline ? t.offlineAi.hint : aiLabel}
-          className={`relative flex items-center justify-center p-2 rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {isOffline ? (
-            <WifiOff className="absolute bottom-1 right-1 w-2.5 h-2.5 text-[var(--error)]" aria-hidden="true" />
-          ) : (
-            /* 四态角标：6px 圆点 + ring-2 镂空描边（与图标底色分离，深色主题下也看得清）。
-               颜色语义只用设计令牌：--warn 未配置 / --muted 待验证 / --success 已就绪 / --error 连接异常。
-               静态常亮，不做呼吸闪烁——状态点不是装饰，闪动会分散注意力。 */
-            <span
-              className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[aiStatus.status]}`}
-              aria-hidden="true"
-            />
+        {/* AI Assistant entry：图标开面板；右上角状态角标单独可点，就地展开连通性健康卡片 */}
+        <div className="relative flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setAiOpen(!aiOpen)}
+            aria-label={isOffline ? t.offlineAi.hint : aiLabel}
+            title={isOffline ? t.offlineAi.hint : aiLabel}
+            className={`flex items-center justify-center p-2 rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {isOffline && <WifiOff className="absolute bottom-1 right-1 w-2.5 h-2.5 text-[var(--error)]" aria-hidden="true" />}
+          </button>
+          {!isOffline && (
+            <button
+              type="button"
+              onClick={() => setShowHealth((v) => !v)}
+              aria-label={`${aiLabel} — ${lang === 'zh' ? '查看连通状态' : 'view connection status'}`}
+              aria-expanded={showHealth}
+              data-ai-health-trigger
+              className="absolute top-px right-px z-10 grid h-4 w-4 place-items-center rounded-full"
+            >
+              {/* 形状表确定性：实心=有结论（未配置/已就绪/异常）；空心=结论未定（待验证/验证中）。
+                  颜色只用设计令牌，深色主题下随令牌自适应；静态常亮，不做装饰性闪烁
+                  （唯一例外：verifying 用 motion-safe 呼吸，表示「正在进行」。 */}
+              {isHollowStatus(aiStatus.status) ? (
+                <span className={`h-2 w-2 rounded-full ${AI_STATUS_HOLLOW[aiStatus.status]}`} aria-hidden="true" />
+              ) : (
+                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[aiStatus.status]}`} aria-hidden="true" />
+              )}
+            </button>
           )}
-        </button>
+
+          {showHealth && (
+            <>
+              {/* 外部点击关闭：透明覆盖层（不挂 document 监听，避免与面板的全局快捷键互抢） */}
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={lang === 'zh' ? '关闭连通状态卡片' : 'Close connection status'}
+                onClick={() => setShowHealth(false)}
+                className="fixed inset-0 z-[70] cursor-default bg-transparent"
+              />
+              <div
+                role="dialog"
+                aria-label={lang === 'zh' ? 'AI 连通状态' : 'AI connection status'}
+                data-ai-health-card
+                className="fixed z-[71] inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[0_10px_28px_rgba(0,0,0,0.16)] sm:w-[19rem]"
+              >
+                <div className="flex items-center gap-2">
+                  {isHollowStatus(aiStatus.status) ? (
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${AI_STATUS_HOLLOW[aiStatus.status]}`} aria-hidden="true" />
+                  ) : (
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${AI_STATUS_DOT[aiStatus.status]}`} aria-hidden="true" />
+                  )}
+                  <span className="text-[0.6875rem] font-bold text-[var(--fg)]">{HEALTH_TITLE[aiStatus.status][lang]}</span>
+                </div>
+
+                <dl className="mt-2 space-y-1 mono-font text-[0.625rem] text-[var(--muted)]">
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">{lang === 'zh' ? '模型' : 'Model'}</dt>
+                    <dd className="truncate text-[var(--fg)]">{aiStatus.model || (lang === 'zh' ? '未设置' : 'Not set')}</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">{lang === 'zh' ? '端点' : 'Endpoint'}</dt>
+                    <dd className="truncate text-[var(--fg)]" title={healthCfg?.baseUrl || ''}>{healthCfg?.baseUrl || '—'}</dd>
+                  </div>
+                  <div className="flex gap-2">
+                    <dt className="shrink-0">{lang === 'zh' ? '上次检测' : 'Checked'}</dt>
+                    <dd className="text-[var(--fg)]">
+                      {aiCheckedAtLabel(aiStatus.checkedAt, lang)}
+                      {checkedStale && (lang === 'zh' ? '（已过期）' : ' (expired)')}
+                    </dd>
+                  </div>
+                </dl>
+
+                {aiStatus.detail !== '' && (
+                  <p className="mt-1.5 text-[0.625rem] leading-snug text-[var(--error)]">{AI_STATUS_DETAIL[aiStatus.detail][lang]}</p>
+                )}
+
+                <div className="mt-2.5 flex items-center gap-2">
+                  {aiStatus.status !== 'unconfigured' && (
+                    <button
+                      type="button"
+                      disabled={aiStatus.status === 'verifying'}
+                      onClick={() => { void verifyAiStatus(loadAiConfig()); }}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[var(--fg)] px-2.5 py-1 text-[0.625rem] text-[var(--bg)] transition-opacity hover:opacity-85 disabled:opacity-50"
+                    >
+                      <RotateCw className={`w-3 h-3 ${aiStatus.status === 'verifying' ? 'motion-safe:animate-spin' : ''}`} aria-hidden="true" />
+                      {aiStatus.status === 'verifying' ? (lang === 'zh' ? '验证中…' : 'Verifying…') : (lang === 'zh' ? '重新验证' : 'Re-verify')}
+                    </button>
+                  )}
+                  {/* 主次：卡片的本职是「查连通」，所以「重新验证」是主按钮；
+                      「去设置」是出口而非目标，压成次级描边按钮（此前反了，视线被吸到设置上）。 */}
+                  <button
+                    type="button"
+                    onClick={() => { setShowHealth(false); openSettings(); }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] px-2.5 py-1 text-[0.625rem] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]"
+                  >
+                    {lang === 'zh' ? '去设置' : 'Settings'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Language Switcher (single toggle button) */}
         <button

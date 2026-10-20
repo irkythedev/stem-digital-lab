@@ -621,6 +621,18 @@ input[type="range"]::-moz-range-thumb:active {
   .recite-active { animation: none; box-shadow: 0 0 0 2px rgba(199, 29, 35, 0.45); }
 }
 
+/* AI 思考过程折叠栏 · 灯泡呼吸灯（1.8s，与全站慢呼吸节奏一致）。
+   不用 Tailwind animate-pulse：它把透明度压到 0.5，浅色主题下琥珀黄会被底色洗成浅金、
+   几乎看不出「正在想」。这里只降到 0.72——够看出在呼吸，又保住黄色的可辨性。 */
+@keyframes bulb-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
+}
+.bulb-breathe { animation: bulb-breathe 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .bulb-breathe { animation: none; opacity: 1; }
+}
+
 /* 每日科学「翻一翻」图标：每次点击翻转一圈（一次性，非循环） */
 @keyframes daily-flip {
   from { transform: rotate(0deg); }
