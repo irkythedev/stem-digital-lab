@@ -15,6 +15,7 @@ import {
   AI_STATUS_DOT,
   AI_STATUS_HOLLOW,
   AI_STATUS_LABEL,
+  AI_STATUS_TTL_MS,
   aiCheckedAtLabel,
   isHollowStatus,
   isStatusFresh,
@@ -48,7 +49,6 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   // 顶栏 AI 图标五态（unconfigured / configured / verifying / valid / invalid）——状态来自 lib/ai-status，
   // 只在「用户主动验证 / 面板首开 / 实战请求」时推进，页面加载绝不自动 Ping。标题与角标同源同一状态。
   const aiStatus = useAiStatus();
-  const aiLabel = AI_STATUS_LABEL[aiStatus.status][lang].replace('{model}', aiStatus.model);
   /** 连通性健康卡片（点角标展开；不打开大面板） */
   const [showHealth, setShowHealth] = useState(false);
   const [showVersion, setShowVersion] = useState(false);
@@ -57,6 +57,30 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   // 卡片只在自己打开时读一次配置（端点要显示给用户排查用）；关闭即不再读
   const healthCfg = showHealth ? loadAiConfig() : null;
   const checkedStale = aiStatus.checkedAt !== null && !isStatusFresh(aiStatus.checkedAt);
+  /**
+   * 结论过期即降级（渲染期纯函数复核，不引定时器、不联网）。
+   * 状态机只在「有事件」时重算，标签页一直开着就可能带着一条 24 小时前的结论；
+   * 此前角标只读 status，于是出现「角标说已就绪、卡片说已过期」的自相矛盾。
+   * 只降级 valid / invalid 两种**确定结论**：verifying 期间 checkedAt 沿用上一次的旧值，
+   * 那不是"过期结论"，若一并降级会把"验证中"的呼吸环也吞掉。
+   */
+  const expiredConclusion = checkedStale && (aiStatus.status === 'valid' || aiStatus.status === 'invalid');
+  const shownStatus: AiStatus = expiredConclusion ? 'configured' : aiStatus.status;
+  const aiLabel = AI_STATUS_LABEL[shownStatus][lang].replace('{model}', aiStatus.model);
+  /**
+   * 过期判定是渲染期纯函数：没有重渲染就不会重算，标签页一直开着便会停在旧结论上。
+   * 所以只补一个**一次性到点定时器**（不是轮询）：在 checkedAt + TTL 那一刻让这一帧重新求值。
+   * 已在过去则不再排队；每次 checkedAt/status 变化都重排，清理时撤销。
+   */
+  const [, bumpFreshness] = useState(0);
+  useEffect(() => {
+    const at = aiStatus.checkedAt;
+    if (at === null) return;
+    const ms = at + AI_STATUS_TTL_MS - Date.now();
+    if (ms <= 0) return;
+    const t = setTimeout(() => bumpFreshness((n) => n + 1), ms + 50);
+    return () => clearTimeout(t);
+  }, [aiStatus.checkedAt, aiStatus.status]);
 
   // Esc 关闭健康卡片（外部点击由覆盖层负责，不挂 document 监听）
   useEffect(() => {
@@ -226,34 +250,49 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           </button>
         )}
 
-        {/* AI Assistant entry：图标开面板；右上角状态角标单独可点，就地展开连通性健康卡片 */}
+        {/* AI 入口：图标开面板；状态角标是**附属徽标**——落在图标的右上角外侧，不参与横排。
+            角标只表达「连通性」：未配置时不渲染（没配置不是故障）。
+
+            几何全部按实测值解算（不是随手调的数）：
+            - 图标按钮 36×36，内部 Sparkles 字形只有 14×14 且居中（按钮内右侧留 11px 空白）。
+              所以「右上角」指**字形的右上角**，不是按钮盒子的角——按按钮角放会让圆点漂进
+              上方空白 13px，看起来完全脱离图标。
+            - 圆点最终落在字形的**右上方外侧**：与字形右边距 3px、上边距 2px，**完全不重叠**，
+              连 2px 的描边环也不碰字形（环最左 900 > 字形右 899）。
+            - 盒子（36×36 透明命中区）向右上展开：右边缘距图标按钮右边缘 2px，
+              因此不压到右侧「中文 / EN」按钮（它距图标 12px）；底边止于字形上边缘，
+              所以**图标中心仍然可点开面板**。
+            - 几何上限：header 高 53px、图标上沿仅 12px 余量，命中区可见部分实为 36×21
+              （约旧版 16×16 的 3 倍面积）。要拿到真正的 36×36，只能把 header 抬高约 15px——
+              那是布局决策，不在这里偷偷做。 */}
         <div className="relative flex items-center justify-center">
           <button
             type="button"
             onClick={() => setAiOpen(!aiOpen)}
             aria-label={isOffline ? t.offlineAi.hint : aiLabel}
             title={isOffline ? t.offlineAi.hint : aiLabel}
-            className={`flex items-center justify-center p-2 rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
           >
             <Sparkles className="w-3.5 h-3.5" />
             {isOffline && <WifiOff className="absolute bottom-1 right-1 w-2.5 h-2.5 text-[var(--error)]" aria-hidden="true" />}
           </button>
-          {!isOffline && (
+          {!isOffline && shownStatus !== 'unconfigured' && (
             <button
               type="button"
               onClick={() => setShowHealth((v) => !v)}
               aria-label={`${aiLabel} — ${lang === 'zh' ? '查看连通状态' : 'view connection status'}`}
+              title={`${HEALTH_TITLE[shownStatus][lang]} · ${aiCheckedAtLabel(aiStatus.checkedAt, lang)}`}
               aria-expanded={showHealth}
               data-ai-health-trigger
-              className="absolute top-px right-px z-10 grid h-4 w-4 place-items-center rounded-full"
+              className="absolute right-[4px] -top-[26px] z-10 grid h-9 w-9 place-items-end rounded-full"
             >
-              {/* 形状表确定性：实心=有结论（未配置/已就绪/异常）；空心=结论未定（待验证/验证中）。
+              {/* 形状表确定性：实心=有结论（已就绪/异常）；空心=结论未定（待验证/验证中）。
                   颜色只用设计令牌，深色主题下随令牌自适应；静态常亮，不做装饰性闪烁
                   （唯一例外：verifying 用 motion-safe 呼吸，表示「正在进行」。 */}
-              {isHollowStatus(aiStatus.status) ? (
-                <span className={`h-2 w-2 rounded-full ${AI_STATUS_HOLLOW[aiStatus.status]}`} aria-hidden="true" />
+              {isHollowStatus(shownStatus) ? (
+                <span className={`h-2 w-2 rounded-full ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
               ) : (
-                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[aiStatus.status]}`} aria-hidden="true" />
+                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
               )}
             </button>
           )}
@@ -275,12 +314,12 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                 className="fixed z-[71] inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[0_10px_28px_rgba(0,0,0,0.16)] sm:w-[19rem]"
               >
                 <div className="flex items-center gap-2">
-                  {isHollowStatus(aiStatus.status) ? (
-                    <span className={`h-2 w-2 shrink-0 rounded-full ${AI_STATUS_HOLLOW[aiStatus.status]}`} aria-hidden="true" />
+                  {isHollowStatus(shownStatus) ? (
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
                   ) : (
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${AI_STATUS_DOT[aiStatus.status]}`} aria-hidden="true" />
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
                   )}
-                  <span className="text-[0.6875rem] font-bold text-[var(--fg)]">{HEALTH_TITLE[aiStatus.status][lang]}</span>
+                  <span className="text-[0.6875rem] font-bold text-[var(--fg)]">{HEALTH_TITLE[shownStatus][lang]}</span>
                 </div>
 
                 <dl className="mt-2 space-y-1 mono-font text-[0.625rem] text-[var(--muted)]">
@@ -301,7 +340,9 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                   </div>
                 </dl>
 
-                {aiStatus.detail !== '' && (
+                {/* 已过期的结论不再复述原因：标题已经退回「待验证」，此时再讲 401/网络
+                    就是在陈述一件 24 小时前的事，反而诱导用户照旧结论排查。 */}
+                {!expiredConclusion && aiStatus.detail !== '' && (
                   <p className="mt-1.5 text-[0.625rem] leading-snug text-[var(--error)]">{AI_STATUS_DETAIL[aiStatus.detail][lang]}</p>
                 )}
 

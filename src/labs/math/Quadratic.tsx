@@ -339,11 +339,24 @@ export default function Quadratic() {
     const k = a * h * h + b * h + c;
     const marks: CoordMarker[] = [
       { key: 'axis', vline: { x: h, label: `x=${r1(h)}`, color: 'var(--accent)' } },
-      { key: 'vertex', dot: { x: h, y: k, label: `(${r1(h)}, ${r1(k)})`, color: 'var(--accent)' } },
+      // 顶点/交点的文字一律落在「开口的反方向」：开口向下（a<0）标在上方，开口向上标在下方。
+      // 若统一放右上，开口向下时文字正好落在抛物线内侧、被曲线横穿（实测 a=1,b=0,c=-4 根标签与曲线相交）。
+      {
+        key: 'vertex',
+        dot: { x: h, y: k, label: `(${r1(h)}, ${r1(k)})`, color: 'var(--accent)', place: a < 0 ? 'above' : 'below' },
+      },
     ];
     // 与 x 轴交点：Δ=b²−4ac ≥ 0 才有实根（Δ<0 由核返回空数组，绝不产生 NaN 坐标）
     for (const [i, root] of quadraticRoots(a, b, c).entries()) {
-      marks.push({ key: `root${i}`, dot: { x: root, y: 0, label: `(${r1(root)}, 0)`, color: 'var(--muted)' } });
+      marks.push({
+        key: `root${i}`,
+        // 交点文字朝**外侧**（远离对称轴）：标注若朝内，会沿抛物线内侧延伸、被曲线擦过
+        dot: {
+          x: root, y: 0, label: `(${r1(root)}, 0)`, color: 'var(--muted)',
+          place: a < 0 ? 'above' : 'below',
+          side: root < h ? 'left' : 'right',
+        },
+      });
     }
     return marks;
   }, [a, b, c]);

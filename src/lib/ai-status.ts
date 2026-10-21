@@ -6,8 +6,9 @@
  *   unconfigured 未配置 / configured 待验证 / verifying 验证中 / valid 已就绪 / invalid 连接异常
  *
  * 四条纪律：
- * - 零轮询：页面加载绝不自动 Ping（不替用户烧配额）。验证只发生在两处——用户主动点击
- *   （角标卡片「重新验证」/ 设置页「测试连接」），以及「AI 面板首次打开」这一明确的使用意图。
+ * - 以「不打扰」为前提的自动探测：页面**可见**时静默重测（GET /models，0 token，不闪「验证中」），
+ *   打开页面每标签页自检一次；坏状态从 45s 起按 2 倍退避封顶 5 分钟，健康时 5 分钟，
+ *   切回前台/网络恢复/手动验证/改配置均复位退避。没有这条路，角标就会永远停在旧结论上。
  * - 结论有时效：valid / invalid 都带 checkedAt；超过 24 小时自动降级回 configured，
  *   配置指纹一变立即作废——旧结论不许冒充当前状态。
  * - 验证先便宜后昂贵：先 GET /models（0 token），拿不到结论才发一次 max_tokens=1 的 chat 探针。
@@ -147,6 +148,8 @@ export function isStatusFresh(checkedAt: number | null, now: number = Date.now()
 export function refreshAiStatus(cfg: AiConfig | null | undefined): void {
   const fingerprint = aiConfigFingerprint(cfg);
   const hasKey = !!((cfg?.apiKey || '').trim());
+  // 配置发生变化（保存 / 清除 / 载入）时退避清零：新配置值得立刻按 45s 的节奏试
+  resetPollBackoff();
   if (!cfg || !fingerprint || !hasKey || !cfg.baseUrl || !cfg.model) {
     writePersisted(null);
     emit({ status: 'unconfigured', model: '', checkedAt: null, detail: '' });
@@ -251,9 +254,14 @@ let inFlight: Promise<AiStatus> | null = null;
  * 主动验证（**唯一会联网推进状态的方式**）。
  * - opts.auto=true（面板首开时的静默触发）：只在结论缺失/过期时动手；已就绪且未过期直接返回，
  *   因此反复开关面板不会反复发请求。
+ * - opts.silent=true（后台轮询用）：**不 emit 中间的 verifying**，只有最终结论落地。
+ *   轮询若每次都闪一下"验证中"，顶栏每隔几分钟就呼吸一次，是噪音而不是信息。
  * - 并发去重：验证进行中再次调用，复用同一个 Promise（连点角标不会叠请求）。
  */
-export function verifyAiStatus(cfg: AiConfig | null | undefined, opts?: { auto?: boolean }): Promise<AiStatus> {
+export function verifyAiStatus(
+  cfg: AiConfig | null | undefined,
+  opts?: { auto?: boolean; silent?: boolean },
+): Promise<AiStatus> {
   const fingerprint = aiConfigFingerprint(cfg);
   const hasKey = !!((cfg?.apiKey || '').trim());
   if (!cfg || !fingerprint || !hasKey || !cfg.baseUrl || !cfg.model) {
@@ -262,11 +270,13 @@ export function verifyAiStatus(cfg: AiConfig | null | undefined, opts?: { auto?:
     return Promise.resolve<AiStatus>('unconfigured');
   }
   if (opts?.auto && snapshot.status !== 'configured') return Promise.resolve(snapshot.status);
+  // 用户主动验证（非 silent）= 有人正在处理，退避计数归零：下一次轮询回到 45s 起算
+  if (!opts?.silent) resetPollBackoff();
   if (inFlight) return inFlight;
 
   const model = cfg.model;
   const prevCheckedAt = snapshot.checkedAt;
-  emit({ status: 'verifying', model, checkedAt: prevCheckedAt, detail: '' });
+  if (!opts?.silent) emit({ status: 'verifying', model, checkedAt: prevCheckedAt, detail: '' });
 
   inFlight = probe(cfg)
     .then((r) => {
@@ -358,23 +368,30 @@ export const AI_STATUS_DETAIL: Record<Exclude<AiStatusDetail, ''>, { zh: string;
 };
 
 /**
- * 角标配色：**只用设计令牌**（--warn / --muted / --success / --error），
+ * 角标配色：**只用设计令牌**（--muted / --success / --error），
  * 不引 Tailwind 调色板色——调色板色在深色主题下不会随令牌自适应。
  * 逐态写全字面量类名：Tailwind 静态扫描扫不到拼接出来的类名。
+ *
+ * 语义纪律（2026-10 重构）：角标**只表达连通性**，不再表达「配置完备度」。
+ * - unconfigured：**不渲染角标**（配置完备度交给 AI 图标本体的 title／面板），
+ *   没配置不是故障，不该占用一个告警色的小点。
+ * - configured / verifying：中性灰空心环（结论未定），不使用琥珀——
+ *   琥珀与红在浅色主题下色相差仅 21°、明度差 1，6px 尺寸上无法与「连接异常」区分。
+ * - valid / invalid：实心绿 / 实心红，是仅有的两个确定性结论。
  *
  * 形状另有语义（见 AI_STATUS_HOLLOW）：实心 = 已有确定结论，空心 = 结论未定。
  */
 export const AI_STATUS_DOT: Record<AiStatus, string> = {
-  unconfigured: 'bg-[var(--warn)]',
+  unconfigured: '',
   configured: '',
   verifying: '',
   valid: 'bg-[var(--success)]',
   invalid: 'bg-[var(--error)]',
 };
 
-/** 空心环：configured（待验证）与 verifying（验证中）——形状表不确定、颜色表健康度 */
+/** 空心环：configured（待验证）与 verifying（验证中）——两者都是「还没有结论」，只靠呼吸区分在途 */
 export const AI_STATUS_HOLLOW: Record<'configured' | 'verifying', string> = {
-  configured: 'border-2 border-[var(--warn)] bg-[var(--bg)]',
+  configured: 'border-2 border-[var(--muted)] bg-[var(--bg)]',
   verifying: 'border-2 border-[var(--muted)] bg-[var(--bg)] motion-safe:animate-pulse',
 };
 
@@ -402,3 +419,176 @@ export function aiCheckedAtLabel(checkedAt: number | null, lang: 'zh' | 'en', no
 // 首帧就把状态算好（只读 localStorage，不联网）：避免「先闪一下未配置再变绿」。
 // 这里刻意只读指纹存档、不 import ai-config 的 loadAiConfig（那会造成循环依赖），
 // 真正的配置解析由 ai-context 在首帧渲染前调用 refreshAiStatus(loadAiConfig()) 完成。
+
+/** 与 ai-config 的 STORAGE_KEY 同值（同样刻意复制而不 import，理由见上） */
+const CONFIG_STORAGE_KEY = 'stem-ai-config';
+
+/**
+ * 跨标签同步：另一个标签 / PWA 独立窗口改动配置或结论后，本标签按同一条规则重算（**不联网**）。
+ *
+ * 为什么需要：状态只活在模块级 snapshot 里，而 storage 事件是全标签唯一能"听见"别处写入的通道。
+ * 不接这条线，就会出现「A 标签已清除配置，B 标签角标还绿着说已就绪」——它读的不是当前事实。
+ *
+ * 三个细节：
+ * - 监听两个 key：结论（stem-ai-status）与配置（stem-ai-config）。配置换成另一套时
+ *   refreshAiStatus 只在内存里 emit、并不改状态存档，所以只听结论会漏掉「换配置」这件事。
+ * - e.key === null 表示某个标签执行了 localStorage.clear()，一并重算。
+ * - 用动态 import 取 loadAiConfig：ai-config 在运行时 import 本模块（refreshAiStatus 等），
+ *   静态 import 会成环；事件到达时两个模块都已加载，动态 import 落在既有 chunk 上。
+ * storage 事件只在**其它文档**写入时触发，因此这里不会自激循环。
+ */
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key !== null && e.key !== STORAGE_KEY && e.key !== CONFIG_STORAGE_KEY) return;
+    void import('./ai-config').then((m) => { refreshAiStatus(m.loadAiConfig()); });
+  });
+}
+
+/** 本标签页是否已经做过那一次开机自检（sessionStorage：同一标签内刷新不再重发） */
+const SESSION_PROBE_KEY = 'stem-ai-probe-session';
+
+/**
+ * 会话级静默自检（**每标签页最多一次**）。
+ *
+ * 为什么打破「零轮询」这条绝对纪律：没有任何触发时，角标会永远停在「待验证」——
+ * 一个自称在报告状态的指示器，却永远给不出状态，等于把判断责任全推给用户。
+ * 折中办法是把「用户主动」放宽到「每个标签页会话一次」：GET /models 是 0 token，
+ * 单次、无重试、失败不落盘，成本可忽略，换来的是打开网页约 1 秒内角标就说真话。
+ *
+ * 五个约束，缺一不可：
+ * - 只有**已保存完整配置**才探（未配置不替用户做什么）；
+ * - 结论仍在有效期内（24h）则**不发任何请求**——这是零轮询保留的部分；
+ * - sessionStorage 打标：同一标签页刷新、路由切换都不再探（避免失败时反复重发）；
+ * - 等 `load` 之后再跑，不跟首屏抢带宽、不拖慢首屏；
+ * - 只在真实浏览器里调度（`document` 存在），测试环境不得被定时器偷偷联网。
+ */
+export function runSessionProbe(): void {
+  void import('./ai-config').then((m) => {
+    const cfg = m.loadAiConfig();
+    if (!cfg) return;
+    if (isStatusFresh(snapshot.checkedAt)) return;
+    try {
+      if (window.sessionStorage.getItem(SESSION_PROBE_KEY) === '1') return;
+      window.sessionStorage.setItem(SESSION_PROBE_KEY, '1');
+    } catch {
+      /* 隐私模式 / 配额满：退化为每次加载最多一次，语义仍成立 */
+    }
+    void verifyAiStatus(cfg, { auto: true });
+  });
+}
+
+/**
+ * 轮询节奏（自适应）：**坏状态勤快、好状态稀疏**。
+ *
+ * 固定间隔是个错误抽象——变化几乎只发生在坏状态里。用户改好 Key / 修好网络，
+ * 最想看到的就是红点自己变绿，这时几分钟等不起；反过来健康时高频打 /models，
+ * 一节课攒几百个没人看的请求。
+ *
+ * - valid（绿）：5 分钟一次，够发现「服务商突然不可用」；
+ * - 其它（红 / 待验证）：从 45 秒起，**失败一次退一级**（45 → 90 → 180），封顶 5 分钟。
+ * 两者都是 GET /models（0 token），且只在页面可见时发。
+ */
+export const AI_POLL_HEALTHY_MS = 5 * 60 * 1000;
+export const AI_POLL_BROKEN_MS = 45 * 1000;
+/** 坏状态退避上限：与健康态同频，避免退避到「比健康还慢」的怪异节奏 */
+export const AI_POLL_MAX_BREAK_MS = 5 * 60 * 1000;
+/** 退避最多翻几次（45→90→180→360 撞上限 300；再往后一直 300） */
+export const AI_POLL_BACKOFF_STEPS = 3;
+
+/**
+ * 连续失败计数：只在轮询里累加。
+ *
+ * 为什么必须退避：坏状态本来是 45 秒一次，图的是「修好后 45 秒内自己变绿」。
+ * 但如果没人修（Key 一直错、课堂投屏挂一节课），固定 45 秒就是在**持续敲打用户自己的端点**：
+ * 45 分钟 ≈ 60 次失败请求。退避让它三分钟内就稀疏下来，而修复动作本身会复位它
+ * （手动验证 / 切回前台 / 网络恢复 / 改配置），所以「勤快」只留给真正有人在处理的时刻。
+ */
+let failedProbes = 0;
+
+/** 退避复位：手动验证、切回前台、网络恢复、配置变更、或探到绿——任一发生就回到 45s 起算 */
+export function resetPollBackoff(): void {
+  failedProbes = 0;
+}
+
+/**
+ * 下一次轮询的间隔（纯读当前状态，供调度与测试共用）：
+ * - 绿：固定 5 分钟；
+ * - 非绿：AI_POLL_BROKEN_MS × 2^min(失败次数, 步数)，封顶 AI_POLL_MAX_BREAK_MS。
+ * 即 45s → 90s → 180s → 300s(封顶)，之后一直 300s。
+ */
+export function nextPollDelayMs(): number {
+  if (snapshot.status === 'valid') return AI_POLL_HEALTHY_MS;
+  const factor = 2 ** Math.min(failedProbes, AI_POLL_BACKOFF_STEPS);
+  return Math.min(AI_POLL_BROKEN_MS * factor, AI_POLL_MAX_BREAK_MS);
+}
+
+/**
+ * 切回前台 / 网络恢复时的补测门槛：结论年龄超过 15 秒才重测。
+ * 看的是**结论的年龄**（checkedAt），不是"上次发请求的时刻"——
+ * 否则刚载入就切走再切回会被无意义地节流掉，而此前那 1 秒里什么都没变。
+ */
+export const AI_RECHECK_MIN_AGE_MS = 15 * 1000;
+
+/**
+ * 轮询一次（**会联网**）：这是角标能自己从红变绿、从绿变红的那条路。
+ *
+ * 三个守卫，每个都对应一个真实的误报：
+ * - `navigator.onLine === false` 直接跳过：离线时探针必然报 network，
+ *   那会把「能上网但端点暂时不通」与「整台机器没网」混成同一个红点。
+ * - 已在验证中就跳过：不叠请求（用户可能正在点「重新验证」）。
+ * - 非定时原因（前台切回 / 网络恢复）要过结论年龄门槛：来回切标签不该变成压力测试。
+ *
+ * 探测用 `silent`：不闪「验证中」，只有结论变化才改角标。
+ */
+export async function pollAiStatus(reason: 'interval' | 'visible' | 'online' = 'interval'): Promise<AiStatus | null> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  if (reason !== 'interval') {
+    const age = snapshot.checkedAt === null ? Number.POSITIVE_INFINITY : Date.now() - snapshot.checkedAt;
+    if (age < AI_RECHECK_MIN_AGE_MS) return null;
+    // 回到前台 / 网络恢复 = 有人回来了，退避计数归零，立刻恢复"勤快"节奏
+    resetPollBackoff();
+  }
+  if (inFlight) return null;
+  const m = await import('./ai-config');
+  const cfg = m.loadAiConfig();
+  if (!cfg) return null;
+  const result = await verifyAiStatus(cfg, { silent: true });
+  // 失败累积退避、探到绿即复位：绿了就没有再敲打的理由
+  if (result === 'valid') failedProbes = 0;
+  else if (result === 'invalid' || result === 'configured') failedProbes += 1;
+  return result;
+}
+
+/**
+ * 轮询调度（链式 setTimeout，不是 setInterval）：
+ * 之所以链式而不是固定 interval，是因为间隔本身要随探测结果变化——
+ * 这一轮把红探成绿，下一轮就该退到 5 分钟；连续失败就该逐级退避。
+ * 固定 interval 只能在"探测后"改下一次，做不到"这一轮就变"。
+ *
+ * - 页面隐藏时到点也**不发请求**，只顺延（后台标签不该消耗配额）；
+ * - 切回前台立即补测一次（受 15s 结论年龄门槛，并复位退避）；
+ * - 网络恢复（online）立即补测，把之前的 network 红点自动纠正。
+ * 只在真实浏览器里挂（`document` 存在），测试环境不会被定时器偷偷联网。
+ */
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  const tick = async () => {
+    if (document.visibilityState === 'visible') await pollAiStatus('interval');
+    scheduleNextPoll();
+  };
+  const scheduleNextPoll = () => {
+    setTimeout(() => { void tick(); }, nextPollDelayMs());
+  };
+  scheduleNextPoll();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void pollAiStatus('visible');
+  });
+
+  window.addEventListener('online', () => { void pollAiStatus('online'); });
+}
+
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  const start = () => { setTimeout(() => { runSessionProbe(); }, 0); };
+  if (document.readyState === 'complete') start();
+  else window.addEventListener('load', start, { once: true });
+}

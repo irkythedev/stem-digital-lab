@@ -307,9 +307,17 @@ export default function Linear() {
   // Manim 式标注：与 y 轴交点（截距点，随 b 上下移动）
   const markers = useMemo<CoordMarker[]>(
     (): CoordMarker[] => [
-      { key: 'intercept', dot: { x: 0, y: b, label: `(0, ${Math.round(b * 10) / 10})`, color: 'var(--accent)' } },
+      {
+        key: 'intercept',
+        // 截距点正好在直线上：文字朝「直线不来的一侧」放——k>0 直线向右上走，文字放左上；
+        // k<0 向左上走，文字放右上。否则文字必然被直线穿过（实测 (0,−3) 与 y=2x−3 相交）。
+        dot: {
+          x: 0, y: b, label: `(0, ${Math.round(b * 10) / 10})`, color: 'var(--accent)',
+          side: k > 0 ? 'left' : 'right',
+        },
+      },
     ],
-    [b],
+    [b, k],
   );
 
   const reset = () => {

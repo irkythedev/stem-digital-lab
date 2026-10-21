@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.3';
+export const APP_VERSION = '0.40.4';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.4',
+    date: '2026-10',
+    zh: [
+      '[优化] 顶栏 AI 状态更清楚：没配置时不显示，未验证与连不上可以区分',
+      '[优化] AI 状态会自动复查，不用再手动点重新验证',
+      '[优化] 常规维护与体验微调',
+    ],
+    en: [
+      '[Improved] Clearer AI status in the header: no dot until set up, and "unverified" reads differently from "can\'t connect"',
+      '[Improved] AI status now re-checks itself, so you no longer press re-verify manually',
+      '[Improved] Routine maintenance and minor refinements',
+    ],
+  },
   {
     version: '0.40.3',
     date: '2026-10',

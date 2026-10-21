@@ -134,9 +134,9 @@ import {
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS, type ElementInfo } from './lib/elements';
 import {
-  AI_STATUS_DETAIL, AI_STATUS_DOT, AI_STATUS_HOLLOW, AI_STATUS_LABEL, AI_STATUS_TTL_MS,
+  AI_POLL_BROKEN_MS, AI_POLL_HEALTHY_MS, AI_POLL_MAX_BREAK_MS, AI_STATUS_DETAIL, AI_STATUS_DOT, AI_STATUS_HOLLOW, AI_STATUS_LABEL, AI_STATUS_TTL_MS,
   aiCheckedAtLabel, aiConfigFingerprint, getAiStatus, isHollowStatus, isStatusFresh,
-  refreshAiStatus, verifyAiStatus,
+  nextPollDelayMs, pollAiStatus, refreshAiStatus, resetPollBackoff, verifyAiStatus,
 } from './lib/ai-status';
 import { APP_VERSION, CHANGELOG } from './lib/changelog';
 import {
@@ -5219,7 +5219,10 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.ok((pick('c')?.n ?? 99) <= 6, `「c」应取 Z 最小的命中（实测 ${pick('c')?.symbol}）`);
   });
 
-  test('⑯ 欢迎弹窗双 Tab、Header 帮助入口、AI 角标五态与多端响应式不变量', async () => {
+  // 异步用例必须走 testAsync：同步 test() 只调用 fn() 而不 await，
+  // 会让它和文件末尾 runAsyncTests() 里的其它用例（尤其是 Feedback 的 fetch mock）并发跑，
+  // 本用例的探针就会在半途被别处替换掉 globalThis.fetch —— 结果为随机失败。
+  testAsync('⑯ 欢迎弹窗双 Tab、Header 帮助入口、AI 角标五态与多端响应式不变量', async () => {
     const wd = readFileSync('src/components/ui/WelcomeDialog.tsx', 'utf8');
     const hd = readFileSync('src/components/layout/Header.tsx', 'utf8');
     const app = readFileSync('src/App.tsx', 'utf8');
@@ -5385,12 +5388,76 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
       assert.match(hd, /onClick=\{\(\) => setAiOpen\(!aiOpen\)\}/, '图标本体仍须开 AI 面板');
       assert.match(
         hd,
-        /<\/button>\s*\{!isOffline && \(\s*<button/,
-        '角标须是图标按钮的**兄弟**按钮：嵌套 <button> 是非法 HTML，点击会互相抢',
+        /<\/button>\s*\{!isOffline && shownStatus !== 'unconfigured' && \(\s*<button/,
+        '角标须是图标按钮的**兄弟**按钮（嵌套 <button> 非法），且未配置时不得渲染',
       );
-      assert.match(hd, /isHollowStatus\(aiStatus\.status\) \?/, '形状须由状态机统一判定（isHollowStatus）');
-      assert.match(hd, /AI_STATUS_HOLLOW\[aiStatus\.status\]/, '空心环类名须来自 AI_STATUS_HOLLOW');
-      assert.match(hd, /AI_STATUS_DOT\[aiStatus\.status\]/, '实心点类名须来自 AI_STATUS_DOT');
+      // 未配置不渲染角标：没配置不是故障，不该占一个告警色小点
+      assert.match(hd, /shownStatus !== 'unconfigured' && \(/, '未配置须整块不渲染角标');
+      // F1：角标要有 title（桌面悬停即得一句话；此前只有 aria-label，桌面零提示）
+      assert.match(hd, /title=\{`\$\{HEALTH_TITLE\[shownStatus\]\[lang\]\} · \$\{aiCheckedAtLabel/, '角标须有动态 title（状态 + 上次检测）');
+      // F2：命中区 36 宽（可见 36×21），圆点必须落在**字形右上方外侧**——不压字形、不压邻居
+      assert.match(
+        hd,
+        /absolute right-\[4px\] -top-\[26px\] z-10 grid h-9 w-9 place-items-end rounded-full/,
+        '角标须在字形右上角外侧，且命中区 36 宽',
+      );
+      assert.doesNotMatch(hd, /grid h-4 w-4 place-items-center rounded-full/, '16×16 的旧命中区不得回归');
+      // 几何不许吞掉图标中心：角标盒只向上长，底边压在字形上边缘，图标中心仍归图标按钮
+      assert.match(hd, /flex h-9 w-9 items-center justify-center rounded-lg/, '图标按钮须 36×36');
+      // 形状与配色统一走 shownStatus（过期即降级的展示态），不再是裸 status：
+      // 角标只要还读裸 status，「卡片写着已过期、角标却说已就绪」就会重现。
+      assert.match(hd, /isHollowStatus\(shownStatus\) \?/, '形状须由状态机统一判定（isHollowStatus）');
+      assert.match(hd, /AI_STATUS_HOLLOW\[shownStatus\]/, '空心环类名须来自 AI_STATUS_HOLLOW');
+      assert.match(hd, /AI_STATUS_DOT\[shownStatus\]/, '实心点类名须来自 AI_STATUS_DOT');
+      // 过期降级：valid/invalid 超出 24h TTL 后按「待验证」渲染，且不再复述过期原因。
+      // verifying 刻意不参与降级——它沿用上一次的 checkedAt，那不是过期结论，
+      // 若一并降级，「验证中」的呼吸环会被吞掉。
+      assert.match(
+        hd,
+        /checkedStale && \(aiStatus\.status === 'valid' \|\| aiStatus\.status === 'invalid'\)/,
+        '过期结论须降级为「待验证」（渲染期按 isStatusFresh 复核）',
+      );
+      assert.equal((hd.match(/AI_STATUS_LABEL\[shownStatus\]/g) ?? []).length, 1, '悬浮提示须用展示态');
+      assert.match(hd, /!expiredConclusion && aiStatus\.detail !== ''/, '过期后不得复述 24 小时前的失败原因');
+      // 过期判定在渲染期做，就必须有一次「到点重渲染」的触发，否则标签页开着不动的角标会一直停在旧绿
+      assert.match(hd, /at \+ AI_STATUS_TTL_MS - Date\.now\(\)/, 'TTL 到点须一次性重渲染（定时器，不是轮询）');
+      // 跨标签同步：storage 是唯一能听见「别的标签改了配置 / 写了新结论」的通道
+      const statusSrc = readFileSync('src/lib/ai-status.ts', 'utf8');
+      assert.match(statusSrc, /addEventListener\('storage'/, '状态须跨标签同步（storage 事件）');
+      assert.match(
+        statusSrc,
+        /refreshAiStatus\(m\.loadAiConfig\(\)\)/,
+        '跨标签重算须复用 loadAiConfig（动态 import 断开 ai-config ↔ ai-status 环）',
+      );
+      // 会话级静默自检 + 轮询：没有它们，角标会停在旧结论上，用户还得出手动点「重新验证」
+      assert.match(statusSrc, /export function runSessionProbe\(\): void/, '须导出会话自检入口（可测）');
+      assert.match(statusSrc, /if \(isStatusFresh\(snapshot\.checkedAt\)\) return;/, '结论仍新鲜时不得联网');
+      assert.match(statusSrc, /window\.sessionStorage\.getItem\(SESSION_PROBE_KEY\)/, '每标签页会话只探一次（sessionStorage 打标）');
+      assert.match(statusSrc, /void verifyAiStatus\(cfg, \{ auto: true \}\)/, '自检须走 auto 探针（单次、无重试、失败不落盘）');
+      assert.match(
+        statusSrc,
+        /typeof document !== 'undefined'[\s\S]{0,200}document\.readyState === 'complete'/,
+        '自检须等 load 再跑，且只在真实浏览器里调度（测试环境不得被定时器偷偷联网）',
+      );
+      // 轮询：可见时定时重测，隐藏时不发；切回前台/网络恢复立即补测；静默不闪「验证中」
+      assert.match(statusSrc, /export const AI_POLL_HEALTHY_MS = 5 \* 60 \* 1000/, '健康时轮询须为 5 分钟（稀疏）');
+      assert.match(statusSrc, /export const AI_POLL_BROKEN_MS = 45 \* 1000/, '非健康时轮询须为 45 秒（勤快）');
+      // 退避：坏状态不许用固定 45s 死磕用户端点（挂机一节课 ≈ 60 次失败请求）
+      assert.match(statusSrc, /export const AI_POLL_MAX_BREAK_MS = 5 \* 60 \* 1000/, '退避须封顶 5 分钟');
+      assert.match(statusSrc, /export function nextPollDelayMs\(\): number/, '退避须是可用纯函数（可测）');
+      assert.match(statusSrc, /const factor = 2 \*\* Math\.min\(failedProbes, AI_POLL_BACKOFF_STEPS\)/, '退避须按 2 倍指数增长');
+      assert.match(statusSrc, /export function resetPollBackoff\(\): void/, '退避须可复位');
+      assert.match(statusSrc, /if \(!opts\?\.silent\) resetPollBackoff\(\)/, '手动验证须复位退避');
+      assert.match(statusSrc, /if \(reason !== 'interval'\)[\s\S]{0,220}resetPollBackoff\(\)/, '切回前台/网络恢复须复位退避');
+      assert.match(statusSrc, /if \(result === 'valid'\) failedProbes = 0/, '探到绿须复位退避');
+      assert.match(statusSrc, /export async function pollAiStatus\(/, '须导出可测的轮询入口');
+      assert.match(statusSrc, /navigator\.onLine === false\) return null/, '离线时不得轮询（会把「端点不通」与「整机没网」混成一个红点）');
+      assert.match(statusSrc, /document\.visibilityState === 'visible'[\s\S]{0,80}pollAiStatus\('interval'\)/, '仅在页面可见时定时轮询');
+      assert.match(statusSrc, /addEventListener\('visibilitychange'[\s\S]{0,120}pollAiStatus\('visible'\)/, '切回前台须立即补测');
+      assert.match(statusSrc, /addEventListener\('online'[\s\S]{0,60}pollAiStatus\('online'\)/, '网络恢复须立即补测');
+      assert.match(statusSrc, /if \(inFlight\) return null;/, '轮询不得与在途验证叠请求');
+      assert.match(statusSrc, /if \(!opts\?\.silent\) emit\(\{ status: 'verifying'/, '轮询须静默：不得每隔几分钟闪一次「验证中」');
+      assert.match(statusSrc, /verifyAiStatus\(cfg, \{ silent: true \}\)/, '轮询探测须用 silent 模式');
       // 卡片六项：状态标题 / 模型 / 端点 / 上次检测 / 重新验证 / 去设置，缺一项就等于把用户又推回设置页
       for (const kw of ['模型', 'Endpoint', '上次检测', '重新验证', '去设置']) {
         assert.ok(hd.includes(kw), `健康卡片须含「${kw}」`);
@@ -5426,8 +5493,15 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
         assert.ok(AI_STATUS_LABEL[s]?.zh && AI_STATUS_LABEL[s]?.en, `状态 ${s} 须中英文案齐备`);
       }
       assert.equal(AI_STATUS_DOT.configured, '', '待验证不得再渲染实心点');
+      // 未配置不再占角标：语义上是空态，不是故障（旧版用 --warn，浅色下与红难分）
+      assert.equal(AI_STATUS_DOT.unconfigured, '', '未配置不得渲染角标');
       assert.ok(AI_STATUS_HOLLOW.configured.includes('border-2'), '待验证须为空心环（border-2）');
-      assert.ok(AI_STATUS_HOLLOW.configured.includes('border-[var(--warn)]'), '空心环颜色须走 --warn 令牌');
+      assert.ok(AI_STATUS_HOLLOW.configured.includes('border-[var(--muted)]'), '空心环须走中性灰 --muted');
+      assert.doesNotMatch(
+        AI_STATUS_HOLLOW.configured + AI_STATUS_HOLLOW.verifying + AI_STATUS_DOT.unconfigured,
+        /--warn/,
+        '角标不得再用琥珀：浅色主题下与红仅差 21° 色相、1 单位明度，无法区分「未验证」与「不通」',
+      );
       assert.ok(AI_STATUS_HOLLOW.verifying.includes('motion-safe:animate-pulse'), '验证中须有尊重 reduced-motion 的呼吸');
       assert.equal(isHollowStatus('configured'), true);
       assert.equal(isHollowStatus('verifying'), true);
@@ -5556,6 +5630,64 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
           const [r1, r2] = await Promise.all([p1, p2]);
           assert.equal(r1, r2, '并发调用须返回同一结论');
           assert.equal(calls.length, 1, '验证进行中再点不得叠请求');
+
+          // 轮询：结论是红的时候，不该只在 24h 之后才重新判断（用户修好 Key 就得手动点）
+          assert.equal(AI_POLL_HEALTHY_MS, 5 * 60 * 1000, '健康时轮询间隔 5 分钟');
+          assert.equal(AI_POLL_BROKEN_MS, 45 * 1000, '非健康时轮询间隔 45 秒（否则修好了还得等到下一轮）');
+          // 轮询走的是 loadAiConfig（读已保存配置），所以这份配置必须在存档里
+          store.set('stem-ai-config', JSON.stringify(cfg));
+          store.set('stem-ai-status', JSON.stringify({
+            fingerprint: aiConfigFingerprint(cfg), status: 'invalid', checkedAt: Date.now() - 60000, detail: 'auth',
+          }));
+          refreshAiStatus(cfg);
+          assert.equal(getAiStatus().status, 'invalid', '新鲜的红结论载入时照原样恢复');
+          calls.length = 0;
+          g.fetch = (async (url: string | URL | Request) => {
+            calls.push(String(url));
+            return mkRes(200, { data: [{ id: 'm1' }] });
+          }) as typeof fetch;
+          assert.equal(await pollAiStatus('interval'), 'valid', '轮询须把「红」自动纠正为「绿」');
+          assert.equal(getAiStatus().status, 'valid');
+          assert.equal(calls.length, 1, '轮询一次只发一个 /models（0 token）');
+          assert.match(calls[0], /\/models$/, '轮询只走便宜的 /models，不得打 chat');
+          assert.equal(nextPollDelayMs(), AI_POLL_HEALTHY_MS, '探到绿后间隔须回到 5 分钟');
+
+          // 退避：连红不许死磕 45s（挂机一节课 ≈ 60 次失败请求），逐级翻倍并封顶 5 分钟
+          resetPollBackoff();
+          store.set('stem-ai-status', JSON.stringify({
+            fingerprint: aiConfigFingerprint(cfg), status: 'invalid', checkedAt: Date.now() - 60000, detail: 'auth',
+          }));
+          refreshAiStatus(cfg);
+          assert.equal(nextPollDelayMs(), AI_POLL_BROKEN_MS, '首次失败按 45s 起算');
+          g.fetch = (async (url: string | URL | Request) => {
+            calls.push(String(url));
+            return mkRes(401);
+          }) as typeof fetch;
+          assert.equal(await pollAiStatus('interval'), 'invalid');
+          assert.equal(nextPollDelayMs(), AI_POLL_BROKEN_MS * 2, '第 1 次失败后退到 90s');
+          await pollAiStatus('interval');
+          assert.equal(nextPollDelayMs(), AI_POLL_BROKEN_MS * 4, '第 2 次失败后退到 180s');
+          await pollAiStatus('interval');
+          assert.equal(nextPollDelayMs(), AI_POLL_MAX_BREAK_MS, '第 3 次失败后封顶 5 分钟');
+          await pollAiStatus('interval');
+          assert.equal(nextPollDelayMs(), AI_POLL_MAX_BREAK_MS, '封顶后不再增长');
+          // 手动验证 = 有人在处理 → 复位回 45s
+          g.fetch = (async () => mkRes(401)) as typeof fetch;
+          await verifyAiStatus(cfg);
+          assert.equal(nextPollDelayMs(), AI_POLL_BROKEN_MS, '手动验证须把退避复位到 45s');
+
+          // 离线不得轮询：那会把「端点不通」与「整机没网」混成同一个红点
+          // （Node 的 navigator 是只读 getter，必须用 defineProperty 才能换）
+          calls.length = 0;
+          const navDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+          Object.defineProperty(globalThis, 'navigator', { value: { onLine: false }, configurable: true });
+          try {
+            assert.equal(await pollAiStatus('interval'), null, '离线时轮询须返回 null');
+            assert.equal(calls.length, 0, '离线时一个请求都不许发');
+          } finally {
+            if (navDesc) Object.defineProperty(globalThis, 'navigator', navDesc);
+            else delete (globalThis as { navigator?: unknown }).navigator;
+          }
         } finally {
           g.fetch = realFetch;
           g.window = prevWindow;
@@ -6209,6 +6341,44 @@ describe('数学模块数值稳定性与题库守卫', () => {
     // 刻度与标注都过格式化
     assert.match(cp, /\{mathMinus\(v\)\}/, '刻度未过 mathMinus');
     assert.match(cp, /\{mathMinus\(m\.dot\.label\)\}/, '点标注未过 mathMinus');
+
+    /* ---- 网格双层化 / 光晕 / 贴轴：行为级契约（2026-10 坐标系审计）---- */
+    // 细网格：目标 8~10 格（旧版按「7 条刻度」反推，Quadratic 只剩 4×3 格，像渔网）
+    assert.equal(CP2.fineStep(8), 1, 'x 范围 8 的细网格步长须为 1（旧版 2 → 只有 4 格）');
+    assert.equal(CP2.fineStep(41), 5, 'y 范围 41 的细网格步长须为 5（旧版 10 → 只有 3 格）');
+    for (const [range, want] of [[8, 8], [41, 8], [68, 6], [2.4, 9.6]] as const) {
+      const cells = range / CP2.fineStep(range);
+      assert.ok(cells >= want * 0.95, `range=${range} 细网格仅 ${cells.toFixed(1)} 格，低于 ${want}`);
+    }
+    // 主网格（带数字）必须是细网格整数倍，且标签条数收口到 ≤6（否则数字互相压）
+    for (const range of [8, 41, 68, 2.4, 40]) {
+      const fine = CP2.fineStep(range);
+      const major = CP2.majorStepFor(range, fine);
+      assert.ok(Math.abs(major / fine - Math.round(major / fine)) < 1e-9, `range=${range} 主网格不是细网格整数倍`);
+      assert.ok(range / major <= 6.5, `range=${range} 主网格 ${(range / major).toFixed(1)} 格，标签会挤`);
+    }
+    // 光晕必须走令牌，不得写死色值（深色主题下会露出白边）
+    assert.equal(CP2.TEXT_HALO.stroke, 'var(--card-bg)', '光晕描边须用 --card-bg 令牌');
+    assert.equal(CP2.TEXT_HALO.paintOrder, 'stroke', '光晕须把描边画在填充之前');
+    const haloUses = (cp.match(/\{\.\.\.TEXT_HALO\}/g) ?? []).length;
+    assert.ok(haloUses >= 6, `刻度/原点/标注/轴名/图例都要挂光晕（实测 ${haloUses} 处）`);
+    // 刻度贴轴：不得再钉在画布底边（旧版 H-PAD.bottom+15 与 y=0 相差 290px）
+    assert.doesNotMatch(cp, /y=\{H - PAD\.bottom \+ 15\}/, 'x 刻度不得再钉在画布底边');
+    assert.match(cp, /const xTickY = clamp\(zeroY \+ 15/, 'x 刻度须贴在 x 轴下方');
+    assert.match(cp, /const yTickX = Math\.max\(zeroX - 6/, 'y 刻度须贴在 y 轴左侧');
+    // 图例：不得再用字符破折号冒充线型；底板宽度必须动态
+    assert.ok(!cp.includes("'— '") && !cp.includes("'- - '"), '图例不得再用 — / - - 字符冒充线型');
+    assert.match(cp, /<line\s+x1=\{legendX \+ 6\}/, '图例须用真实 <line> 画线型');
+    assert.match(cp, /Math\.max\(\s*120,\s*\.\.\.curves\.map/, '图例底板宽度须按最长标签动态撑开（旧版写死 125px，长系数溢出 40px）');
+    // 越界防护：特征点在绘图区外时整条不画（旧版会把半截虚线画到画布外）
+    assert.match(cp, /const inPlotX = \(px: number\)/, '须有越界判定');
+    // 点标注落位：Quadratic 必须按开口方向传 place（否则文字被抛物线横穿）
+    const qd = read('src/labs/math/Quadratic.tsx');
+    assert.match(qd, /place: a < 0 \? 'above' : 'below'/, '顶点/交点标注须按开口方向避让');
+    // 反比例：与坐标轴重合的渐近线不得再叠虚线
+    const inv = read('src/labs/math/Inverse.tsx');
+    assert.match(inv, /noLine: true/, '与坐标轴重合的渐近线须 noLine（否则轴线被虚线打断）');
+
     for (const f of ['src/components/lab/CoordPlane.tsx', 'src/labs/math/Circle.tsx', 'src/labs/math/Inverse.tsx',
       'src/labs/math/Linear.tsx', 'src/labs/math/Quadratic.tsx']) {
       assert.doesNotMatch(read(f), /#[0-9a-fA-F]{3,6}\b/, `${f} 出现硬编码色值`);

@@ -300,11 +300,18 @@ export default function Inverse() {
 
   const curves = [currentCurve, ...pinnedCurves];
 
-  // Manim 式标注：两条渐近线（x = 0、y = 0，虚线；曲线无限贴近但永不相交）
+  // 反比例的「渐近线」就是坐标轴本身（x=0 / y=0）：再叠一条虚线会在轴线上画出断续，
+  // 看上去像轴被打断。故 noLine，只在轴端给出规范标注（x 端给 x=0，y 端给 y=0）。
   const markers = useMemo<CoordMarker[]>(
     (): CoordMarker[] => [
-      { key: 'asx', vline: { x: 0, label: lang === 'zh' ? '渐近线' : 'asymptote', color: 'var(--muted)' } },
-      { key: 'asy', hline: { y: 0, color: 'var(--muted)' } },
+      {
+        key: 'asx',
+        vline: { x: 0, label: lang === 'zh' ? '渐近线 x=0' : 'asymptote x=0', color: 'var(--muted)', noLine: true },
+      },
+      {
+        key: 'asy',
+        hline: { y: 0, label: lang === 'zh' ? '渐近线 y=0' : 'asymptote y=0', color: 'var(--muted)', noLine: true },
+      },
     ],
     [lang],
   );
