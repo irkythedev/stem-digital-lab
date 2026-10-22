@@ -656,7 +656,7 @@ export default function Circle() {
                           const correct = steps.length && proofOrder.every((idx, pos) => idx === pos);
                           setProofChecked(correct ? 'correct' : 'wrong');
                         }}
-                        className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                        className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                       >
                         {c.proofVerify}
                       </button>

@@ -58,15 +58,35 @@ export function getPageQuestion(labId: string): string {
   return pageQuestions.get(labId) ?? '';
 }
 
-/** 实时状态的字段词表：zh/en 名称 + 单位 + 布尔型的两态说法。顺序即输出顺序（稳定）。 */
-const FIELD_LABEL: Record<string, { zh: string; en: string; unit?: string; bool?: { on: { zh: string; en: string }; off: { zh: string; en: string } } }> = {
+/**
+ * 实时状态字段的类型：zh/en 名称 + 单位 + 布尔两态 + 枚举映射。
+ *
+ * `map` 是「内部码 → 人话」的唯一出处。没有它，TypeScript 的字面量类型
+ * （`'bulb'` / `'chord'` / `'al-cuso4'` / 方案下标 `1`）会被原样塞进提示词，
+ * 模型只能猜「bulb 大概是灯泡」「当前方案 1 是哪个方案」。未登记的值整条丢弃，
+ * 与 clean() 的「绝不输出半句话」同一条纪律——宁可少一行，不给模型一行需要猜的。
+ */
+interface FieldDef {
+  zh: string;
+  en: string;
+  unit?: string;
+  bool?: { on: { zh: string; en: string }; off: { zh: string; en: string } };
+  map?: Record<string, { zh: string; en: string }>;
+}
+
+/** 通用字段词表（跨实验同义的那些）。顺序即输出顺序（稳定）。 */
+const FIELD_LABEL: Record<string, FieldDef> = {
   u: { zh: '电源电压', en: 'supply voltage', unit: 'V' },
   i: { zh: '电流读数', en: 'current', unit: 'A' },
   elemVoltage: { zh: '元件两端电压', en: 'voltage across the element', unit: 'V' },
   r: { zh: '定值电阻', en: 'fixed resistance', unit: 'Ω' },
   rp: { zh: '滑动变阻器', en: 'rheostat', unit: 'Ω' },
   switchOn: { zh: '开关', en: 'switch', bool: { on: { zh: '闭合', en: 'closed' }, off: { zh: '断开', en: 'open' } } },
-  element: { zh: '当前元件', en: 'element' },
+  element: {
+    zh: '当前元件',
+    en: 'element',
+    map: { resistor: { zh: '定值电阻', en: 'fixed resistor' }, bulb: { zh: '小灯泡', en: 'small bulb' } },
+  },
   styleZh: { zh: '电路拓扑', en: 'topology' },
   styleEn: { zh: '电路拓扑', en: 'topology' },   // 英文语境下的取值来源，不进输出列表
   i0: { zh: '干路电流', en: 'main current', unit: 'A' },
@@ -81,23 +101,73 @@ const FIELD_LABEL: Record<string, { zh: string; en: string; unit?: string; bool?
   b: { zh: 'b 值', en: 'b' },
   a: { zh: 'a 值', en: 'a' },
   c: { zh: 'c 值', en: 'c' },
-  circleMode: { zh: '当前定理', en: 'theorem' },
+  circleMode: {
+    zh: '当前定理',
+    en: 'theorem',
+    map: {
+      chord: { zh: '垂径定理', en: 'Chord Theorem' },
+      inscribed: { zh: '圆周角定理', en: 'Inscribed Angle' },
+      thales: { zh: '直径对直角', en: "Thales' Theorem" },
+    },
+  },
   vSub: { zh: '浸入体积比例', en: 'submerged fraction' },
   liquidZh: { zh: '液体', en: 'liquid' },
   F: { zh: '压力', en: 'force', unit: 'N' },
   S: { zh: '受力面积', en: 'area', unit: 'cm²' },
-  type: { zh: '滑轮类型', en: 'pulley type' },
+  type: {
+    zh: '滑轮类型',
+    en: 'pulley type',
+    map: { fixed: { zh: '定滑轮', en: 'fixed pulley' }, moving: { zh: '动滑轮', en: 'moving pulley' } },
+  },
   G: { zh: '重物重力', en: 'load weight', unit: 'N' },
-  activeScheme: { zh: '当前方案', en: 'current scheme' },
+  activeScheme: {
+    zh: '当前方案',
+    en: 'current scheme',
+    // 下标对齐界面上那张卡片的真实标题（MassConservation 的 schemes/cards 顺序）
+    map: {
+      '0': { zh: '铜与氧气（密封）', en: 'copper + oxygen (sealed)' },
+      '1': { zh: '铁与硫酸铜', en: 'iron + copper sulfate' },
+      '2': { zh: '碳酸钠与盐酸（开放）', en: 'sodium carbonate + hydrochloric acid (open)' },
+    },
+  },
   volume: { zh: '滴入液体积', en: 'titrant volume', unit: 'mL' },
   acidM: { zh: '酸的浓度', en: 'acid concentration' },
   power: { zh: '电源', en: 'power supply', bool: { on: { zh: '已接通', en: 'on' }, off: { zh: '未接通', en: 'off' } } },
   elapsed: { zh: '通电时长', en: 'elapsed', unit: 's' },
-  react: { zh: '当前反应', en: 'reaction' },
+  react: {
+    zh: '当前反应',
+    en: 'reaction',
+    map: {
+      'al-cuso4': { zh: '铝与硫酸铜', en: 'aluminium + copper sulfate' },
+      'cu-agno3': { zh: '铜与硝酸银', en: 'copper + silver nitrate' },
+    },
+  },
   done: { zh: '反应', en: 'reaction', bool: { on: { zh: '已发生', en: 'yes' }, off: { zh: '未发生', en: 'no' } } },
   polished: { zh: '金属丝', en: 'metal wire', bool: { on: { zh: '已打磨', en: 'polished' }, off: { zh: '未打磨', en: 'not polished' } } },
   stage: { zh: '当前阶段', en: 'stage' },
 };
+
+/**
+ * 分实验专用词表：命中即覆盖通用表里的同名字段。
+ *
+ * **为什么必须分域**：`u` 在 ohm 是「电源电压(V)」，在 lens 是「物距(cm)」。
+ * 全局平铺时凸透镜实验会得到「电源电压 20V」——一个不存在于该实验的物理量，
+ * 而学生画布上写的是物距。界面是对的、喂给模型的是错的，这是最坏的一类错误：
+ * 模型会顺着这个错误量纲继续讲下去（审计实测输出）。
+ */
+const FIELD_LABEL_BY_LAB: Record<string, Record<string, FieldDef>> = {
+  lens: {
+    u: { zh: '物距', en: 'object distance', unit: 'cm' },
+    f: { zh: '焦距', en: 'focal length', unit: 'cm' },
+    v: { zh: '像距', en: 'image distance', unit: 'cm' },
+  },
+};
+
+/** 该实验实际生效的词表：专用表覆盖通用表，顺序沿用通用表（输出稳定） */
+function fieldLabelFor(labId: string | null | undefined): Record<string, FieldDef> {
+  const own = labId ? FIELD_LABEL_BY_LAB[labId] : undefined;
+  return own ? { ...FIELD_LABEL, ...own } : FIELD_LABEL;
+}
 
 const STAGE_TEXT: Record<string, { zh: string; en: string }> = {
   predict: { zh: '预测', en: 'Predict' },
@@ -109,32 +179,52 @@ const STAGE_TEXT: Record<string, { zh: string; en: string }> = {
  * 把易失注册表里的实时状态压成一行人类可读文本，供**系统提示词**与**「考考你」出题提示词**共用。
  * 空状态返回空串（调用方直接拼接即可，无需分支）。
  * 刻意不复用 DYNAMIC_QUESTION_BUILDERS：那里是「问句」，这里要的是「陈述式上下文」。
+ *
+ * `labId` 是必需入参：同名字段在不同实验里含义不同（lens 的 u = 物距，ohm 的 u = 电源电压），
+ * 只有实验自己知道该怎么念。省略 labId 会退化成通用表——那正是「电源电压 20V」的来源。
  */
-export function formatLabState(state: Record<string, unknown> | undefined | null, lang: 'zh' | 'en'): string {
+export function formatLabState(
+  labId: string | null | undefined,
+  state: Record<string, unknown> | undefined | null,
+  lang: 'zh' | 'en',
+): string {
   if (!state) return '';
   const zh = lang === 'zh';
+  const labels = fieldLabelFor(labId);
   const parts: string[] = [];
   const stage = state.stage;
   if (typeof stage === 'string' && STAGE_TEXT[stage]) {
     parts.push(zh ? `当前阶段：${STAGE_TEXT[stage].zh}` : `stage: ${STAGE_TEXT[stage].en}`);
   }
-  for (const [key, def] of Object.entries(FIELD_LABEL)) {
+  for (const [key, def] of Object.entries(labels)) {
     if (key === 'stage') continue;
     const v = state[key];
     if (def.bool) {
       if (typeof v === 'boolean') {
-        const k = zh ? 'zh' : 'en';
         parts.push(zh ? `${def.zh}：${v ? def.bool.on.zh : def.bool.off.zh}` : `${def.en}: ${v ? def.bool.on.en : def.bool.off.en}`);
       }
       continue;
     }
+    // 枚举：内部码必须先翻成人话。查不到就整条丢弃——把 'al-cuso4' 或下标 1 交给模型，
+    // 等于让它猜，而猜错会顺着错误前提讲一整段（审计实测）。
+    if (def.map) {
+      const hit = typeof v === 'string' || typeof v === 'number' ? def.map[String(v)] : undefined;
+      if (hit) parts.push(`${zh ? def.zh : def.en} ${zh ? hit.zh : hit.en}`);
+      continue;
+    }
     if (typeof v === 'number' && Number.isFinite(v)) parts.push(`${zh ? def.zh : def.en} ${Number.isInteger(v) ? v : f2(v)}${def.unit ?? ''}`);
     else if (typeof v === 'string' && v) {
-      // 英文语境下若该字段另有 *En 版本（如 styleZh/styleEn），取英文那份，避免提示词里串中文
-      const enTwin = !zh && typeof state[`${key}En`] === 'string' ? String(state[`${key}En`]) : '';
-      if (key === 'styleZh' && zh) parts.push(`${def.zh} ${v}`);
-      else if (key === 'styleZh' && enTwin) parts.push(`${def.en} ${enTwin}`);
-      else if (key !== 'styleEn') parts.push(`${zh ? def.zh : def.en} ${v}`);
+      // 形如 liquidZh / styleZh 的字段：取值是中文，英文语境下必须改取同名 *En 孪生键。
+      // 先剥掉 zh 后缀再拼 En —— 旧写法 `${key}En` 对 styleZh 会算成 styleZhEn，取不到值，
+      // 于是英文提示词里漏出中文（实测「topology 串联三灯」「liquid 盐水」）。
+      if (/Zh$/.test(key)) {
+        const twin = state[`${key.replace(/Zh$/, '')}En`];
+        if (zh) parts.push(`${def.zh} ${v}`);
+        else if (typeof twin === 'string' && twin) parts.push(`${def.en} ${twin}`);
+        // 英文语境但孪生键缺失：整条丢弃。把中文取值塞给英文提示词比少一行更糟。
+        continue;
+      }
+      if (key !== 'styleEn') parts.push(`${zh ? def.zh : def.en} ${v}`);
     }
   }
   if (!parts.length) return '';

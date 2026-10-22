@@ -230,7 +230,11 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         </div>
       )}
 
-      <div className="flex items-center gap-1.5 sm:gap-3 text-[0.6875rem] mono-font uppercase tracking-wider">
+      {/* 右侧操作簇：统一用 flex gap 排布，不插「|」竖线分隔。
+          竖线只夹在中间两个控件之间，两端却是间隙——那条竖线反而把操作簇切成
+          「有线的一段」和「没线的一段」，读起来像两个不相干的组。
+          间距直接给在容器上：移动端 gap-1、桌面 gap-4，各控件自己的 padding 再加一层呼吸。 */}
+      <div className="flex items-center gap-1 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
         {/* 离线教学包：仅下载中 / 已就绪时出现 */}
         {(packRunning || packStatus?.isFull) && (
           <button
@@ -250,21 +254,17 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           </button>
         )}
 
-        {/* AI 入口：图标开面板；状态角标是**附属徽标**——落在图标的右上角外侧，不参与横排。
+        {/* AI 入口：图标开面板；状态角标是**附属徽标**，做成标准 Badge 贴在字形右上角。
             角标只表达「连通性」：未配置时不渲染（没配置不是故障）。
 
-            几何全部按实测值解算（不是随手调的数）：
-            - 图标按钮 36×36，内部 Sparkles 字形只有 14×14 且居中（按钮内右侧留 11px 空白）。
-              所以「右上角」指**字形的右上角**，不是按钮盒子的角——按按钮角放会让圆点漂进
-              上方空白 13px，看起来完全脱离图标。
-            - 圆点最终落在字形的**右上方外侧**：与字形右边距 3px、上边距 2px，**完全不重叠**，
-              连 2px 的描边环也不碰字形（环最左 900 > 字形右 899）。
-            - 盒子（36×36 透明命中区）向右上展开：右边缘距图标按钮右边缘 2px，
-              因此不压到右侧「中文 / EN」按钮（它距图标 12px）；底边止于字形上边缘，
-              所以**图标中心仍然可点开面板**。
-            - 几何上限：header 高 53px、图标上沿仅 12px 余量，命中区可见部分实为 36×21
-              （约旧版 16×16 的 3 倍面积）。要拿到真正的 36×36，只能把 header 抬高约 15px——
-              那是布局决策，不在这里偷偷做。 */}
+            几何（16×16 盒，落在图标按钮的右上角内）：
+            - 图标按钮 36×36，Sparkles 字形 14×14 居中 → 字形四角在 11..25 之间。
+            - 盒取 right-0 top-0，圆心在「距右边 8 / 距上边 8」，即字形右上角再向外 3px；
+              6px 圆点 + 2px 环（ring-[var(--bg)]）外扩后与字形角重叠约 2px —— 这正是
+              标准通知徽标的「压住一角」关系，读起来是长在图标上，而不是悬在旁边。
+            - 盒的下沿止于 y=16，字形中心在 y=18，所以**图标中心仍归图标按钮**（开面板）。
+              旧版把盒抬到 -26px 是为了不压字形，代价是圆点飘在图标上方空白里，
+              视觉上完全脱离图标——那个"悬浮错觉"就是这次要修的东西。 */}
         <div className="relative flex items-center justify-center">
           <button
             type="button"
@@ -284,15 +284,20 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               title={`${HEALTH_TITLE[shownStatus][lang]} · ${aiCheckedAtLabel(aiStatus.checkedAt, lang)}`}
               aria-expanded={showHealth}
               data-ai-health-trigger
-              className="absolute right-[4px] -top-[26px] z-10 grid h-9 w-9 place-items-end rounded-full"
+              className="absolute right-0 top-0 z-10 grid h-4 w-4 place-items-center rounded-full"
             >
               {/* 形状表确定性：实心=有结论（已就绪/异常）；空心=结论未定（待验证/验证中）。
                   颜色只用设计令牌，深色主题下随令牌自适应；静态常亮，不做装饰性闪烁
-                  （唯一例外：verifying 用 motion-safe 呼吸，表示「正在进行」。 */}
+                  （唯一例外：verifying 用 motion-safe 呼吸，表示「正在进行」。
+
+                  点位内收 -3/+3：命中盒留在 16×16 的右上角（不吞图标中心），但圆点自己
+                  向字形拐角里挪 3px，与字形包围盒重叠 3×3px，再叠 ring-2(--bg) 切出一圈
+                  底色——这才是标准 Badge 的「压在拐角上」关系。不挪的话两点只是**角对角相切**，
+                  看着像浮在斜上方一团空里，就是用户说的那个视错觉。 */}
               {isHollowStatus(shownStatus) ? (
-                <span className={`h-2 w-2 rounded-full ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
+                <span className={`h-2 w-2 rounded-full -translate-x-[3px] translate-y-[3px] ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
               ) : (
-                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
+                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] -translate-x-[3px] translate-y-[3px] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
               )}
             </button>
           )}
@@ -383,8 +388,6 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           {lang === 'zh' ? '中文' : 'EN'}
         </button>
 
-        <div className="w-px h-3 bg-[var(--border)]/70" aria-hidden="true" />
-
         {/* Theme Mode Switcher (single cycle button) */}
         <button
           onClick={cycleTheme}
@@ -394,8 +397,6 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         >
           <ThemeIcon className="w-3.5 h-3.5" />
         </button>
-
-        <div className="w-px h-3 bg-[var(--border)]/70" aria-hidden="true" />
 
         {/* Guide link */}
         <Link

@@ -84,7 +84,7 @@ export default function HomePage() {
             type="button"
             onClick={randomExplore}
             title={lang === 'zh' ? '随机进入一个实验或工具' : 'Jump to a random lab or tool'}
-            className="inline-flex items-center gap-1 py-1 -my-1 text-[0.625rem] sm:text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+            className="compact inline-flex items-center gap-1 py-1 -my-1 text-[0.625rem] sm:text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
           >
             <Shuffle className="w-3 h-3" />
             {t.randomExplore}

@@ -41,7 +41,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
             </svg>
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
         </div>
         {/* 离线教学包入口：放在更新日志上方，属于「应用级」设置 */}
         <button

@@ -408,7 +408,7 @@ export default function Buoyancy() {
           <span className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">{lang === 'zh' ? '液体' : 'Liquid'}</span>
           {LIQUIDS.map((l) => (
             <button key={l.id} type="button" onClick={() => setLiquidId(l.id)}
-              className={`text-xs mono-font px-2 py-1 border transition-colors ${liquidId === l.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
+              className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${liquidId === l.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>
               {l[lang as Lang]}
             </button>
           ))}
@@ -452,7 +452,7 @@ export default function Buoyancy() {
           {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
           {renderConcludeQ('concludeQ3', c.concludeQ3, opts('concludeQ3'), concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })))}
           {concludeComplete && !showFeedback && (
-            <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
+            <button type="button" onClick={() => setShowFeedback(true)} className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">

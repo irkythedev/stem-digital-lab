@@ -621,7 +621,7 @@ export default function Neutralization() {
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
+              className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
             >
               {t.reset}
             </button>
@@ -664,7 +664,7 @@ export default function Neutralization() {
                 <button
                   type="button"
                   onClick={reveal}
-                  className="inline-flex items-center gap-1.5 text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                  className="inline-flex items-center gap-1.5 compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
                   <Check className="w-3.5 h-3.5" aria-hidden />
                   <span>{t.predictDone} — {t.revealLabel}</span>
@@ -704,7 +704,7 @@ export default function Neutralization() {
                       setPinned((prev) => [...prev, { id: prev.length + 1, acidM }]);
                     }
                   }}
-                  className={`text-xs mono-font px-2 py-1 border transition-colors ${
+                  className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${
                     isPinned
                       ? 'border-[var(--muted)] text-[var(--muted)]'
                       : 'border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'

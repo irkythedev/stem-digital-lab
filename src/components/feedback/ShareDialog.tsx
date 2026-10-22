@@ -77,7 +77,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold tracking-widest mono-font uppercase">// {t.share}</h2>
-        <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
+        <button type="button" onClick={onClose} aria-label={t.share} title={t.share} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
       </div>
 
       {/* 二维码 */}

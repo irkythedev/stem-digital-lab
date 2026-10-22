@@ -499,7 +499,7 @@ export default function MetalActivity() {
           {renderQ(c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })), QUIZ_CORRECT.concludeQ2)}
           {renderQ(c.concludeQ3, opts('concludeQ3'), concl.q3, (v) => setConcl((p) => ({ ...p, q3: v })), QUIZ_CORRECT.concludeQ3)}
           {concludeComplete && !showFeedback && (
-            <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
+            <button type="button" onClick={() => setShowFeedback(true)} className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">

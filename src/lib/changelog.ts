@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.4';
+export const APP_VERSION = '0.40.5';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.40.5',
+    date: '2026-10',
+    zh: [
+      '[优化] 新增官方入口：直接打开所选服务商的官网申请密钥',
+      '[修复] AI 讲解更准确：读数按页面实际的物理量说明，不再出现与当前实验无关的量',
+      '[优化] 常规维护与体验微调',
+    ],
+    en: [
+      '[Improved] An official link that opens your provider\'s site so you can get a key',
+      '[Fixed] More accurate AI explanations: readings are described with the quantities the page actually shows, not ones from another experiment',
+      '[Improved] Routine maintenance and minor refinements',
+    ],
+  },
   {
     version: '0.40.4',
     date: '2026-10',

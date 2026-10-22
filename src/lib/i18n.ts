@@ -36,6 +36,8 @@ export const translations = {
     author: '作者：张子熠',
     authorRole: '初中 STEM 数字探究项目',
     moreWorks: '其他作品',
+    /** 页脚作品集图标的悬停提示（说明点开能拿到什么，而不只是「其他作品」四个字） */
+    moreWorksHint: 'Ricky 的其他作品',
     works: [
       { name: 'AquaInsight · 水气研判', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png', desc: '水质与气象数据研判' },
       { name: '百年回响 · 江海潮声', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', desc: '张謇与南通百年文脉的互动数字展陈' },
@@ -236,6 +238,7 @@ export const translations = {
     author: 'By Ricky',
     authorRole: 'Middle School STEM Project',
     moreWorks: 'Other Works',
+    moreWorksHint: 'More By Ricky',
     works: [
       { name: 'AquaInsight · Water-Air', url: 'https://wsa.irky.dev/', icon: 'https://wsa.irky.dev/water-sci4_new.png', desc: 'Water quality & weather data insights' },
       { name: '100 Years Echo · Jianghai Tides', url: 'https://100ye.irky.dev/', icon: 'https://100ye.irky.dev/favicon.svg', desc: "An interactive digital exhibition of Zhang Jian and Nantong's century-long heritage" },

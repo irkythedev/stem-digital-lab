@@ -413,7 +413,7 @@ export default function Lever() {
           {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
           {concludeComplete && !showFeedback && (
-            <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
+            <button type="button" onClick={() => setShowFeedback(true)} className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">

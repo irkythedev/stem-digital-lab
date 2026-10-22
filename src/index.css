@@ -22,6 +22,37 @@
   --success: #16a34a;
   /* 警告/降级反馈色（语音降级提示等；与 --error 语义对称，不用于正文文本） */
   --warn: #b45309;
+  /* 服务商品牌色（**仅用于 AI 设置里服务商胶囊的 logo**，不用于正文/边框）。
+     logo 的默认色仍是 --muted（未选）/ --fg（选中）——品牌色只在悬停或已选时点亮，
+     所以它永远不是"理解界面所必需"的信息，不承担对比度门槛。
+     每条都必须能在真实来源里指到出处，**不许凭印象取色**：
+       deepseek #4d6bfe  —— lobehub 官方 color 变体
+       qwen     #615ced  —— 通义千问长期使用的靛紫（9088 面板同值）
+       kimi     #1783ff  —— 官方 app icon 里那颗蓝点的实测色（#1780f9 取样取整）
+       doubao   #a569ff  —— 官方三色标里的紫（另两色 #1e37fc / #37e1be 与蓝系撞色）
+     智谱没有彩色：官方标是纯黑白，所以它**不染品牌色**，直接继承 --fg——
+     硬塞一个蓝进去既是编造，也会和另外三家蓝混成一团。
+     早期版本这里给的是三条几乎同色的蓝（#1766e9 / #3655ff / #3370ff，色相跨度仅 13°），
+     16px 下根本分不出来；现在五个色相跨度拉开到 52°（212°→264°），才认得出是谁。
+     暗色不是简单提亮，而是换成同色相更浅的一档，否则 DeepSeek #4D6BFE 这类深蓝
+     压在 #161613 上几乎发黑。 */
+  --brand-deepseek: #4d6bfe;
+  --brand-qwen: #615ced;
+  --brand-kimi: #1783ff;
+  /* 跟随正文色的令牌：智谱用 var(--fg)，明暗两套自动生效，不需要再单独覆盖 */
+  --brand-zhipu: var(--fg);
+  --brand-doubao: #a569ff;
+  /* 科技蓝：只给「引流 / 外部作品」这类**提示型**角标用。
+     不能拿 --accent 顶替——--accent 的语义是「主操作」（浅色黑、深色白），
+     它当不了蓝；硬塞进去角标会变成一块黑白方块。 */
+  --tech-blue: #4d6bfe;
+  /* 角标悬停时的光晕：低透明度同色，避免用 hex 把 alpha 写死在 tsx 里 */
+  --tech-blue-glow: rgba(77, 107, 254, 0.4);
+  /* 轻量浮层（页脚作品集提示）：两套都是深底，中性边框做边界，
+     深色主题用略亮一档的炭色——否则贴在 #161613 页面上会糊成一片。 */
+  --tip-bg: #1b1b1b;
+  --tip-fg: #f7f7f7;
+  --tip-border: #3a3a3a;
   /* 化学液面透明度（浅色底 0.35 足够鲜艳；暗色底需提高） */
   --liquid-opacity: 0.35;
   /* 电表指针：电流表红（红表笔/正极惯例）、电压表蓝（万用表电压档惯例） */
@@ -79,6 +110,15 @@ html.dark {
   --error: #ef4444;
   --success: #4ade80;
   --warn: #fbbf24;
+  --brand-deepseek: #8098ff;
+  --brand-qwen: #9b96ff;
+  --brand-kimi: #79b6fc;
+  --brand-doubao: #c29cfc;
+  /* 深色下浮层要亮一档才看得出边界；光晕也加强一点，否则蓝点在炭底上不发光 */
+  --tech-blue-glow: rgba(77, 107, 254, 0.55);
+  --tip-bg: #262621;
+  --tip-fg: #e8e6df;
+  --tip-border: #453f36;
   --liquid-opacity: 0.5;
   /* 暗主题下提高明度，保证指针在暗底上清晰 */
   --meter-a: #ef5350;
@@ -110,6 +150,14 @@ html.dark {
     --error: #ef4444;
     --success: #4ade80;
     --warn: #fbbf24;
+    --brand-deepseek: #8098ff;
+    --brand-qwen: #9b96ff;
+    --brand-kimi: #79b6fc;
+    --brand-doubao: #c29cfc;
+    --tech-blue-glow: rgba(77, 107, 254, 0.55);
+    --tip-bg: #262621;
+    --tip-fg: #e8e6df;
+    --tip-border: #453f36;
     --liquid-opacity: 0.5;
     --meter-a: #ef5350;
     --meter-v: #42a5f5;
@@ -335,10 +383,30 @@ body {
   }
 }
 
-/* ── 触屏友好：实验区按钮最小命中区（≥40px，适配希沃/平板/手机） ── */
+/* ── 主操作命中区地板（≥40px，适配希沃/平板/手机）──────────────────────────
+   只兜 **L1**（阶段导航 / Next / 答题选项 / 提交）——它们要的是拇指命中区。
+   L2 次级（筛选 chip、预设）与 L3 微控件（展开收起 / 重置 / 翻一翻 / 复制）
+   一律挂 `.compact` 解除。
+
+   为什么必须显式给口子：这条规则无层（unlayered）且是元素选择器，
+   特异性 0,0,2 高于 Tailwind 的 `min-h-*`（0,1,0 在 @layer utilities 内，层序更低），
+   组件自己写 `min-h-[34px]` 也无效。实测代价：11px 文字 + py-1 的
+   「人物小故事」被撑到 40px，自身只有 24.5px —— 多出的 15.5px 全是空盒子；
+   「翻一翻」自身仅 16.5px，被抬 142%。改 padding 一点用都没有。 */
 main button {
   min-height: 40px;
   touch-action: manipulation;
+}
+main button.compact {
+  min-height: 0;
+}
+/* 触屏保底：compact 只解桌面。小屏仍给 40px 真实盒（与改前完全一致，零退化）——
+   这里不用伪元素扩区：相邻小控件仅隔几像素，外扩热区会互相抢点击
+   （页脚那组图标就踩过，见 .tap-icon 的注释）。 */
+@media (hover: none) and (pointer: coarse) {
+  main button.compact {
+    min-height: 2.5rem;
+  }
 }
 /* 中考跟读面板内按钮为紧凑小按钮，不受全局 40px 最小高度影响 */
 .recite-panel button {
@@ -380,6 +448,18 @@ button:active:not(:disabled),
 .btn:active:not(:disabled),
 [role="button"]:active:not([aria-disabled="true"]) {
   transform: scale(0.98);
+}
+
+/* 关闭类「幽灵按钮」（弹窗右上角 ×）：按下比全局 0.98 再收一档到 0.95，并给一层极浅底，
+   但**绝不铺实底**——18px 的小叉按下去变成 34px 纯黑方块是全站最刺眼的视觉突刺
+   （实测 2242px²，深色主题下同面积纯白）。
+
+   为什么必须写成未分层规则：全局 `button:active` 上面那条是无层的，而 Tailwind 的
+   `active:scale-95` 在 @layer utilities 里，层序更低 → 永远压不过它，
+   实测按下计算值仍是 0.98。挂 Tailwind 类只会得到一份"看着对、其实无效"的代码。 */
+button.ghost-x:active:not(:disabled) {
+  transform: scale(0.95);
+  background-color: var(--accent-light);
 }
 
 /* 开关 SVG 点击态反馈（按下时微高亮） */
@@ -631,6 +711,161 @@ input[type="range"]::-moz-range-thumb:active {
 .bulb-breathe { animation: bulb-breathe 1.8s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .bulb-breathe { animation: none; opacity: 1; }
+}
+
+/* ── 首页学科入口 · 图标 hover 微动效 ────────────────────────────
+   纪律：只动 SVG **内部图元**的 transform / stroke-dashoffset，
+   不碰外层宽高、内外边距、行盒——学科名称与年级标签的盒子完全不变，零布局偏移。
+   只在 `.home-subjects` 作用域内生效：同一图标的弹窗 / 科目页 / 实验页副本保持静态。
+   幅度一律克制：π 不转不歪，原子只有轨道转（核不动），锥形瓶 ±3°。 */
+
+/* 数学 π：三笔依次从左→右描摹（每笔 0.22s，错峰 0.065s，最后一笔 0.35s 收尾）。
+   pathLength={1} 把路径长归一化，故 dasharray/dashoffset 都用 1 这一档，
+   改动几何时无需重算长度。动画结束后 dashoffset=0 → 正好等于完整笔画，离场不会跳。 */
+@keyframes subject-pi-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.home-subjects > button:hover [data-subject-anim='pi'] path {
+  stroke-dasharray: 1;
+  animation: subject-pi-draw 0.22s ease-out both;
+}
+.home-subjects > button:hover [data-subject-anim='pi'] path:nth-of-type(2) { animation-delay: 0.065s; }
+.home-subjects > button:hover [data-subject-anim='pi'] path:nth-of-type(3) { animation-delay: 0.13s; }
+
+/* 物理 原子：**轨道不转，电子在转**。
+   第一版让两条轨道各自绕核反向自转，实测不成立：原子符号的识别性来自两环间固定的夹角，
+   两环独立旋转会让夹角连续变化 → 交叉点漂移、中心描边密度忽厚忽薄，36px 下像"扭动发糊"。
+   现在轨道几何一动不动，每环各一颗电子沿 offset-path 行进（周期 2.6s / 3.4s 反向），
+   既保住形态，又真的表达了"电子绕核"。offset-path 由 SubjectIcon 用同一份 path 常量内联给出。 */
+@keyframes subject-electron-travel {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+.home-subjects > button [data-subject-part='electron-a'],
+.home-subjects > button [data-subject-part='electron-b'] {
+  opacity: 0;
+  transition: opacity 160ms linear;
+}
+.home-subjects > button:hover [data-subject-part='electron-a'] {
+  opacity: 1;
+  animation: subject-electron-travel 2.6s linear infinite;
+}
+.home-subjects > button:hover [data-subject-part='electron-b'] {
+  opacity: 1;
+  animation: subject-electron-travel 3.4s linear infinite reverse;
+}
+
+/* 化学 锥形瓶：绕**瓶底中心**（12,22）做一次阻尼摆动，0.4s 内收敛回正。
+   四段衰减（-3° → +2.2° → -0.8° → 0）比两段更像"手持摇匀后稳住"。 */
+@keyframes subject-flask-sway {
+  0% { transform: rotate(0deg); }
+  30% { transform: rotate(-3deg); }
+  62% { transform: rotate(2.2deg); }
+  84% { transform: rotate(-0.8deg); }
+  100% { transform: rotate(0deg); }
+}
+.home-subjects > button [data-subject-part='flask'] {
+  transform-box: view-box;
+  transform-origin: 12px 22px;
+}
+.home-subjects > button:hover [data-subject-part='flask'] {
+  animation: subject-flask-sway 0.4s cubic-bezier(0.33, 0.1, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-subjects > button:hover [data-subject-anim='pi'] path,
+  .home-subjects > button:hover [data-subject-part='flask'] {
+    animation: none;
+  }
+  .home-subjects > button:hover [data-subject-part='electron-a'],
+  .home-subjects > button:hover [data-subject-part='electron-b'] {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* AI 设置 · 服务商胶囊：悬停时点亮品牌色（默认仍随文字色 --muted）。
+   用普通属性选择器而不是 Tailwind 的 group-hover 变体——后者在实测里"规则存在却不生效"
+   （图标能 matches 到选择器，计算色仍不变），排障成本高于收益。
+   只点 logo、不动文字：品牌色在浅底上对小字号未必过 4.5:1，文字保持令牌色更稳。 */
+.ai-provider-chip svg { transition: color var(--dur-base) var(--ease-out); }
+.ai-provider-chip[data-brand='deepseek']:hover svg { color: var(--brand-deepseek); }
+.ai-provider-chip[data-brand='dashscope']:hover svg { color: var(--brand-qwen); }
+.ai-provider-chip[data-brand='moonshot']:hover svg { color: var(--brand-kimi); }
+.ai-provider-chip[data-brand='zhipu']:hover svg { color: var(--brand-zhipu); }
+.ai-provider-chip[data-brand='volcengine']:hover svg { color: var(--brand-doubao); }
+
+/* 页脚「其他作品」：科技蓝角标 + 悬停微动效 + 轻量浮层提示。
+   ——为什么写在 CSS 而不是 Tailwind 变体：`group-hover/x:` 这类变体在本项目里实测
+   「规则存在、svg 却 matches 不到」过（见服务商胶囊那段），这种排障成本不值得再付一次。
+   动的只有两处：整体上浮 1px（让"可以点"有手感）、角标缩放 1.08 + 同色光晕
+   （把视线引到数字上）。位移幅度刻意压在 1px——页脚是收尾区，不该抢注意力。 */
+.footer-works-glyph { transition: transform 0.2s ease; }
+.footer-works-badge {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: var(--tech-blue);
+  box-shadow: 0 0 0 0 var(--tech-blue-glow);
+}
+.footer-works:hover .footer-works-glyph,
+.footer-works:focus-within .footer-works-glyph { transform: translateY(-1px); }
+.footer-works:hover .footer-works-badge,
+.footer-works:focus-within .footer-works-badge {
+  transform: scale(1.08);
+  box-shadow: 0 0 6px var(--tech-blue-glow);
+}
+
+/* 浮层：单行、深底、中性边框、12px，下缘带一个 45° 小方块当箭头指向图标。
+   默认 opacity:0 且 pointer-events:none —— 它只是提示，绝不能挡住下面那个按钮。
+   触屏（hover:none）永不出现在光标下，所以它不影响触屏操作，文案由 aria-label 兜底。 */
+.footer-works-tip {
+  position: absolute;
+  bottom: calc(100% + 0.375rem);
+  left: 50%;
+  z-index: 30;
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--tip-border);
+  border-radius: 0.375rem;
+  background: var(--tip-bg);
+  color: var(--tip-fg);
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  /* 极窄视口兜底：文案再长也不许横向溢出（正常宽度用不到这条） */
+  max-width: calc(100vw - 1.5rem);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 2px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.footer-works-tip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -3px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  transform: rotate(45deg);
+  background: var(--tip-bg);
+  border-right: 1px solid var(--tip-border);
+  border-bottom: 1px solid var(--tip-border);
+}
+.footer-works:hover .footer-works-tip,
+.footer-works:focus-within .footer-works-tip { opacity: 1; transform: translate(-50%, 0); }
+
+/* 减少动效：只保留颜色变化，位移与缩放一律取消 */
+@media (prefers-reduced-motion: reduce) {
+  .footer-works-glyph,
+  .footer-works-badge,
+  .footer-works-tip { transition: none; }
+  .footer-works:hover .footer-works-glyph,
+  .footer-works:focus-within .footer-works-glyph,
+  .footer-works:hover .footer-works-badge,
+  .footer-works:focus-within .footer-works-badge { transform: none; }
 }
 
 /* 每日科学「翻一翻」图标：每次点击翻转一圈（一次性，非循环） */

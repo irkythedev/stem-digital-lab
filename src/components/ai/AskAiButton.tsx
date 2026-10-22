@@ -33,7 +33,7 @@ export default function AskAiButton({ question, labId, label, className = '' }: 
       onClick={() => askAi((labId ? getPageQuestion(labId) : '') || question)}
       disabled={isOffline}
       title={isOffline ? t.offlineAi.sendBlocked : undefined}
-      className={`inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--muted)] ${className}`}
+      className={`compact inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--muted)] ${className}`}
     >
       <Sparkles className="w-3 h-3" />
       {label ?? (lang === 'zh' ? '问 AI' : 'Ask AI')}

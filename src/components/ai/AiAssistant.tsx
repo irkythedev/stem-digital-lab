@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, Eye, EyeOff, GraduationCap, History, Lightbulb, List, Loader2, Minus, Pause, Play, PlugZap, Printer, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
+import { Activity, ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, ExternalLink, Eye, EyeOff, GraduationCap, History, Lightbulb, Loader2, Minus, Pause, Play, Printer, RefreshCw, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -46,8 +46,9 @@ import { reportAiFailure, reportAiSuccess, verifyAiStatus } from '../../lib/ai-s
 import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer, prettyScripts } from './AnswerRich';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
+import ProviderIcon from '../ui/ProviderIcon';
 import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, saveAiConfig, streamChat,
+  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, providerLabel, saveAiConfig, streamChat,
   classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, isLengthTruncated, resolveMaxTokens, type ChatFailure,
   effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
   type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
@@ -106,11 +107,23 @@ const THINKING_NOTE: Record<ThinkingNote, { zh: string; en: string }> = {
   },
 };
 
-/** 档位标签（按当前语言） */
-function tierLabel(id: ThinkingEffort, lang: 'zh' | 'en'): string {
-  const t = THINKING_TIERS.find((x) => x.id === id);
-  return t ? (lang === 'zh' ? t.zh : t.en) : id;
-}
+/** 档位一句话说明（界面上只留这一行，12px）。
+ *  为什么砍掉原来那两段：档位的差别用一句话就说得清，而「当前下发 xxx」「深度思考烧 token」
+ *  那几行要么是重复（成本已经在说明里），要么是诊断信息（属于排障，不属于日常设置）。 */
+const TIER_HINT: Record<ThinkingEffort, { zh: string; en: string }> = {
+  off: {
+    zh: '禁用思考过程，极速响应，适合查速查表',
+    en: 'Fastest replies — best for quick lookups',
+  },
+  standard: {
+    zh: '适度启发引导，兼顾质量与响应速度（推荐）',
+    en: 'Balanced — quality and speed (recommended)',
+  },
+  deep: {
+    zh: '展开完整推理草稿，Token 消耗增加，适合大题推导',
+    en: 'Full reasoning — more tokens, best for long problems',
+  },
+};
 
 /** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
 function turnKey(user: string, assistant: string): string {
@@ -231,6 +244,20 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
     .slice(0, 6);
   return { body: text.slice(0, idx).trim(), recs };
 }
+
+/**
+ * 服务商品牌色：只在**悬停或已选**时点亮胶囊里的 logo，正文与文字色仍走 --muted / --fg。
+ * 两张表都写完整字面量——Tailwind 静态扫描扫不到 `group-hover/x:text-[…]` 这类拼接。
+ * 明暗两档在 index.css 里是 --brand-* 的两套取值，这里只引用令牌，不写 hex。
+ */
+const PROVIDER_BRAND_CLS: Record<string, string> = {
+  deepseek: 'text-[var(--brand-deepseek)]',
+  dashscope: 'text-[var(--brand-qwen)]',
+  moonshot: 'text-[var(--brand-kimi)]',
+  zhipu: 'text-[var(--brand-zhipu)]',
+  volcengine: 'text-[var(--brand-doubao)]',
+  custom: 'text-[var(--muted)]',
+};
 
 export default function AiAssistant() {
   const { lang, t, isOffline } = useApp();
@@ -876,7 +903,10 @@ export default function AiAssistant() {
         lang,
         aiCtx.topic ?? pageSubject(location.pathname, lang),
         // 「考考你」与「问 AI」读同一份实时状态：出题也能落到学生此刻的读数上
-        [aiCtx.knowledge, formatLabState(getLabState(labIdFromPath(location.pathname)), lang)].filter(Boolean).join('\n'),
+        [
+          aiCtx.knowledge,
+          formatLabState(labIdFromPath(location.pathname), getLabState(labIdFromPath(location.pathname)), lang),
+        ].filter(Boolean).join('\n'),
         count, angle, timeLimit, qtype,
       ) },
       { role: 'user', content: lang === 'zh' ? `请围绕当前页面知识点（${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? '当前主题'}）按格式出 ${count} 道题。` : `Please create ${count} questions in the specified format, based on the current page knowledge (${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? 'current topic'}).` },
@@ -1653,7 +1683,7 @@ export default function AiAssistant() {
       if (ids.length > 0) {
         setLiveModels(ids);
         setModel(ids[0]);
-        setModelNote(lang === 'zh' ? `已获取 ${ids.length} 个可用模型` : `${ids.length} models available`);
+        setModelNote(lang === 'zh' ? `已获取 ${ids.length} 个可用模型` : `${ids.length} model${ids.length === 1 ? '' : 's'} available`);
         setTestResult({ ok: true, msg: lang === 'zh' ? `已列出 ${ids.length} 个模型，请再点「测试连接」确认能否对话` : `${ids.length} models listed — now use "Test connection"` });
         flashToast(true, lang === 'zh' ? `已获取 ${ids.length} 个模型` : `${ids.length} models fetched`);
       } else {
@@ -1841,17 +1871,17 @@ export default function AiAssistant() {
   const systemPromptForPage = () => {
     const labId = labIdFromPath(location.pathname);
     const lab = labId ? labMap[labId] : undefined;
-    // 实时状态与静态页面知识同源拼接：预设问题、自由提问、以及随后的「考考你」看到的上下文完全一致
-    // （阶段 + 画布读数来自 ai-dynamic-questions 的易失注册表，见 formatLabState）
-    const liveState = formatLabState(getLabState(labId), lang);
-    const pageKnowledge = [aiCtx.knowledge, liveState].filter(Boolean).join('\n');
+    // 静态页面知识与实时读数**分开注入**：两者权威级不同，混在一个 <页面资料> 里会让
+    // 模型把学生眼前的真实读数当「可选背景」，转而自己按公式算一个。
+    const liveState = formatLabState(labId, getLabState(labId), lang);
     return buildSystemPrompt(
       lang,
       aiCtx.topic ?? pageSubject(location.pathname, lang),
-      pageKnowledge,
+      aiCtx.knowledge,
       stageLabel(getLabState(labId)?.stage, lang),
       // 实验页用注册表里的学科判定（显示名里没有「物理」二字）；非实验页留给主题串回退
       lab ? lab.subjectId === 'physics' : undefined,
+      liveState,
     );
   };
 
@@ -2300,7 +2330,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => setView('settings')}
               aria-label={lang === 'zh' ? '设置' : 'Settings'}
               title={lang === 'zh' ? '设置模型与接口' : 'Settings'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md">
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
               <Settings className="w-4 h-4" />
             </button>
           )}
@@ -2309,7 +2339,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
               title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md">
+              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
               <History className="w-4 h-4" />
               {persistHistory.length > 0 && (
                 <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
@@ -2322,7 +2352,7 @@ export default function AiAssistant() {
           <button type="button" onClick={collapseToCapsule}
             aria-label={lang === 'zh' ? '最小化' : 'Minimize'}
             title={lang === 'zh' ? '收起为胶囊（Esc 也可）' : 'Minimize'}
-            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors cursor-pointer rounded-md${isMobile ? ' hidden' : ''}`}>
+            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md${isMobile ? ' hidden' : ''}`}>
             <Minus className="w-4 h-4" />
           </button>
           <button type="button" onClick={closePanel}
@@ -2476,21 +2506,43 @@ export default function AiAssistant() {
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
-              <button type="button" onClick={() => setView('terms')} className="shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">
+              <button type="button" onClick={() => setView('terms')} className="shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">
                 {lang === 'zh' ? '查看须知' : 'View terms'}
               </button>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {AI_PROVIDERS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => selectProvider(p.id)}
-                  className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${providerId === p.id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                >
-                  {p.name}
-                </button>
-              ))}
+            {/* 服务商胶囊：固定高度 + 单行不折，品牌微标继承文字色（未选 --muted / 选中 --fg）。
+                h-7 让 6 个胶囊在桌面严格等高；触屏仍由 .tap-area 撑到 40px 命中区，
+                因为两者对所有胶囊同时生效，折行时行高依然整齐，不会出现"一个高一个矮"。 */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {AI_PROVIDERS.map((p) => {
+                const active = providerId === p.id;
+                // 品牌色只在「悬停」或「已选」时点亮；默认随胶囊文字色（未选 --muted）。
+                // 悬停色走 index.css 里按 data-brand 写的普通规则，**不用** Tailwind 的
+                // group-hover 变体：实测该变体规则存在、svg 也能 matches 到，但计算色仍被
+                // 继承/层级压住而不生效——这种"规则在、却不生效"的调试成本不值得付。
+                // 图标自身不写 text-[--muted]（会与悬停色同层竞争），让它继承父级 currentColor。
+                const brand = PROVIDER_BRAND_CLS[p.id] ?? PROVIDER_BRAND_CLS.custom;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => selectProvider(p.id)}
+                    aria-pressed={active}
+                    data-brand={p.id}
+                    className={`ai-provider-chip tap-area inline-flex h-7 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[0.6875rem] leading-none mono-font transition-colors ${
+                      active
+                        ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
+                        : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
+                    }`}
+                  >
+                    <ProviderIcon
+                      id={p.id}
+                      className={`h-4 w-4 shrink-0 transition-colors ${active ? brand : ''}`}
+                    />
+                    <span>{providerLabel(p, lang)}</span>
+                  </button>
+                );
+              })}
             </div>
             {provider.note && <p className="text-[0.625rem] text-[var(--muted)] mt-1">{provider.note}</p>}
           </div>
@@ -2515,9 +2567,23 @@ export default function AiAssistant() {
             </div>
           )}
 
-          {/* API Key */}
+          {/* API Key：标签行右侧带官方入口。链接跟着服务商走（docUrl 来自 AI_PROVIDERS），
+              自定义端点没有 docUrl 就不显示——用户填的是别人家的端点，硬指一个官网等于编造。 */}
           <div>
-            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? `API Key（${provider.name}）` : `API Key (${provider.name})`}</p>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{`API Key (${providerLabel(provider, lang)})`}</p>
+              {provider.docUrl && (
+                <a
+                  href={provider.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                >
+                  {lang === 'zh' ? '获取 Key / 官方文档' : 'Get a key / docs'}
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                </a>
+              )}
+            </div>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
@@ -2608,6 +2674,8 @@ export default function AiAssistant() {
                   </div>
                 )}
               </div>
+              {/* 图标语义：这里是「重新拉一次清单」，不是「打开一个列表」——用 RefreshCw；
+                  请求进行中让它自己转（motion-safe 下才转，减少动效偏好时保持静止）。 */}
               <button
                 type="button"
                 onClick={fetchModelList}
@@ -2616,9 +2684,14 @@ export default function AiAssistant() {
                 title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
                 className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
-                <List className="w-3 h-3" aria-hidden="true" />
+                <RefreshCw
+                  className={`h-3.5 w-3.5 shrink-0 ${fetching ? 'motion-safe:animate-spin' : ''}`}
+                  aria-hidden="true"
+                />
                 {fetching ? (lang === 'zh' ? '获取中…' : 'Fetching…') : (lang === 'zh' ? '获取模型' : 'Fetch')}
               </button>
+              {/* 图标语义：这里是「探一次对方活不活」，用 Activity（心跳波形）而不是插头——
+                  插头已经是「自定义端点」的身份标（ProviderIcon 的 Plug 退化），两处都用插头会重复指认。 */}
               <button
                 type="button"
                 onClick={testConnection}
@@ -2627,7 +2700,10 @@ export default function AiAssistant() {
                 title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
                 className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
-                <PlugZap className="w-3 h-3" aria-hidden="true" />
+                <Activity
+                  className={`h-3.5 w-3.5 shrink-0 ${testing ? 'motion-safe:animate-pulse' : ''}`}
+                  aria-hidden="true"
+                />
                 {testing ? (lang === 'zh' ? '测试中…' : 'Testing…') : (lang === 'zh' ? '测试连接' : 'Test')}
               </button>
             </div>
@@ -2685,26 +2761,27 @@ export default function AiAssistant() {
                 );
               })}
             </div>
-            {/* 留痕：当前档位 + 本次实际下发的参数（与请求体同源，永不与实际不一致） */}
-            <p className="text-[0.625rem] mono-font text-[var(--fg)] mt-1 leading-snug">
-              {sentDesc
-                ? (lang === 'zh'
-                    ? `当前：${tierLabel(dispatch.effort ?? selectedEffort, 'zh')} · 本次下发 ${sentDesc}`
-                    : `Active: ${tierLabel(dispatch.effort ?? selectedEffort, 'en')} · sending ${sentDesc}`)
-                : (lang === 'zh'
-                    ? '当前模型本次不下发任何思考参数。'
-                    : 'No thinking parameter is sent for this model.')}
+            {/* 单行动态说明：模型没有思考旋钮时，说「按服务商默认策略处理」，
+                具体原因（哪一档不可用、是否透传）落到 title 里——排障时才需要的细节不该占版面。 */}
+            <p
+              className="mt-1 text-xs text-[var(--muted)] leading-snug"
+              title={
+                thinkingPlan?.note
+                  ? THINKING_NOTE[thinkingPlan.note][lang === 'zh' ? 'zh' : 'en']
+                  : sentDesc
+                    ? (lang === 'zh' ? `本次下发 ${sentDesc}` : `Sending ${sentDesc}`)
+                    : (lang === 'zh' ? '不下发思考参数' : 'No thinking parameter sent')
+              }
+            >
+              {thinkingPlan?.note
+                ? (lang === 'zh' ? '当前模型按服务商默认策略处理。' : 'This model follows its provider default policy.')
+                : TIER_HINT[selectedEffort][lang === 'zh' ? 'zh' : 'en']}
             </p>
-            {/* 成本提示（浅灰小字，不占操作位）：档位只影响思考深度，不改变「只给线索」的刚性约束 */}
-            <p className="text-[0.625rem] text-[var(--muted)] mt-1 leading-snug">
-              {lang === 'zh'
-                ? '深度思考会给出更充分的启发线索，但 Token 消耗显著增加；自带 Key 请留意额度。'
-                : 'Deep thinking gives fuller hints but consumes noticeably more tokens — watch your own key quota.'}
-            </p>
-            {/* 输出上限（留空＝不下发 max_tokens）：思考型模型的思考也算进上限，填小了会挤出空白回答 */}
+            {/* 输出上限（留空＝不下发 max_tokens）：思考型模型的思考也算进上限，填小了会挤出空白回答。
+                那整段解释已收进 input 的 title——它是「填小了会怎样」的边界知识，不是每次都要读的正文。 */}
             <div className="mt-1.5 flex items-center gap-2">
-              <label htmlFor="ai-max-out-tokens" className="text-[0.625rem] mono-font text-[var(--muted)] shrink-0">
-                {lang === 'zh' ? '输出上限' : 'Output limit'}
+              <label htmlFor="ai-max-out-tokens" className="shrink-0 text-xs text-[var(--muted)]">
+                {lang === 'zh' ? '输出上限 (tokens)：' : 'Output limit (tokens):'}
               </label>
               <input
                 id="ai-max-out-tokens"
@@ -2712,22 +2789,15 @@ export default function AiAssistant() {
                 inputMode="numeric"
                 value={maxTokensText}
                 onChange={(e) => setMaxTokensText(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
-                placeholder={lang === 'zh' ? '留空＝不限' : 'blank = no limit'}
-                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                placeholder={lang === 'zh' ? '不限' : 'none'}
+                title={
+                  lang === 'zh'
+                    ? '思考型模型（R1 / 思考版千问 / 本地模型）的思考也计入这个上限：填小了思考会吃满预算，回答就是空白。除非要控成本，建议留空。'
+                    : 'Thinking models (R1 / thinking Qwen / local servers) count their reasoning against this limit — set it too low and the answer comes back blank. Leave it empty unless you need a cost cap.'
+                }
+                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
               />
-              <span className="text-[0.625rem] mono-font text-[var(--muted)]">tokens</span>
             </div>
-            <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
-              {lang === 'zh'
-                ? '思考型模型（R1 / 思考版千问 / 本地模型）的思考也计入这个上限：填小了思考会吃满预算，回答就是空白。除非要控成本，建议留空。'
-                : 'Thinking models (R1 / thinking Qwen / local servers) count their reasoning against this limit — set it too low and the answer comes back blank. Leave it empty unless you need a cost cap.'}
-            </p>
-            {/* 模型能力说明：不能关闭 / 无力度档 / 不在支持范围 / 自定义端点走透传 */}
-            {thinkingPlan?.note && (
-              <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
-                {THINKING_NOTE[thinkingPlan.note][lang === 'zh' ? 'zh' : 'en']}
-              </p>
-            )}
             {providerId === 'custom' && (
               <div className="mt-1.5">
                 <button
@@ -3065,7 +3135,7 @@ export default function AiAssistant() {
                   <button
                     type="button"
                     onClick={() => { setSubjFilter(null); setTopicFilter(null); }}
-                    className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                    className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
                   >
                     {lang === 'zh' ? '清除筛选' : 'Clear filters'}
                   </button>
@@ -3595,7 +3665,7 @@ export default function AiAssistant() {
                     <button
                       type="button"
                       onClick={() => { setQuizSubjFilter(null); setQuizTopicFilter(null); }}
-                      className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                      className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
                     >
                       {lang === 'zh' ? '清除筛选' : 'Clear filters'}
                     </button>
@@ -4278,7 +4348,7 @@ export default function AiAssistant() {
                         <button
                           type="button"
                           onClick={() => { setView('settings'); setFailure(null); }}
-                          className="shrink-0 inline-flex items-center rounded px-1.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
+                          className="shrink-0 inline-flex items-center rounded px-1.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
                         >
                           {lang === 'zh' ? '修改配置' : 'Fix config'}
                         </button>
@@ -4349,7 +4419,7 @@ export default function AiAssistant() {
             )}
             {busy && (
               <div className="pt-1 flex justify-end">
-                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="rounded px-1 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">
+                <button type="button" onClick={() => { abortRef.current?.abort(); setBusy(false); }} className="rounded px-1 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">
                   {lang === 'zh' ? '停止' : 'Stop'}
                 </button>
               </div>
@@ -4361,7 +4431,7 @@ export default function AiAssistant() {
               <button
                 type="button"
                 onClick={() => { resetQuiz(); setView('quiz'); }}
-                className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                className="compact inline-flex items-center gap-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
               >
                 <GraduationCap className="w-3.5 h-3.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
                 {lang === 'zh' ? '考考你' : 'Quiz'}

@@ -985,7 +985,7 @@ export default function Ohm() {
                     setMeasureMode(false);
                     setRRevealed(false);
                   }}
-                  className={`text-xs mono-font px-2 py-1 border transition-colors ${
+                  className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${
                     element === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                   }`}
                 >
@@ -1036,7 +1036,7 @@ export default function Ohm() {
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
+              className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
             >
               {t.reset}
             </button>
@@ -1079,7 +1079,7 @@ export default function Ohm() {
                 <button
                   type="button"
                   onClick={reveal}
-                  className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
+                  className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
                 >
                   <Check className={MARK_CLS} aria-hidden />{t.predictDone} — {t.revealLabel}
                 </button>
@@ -1120,7 +1120,7 @@ export default function Ohm() {
                       setPinned((prev) => [...prev, { id: prev.length + 1, r, element, rp }]);
                     }
                   }}
-                  className={`text-xs mono-font px-2 py-1 border transition-colors ${
+                  className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${
                     isPinned
                       ? 'border-[var(--muted)] text-[var(--muted)]'
                       : 'border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'

@@ -110,7 +110,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
               onClick={onClose}
               aria-label={lang === 'zh' ? '关闭' : 'Close'}
               title={lang === 'zh' ? '关闭' : 'Close'}
-              className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none"
+              className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none"
             >
               ×
             </button>

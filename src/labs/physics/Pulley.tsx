@@ -356,8 +356,8 @@ export default function Pulley() {
         <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
         <div className="flex items-center gap-2">
           <span className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">{lang === 'zh' ? '滑轮类型' : 'Pulley type'}</span>
-          <button type="button" onClick={() => setType('fixed')} className={`text-xs mono-font px-2 py-1 border transition-colors ${type === 'fixed' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>{lang === 'zh' ? '定滑轮' : 'Fixed'}</button>
-          <button type="button" onClick={() => setType('moving')} className={`text-xs mono-font px-2 py-1 border transition-colors ${type === 'moving' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>{lang === 'zh' ? '动滑轮' : 'Moving'}</button>
+          <button type="button" onClick={() => setType('fixed')} className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${type === 'fixed' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>{lang === 'zh' ? '定滑轮' : 'Fixed'}</button>
+          <button type="button" onClick={() => setType('moving')} className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${type === 'moving' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}>{lang === 'zh' ? '动滑轮' : 'Moving'}</button>
         </div>
         <ParamSlider label="G (N)" value={G} min={2} max={20} step={1} onChange={setG} format={(v) => `${v.toFixed(0)}N`} />
         <div className="text-sm mono-font text-[var(--fg)]">
@@ -402,7 +402,7 @@ export default function Pulley() {
           {renderConcludeQ('concludeQ1', c.concludeQ1, opts('concludeQ1'), concl.q1, (v) => setConcl((p) => ({ ...p, q1: v })))}
           {renderConcludeQ('concludeQ2', c.concludeQ2, opts('concludeQ2'), concl.q2, (v) => setConcl((p) => ({ ...p, q2: v })))}
           {concludeComplete && !showFeedback && (
-            <button type="button" onClick={() => setShowFeedback(true)} className="text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
+            <button type="button" onClick={() => setShowFeedback(true)} className="compact text-xs mono-font px-3 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors">{c.concludeHint}</button>
           )}
           {showFeedback && (
             <div className="border-l-2 border-[var(--fg)] pl-3 space-y-2">

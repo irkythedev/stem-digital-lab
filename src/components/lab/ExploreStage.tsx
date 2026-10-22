@@ -93,7 +93,7 @@ export default function ExploreStage({
           <button
             type="button"
             onClick={cards[activeCard].tryIt}
-            className="min-h-[38px] text-xs 2xl:text-sm mono-font px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-all rounded-sm touch-manipulation"
+            className="compact min-h-[38px] text-xs 2xl:text-sm mono-font px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-all rounded-sm touch-manipulation"
           >
             {cards[activeCard].tryLabel}
           </button>
@@ -143,7 +143,7 @@ export default function ExploreStage({
               <button
                 type="button"
                 onClick={onClearObservations}
-                className="inline-flex items-center rounded px-1.5 py-1 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors tap-area"
+                className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
               >
                 {clearLabel}
               </button>

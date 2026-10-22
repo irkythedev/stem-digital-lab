@@ -78,7 +78,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
         <button
           type="button"
           onClick={shuffle}
-          className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="compact inline-flex items-center gap-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <RefreshCw key={flipKey} className="w-3 h-3 animate-daily-flip" />
           {lang === 'zh' ? '翻一翻' : 'Flip'}
@@ -151,7 +151,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setStoryModal(true)}
-                  className="mt-1 inline-block rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                  className="mt-1 inline-block compact rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
                 >
                   {lang === 'zh' ? '阅读完整故事 →' : 'Read full story →'}
                 </button>
@@ -168,7 +168,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                   <button
                     type="button"
                     onClick={() => setShowStory(false)}
-                    className="mt-1.5 rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                    className="mt-1.5 compact rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
                   >
                     {lang === 'zh' ? '收起' : 'Collapse'}
                   </button>
@@ -177,7 +177,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 <button
                   type="button"
                   onClick={() => setShowStory(true)}
-                  className="rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                  className="compact rounded px-1.5 py-1 text-[0.6875rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
                 >
                   {lang === 'zh' ? '▸ 人物小故事' : '▸ Story'}
                 </button>
@@ -250,7 +250,7 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
                 type="button"
                 onClick={() => setStoryModal(false)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

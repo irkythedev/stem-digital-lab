@@ -103,12 +103,12 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
               <MessageSquare className="w-3.5 h-3.5" aria-hidden="true" />
               {type === 'experiment' ? l.experimentTitle : l.projectTitle}
             </h2>
-            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none">×</button>
+            <button type="button" onClick={onClose} aria-label={l.close} title={l.close} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
           </div>
           {done ? (
             <div className="flex items-center justify-between gap-3 text-sm text-[var(--fg)]">
               <span className="inline-flex items-center gap-1.5"><Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />{done === 'sent' ? l.sent : l.queued}</span>
-              <button type="button" onClick={onClose} className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors">{l.close}</button>
+              <button type="button" onClick={onClose} className="shrink-0 rounded px-1.5 py-1 text-xs text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">{l.close}</button>
             </div>
           ) : (
             <>

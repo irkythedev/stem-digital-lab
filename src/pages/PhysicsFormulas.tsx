@@ -172,7 +172,7 @@ export default function PhysicsFormulas() {
           <button
             type="button"
             onClick={() => setCat('all')}
-            className={`px-3 py-1 text-xs mono-font border transition-colors ${cat === 'all' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
+            className={`compact leading-5 px-3 py-[0.1875rem] text-xs mono-font border transition-colors ${cat === 'all' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
           >
             {lang === 'zh' ? '全部' : 'All'}
           </button>
@@ -181,7 +181,7 @@ export default function PhysicsFormulas() {
               key={c}
               type="button"
               onClick={() => setCat(cat === c ? 'all' : c)}
-              className={`px-3 py-1 text-xs mono-font border transition-colors ${cat === c ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
+              className={`compact leading-5 px-3 py-[0.1875rem] text-xs mono-font border transition-colors ${cat === c ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'}`}
             >
               {lang === 'zh' ? PHYSICS_FORMULA_CATEGORY_ZH[c] : PHYSICS_FORMULA_CATEGORY_EN[c]}
             </button>
@@ -245,7 +245,7 @@ export default function PhysicsFormulas() {
                 type="button"
                 onClick={() => setSelected(null)}
                 aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+                className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

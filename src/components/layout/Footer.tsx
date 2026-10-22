@@ -33,14 +33,17 @@ export default function Footer() {
     <footer className="w-full border-t border-[var(--border)] py-6 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* 顶线满幅通栏：border 落在满宽 footer 上；内容由内层容器收回正文列（同 Header 算法） */}
       <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-col sm:flex-row justify-between items-center gap-4 px-6 sm:px-12 lg:px-14">
-      <div className="flex flex-col sm:flex-row items-center sm:space-x-3 text-center sm:text-left">
-        {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行） */}
-        <span className="inline-flex items-center justify-center sm:justify-start gap-1.5">
+      <div className="flex flex-col sm:flex-row items-center gap-y-1 sm:gap-x-3 text-center sm:text-left">
+        {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行）。
+            leading-none 是这一行的关键：页脚继承了 tracking-wider + 10px 字号，
+            默认行高会让「作者 / 分隔符 / 角色」三段的文字基线各差 1~2px；
+            统一 leading-none + items-center 后三者中线对齐。 */}
+        <span className="inline-flex items-center justify-center leading-none sm:justify-start gap-1.5">
           <a
             href="https://irky.dev/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1.5 hover:opacity-80 transition-opacity py-2 -my-2 tap-area"
+            className="inline-flex items-center gap-1.5 leading-none hover:opacity-80 transition-opacity py-2 -my-2 tap-area"
             title="irky.dev"
           >
             <img
@@ -57,35 +60,39 @@ export default function Footer() {
             href="mailto:king4g@yeah.net"
             aria-label={t.emailAuthor}
             title={t.emailAuthor}
-            className="inline-flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
+            className="inline-flex items-center leading-none text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
           >
             <Mail className="w-3.5 h-3.5" />
           </a>
         </span>
-        <span className="hidden sm:inline text-[var(--border)]" aria-hidden="true">
+        <span className="hidden sm:inline-flex items-center self-center leading-none text-[var(--border)]" aria-hidden="true">
           /
         </span>
-        <span className="inline-flex items-center gap-2">
+        <span className="inline-flex items-center gap-2 leading-none">
           <span>{t.authorRole}</span>
-          {/* 其他作品：作品集图标 + 圆角数字徽标，点击展开（与项目描述同行） */}
+          {/* 其他作品：作品集图标 + 科技蓝角标，点击展开（与项目描述同行）。
+              角标与 hover 动效写在 index.css（.footer-works-*），这里只挂钩子。 */}
           {t.works.length > 0 && (
-          <span className="relative">
+          <span className="footer-works relative inline-flex items-center">
             <button
               type="button"
               onClick={() => setShowWorks((v) => !v)}
               aria-expanded={showWorks}
-              title={t.moreWorks}
-              aria-label={t.moreWorks}
-              className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
+              aria-label={`${t.moreWorks} — ${t.moreWorksHint}`}
+              className="flex items-center leading-none text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
             >
               {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
-              <span className="relative inline-flex">
+              <span className="footer-works-glyph relative inline-flex">
                 <Library className="w-4 h-4" />
-                <span className="absolute -top-2.5 -right-1.5 min-w-[1rem] h-[0.95rem] px-1 flex items-center justify-center rounded-[0.25rem] bg-[#C71D23] text-white text-[0.5rem] mono-font leading-none">
+                <span className="footer-works-badge absolute -top-2.5 -right-1.5 flex h-[0.95rem] min-w-[1rem] items-center justify-center rounded-[0.25rem] px-1 text-[0.5rem] leading-none text-white mono-font">
                   {t.works.length}
                 </span>
               </span>
             </button>
+            {/* 浮层提示：展开作品集时收起——两者都定位在图标上方，同时出现会叠在一起 */}
+            {!showWorks && (
+              <span className="footer-works-tip" aria-hidden="true">{t.moreWorksHint}</span>
+            )}
             {showWorks && (
               <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
                 {t.works.map((w) => (
@@ -115,7 +122,7 @@ export default function Footer() {
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}
             aria-expanded={showDisclaimer}
-            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.disclaimerLabel}
           </button>
@@ -124,7 +131,7 @@ export default function Footer() {
             onClick={() => setShowLicense(true)}
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
-            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors"
+            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.licenseLabel}
           </button>

@@ -37,7 +37,7 @@ export default function LicenseDialog({ onClose }: LicenseDialogProps) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] active:bg-[var(--accent)] active:text-[var(--bg)] transition-colors text-lg leading-none"
+            className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none"
           >×</button>
         </div>
         {/* 协议全文（滚动） */}

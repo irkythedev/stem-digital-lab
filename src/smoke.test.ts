@@ -130,7 +130,9 @@ import {
   buildThinkingParams, thinkingPlanFor, effectiveThinkingEffort, parseExtraParams, keysByProviderOf, isTierLocked,
   resolveThinkingDispatch, describeThinkingParams,
   resolveMaxTokens, CHAIN_MAX_TOKENS, EmptyAnswerError, isLengthTruncated, classifyStreamOutcome, STALL_TIMEOUT_MS,
-  type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind} from './lib/ai-config';
+  type ThinkingEffort, estimateTokens, countCjk, classifyChatFailure, type AiFailureKind,
+  AI_PROVIDERS, providerLabel, type AiProvider } from './lib/ai-config';
+import { PROVIDER_ICON_KEY } from './components/ui/ProviderIcon';
 import { shellLayout, coreRadiusFor, dotRadiusFor, ATOM_VIEW } from './lib/atom-shells';
 import { ELEMENTS, type ElementInfo } from './lib/elements';
 import {
@@ -144,7 +146,7 @@ import {
   estimateSeconds, BLANK_MM, canUseTwoColumnOptions, type PaperBlankLevel,
 } from './lib/quiz-paper';
 import {
-  getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel,
+  getDynamicQuestions, setLabState, getLabState, clearLabState, labIdFromPath, stageLabel, formatLabState,
 } from './lib/ai-dynamic-questions';
 import {
   computeQuizOverview,
@@ -2123,6 +2125,87 @@ describe('AI prompt contracts', () => {
     assert.ok(zh.includes('可以继续了解：'), '追问标记必须原样出现在契约里');
     assert.ok(zh.includes('不给最终结论'), '探究型问题不给结论');
     assert.ok(zh.includes('<页面资料>'), '页面资料进标签槽');
+
+    /* ── 读数与实验状态的序列化（v0.40.5 审计修复，并入本用例以守住 405）──
+       这一节守三件事，都是「模型拿到就会产生认知幻觉」的硬伤：
+       ① 跨学科同名字段不能串味：lens 的 u 是物距(cm)，ohm 的 u 才是电源电压(V)；
+       ② TS 内部码不得透传：bulb / chord / fixed / al-cuso4 / 方案下标，一律翻成自然语言；
+       ③ 实时读数必须独立成槽，且与「参考资料」的权威级分开。 */
+
+    // ① 分域：lens 的 u/f/v 是物距/焦距/像距，单位 cm，绝不能出现「电源电压」
+    const lensZh = formatLabState('lens', { stage: 'explore', u: 20, f: 10, v: 20 }, 'zh');
+    assert.ok(lensZh.includes('物距 20cm'), `lens 的 u 须为物距（实测：${lensZh}）`);
+    assert.ok(!lensZh.includes('电源电压'), 'lens 没有电源，绝不许可出现「电源电压」');
+    assert.ok(lensZh.includes('焦距 10cm') && lensZh.includes('像距 20cm'), 'lens 的 f/v 须为焦距/像距');
+    const lensEn = formatLabState('lens', { stage: 'explore', u: 20, f: 10, v: 20 }, 'en');
+    assert.ok(lensEn.includes('object distance 20cm'), `lens 英文须为 object distance（实测：${lensEn}）`);
+    // 分域不能误伤：ohm 的 u 仍是电源电压（V）
+    assert.ok(
+      formatLabState('ohm', { stage: 'explore', u: 6, i: 0.6 }, 'zh').includes('电源电压 6V'),
+      'ohm 的 u 必须保留「电源电压」口径（分域不得误伤）',
+    );
+
+    // ② 枚举码翻译：翻译成界面上的说法，且原码不得出现在输出里
+    const enumCases: [string, Record<string, unknown>, string, string][] = [
+      ['ohm', { element: 'bulb' }, '小灯泡', 'bulb'],
+      ['ohm', { element: 'resistor' }, '定值电阻', 'resistor'],
+      ['circle', { circleMode: 'chord' }, '垂径定理', 'chord'],
+      ['circle', { circleMode: 'inscribed' }, '圆周角定理', 'inscribed'],
+      ['circle', { circleMode: 'thales' }, '直径对直角', 'thales'],
+      ['pulley', { type: 'fixed' }, '定滑轮', 'fixed'],
+      ['pulley', { type: 'moving' }, '动滑轮', 'moving'],
+      ['mass-conservation', { activeScheme: 0 }, '铜与氧气', ''],
+      ['mass-conservation', { activeScheme: 1 }, '铁与硫酸铜', ''],
+      ['metal-activity', { react: 'al-cuso4' }, '铝与硫酸铜', 'al-cuso4'],
+      ['metal-activity', { react: 'cu-agno3' }, '铜与硝酸银', 'cu-agno3'],
+    ];
+    for (const [lab, st, want, rawCode] of enumCases) {
+      const out = formatLabState(lab, { stage: 'explore', ...st }, 'zh');
+      assert.ok(out.includes(want), `${lab} ${JSON.stringify(st)} 须翻译为「${want}」（实测：${out}）`);
+      if (rawCode) {
+        assert.ok(
+          !new RegExp(`\\b${rawCode}\\b`).test(out),
+          `${lab} 不得把内部码「${rawCode}」原样交给模型（实测：${out}）`,
+        );
+      }
+    }
+    // 未登记的内部值：整条丢弃，绝不透传（与 clean() 的「绝不输出半句话」同一条纪律）
+    const unknownEnum = formatLabState('circle', { stage: 'explore', circleMode: 'made-up-code' }, 'zh');
+    assert.ok(!unknownEnum.includes('made-up-code'), '未登记的内部值须整条丢弃，不得透传');
+    assert.ok(unknownEnum.includes('当前阶段：探索'), '丢弃单个字段不得影响其它字段');
+
+    // ③ 英文语境不得漏中文取值（twin 键名曾算成 styleZhEn，取不到值）
+    const circEn = formatLabState(
+      'circuits',
+      { stage: 'explore', styleZh: '串联三灯', styleEn: 'three bulbs in series', i0: 0.25 },
+      'en',
+    );
+    assert.ok(circEn.includes('three bulbs in series'), `英文须取 styleEn（实测：${circEn}）`);
+    assert.ok(!/[一-鿿]/.test(circEn), `英文提示词不得出现中文（实测：${circEn}）`);
+    const buoyEn = formatLabState('buoyancy', { stage: 'explore', liquidZh: '盐水', liquidEn: 'brine' }, 'en');
+    assert.ok(buoyEn.includes('brine') && !/[一-鿿]/.test(buoyEn), `液体英文须取 liquidEn（实测：${buoyEn}）`);
+
+    // ④ 读数独立成槽：静态知识留在 <页面资料>，实时读数进 <当前读数>，两者权威级分开
+    const live = formatLabState('ohm', { stage: 'explore', u: 6, i: 0.6, switchOn: true }, 'zh');
+    const withReadings = buildSystemPrompt('zh', '欧姆定律实验', '页面知识', '探索', true, live);
+    assert.ok(withReadings.includes('<当前读数>'), '实时读数须有独立标签槽 <当前读数>');
+    assert.ok(withReadings.includes(live), '读数原文须原样进入 <当前读数>');
+    const matStart = withReadings.indexOf('<页面资料>');
+    const matEnd = withReadings.indexOf('</页面资料>');
+    assert.ok(matStart >= 0 && matEnd > matStart, '<页面资料> 须成对出现');
+    const materialBlock = withReadings.slice(matStart, matEnd);
+    assert.ok(materialBlock.includes('页面知识'), '静态知识须留在 <页面资料>');
+    assert.ok(!materialBlock.includes('当前实验实时状态'), '实时读数不得混在 <页面资料> 里（那会降成「仅供参考」）');
+    assert.ok(
+      withReadings.indexOf(live) > withReadings.indexOf('<当前读数>'),
+      '读数块必须紧跟在 <当前读数> 标签之后',
+    );
+    // 英文侧同样成对，且用 current_readings
+    const enRead = buildSystemPrompt('en', 'Ohm lab', 'page facts', 'explore', true, live);
+    assert.ok(enRead.includes('<current_readings>'), '英文读数槽须为 <current_readings>');
+    // 没有读数时不得凭空造一个空槽
+    const noRead = buildSystemPrompt('zh', '欧姆定律实验', '页面知识', '探索', true);
+    assert.ok(!noRead.includes('<当前读数>'), '没有实时读数时不得输出空读数槽');
   });
 
   test('物理分支判定：显式判定优先，主题串含「物理」作为回退（实验页显示名不含「物理」）', () => {
@@ -2954,6 +3037,7 @@ describe('AI 面板文案合规（安全声明与用量口径）', () => {
       '尚未解析服务商回传的 usage（无 stream_options），不得声称按返回统计',
     );
   });
+
 });
 
 
@@ -3537,8 +3621,60 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.match(touchBlock, /\.tap-area\s*\{[^}]*display:\s*inline-flex/);
     assert.match(touchBlock, /\.tap-area\s*\{[^}]*align-items:\s*center/);
     assert.match(touchBlock, /\.tap-area\s*\{[^}]*min-height:\s*2\.5rem/);
+
+    // 地板本身仍在：L1 阶段导航 / Next / 答题选项要的就是拇指命中区
+    assert.match(css, /main button\s*\{[^}]*min-height:\s*40px/, '40px 地板须保留（只兜 L1）');
+    assert.match(css, /main button\.compact\s*\{[^}]*min-height:\s*0/, '须有 main button.compact 解除地板');
+    // 触屏保底：compact 只解桌面，小屏仍 40px（与改前一致，零退化）
+    assert.match(
+      touchBlock,
+      /main button\.compact\s*\{[^}]*min-height:\s*2\.5rem/,
+      'compact 必须在触屏媒体块里补 40px 保底',
+    );
+    // 关闭类幽灵按钮：按下微缩 + 极浅底，绝不铺实底
+    assert.match(css, /button\.ghost-x:active:not\(:disabled\)\s*\{[^}]*scale\(0\.95\)/, '关闭按钮须 ghost-x 微缩 0.95');
+    assert.match(css, /button\.ghost-x:active:not\(:disabled\)\s*\{[^}]*background-color:\s*var\(--accent-light\)/, '关闭按钮按压只许极浅底');
+
+    // 全站源码：主操作令牌不得再做按压底色（会铺满控件盒）
+    const uiFiles = [
+      'src/components/ai/AiAssistant.tsx', 'src/components/ai/AskAiButton.tsx', 'src/components/ai/AskQuizButton.tsx',
+      'src/components/ui/DailyQuote.tsx', 'src/components/layout/Footer.tsx', 'src/components/lab/ExploreStage.tsx',
+      'src/pages/MathFormulas.tsx', 'src/pages/PhysicsFormulas.tsx', 'src/pages/PhysicalConstants.tsx',
+      'src/labs/math/Quadratic.tsx', 'src/labs/math/Linear.tsx', 'src/labs/math/Inverse.tsx',
+      'src/labs/physics/Ohm.tsx', 'src/labs/physics/Circuits.tsx', 'src/labs/chemistry/Neutralization.tsx',
+    ];
+    for (const f of uiFiles) {
+      const src = readFileSync(f, 'utf8');
+      assert.doesNotMatch(src, /active:bg-\[var\(--accent\)\]/, `${f} 不得用 --accent 做按压底色（会变成实心黑/白块）`);
+    }
+
+    // 代表性 L3 微控件必须挂 .compact（否则仍被 40px 撑着）
+    const l3: [string, string][] = [
+      ['src/components/ui/DailyQuote.tsx', "▸ 人物小故事"],
+      ['src/components/ai/AskAiButton.tsx', '问 AI'],
+      ['src/components/ai/AskQuizButton.tsx', '考考你'],
+      ['src/labs/math/Quadratic.tsx', '重置'],
+      ['src/pages/HomePage.tsx', '随机进入'],
+    ];
+    for (const [f, name] of l3) {
+      assert.match(readFileSync(f, 'utf8'), /\bcompact\b/, `${name}（${f}）须挂 compact 解除 40px 地板`);
+    }
+    // L2 chips：compact + leading-5（20px 行盒 + 3px 内边距 + 1px 边 = 28px 落点）
+    const chips = readFileSync('src/pages/PhysicsFormulas.tsx', 'utf8');
+    assert.match(chips, /compact leading-5 px-3 py-\[0\.1875rem\]/, '筛选 chip 须 compact + leading-5 收到 28px');
   });
 
+  /* ── 40px 地板与按压态（v0.40.5 收口）─────────────────────────────────────
+     这一节守两件事，都是实测出来的，不是审美偏好：
+
+     1. `main button { min-height: 40px }` 是无层元素规则，特异性高于 Tailwind 的
+        min-h-*（在 @layer utilities 内）→ 组件写 min-h-[34px] 也无效。
+        实测代价：11px 文字 + py-1 的「人物小故事」渲染 40px、自身只有 24.5px；
+        「翻一翻」自身 16.5px 被抬 142%。所以必须有 .compact 口子，否则改 padding 全是白工。
+     2. `active:bg-[var(--accent)]` 当 --accent 是 #000/#fff 时铺满整个控件盒 →
+        实测 2242px² 纯黑（深色主题纯白）。卡片里的微控件按下去就是一块黑砖。
+
+     没有这两条断言，下一次「统一风格」会把它们原样改回去。 */
   test('页脚独立图标：允许 tap-icon 扩区，但间距与视觉尺寸必须同时守住', () => {
     const footer = readFileSync('src/components/layout/Footer.tsx', 'utf8');
     if (!footer.includes('tap-icon')) return; // 未扩区时无需约束
@@ -3551,6 +3687,28 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.ok(!footer.includes('-m-1\.5'), '扩区图标不得再用 -m-1.5：负外边距会吃掉 flex 间距 12px，中心距掉到 34px 后 42px 扩区必然互压');
     assert.ok(/<Share2 className="w-3\.5 h-3\.5"/.test(footer) && /<Network className="w-3\.5 h-3\.5"/.test(footer),
       '扩区只能靠伪元素：图标本身不得放大（视觉仍 14px）');
+
+    // 作品集角标：科技蓝（曾是品牌红 #C71D23，在页脚里读起来像未读告警）
+    const css = readFileSync('src/index.css', 'utf8');
+    const i18nSrc = readFileSync('src/lib/i18n.ts', 'utf8');
+    assert.match(footer, /footer-works-badge/, '作品集角标须挂 .footer-works-badge 钩子（hover 动效用）');
+    assert.doesNotMatch(footer, /bg-\[#C71D23\]/, '作品集角标不得再用品牌红背景');
+    assert.match(css, /--tech-blue: #4d6bfe;/, '须有 --tech-blue 令牌（--accent 是黑/白，当不了蓝）');
+    assert.match(css, /\.footer-works-badge \{[^}]*background: var\(--tech-blue\)/, '角标底色须取 --tech-blue 令牌');
+    // hover 微动效：整体上浮 1px + 角标 1.08 + 同色光晕，且尊重减少动效
+    assert.match(css, /\.footer-works:hover \.footer-works-glyph,[\s\S]{0,80}translateY\(-1px\)/, '悬停须整体上浮 1px');
+    assert.match(css, /\.footer-works:hover \.footer-works-badge,[\s\S]{0,120}scale\(1\.08\)/, '悬停角标须缩放 1.08');
+    assert.match(css, /0 0 6px var\(--tech-blue-glow\)/, '悬停须叠加同色光晕');
+    assert.match(css, /prefers-reduced-motion: reduce[\s\S]{0,400}\.footer-works-badge \{ transform: none; \}/, '减少动效时须取消位移与缩放');
+    // 浮层提示：单行 + 深底令牌 + 12px + 箭头，且必须 pointer-events:none（不许挡住按钮）
+    assert.match(css, /\.footer-works-tip \{[^}]*pointer-events: none/, '浮层不得拦截点击');
+    assert.match(css, /\.footer-works-tip \{[^}]*font-size: 12px/, '浮层字号须 12px');
+    assert.match(css, /\.footer-works-tip \{[^}]*white-space: nowrap/, '浮层须单行');
+    assert.match(css, /\.footer-works-tip::after \{[^}]*transform: rotate\(45deg\)/, '浮层须有指向图标的小箭头');
+    assert.ok(footer.includes('footer-works-tip'), '页脚须渲染浮层提示');
+    assert.match(i18nSrc, /moreWorksHint: 'Ricky 的其他作品'/, '浮层文案须为「Ricky 的其他作品」');
+    assert.match(i18nSrc, /moreWorksHint: 'More By Ricky'/, '浮层文案须有英文对应「More By Ricky」');
+    assert.match(css, /\.footer-works-tip \{[^}]*max-width: calc\(100vw - 1\.5rem\)/, '浮层须有极窄视口兜底宽度');
   });
 
   test('顶栏安全区不得清零上内边距：须为 calc 叠加（页脚同款写法）', () => {
@@ -3715,7 +3873,13 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.ok(zh.includes('方法不超纲'), '中文须禁止超纲方法');
     assert.ok(zh.includes('不回显配置'), '中文须禁止回显配置');
     assert.ok(en.includes('No out-of-syllabus methods') && en.includes('Never echo configuration'), '英文须逐条对齐');
-    assert.ok(zh.includes('<当前读数>') && en.includes('<current_reading>'), '须说明读数槽位语义');
+    // 读数槽是**按需出现**的：旧版无条件下写死一句「<当前读数> 内是…」，而那个标签块根本不存在
+    // （审计中 3 的「虚标」）。现在没有实时读数就不输出空槽，有读数才带语义说明。
+    assert.ok(!zh.includes('<当前读数>'), '没有实时读数时不得虚标读数槽');
+    const zhR = buildSystemPrompt('zh', '欧姆定律实验', '', '', true, '【当前实验实时状态】电流读数 0.60A');
+    const enR = buildSystemPrompt('en', 'Ohm lab', '', '', true, '【当前实验实时状态】电流读数 0.60A');
+    assert.ok(zhR.includes('<当前读数>') && zhR.includes('严禁自行推算'), '有读数时须说明槽位语义与引用纪律');
+    assert.ok(enR.includes('<current_readings>'), '英文读数槽须为 <current_readings>');
   });
 
   test('出题模板：序号不重复、含完整示范、物理页读法豁免', () => {
@@ -4267,6 +4431,31 @@ describe('AI settings panel layout & control polish', () => {
       '选中档位必须由背景滑块承托',
     );
     assert.ok(!ai.includes("'● '"), '不得再用 ● 字符符号表达选中态');
+
+    // ── 说明只留一行：档位差一句话就够，长度/能力解释收进 title ──
+    // 单行说明：三档各有且只有一句
+    assert.match(ai, /const TIER_HINT: Record<ThinkingEffort, \{ zh: string; en: string \}> = \{/, '须有档位一句话说明表');
+    for (const s of ['禁用思考过程，极速响应，适合查速查表', '适度启发引导，兼顾质量与响应速度（推荐）', '展开完整推理草稿，Token 消耗增加，适合大题推导']) {
+      assert.ok(ai.includes(s), `档位说明须为「${s}」`);
+    }
+    assert.ok(ai.includes('当前模型按服务商默认策略处理。'), '模型无思考旋钮时须给统一口径');
+    // 反例：那两段长文案不得回到正文里（在 title/说明表之外出现即为回潮）
+    assert.ok(
+      !ai.includes('深度思考会给出更充分的启发线索，但 Token 消耗显著增加'),
+      '「深度思考会更充分但烧 token」那段长文案已并入档位一句话，不得回潮',
+    );
+    // 输出上限：单行轻量布局 + 解释进 title
+    assert.match(
+      ai,
+      /输出上限 \(tokens\)：/,
+      '输出上限须为单行「输出上限 (tokens)：」+ 输入框',
+    );
+    assert.match(ai, /w-24 rounded-md border border-\[var\(--border\)\] bg-\[var\(--bg\)\] px-2 py-0\.5 text-xs mono-font/, '输出上限输入框须为 py-0.5 轻量尺寸');
+    assert.match(ai, /思考型模型（R1 \/ 思考版千问 \/ 本地模型）的思考也计入这个上限/, '思考型模型解释须保留（收进 title，不得直接删掉）');
+    assert.ok(
+      !/text-\[0\.625rem\] text-\[var\(--muted\)\] mt-0\.5 leading-snug">\s*\{thinkingPlan\?\.note/.test(ai),
+      '模型能力说明不得再单独占一段（应合并进单行说明的 title）',
+    );
   });
 
   test('服务商与筛选 chips = 柔和 Chip：去硬描边、选中态微强调', () => {
@@ -4295,6 +4484,23 @@ describe('AI settings panel layout & control polish', () => {
       /className="ml-auto tap-area inline-flex items-center gap-1 text-\[0\.6875rem\] mono-font text-\[var\(--muted\)\] transition-colors hover:text-\[var\(--fg\)\]"/,
       '清除入口必须保持文字链并补 tap-area（触屏 ≥40px）',
     );
+
+    // 模型行的两个动作按钮：图标语义必须与动作一致，且不得重复「插头」这个身份标。
+    // 获取模型 = 重新拉一次清单（RefreshCw，load 时自转）；测试连接 = 探一次活不活（Activity 心跳）。
+    assert.match(
+      ai,
+      /<RefreshCw\s+className=\{`h-3\.5 w-3\.5 shrink-0 \$\{fetching \? 'motion-safe:animate-spin' : ''\}`\}/,
+      '「获取模型」须用 RefreshCw（14px）且在请求中自转',
+    );
+    assert.match(
+      ai,
+      /<Activity\s+className=\{`h-3\.5 w-3\.5 shrink-0 \$\{testing \? 'motion-safe:animate-pulse' : ''\}`\}/,
+      '「测试连接」须用 Activity（心跳波形，14px）',
+    );
+    // 插头只属于「自定义端点」的身份标（ProviderIcon 里的 Plug 退化），按钮上再用就撞了
+    assert.ok(!ai.includes('PlugZap'), '「测试连接」不得再用 PlugZap 插头（与自定义端点的插头标撞车）');
+    assert.ok(!/<List className="w-3 h-3"/.test(ai), '「获取模型」不得再用 List（语义是"看列表"，实际动作是"重新拉取"）');
+    assert.ok(ai.includes('import { Activity,') || /import \{[^}]*\bActivity\b[^}]*\} from 'lucide-react'/.test(ai), 'Activity 须从 lucide-react 具名引入');
   });
 });
 
@@ -5305,6 +5511,32 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     assert.match(si, /viewBox="0 0 24 24"/, '数学图标须为 24 栅格矢量');
     assert.match(si, /strokeWidth=\{2\}/, '数学图标须为 2px 固定线宽');
     assert.match(si, /strokeLinecap="round"/, '数学图标须为圆头端点');
+    // 物理动效（第二版）：轨道几何必须一动不动，运动落在「沿轨道跑的电子」上。
+    // 第一版让两条轨道各自绕核反向自转——两环夹角连续变化，交叉点漂移、中心描边忽厚忽薄，
+    // 36px 下像在扭动发糊，已废弃。这里锁死「不许回到逐环自转」。
+    assert.doesNotMatch(si, /data-subject-part="orbit-[ab]"/, '原子轨道不得再分组自转（会破坏原子形态）');
+    assert.match(si, /data-subject-part="electron-a"/, '每个环上须有一颗电子');
+    assert.match(si, /data-subject-part="electron-b"/, '每个环上须有一颗电子');
+    assert.match(si, /const ATOM_ORBIT_A = 'M20\.2 20\.2c/, '轨道路径须抽成常量');
+    assert.match(si, /<path d=\{ATOM_ORBIT_A\}/, '轨道 <path> 须与电子共用同一路径常量');
+    assert.match(
+      si,
+      /offsetPath: `path\("\$\{ATOM_ORBIT_A\}"\)`/,
+      '电子须用 same-source 常量的 offset-path 定位（两份几何会漂移）',
+    );
+    assert.match(si, /opacity=\{0\}/, '电子默认不可见：非首页场景（弹窗/科目页/实验页）不得出现多余圆点');
+    const cssSrc2 = readFileSync('src/index.css', 'utf8');
+    assert.match(cssSrc2, /@keyframes subject-electron-travel/, '电子行进须有 keyframes');
+    assert.doesNotMatch(cssSrc2, /subject-orbit-cw|subject-orbit-ccw/, '逐环自转的关键帧须已删除');
+    assert.match(cssSrc2, /electron-a'\] \{\s*opacity: 1;\s*animation: subject-electron-travel 2\.6s linear infinite;/, 'A 环电子 2.6s 正向');
+    assert.match(cssSrc2, /electron-b'\] \{\s*opacity: 1;\s*animation: subject-electron-travel 3\.4s linear infinite reverse;/, 'B 环电子 3.4s 反向');
+    assert.match(cssSrc2, /\[data-subject-part='electron-a'\],\s*\n\.home-subjects > button \[data-subject-part='electron-b'\] \{\s*opacity: 0;/, '电子默认 opacity 0（淡入而非突兀出现）');
+    // 减动效：动效全关（π 描摹 / 电子行进 / 锥形瓶摆动）
+    assert.match(
+      cssSrc2,
+      /\[data-subject-part='electron-a'\],\s*\n\s*\.home-subjects > button:hover \[data-subject-part='electron-b'\] \{\s*animation: none;/,
+      '减动效下电子须停anim，不得留循环',
+    );
     // ④d 底栏级底注：开源协议 / 作者 / 反馈 一行收敛 + 姊妹作品胶囊
     assert.match(wd, /justify-between gap-x-4 gap-y-2 px-0\.5 text-\[0\.6875rem\]/, '次级底注须为一行 justify-between');
     for (const k of ['welcomeLicenseLabel', 'welcomeFeedbackLabel']) {
@@ -5395,14 +5627,15 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
       assert.match(hd, /shownStatus !== 'unconfigured' && \(/, '未配置须整块不渲染角标');
       // F1：角标要有 title（桌面悬停即得一句话；此前只有 aria-label，桌面零提示）
       assert.match(hd, /title=\{`\$\{HEALTH_TITLE\[shownStatus\]\[lang\]\} · \$\{aiCheckedAtLabel/, '角标须有动态 title（状态 + 上次检测）');
-      // F2：命中区 36 宽（可见 36×21），圆点必须落在**字形右上方外侧**——不压字形、不压邻居
+      // F2：标准 Badge —— 16×16 盒贴在字形右上角（压住一角），旧的「抬到 -26px 悬空」不得回归
       assert.match(
         hd,
-        /absolute right-\[4px\] -top-\[26px\] z-10 grid h-9 w-9 place-items-end rounded-full/,
-        '角标须在字形右上角外侧，且命中区 36 宽',
+        /absolute right-0 top-0 z-10 grid h-4 w-4 place-items-center rounded-full/,
+        '角标须贴合成标准 Badge（16×16，落在图标右上角内）',
       );
-      assert.doesNotMatch(hd, /grid h-4 w-4 place-items-center rounded-full/, '16×16 的旧命中区不得回归');
-      // 几何不许吞掉图标中心：角标盒只向上长，底边压在字形上边缘，图标中心仍归图标按钮
+      assert.doesNotMatch(hd, /-top-\[26px\]/, '旧的悬空 26px 定位不得回归（圆点会飘离图标）');
+      assert.doesNotMatch(hd, /grid h-9 w-9 place-items-(end|center) rounded-full/, '命中盒不得再撑到 36×36（会吞掉图标中心）');
+      // 几何不许吞掉图标中心：盒下沿 16 < 字形中心 18，图标中心仍归图标按钮
       assert.match(hd, /flex h-9 w-9 items-center justify-center rounded-lg/, '图标按钮须 36×36');
       // 形状与配色统一走 shownStatus（过期即降级的展示态），不再是裸 status：
       // 角标只要还读裸 status，「卡片写着已过期、角标却说已就绪」就会重现。
@@ -5477,6 +5710,144 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
         /ids\.length > 0 && formMatchesSaved && config\) reportAiSuccess/,
         '获取模型成功后不得置绿：/models 只证明凭证与端点通，不证明模型能对话',
       );
+
+      // ⑩g 服务商胶囊：去括号后缀 + 品牌微标 + 中英双标签 + 等高不折行
+      // （并入本用例，不新增用例数）
+      {
+        const cfgSrc = readFileSync('src/lib/ai-config.ts', 'utf8');
+        const block = cfgSrc.slice(cfgSrc.indexOf('export const AI_PROVIDERS'), cfgSrc.indexOf('/** 服务商显示名的唯一取法'));
+        // 名称行单独取：note 里合法的括号（如「（自建代理）」）不算违规
+        const names = [...block.matchAll(/name: '([^']+)'/g)].map((m) => m[1]);
+        const namesEn = [...block.matchAll(/nameEn: '([^']+)'/g)].map((m) => m[1]);
+        // 括号里塞公司名（阿里云 / 月之暗面 / 火山方舟）会让胶囊长短不齐、窄屏折行，
+        // 且与旁边的品牌 logo 重复表达同一件事——名称行一律禁止括号。
+        for (const n of names) {
+          assert.doesNotMatch(n, /[（）()]/, `服务商中文名「${n}」不得含括号后缀`);
+        }
+        for (const bad of ['阿里云', '月之暗面', '火山方舟', '深度求索']) {
+          assert.ok(!names.some((n) => n.includes(bad)), `服务商名称不得再含「${bad}」这类公司名`);
+        }
+        assert.equal(names.length, 6, `6 个服务商都须有中文名（实测 ${names.length}）`);
+        assert.equal(namesEn.length, 6, '每个服务商都须有英文名（en-US 用商标写法）');
+        for (const n of ['DeepSeek', '通义千问 Qwen', 'Kimi', '智谱 GLM', '豆包 Doubao', '自定义']) {
+          assert.ok(names.includes(n), `中文名须为「${n}」`);
+        }
+        for (const n of ['DeepSeek', 'Qwen', 'Kimi', 'Zhipu GLM', 'Doubao']) {
+          assert.ok(namesEn.includes(n), `英文名须为「${n}」`);
+        }
+        assert.match(cfgSrc, /export function providerLabel\(p: AiProvider, lang: 'zh' \| 'en'\): string/, '须有唯一的取名函数，避免两处各写一套');
+
+        // 运行时不变式（源码断言抓不到这类错）：每个真实服务商的 id 都要能落到一个品牌标上。
+        // 曾经踩过：图标表按品牌名建键（qwen/kimi/doubao），而 providerId 是平台名
+        // （dashscope/moonshot/volcengine），查不到就静默退化成插头——界面"有图标"，全是同一个插头。
+        for (const p of AI_PROVIDERS) {
+          if (p.id === 'custom') continue;
+          assert.ok(PROVIDER_ICON_KEY[p.id], `服务商 ${p.id} 缺品牌标映射（会静默退化成插头）`);
+        }
+        assert.equal(PROVIDER_ICON_KEY.dashscope, 'qwen', '通义千问的 id 是 dashscope，品牌标是 qwen');
+        assert.equal(PROVIDER_ICON_KEY.moonshot, 'kimi', 'Kimi 的 id 是 moonshot，品牌标是 kimi');
+        assert.equal(PROVIDER_ICON_KEY.volcengine, 'doubao', '豆包的 id 是 volcengine，品牌标是 doubao');
+        assert.equal(PROVIDER_ICON_KEY.custom, undefined, '自定义端点没有品牌标，须走插头');
+        // 中英取名：中文含中文前缀，英文是商标写法（且不再带括号）
+        const byId = Object.fromEntries(AI_PROVIDERS.map((p) => [p.id, p as AiProvider]));
+        assert.equal(providerLabel(byId.dashscope, 'zh'), '通义千问 Qwen');
+        assert.equal(providerLabel(byId.dashscope, 'en'), 'Qwen');
+        assert.equal(providerLabel(byId.zhipu, 'en'), 'Zhipu GLM');
+        assert.equal(providerLabel(byId.volcengine, 'zh'), '豆包 Doubao');
+
+        // 官方入口链接：跟着服务商走，且必须指向厂商自己的域名。
+        // 为什么钉域名：这类链接最容易在"顺手补一个"时变成第三方教程站，
+        // 而学生点进去要的是申请 Key 的地方，不是别人的博客。
+        const DOC_HOSTS: Record<string, string> = {
+          deepseek: 'platform.deepseek.com',
+          dashscope: 'bailian.console.aliyun.com',
+          moonshot: 'platform.moonshot.cn',
+          zhipu: 'open.bigmodel.cn',
+          volcengine: 'console.volcengine.com',
+        };
+        for (const [id, host] of Object.entries(DOC_HOSTS)) {
+          const url = byId[id]?.docUrl;
+          assert.ok(url, `服务商 ${id} 须有官方 Key 申请入口（docUrl）`);
+          assert.ok(url.startsWith('https://'), `${id} 的 docUrl 必须是 https`);
+          assert.ok(url.includes(host), `${id} 的 docUrl 须指向官方域名 ${host}（实测 ${url}）`);
+        }
+        assert.equal(byId.custom?.docUrl, undefined, '自定义端点没有官方入口，不得硬指一个官网');
+        // 面板里必须真的渲染它（且新窗口打开、断开 opener）
+        assert.match(panelSrc, /href=\{provider\.docUrl\}/, 'API Key 标签行须渲染官方入口');
+        assert.match(panelSrc, /target="_blank"/, '官方入口须新窗口打开，不打断正在填的表单');
+        assert.match(panelSrc, /rel="noopener noreferrer"/, '外链须断 opener');
+
+        // 品牌微标：单色 currentColor、24 栅格、无 hex；自定义端点退化为插头
+        const icoSrc = readFileSync('src/components/ui/ProviderIcon.tsx', 'utf8');
+        assert.match(icoSrc, /viewBox="0 0 24 24"/, '品牌标须为 24 栅格');
+        assert.match(icoSrc, /fill="currentColor"/, '品牌标须继承文字色（不写死品牌色）');
+        for (const id of ['deepseek', 'qwen', 'kimi', 'zhipu', 'doubao']) {
+          assert.ok(icoSrc.includes('  ' + id + ': ['), `须内联 ${id} 的品牌标`);
+        }
+        // 智谱：官方现行标是几何折线 Z（z.ai 站内 logo / open.bigmodel.cn favicon 同一造型）。
+        // lobehub 的 `zhipu.svg` 是旧版「点阵星簇」，现行品牌里没有这个东西，不得复活。
+        assert.ok(icoSrc.includes('M12.105 2L9.927 4.953H.653L2.83 2h9.276z'), '智谱须用官方几何 Z 标（zai.svg 轮廓）');
+        assert.ok(!icoSrc.includes('M9.671 5.365'), '智谱旧的点阵星簇标已废弃，不得再内联');
+        assert.match(icoSrc, /<Plug /, '自定义端点无品牌标，须退化为插头而不是空白');
+        assert.doesNotMatch(icoSrc, /#[0-9a-fA-F]{3,6}\b/, '品牌标不得硬写 hex 颜色（品牌色一律走 --brand-* 令牌）');
+        // 品牌色：logo 默认仍继承 --muted，只在悬停 / 已选时点亮（令牌定义在 index.css，两套明暗取值）
+        const cssBrand = readFileSync('src/index.css', 'utf8');
+        // 智谱官方标是纯黑白，所以它不染品牌色、直接继承 --fg；其余四家必须是实色
+        for (const b of ['deepseek', 'qwen', 'kimi', 'doubao']) {
+          assert.match(cssBrand, new RegExp(`--brand-${b}: #[0-9a-f]{6};`), `须定义 --brand-${b}（浅色实色）`);
+        }
+        assert.match(
+          cssBrand,
+          /--brand-zhipu: var\(--fg\);/,
+          '智谱官方标是黑白，须继承 --fg 而不是编一个蓝（编出来会和另外三家蓝撞色）',
+        );
+        const brandDark = cssBrand.match(/html\.dark \{[\s\S]*?--brand-deepseek: (#[0-9a-f]{6})/)?.[1];
+        const brandLight = cssBrand.match(/--brand-deepseek: (#[0-9a-f]{6})/)?.[1];
+        assert.ok(brandDark && brandLight && brandDark !== brandLight, '品牌色须有暗色另一档（深蓝压暗底会发黑）');
+
+        // 五个品牌色必须真的分得开。旧版是 #1766e9 / #3655ff / #3370ff 三条几乎同色的蓝
+        // （色相跨度 13°），16px 下就是三块一样的方块——这里把跨度钉死，防回归。
+        const hueOf = (hex: string) => {
+          const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+          const mx = Math.max(...v);
+          const mn = Math.min(...v);
+          if (mx === mn) return 0;
+          const d = mx - mn;
+          const h = mx === v[0] ? (v[1] - v[2]) / d + (v[1] < v[2] ? 6 : 0) : mx === v[1] ? (v[2] - v[0]) / d + 2 : (v[0] - v[1]) / d + 4;
+          return h * 60;
+        };
+        const lightBrands = ['deepseek', 'qwen', 'kimi', 'doubao'].map(
+          (b) => cssBrand.match(new RegExp(`^  --brand-${b}: (#[0-9a-f]{6});`, 'm'))?.[1] as string,
+        );
+        assert.ok(lightBrands.every(Boolean), '四个实色品牌色须写在 :root 首列');
+        const hues = lightBrands.map(hueOf);
+        assert.ok(
+          Math.max(...hues) - Math.min(...hues) >= 40,
+          `品牌色色相跨度只有 ${Math.round(Math.max(...hues) - Math.min(...hues))}°，16px 下会糊成同一色：${lightBrands.join(' ')}`,
+        );
+        assert.match(panelSrc, /ai-provider-chip tap-area inline-flex h-7/, '胶囊须带 .ai-provider-chip 钩子供悬停规则命中');
+        assert.match(panelSrc, /data-brand=\{p\.id\}/, '胶囊须带 data-brand（悬停品牌色的唯一依据）');
+        assert.match(panelSrc, /const PROVIDER_BRAND_CLS: Record<string, string> = \{/, '须有品牌色表（完整字面量）');
+        // 悬停品牌色走普通 CSS（Tailwind group-hover 变体实测不生效）
+        assert.match(cssBrand, /\[data-brand='deepseek'\]:hover svg \{ color: var\(--brand-deepseek\); \}/, '须按 data-brand 写悬停品牌色');
+        assert.match(panelSrc, /active \? brand : ''/, '未选态图标不写颜色，交给继承 + 悬停规则');
+        // 反例：图标上若写死 --muted，会与悬停规则同层竞争并把品牌色压死
+        assert.doesNotMatch(panelSrc, /transition-colors \$\{active \? brand : 'text-\[var\(--muted\)\]'\}/, '未选态不得在图标上写死 --muted');
+
+        // 胶囊：h-7 等高 + whitespace-nowrap 不折行 + rounded-full + 14px 图标
+        assert.match(
+          panelSrc,
+          /inline-flex h-7 items-center justify-center gap-1\.5 whitespace-nowrap rounded-full border px-2\.5/,
+          '服务商须为等高胶囊，且单行不折',
+        );
+        assert.match(panelSrc, /className=\{`h-4 w-4 shrink-0 transition-colors \$\{active \? brand/, '须渲染 16px 品牌标');
+        assert.match(panelSrc, /<span>\{providerLabel\(p, lang\)\}<\/span>/, '胶囊文字须走 providerLabel');
+        assert.match(panelSrc, /aria-pressed=\{active\}/, '胶囊须暴露选中态');
+        assert.ok(panelSrc.includes('API Key (${providerLabel(provider, lang)})'), 'API Key 标签须带上当前服务商名');
+        // 未激活 --muted / 激活 --fg：颜色只走令牌，随主题自适应
+        assert.match(panelSrc, /border-transparent text-\[var\(--muted\)\]/, '未选中须用 --muted');
+        assert.match(panelSrc, /bg-\[var\(--accent-light\)\] text-\[var\(--fg\)\] font-medium/, '选中须用 --fg 加粗');
+      }
 
       // ⑩c 纯函数：时效判定（含未来时间戳）
       const now = Date.UTC(2026, 9, 20, 12, 0, 0);
