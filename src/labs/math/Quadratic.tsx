@@ -10,12 +10,13 @@
  *
  * 复用组件：CoordPlane（坐标系）、ExploreStage（任务卡+笔记）、ConclusionStage（结论）。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
+import ParamDock from '../../components/lab/ParamDock';
 import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
@@ -47,6 +48,8 @@ const copy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
+    paramDock: '调节参数',
+    paramDockClose: '收起参数',
     readout: '当前函数',
     engineWasm: '计算引擎：C++ WebAssembly',
     engineJs: '计算引擎：JS 回退',
@@ -143,6 +146,8 @@ const copy = {
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
+    paramDock: 'Adjust',
+    paramDockClose: 'Close controls',
     readout: 'Current function',
     engineWasm: 'Engine: C++ WebAssembly',
     engineJs: 'Engine: JS fallback',
@@ -284,6 +289,8 @@ export default function Quadratic() {
   const [a, setA] = useState(TARGET_A);
   const [b, setB] = useState(TARGET_B);
   const [c, setC] = useState(TARGET_C);
+  /** 参数抽屉的滚动锚点：函数坐标系（预测幕未揭示时是占位卡，同一容器） */
+  const planeRef = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState<{ id: number; a: number; b: number; c: number }[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
   // 结论幕：四组结论（a 正负 / |a| / b / c 的作用），全部选完才算完成
@@ -466,7 +473,9 @@ export default function Quadratic() {
   return (
     <div className="flex flex-col space-y-6">
 
-      <div className="flex justify-center py-2">
+      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
+          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
+      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
         <Formula tex="y = ax^2 + bx + c" block className="text-lg" />
       </div>
 
@@ -492,7 +501,7 @@ export default function Quadratic() {
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}
-        <div className="flex flex-col space-y-6">
+        <div ref={planeRef} className="flex flex-col space-y-6">
           {stage === 'predict' && !revealed ? (
             <div className="border border-[var(--border)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
               <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
@@ -549,6 +558,13 @@ export default function Quadratic() {
 
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
+          {/* a/b/c 系数滑块：窄屏收进底部抽屉，摘要直接给当前解析式，锚点回到坐标系 */}
+          <ParamDock
+            title={t.paramDock}
+            closeLabel={t.paramDockClose}
+            anchorRef={planeRef}
+            summary={exprOf(a, b, c)}
+          >
           <div className="border border-[var(--border)] p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
@@ -567,6 +583,7 @@ export default function Quadratic() {
               {t.reset}
             </button>
           </div>
+          </ParamDock>
 
           {/* 幕1 预测 */}
           {stage === 'predict' && (

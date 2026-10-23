@@ -18,7 +18,13 @@ interface StageNavProps {
     predict: string;
     explore: string;
     conclude: string;
-    next?: string;
+    /**
+     * 下一步文案：**必填**。
+     * 此处原是可选，兜底 `'Next →'`，于是 4 个实验漏传后中文页直接显示英文
+     * （Circle / Lens / Pressure / Buoyancy）。文案兜底是静默失败——它不会报错，
+     * 只会让用户看到一串英文。改成必填后漏传在 `tsc --noEmit` 阶段就挂掉。
+     */
+    next: string;
     redo?: string;
   };
   onNext?: () => void;
@@ -63,9 +69,24 @@ export default function StageNav({
   };
 
   return (
-    <div className={`flex flex-wrap sm:flex-nowrap items-center gap-2.5 text-xs 2xl:text-sm mono-font tracking-wider ${className}`}>
+    /**
+     * 单行确定性布局（<640 也是单行，不靠 flex-wrap 自己挤）。
+     *
+     * 两条约束同时成立：
+     *  1) 中英都必须塞进一行——英文轨（Predict/Explore/Conclude）在 12px + px-3.5 下
+     *     需要 274px，加 Next 81 + gap 10 = 365 > 390 视口的 342 → 于是移动端把轨降到
+     *     11px、按钮 px-2、轨内 gap-0.5，Next px-2.5：实测 en 总宽 302 / zh 221.5，
+     *     360 / 375 / 390 / 430 四档全部单行（桌面 sm: 起恢复 12px 与宽 padding）。
+     *  2) 两段盒高相同——轨道是 p-1 + 1px 边框包着 40px 按钮 = 50px；右段套一层同样的
+     *     p-1 + 透明 1px 边框信封，于是也是 50px（桌面同为 44px）。此前轨 50 / 按钮 40，
+     *     并排时右段上下各余 5px，视觉上比胶囊矮一截。
+     *
+     * <360px（iPhone SE 一代那档）才退回竖排：那里 3 个英文按钮 + Next 物理上放不下，
+     * 与其让浏览器随机折行，不如显式声明成两段。
+     */
+    <div className={`flex flex-nowrap items-center gap-2 text-[0.6875rem] mono-font tracking-wider sm:gap-2.5 sm:text-xs 2xl:text-sm max-[359px]:flex-col max-[359px]:items-stretch ${className}`}>
       {/* iOS Segmented 胶囊外壳 */}
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-[var(--accent-light)] border border-[var(--border)]/70 shadow-xs">
+      <div className="stage-rail inline-flex w-fit shrink-0 items-center gap-0.5 rounded-xl bg-[var(--accent-light)] border border-[var(--border)]/70 p-0.5 shadow-xs sm:gap-1 sm:p-1">
         {stageOrder.map((s) => {
           const active = stage === s;
           const done = isDone ? isDone[s] : false;
@@ -76,7 +97,7 @@ export default function StageNav({
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`min-h-[34px] px-3.5 py-1 tap-area rounded-lg font-medium transition-all duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap ${
+              className={`min-h-[28px] px-2 py-1 tap-area rounded-lg font-medium sm:min-h-[34px] transition-all duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap sm:px-3.5 ${
                 active
                   ? 'bg-[var(--card-bg)] text-[var(--fg)] shadow-xs font-semibold'
                   : done
@@ -93,21 +114,24 @@ export default function StageNav({
         })}
       </div>
 
-      {/* 右侧操作簇：下一步 / 重置 + 页面动作（问 AI、考考你）并排，不额外占一行 */}
-      <div className="ml-auto flex flex-wrap items-center gap-2.5">
+      {/* 右侧动作簇：<360 独占一行、居右；其余档位与阶段轨同排、靠右。
+          外层给与胶囊轨**相同的信封**（p-1 + 1px 边框，边框透明不显示）：
+          触屏 40+8+2 = 50 = 轨道 50；桌面 34+8+2 = 44 = 轨道 44。
+          此前轨 50 / 按钮 40，外沿上下各差 5px——两段并排时右段的上下留白明显偏小。 */}
+      <div className="stage-act ml-auto flex shrink-0 items-center gap-2 rounded-xl border border-transparent p-0.5 sm:gap-2.5 sm:p-1 max-[359px]:ml-0 max-[359px]:w-full max-[359px]:justify-end">
         {stageIdx < stageOrder.length - 1 ? (
           <button
             type="button"
             onClick={handleNext}
-            className="min-h-[36px] px-4 py-1.5 tap-area border border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-all rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap"
+            className="min-h-[28px] px-2.5 py-1 tap-area border border-[var(--fg)] sm:min-h-[34px] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-all rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap sm:px-4 sm:py-1.5"
           >
-            {labels.next || 'Next →'}
+            {labels.next}
           </button>
         ) : onRedo ? (
           <button
             type="button"
             onClick={onRedo}
-            className="group inline-flex items-center gap-1.5 min-h-[36px] px-3.5 py-1.5 tap-area border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-all rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap"
+            className="group inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 tap-area sm:min-h-[34px] border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-all rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap sm:px-3.5 sm:py-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
             <span>{labels.redo || 'Redo'}</span>

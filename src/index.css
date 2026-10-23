@@ -264,6 +264,12 @@ html.dark {
   line-height: 1.2;
   letter-spacing: 0.16em;
   text-transform: uppercase;
+  /* 眉标永远是**单个短令牌**（「8-9 年级」「物理」），不允许折行。
+     它是 h1 的行内兄弟，一旦允许断行，CJK 会逐字断（「8-9 年」+「级」甩到下一行、
+     与标题右侧的动作簇并排），英文则断在连字符处（「Grades 8-」/「9」）——
+     同一处版式随语言漂移，且「级」会孤零零落在最左边。实测 15 个实验 × 中英
+     共 30 处命中。令牌本身短，nowrap 不会撑破容器（390px 下最右 356.4 < 366）。 */
+  white-space: nowrap;
 }
 
 html {
@@ -285,6 +291,45 @@ html.dark {
   .ai-sheet {
     max-height: min(74dvh, calc(var(--vvh, 100dvh) - 120px));
   }
+}
+
+/* ── 参数抽屉实验页的底部安全区（仅 <640px，仅挂载抽屉的 5 个实验）──
+   悬浮胶囊固定在视口底部，滚到文档末尾时它会压住页脚最后一行（实测：版权行
+   786–797 正好在胶囊 776–824 矩形内）。
+   为什么补**页脚**而不是 main：页脚是文档最后一个块。给 main 加 pb-80 只是把页脚
+   整体推低，滚到底时末行仍在视口底边、仍被胶囊覆盖（实测 main pb=80 版权行照样被压；
+   改补 footer 才清除）。桌面不加：抽屉在 ≥640px 根本不挂载，没有胶囊要避让。 */
+@media (max-width: 639px) {
+  html.param-dock-mounted #app-main > footer {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* ── 悬浮物互斥口径（统一由 <html> 类名驱动，不在组件里各写一套条件渲染）──
+   两条都作用于同一个「底部/右缘被面板接管」的时刻：
+   · param-dock-open：参数抽屉展开（参数字段需要整条下半屏）
+   · ai-sheet-open  ：AI 面板展开（面板占 62% 视口，气泡整个落在它下面）
+   反馈气泡是淡出而非卸载——保留焦点顺序与 aria-expanded 状态。
+   （右侧 AiSideTab 已废弃：AI 入口只在顶栏一处，页面右缘不再挂任何悬浮物。） */
+html.param-dock-open .feedback-fab,
+html.ai-sheet-open .feedback-fab {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.feedback-fab {
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+/* 抽屉滑入：仅 transform，减少动效时直接出现 */
+.param-sheet {
+  animation: param-sheet-in var(--dur-base) var(--ease-out) both;
+}
+@keyframes param-sheet-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .param-sheet { animation: none; }
 }
 
 /* 横向滚动容器的右缘渐隐：提示「右侧还有内容」，不新增任何 DOM。 */
@@ -371,15 +416,130 @@ body {
      `.dialog-tabs button { min-height: 0 }`（特异性 0,1,1）会压过单独的类选择器，
      `main button`（同为 0,1,1 但更早）也压不过它 → 这里用 0,1,2 才能生效。 */
   main button.chip-tap {
-    min-height: 2.5rem;
+    min-height: 1.75rem;
   }
   /* 微型图标热区：视觉仍是 14px（w-3.5 h-3.5），四周各外扩 8px → 30×30。
      只用于四周留白充足、不会与相邻可点元素抢点击的孤立图标（密钥显示眼睛、模型下拉箭头）；
      顶部并排的 h-7 w-7 图标按钮不适用——它们彼此仅隔几像素，外扩热区会互相抢点击。 */
+  /* P4：阶段轨与「下一步」在移动端减重到同高的 34px 信封（28+4+2）。
+     这两条特异性 0,1,2 高于 .tap-area（0,1,0），才能把 40px 压回 28。 */
+  main .stage-rail button,
+  main .stage-act button {
+    min-height: 1.75rem;
+  }
+  /* P0：透明热区——视觉盒与文档流占位都不动，只把命中盒外扩。
+     tap-y 只扩上下（页脚三连并排，水平外扩会互相抢点击）；
+     tap-pad 上下各 8px、左右各 2px（欢迎弹窗里的胶囊/小按钮，左右邻居间距 6px）。 */
+  .tap-y,
+  .tap-rail,
+  .tap-pad,
+  .tap-pad-10,
+  .tap-pad-sq {
+    position: relative;
+  }
+  /* 欢迎弹窗分段轨（仅触屏）：视觉盒 30px、槽 36px，上下各补 5px → 40px 命中。
+     左右不扩——两个 Tab 相邻无缝，横向外扩只会互相拦截（同 .tap-y 的取舍）。 */
+  .tap-rail::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -5px;
+    bottom: -5px;
+  }
+  .tap-y::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -7px;
+    bottom: -7px;
+  }
+  .tap-pad::after {
+    content: '';
+    position: absolute;
+    inset: -8px -2px;
+  }
+  /* 比 tap-pad 再高 2px：给 12–13px 的字形（版本号、13px 品牌图标）补到 ≥32 */
+  .tap-pad-10::after {
+    content: '';
+    position: absolute;
+    inset: -10px -2px;
+  }
+  /* 方形四向外扩 10px：13px 品牌图标 → 33×33（只有纵向不够，横向 17px 一样点不中）。
+     两个图标之间的间距取 20px，正好等于 33px 盒的中心距 → 命中盒相切、零重叠。 */
+  .tap-pad-sq::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
   .tap-icon::after {
     content: '';
     position: absolute;
     inset: -8px;
+  }
+  /* ── AI 设置弹窗减重（仅触屏；桌面没有 .tap-area，本来就是自然高，故不受影响）──
+     这些控件都在 portal 出去的 .ai-sheet 里，不吃 `main button` 的 40px 地板，只被 .tap-area 撑高。
+     逐项用「两个类」的选择器（0,2,0）压过 .tap-area（0,1,0），并把省下的高度还给透明伪元素热区：
+     · chip  28px + 上下各 4 = 36   （行距同时由 gap-1.5 改为 gap-y-2，36 = 28+8 恰好相切不互压）
+     · tier  28px + 上下各 5 = 38   （外轨随之 34，与 StageNav 同规格；三档横向相邻，不扩左右）
+     · tab   29px + 上下各 5 = 39
+     · mini  24px + 上下各 4 = 32   （触屏 32px 档，与 .tap32 同一口径）
+     · text  18px + 上下各 8 = 34   （纯文字按钮，≥32） */
+  .tap-ai-chip.tap-area,
+  .tap-ai-tab.tap-area {
+    min-height: 0;
+  }
+  .tap-ai-chip.tap-area,
+  .tap-ai-tier.tap-area,
+  .tap-ai-tab.tap-area,
+  .tap-ai-mini.tap-area,
+  .tap-ai-text {
+    position: relative;
+  }
+  .tap-ai-chip.tap-area::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
+  }
+  .tap-ai-tier.tap-area {
+    min-height: 1.75rem;
+  }
+  .tap-ai-tier.tap-area::after {
+    content: '';
+    position: absolute;
+    inset: -5px -1px;
+  }
+  .tap-ai-tab.tap-area::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -5px;
+    bottom: -5px;
+  }
+  .tap-ai-mini.tap-area {
+    min-height: 1.5rem;
+  }
+  .tap-ai-mini.tap-area::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -4px;
+    bottom: -4px;
+  }
+  .tap-ai-text::after {
+    content: '';
+    position: absolute;
+    inset: -8px -2px;
+  }
+  /* 吸底操作栏：44 → 36（实心大黑块在 390 下过重；36 仍高于 32 档地板） */
+  .tap-primary.tap-ai-primary {
+    min-height: 2.25rem;
   }
 }
 
@@ -400,12 +560,20 @@ main button {
 main button.compact {
   min-height: 0;
 }
-/* 触屏保底：compact 只解桌面。小屏仍给 40px 真实盒（与改前完全一致，零退化）——
+/* 触屏 compact 保底（P2 两档分流，取代原「一律 40px」）：
+   · 默认 28px —— L2 筛选 chip / 预设 / 重置这类**并排成排**的控件。
+     它们靠水平间距（实测 6–20px）防误触，把单盒充到 40px 只会让小字浮在大空盒里；
+   · 加 .tap32 → 32px —— 分享 / 问 AI / 考考你这类**单点辅助操作**，
+     没有并排邻居可借力，多给 4px 命中。
+   40px 仍然只属于 L1（阶段轨、答题选项、提交），见 main button 的地板。
    这里不用伪元素扩区：相邻小控件仅隔几像素，外扩热区会互相抢点击
    （页脚那组图标就踩过，见 .tap-icon 的注释）。 */
 @media (hover: none) and (pointer: coarse) {
   main button.compact {
-    min-height: 2.5rem;
+    min-height: 1.75rem;
+  }
+  main button.compact.tap32 {
+    min-height: 2rem;
   }
 }
 /* 中考跟读面板内按钮为紧凑小按钮，不受全局 40px 最小高度影响 */

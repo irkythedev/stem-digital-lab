@@ -79,7 +79,7 @@ export default function Footer() {
               onClick={() => setShowWorks((v) => !v)}
               aria-expanded={showWorks}
               aria-label={`${t.moreWorks} — ${t.moreWorksHint}`}
-              className="flex items-center leading-none text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
+              className="tap-y flex items-center leading-none text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
             >
               {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
               <span className="footer-works-glyph relative inline-flex">
@@ -122,7 +122,7 @@ export default function Footer() {
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}
             aria-expanded={showDisclaimer}
-            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
+            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.disclaimerLabel}
           </button>
@@ -131,7 +131,7 @@ export default function Footer() {
             onClick={() => setShowLicense(true)}
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
-            className="inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
+            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.licenseLabel}
           </button>
@@ -166,7 +166,7 @@ export default function Footer() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:gap-x-2.5 sm:gap-y-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-4 sm:gap-x-2.5 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
           target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}

@@ -61,16 +61,41 @@ const GROUPS: TtsGroup[] = [
     ],
   },
   {
-    label: '化学：化合物名称',
+    label: '化学：化合物与单质（提示词标准写法 \\mathrm{}）',
     cases: [
       { tex: '\\mathrm{H_2O}', label: '水' },
       { tex: '\\mathrm{CO_2}', label: '二氧化碳' },
       { tex: '\\mathrm{NaOH}', label: '氢氧化钠' },
-      { tex: '\\mathrm{NaCl}', label: '氯化钠' },
-      { tex: '\\mathrm{H_2SO_4}', label: '硫酸' },
-      { tex: '\\mathrm{CaCO_3}', label: '碳酸钙' },
+      { tex: '\\mathrm{Ca(OH)_2}', label: '氢氧化钙（括号原子团）' },
+      { tex: '\\mathrm{Fe_3O_4}', label: '四氧化三铁' },
       { tex: '\\mathrm{KMnO_4}', label: '高锰酸钾' },
-      { tex: '\\mathrm{2H_2+O_2}', label: '反应式（系数+下标）' },
+      { tex: '\\mathrm{Na}', label: '单质钠（元素符号不念字母）' },
+      { tex: '\\mathrm{Fe}', label: '单质铁' },
+    ],
+  },
+  {
+    // 离子读法：初中核心离子。上标电荷必须读成中文，不能念成「的 3 加 次方」。
+    label: '化学：离子符号',
+    cases: [
+      { tex: '\\mathrm{H^+}', label: '氢离子' },
+      { tex: '\\mathrm{OH^-}', label: '氢氧根离子' },
+      { tex: '\\mathrm{Fe^{3+}}', label: '铁离子' },
+      { tex: '\\mathrm{Fe^{2+}}', label: '亚铁离子' },
+      { tex: '\\mathrm{Cu^{2+}}', label: '铜离子' },
+      { tex: '\\mathrm{SO_4^{2-}}', label: '硫酸根离子' },
+      { tex: '\\mathrm{CO_3^{2-}}', label: '碳酸根离子' },
+    ],
+  },
+  {
+    // 方程式读法：条件、系数、生成号、气体/沉淀箭头。数学模式的 = 与 + 不受影响。
+    label: '化学：方程式（条件 / 系数 / 反应符号）',
+    cases: [
+      { tex: '2\\mathrm{H_2O}', label: '两个水分子（计量数）' },
+      { tex: '\\mathrm{HCl} + \\mathrm{NaOH} = \\mathrm{NaCl} + \\mathrm{H_2O}', label: '中和反应（= 读「反应生成」、+ 读「和」）' },
+      { tex: '\\mathrm{CuSO_4} + \\mathrm{Fe} = \\mathrm{FeSO_4} + \\mathrm{Cu}', label: '置换反应' },
+      { tex: '2\\mathrm{H_2O} \\xrightarrow{\\ \\text{通电}\\ } 2\\mathrm{H_2\\uparrow} + \\mathrm{O_2\\uparrow}', label: '电解水（条件 + 气体箭头）' },
+      { tex: '2\\mathrm{Cu} + \\mathrm{O_2} \\xrightarrow{\\ \\text{加热}\\ } 2\\mathrm{CuO}', label: '铜与氧气（加热条件）' },
+      { tex: '\\mathrm{H^+} + \\mathrm{OH^-} \\rightarrow \\mathrm{H_2O}', label: '中和实质（→ 读「生成」）' },
     ],
   },
   {

@@ -130,12 +130,15 @@ export function BladeSwitch({
       onClick={onToggle}
       className="cursor-pointer"
     >
-      {/* 透明命中区：扩大点击/触屏区域（沿开关方向延伸，保证 ≥44px 可点） */}
+      {/* 透明命中区：沿开关方向延伸，保证够点。
+          高度取 44 用户单位而不是 40：390 视口下电路 SVG 缩放约 0.96，
+          40 单位只剩 38.5px，刚好掉到 40px 触控线以下（实测 63.5×38.5）；
+          44 单位 → 42.3px，留出余量。 */}
       <rect
         x={x1 - 8}
-        y={y1 - 20}
+        y={y1 - 22}
         width={Math.hypot(x2 - x1, y2 - y1) + 16}
-        height={40}
+        height={44}
         fill="transparent"
         transform={`rotate(${ang * (180 / Math.PI)} ${x1} ${y1})`}
       />

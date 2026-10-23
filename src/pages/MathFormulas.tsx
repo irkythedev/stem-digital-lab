@@ -110,6 +110,10 @@ export default function MathFormulas() {
       <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '数学公式速查' : 'Math Formulas'}
+        </h1>
+        {/* 页面动作簇独占一行：此前内联在 h1 里，390px 下「考考你」会单独掉到第二行，
+            被 h1 左缘 + ml-2 顶到 x=32。顺序与实验页统一为「分享 → 问 AI → 考考你」。 */}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <ShareInline
             title={lang === 'zh' ? '数学公式速查 · 数理化数字实验室' : 'Math Formulas · STEM Digital Lab'}
             text={
@@ -118,10 +122,9 @@ export default function MathFormulas() {
                 : 'Core middle-school math formulas with mnemonics and pitfalls. Free to use!'
             }
           />
-        
-          <AskAiButton question={lang === 'zh' ? '请介绍数学公式速查表包含哪些常用公式、各自适用哪类题型' : 'Introduce the math formula reference: which formulas it covers and what question types each applies to'} className="ml-3" />
-          <AskQuizButton className="ml-2 align-middle" />
-        </h1>
+          <AskAiButton question={lang === 'zh' ? '请介绍数学公式速查表包含哪些常用公式、各自适用哪类题型' : 'Introduce the math formula reference: which formulas it covers and what question types each applies to'} />
+          <AskQuizButton />
+        </div>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'
             ? '初中数学核心公式（依据人教版教材），按代数/几何/函数/统计概率分类。考前扫一遍，点开看记忆口诀、易错点与应用。'

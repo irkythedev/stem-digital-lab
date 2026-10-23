@@ -17,6 +17,7 @@ import { Check, RotateCcw, X } from 'lucide-react';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
+import ParamDock from '../../components/lab/ParamDock';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
@@ -145,6 +146,8 @@ const copy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
+    paramDock: '调节参数',
+    paramDockClose: '收起参数',
     readout: '读数',
     reset: '重置',
     flaskLabel: '反应烧杯',
@@ -231,6 +234,8 @@ const copy = {
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
+    paramDock: 'Adjust',
+    paramDockClose: 'Close controls',
     readout: 'Readings',
     reset: 'Reset',
     flaskLabel: 'Reaction flask',
@@ -345,6 +350,8 @@ export default function Neutralization() {
   const predComplete = predTrend !== null;
 
   const ph = phAt(acidM, volume);
+  /** 参数抽屉的滚动锚点：烧杯与 pH 计所在的卡片 */
+  const flaskRef = useRef<HTMLDivElement>(null);
   const eqV = eqVolume(acidM);
   /** 烧杯液面 y：滴入 0mL → 104（低液位），AXIS_MAX → 68（接近满），用 rAF 平滑插值 */
   const liquidY = useLiquidY(Math.round(104 - (Math.min(volume, AXIS_MAX) / AXIS_MAX) * 36));
@@ -463,7 +470,9 @@ export default function Neutralization() {
   return (
     <div className="flex flex-col space-y-6">
 
-      <div className="flex justify-center py-2">
+      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
+          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
+      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
         <Formula tex="\mathrm{H^+} + \mathrm{OH^-} \rightarrow \mathrm{H_2O}" block className="text-lg" />
       </div>
 
@@ -491,7 +500,7 @@ export default function Neutralization() {
         {/* 左列：烧杯 + pH 曲线 + 读数 */}
         <div className="flex flex-col space-y-6">
           {/* 烧杯 SVG：液面颜色随 pH 渐变 */}
-          <div className="border border-[var(--border)] p-4">
+          <div ref={flaskRef} className="border border-[var(--border)] p-4">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.flaskLabel}
             </h3>
@@ -596,6 +605,13 @@ export default function Neutralization() {
 
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
+          {/* 参数卡：窄屏收进底部抽屉，摘要给 pH 与滴加量，锚点回到烧杯 */}
+          <ParamDock
+            title={t.paramDock}
+            closeLabel={t.paramDockClose}
+            anchorRef={flaskRef}
+            summary={`pH ${ph.toFixed(1)} / ${volume.toFixed(1)}mL`}
+          >
           <div className="border border-[var(--border)] p-4 space-y-4">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.params}
@@ -626,6 +642,7 @@ export default function Neutralization() {
               {t.reset}
             </button>
           </div>
+          </ParamDock>
 
           {/* 幕1 预测 */}
           {stage === 'predict' && (

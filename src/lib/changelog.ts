@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.40.5';
+export const APP_VERSION = '0.41.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.41.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 化学实验支持语音朗读，化学式与反应方程式均按规范中文发音播报',
+      '[新增] 移动端全新交互面板：支持在观察实验画面的同时便捷调节参数',
+      '[优化] 移动端界面布局与若干交互细节微调',
+    ],
+    en: [
+      '[New] Spoken voice support for chemistry experiments, reading formulas and equations naturally',
+      '[New] Redesigned mobile control panel: adjust parameters seamlessly while viewing the experiment',
+      '[Improved] Mobile layout refinements and minor interaction improvements',
+    ],
+  },
   {
     version: '0.40.5',
     date: '2026-10',

@@ -19,83 +19,15 @@
  *   未知命令            → 去掉反斜杠读原词（安全降级，绝不崩溃）
  */
 
+import { CHEM_ZH, detectChem, chemPrePass, normChem } from './chem-speech';
+
 const FRAC_A = 'frac-a';
 const FRAC_B = 'frac-b';
 
-/**
- * 初中常见化合物 → 中文名（教学口径，教材/中考标准名）。
- * 注意：H₂O 读「水」而非「一氧化二氢」（后者是网络梗，教材不用）。
- * 匹配规则：先做整式归一（H_2O → H2O），再查表；未命中回退符号念法。
- */
-const CHEM_ZH: Record<string, string> = {
-  H2O: '水',
-  H2O2: '过氧化氢',
-  O2: '氧气',
-  H2: '氢气',
-  N2: '氮气',
-  Cl2: '氯气',
-  CO2: '二氧化碳',
-  CO: '一氧化碳',
-  SO2: '二氧化硫',
-  SO3: '三氧化硫',
-  NO: '一氧化氮',
-  NO2: '二氧化氮',
-  NH3: '氨气',
-  CH4: '甲烷',
-  HCl: '盐酸',
-  H2SO4: '硫酸',
-  HNO3: '硝酸',
-  H2CO3: '碳酸',
-  NaOH: '氢氧化钠',
-  CaOH2: '氢氧化钙',
-  KOH: '氢氧化钾',
-  NH4OH: '氨水',
-  CaO: '氧化钙',
-  CuO: '氧化铜',
-  MgO: '氧化镁',
-  FeO: '氧化亚铁',
-  Fe2O3: '氧化铁',
-  Fe3O4: '四氧化三铁',
-  Al2O3: '氧化铝',
-  ZnO: '氧化锌',
-  MnO2: '二氧化锰',
-  NaCl: '氯化钠',
-  KCl: '氯化钾',
-  CaCl2: '氯化钙',
-  FeCl2: '氯化亚铁',
-  FeCl3: '氯化铁',
-  AgCl: '氯化银',
-  Na2CO3: '碳酸钠',
-  NaHCO3: '碳酸氢钠',
-  CaCO3: '碳酸钙',
-  BaCO3: '碳酸钡',
-  Na2SO4: '硫酸钠',
-  CuSO4: '硫酸铜',
-  BaSO4: '硫酸钡',
-  CaSO4: '硫酸钙',
-  KMnO4: '高锰酸钾',
-  K2MnO4: '锰酸钾',
-  KNO3: '硝酸钾',
-  AgNO3: '硝酸银',
-  CuNO3: '硝酸铜',
-  CuNO32: '硝酸铜',
-  BaCl2: '氯化钡',
-  CuCl2: '氯化铜',
-  NaNO3: '硝酸钠',
-  CaNO32: '硝酸钙',
-  NH4Cl: '氯化铵',
-  FeSO4: '硫酸亚铁',
-  Fe2SO43: '硫酸铁',
-  Al2SO43: '硫酸铝',
-  KH2PO4: '磷酸二氢钾',
-};
 
 /** 化学式归一：H_2O → H2O；Ca(OH)_2 → CaOH2（括号组展开）；下标数字后接元素符号时补空格拆词 */
 export function normalizeChemFormula(raw: string): { normalized: string; spoken: string } {
-  const normalized = raw
-    .replace(/_/g, '')
-    .replace(/\(/g, '')
-    .replace(/\)/g, '');
+  const normalized = normChem(raw);
   const spoken = normalized
     .replace(/([A-Za-z])(\d)/g, '$1 $2 ')
     .replace(/(\d)([A-Za-z])/g, '$1 $2')
@@ -375,13 +307,20 @@ export function latexToSpeech(
   symbols?: Record<string, string>,
 ): string {
   if (lang === 'en') return latexToSpeechEn(tex);
-  const phys = mode === 'physics'; // 物理口径：\\frac 读「之比」+ 物理量符号替换成中文量名
+  // 化学上下文优先：化学方程式只按化学口径读，不再套物理量名替换。
+  // 否则物理模式下预处理产出的中文（「两个水分子生成两个氢分子」）会被物理因子逻辑
+  // 当成乘积链，插成一串「乘以」（实测：两个水分子 乘以 生成 乘以 两个氢分子 乘以 和 乘以 氧气）。
+  const chemCtx = detectChem(tex);
+  const phys = mode === 'physics' && !chemCtx; // 物理口径：\\frac 读「之比」+ 物理量符号替换成中文量名
   // 量名解析：优先逐公式表（symbols，多义字母按公式消歧），其次候选全集（PHYS_ZH，兜底 AI 自由公式）
   const physName = (sym: string): string | undefined => symbols?.[sym] ?? PHYS_ZH[sym];
   // 归一化：\lvert / \rvert / \vert → 裸 |，统一由绝对值处理逻辑处理
   tex = tex.replace(/\\lvert|\\rvert|\\vert/g, '|');
   // °C 温度 → 摄氏度（避免 ° 读「度」+ C 读变量）
   tex = tex.replace(/°C/g, '摄氏度');
+  // 化学上下文预处理（解包 \mathrm{} / 反应符号 / 元素与离子 / 计量数）。
+  // 位置在物理模式之前：化学模式下 \(\mathrm{V}\) 之类单位不参与化学口径，两条路径互不干扰。
+  if (chemCtx) tex = chemPrePass(tex);
   // 物理模式：\text{单位} / \mathrm{单位} 转中文单位名（110\,\text{W} → 110\,瓦），
   // 主循环中文分支负责与数字间补空格；非单位内容（\text{浮} 等）不受影响
   if (phys) {

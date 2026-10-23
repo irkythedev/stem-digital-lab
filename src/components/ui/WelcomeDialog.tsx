@@ -106,7 +106,7 @@ export default function WelcomeDialog({
                 onClick={() => setShowVersion(true)}
                 title={t.versionTitle.replace('{version}', APP_VERSION)}
                 aria-label={t.versionAria}
-                className="ml-2 inline-flex items-center gap-1 text-[0.625rem] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
+                className="tap-pad-10 ml-2 inline-flex items-center gap-1 text-[0.625rem] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
               >
                 v{APP_VERSION}
                 {hasUpdate && (
@@ -128,7 +128,7 @@ export default function WelcomeDialog({
                   })
                 }
                 title={t.viewAuthor}
-                className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
+                className="tap-pad flex items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
               >
                 <img
                   src="/icons/pubg-helmet.png"
@@ -156,14 +156,15 @@ export default function WelcomeDialog({
         {/* Tab：精致分段滑槽（轨道 + 等宽滑块，位移过渡），紧贴副标题下方居左 */}
         <div className="flex-shrink-0 px-5 pb-2">
           <div
-            className="relative grid w-fit max-w-full grid-cols-2 items-center rounded-full border border-[var(--border)]/60 bg-[var(--accent-light)]/60 p-1"
+            className="relative grid w-fit max-w-full grid-cols-2 items-center rounded-[0.625rem] border border-[var(--border)]/60 bg-[var(--accent-light)]/60 p-0.5 sm:rounded-full sm:p-1"
             role="tablist"
             aria-label={t.welcomeTabsAria}
           >
-            {/* 滑块：两格等宽 → 位移一格即切换；reduced-motion 由 index.css 全局兜底块压平 */}
+            {/* 滑块：两格等宽 → 位移一格即切换；reduced-motion 由 index.css 全局兜底块压平
+                宽度取「轨道内宽的一半」：移动端轨道 p-0.5 + 1px 边框 → calc(50%-0.125rem) */}
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[var(--card-bg)] shadow-xs transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
+              className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-lg bg-[var(--card-bg)] shadow-xs transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] sm:inset-y-1 sm:left-1 sm:w-[calc(50%-0.25rem)] sm:rounded-full"
               style={{ transform: tab === 'overview' ? 'translateX(0)' : 'translateX(100%)' }}
             />
             {([
@@ -178,9 +179,9 @@ export default function WelcomeDialog({
                 aria-selected={tab === v}
                 aria-controls={`welcome-panel-${v}`}
                 onClick={() => setTab(v)}
-                /* 触屏热区：.tap-area 在触屏下抬到 40px（与 TokenUsageDialog / AI 面板的分段控件同一口径）；
-                   刻意不挂 .dialog-tabs——那条全局豁免会把 min-height 压回 0 */
-                className={`tap-area relative z-10 min-h-9 rounded-full px-4 py-1.5 text-xs mono-font transition-colors touch-manipulation ${
+                /* 移动端视觉盒降到 30px（轨道随之 36px），命中区由 .tap-rail 上下各补 5px → 40px；
+                   桌面（sm:）维持原 36px 胶囊 + rounded-full，一字未改。 */ 
+                className={`tap-rail relative z-10 h-[1.875rem] rounded-lg px-3 py-0 text-xs mono-font transition-colors touch-manipulation sm:h-9 sm:rounded-full sm:px-4 sm:py-1.5 ${
                   tab === v ? 'text-[var(--fg)] font-medium' : 'text-[var(--muted)] hover:text-[var(--fg)]'
                 }`}
               >
@@ -239,8 +240,8 @@ export default function WelcomeDialog({
           </div>
 
           {/* 次级底注：协议 / 作者 / 反馈（邮箱带 Mail 图标、Issue 带 Gitee/GitHub 品牌图标）；姊妹作品为紧凑胶囊 */}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-0.5 text-[0.6875rem] text-[var(--muted)]">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-4 px-0.5 text-[0.6875rem] text-[var(--muted)]">
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-4">
               <span>
                 {t.welcomeLicenseLabel}
                 <button
@@ -248,7 +249,7 @@ export default function WelcomeDialog({
                   onClick={() => setShowLicense(true)}
                   title="AGPL-3.0"
                   aria-label="AGPL-3.0"
-                  className="underline hover:text-[var(--fg)] mono-font transition-colors"
+                  className="tap-pad underline hover:text-[var(--fg)] mono-font transition-colors"
                 >
                   AGPL-3.0
                 </button>
@@ -259,8 +260,13 @@ export default function WelcomeDialog({
               <span className="flex items-center gap-1.5">
                 <span>{t.welcomeFeedbackLabel}</span>
                 <Mail className="h-3 w-3 shrink-0" aria-hidden="true" />
-                <a href="mailto:king4g@yeah.net" className="underline hover:text-[var(--fg)] transition-colors">king4g@yeah.net</a>
+                <a href="mailto:king4g@yeah.net" className="tap-pad underline hover:text-[var(--fg)] transition-colors">king4g@yeah.net</a>
                 <span aria-hidden="true" className="text-[var(--border)]">/</span>
+              </span>
+              {/* Issue 图标独立成组：13px 字形太小，p-2.5 -m-2.5 把命中盒撑到 33×33
+                  而视觉与文档流不变；间距取 20px 是同尺寸下**零重叠**的下限
+                  （33px 盒 + 25px 中心距 = 两侧各 8px 富余），12px 会产生 8px 重叠带。 */}
+              <span className="flex items-center gap-5">
                 {/* Issue 入口：只留品牌图标（不再夹「Issue」文字），图标自带外链确认 */}
                 <ExternalLinkConfirm
                   target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
@@ -268,7 +274,7 @@ export default function WelcomeDialog({
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
                   ariaLabel="Gitee project"
-                  className="flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
+                  className="tap-pad-sq flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
                     <path d={GITEE_PATH} />
@@ -280,7 +286,7 @@ export default function WelcomeDialog({
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
                   ariaLabel="GitHub project"
-                  className="flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                  className="tap-pad-sq flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
                     <path d={GITHUB_PATH} />
@@ -290,7 +296,7 @@ export default function WelcomeDialog({
             </span>
 
             {/* 姊妹作品：前置「作品集图标」（作品名就在后面，故不挂数字角标），后方为图标胶囊 */}
-            <span className="flex flex-wrap items-center gap-1.5">
+            <span className="flex flex-wrap items-center gap-x-1.5 gap-y-4">
               <span className="inline-flex shrink-0" title={t.moreWorks}>
                 <Library className="h-3.5 w-3.5" aria-hidden="true" />
               </span>
@@ -299,7 +305,7 @@ export default function WelcomeDialog({
                   key={w.url}
                   type="button"
                   onClick={() => setPendingWork(w)}
-                  className="flex items-center gap-1.5 rounded-full bg-[var(--accent-light)]/70 px-2.5 py-1 transition-colors hover:bg-[var(--accent-light)]"
+                  className="tap-pad flex items-center gap-1.5 rounded-full bg-[var(--accent-light)]/70 px-2.5 py-1 transition-colors hover:bg-[var(--accent-light)]"
                 >
                   <img src={w.icon} alt="" width="12" height="12" className="shrink-0 rounded-[3px] object-contain" />
                   {w.name}
@@ -399,7 +405,8 @@ export default function WelcomeDialog({
             ref={gotItRef}
             type="button"
             onClick={close}
-            className="btn-solid shrink-0 px-5 py-2 text-sm mono-font font-bold border border-transparent transition-colors min-h-11 touch-manipulation rounded-md"
+                /* 桌面维持 44px；移动端收 36px + 12px 字，与左侧复选框文字同级，不再压过整条底栏。 */ 
+            className="btn-solid shrink-0 px-4 py-2 text-xs mono-font font-bold border border-transparent transition-colors min-h-9 touch-manipulation rounded-md sm:min-h-11 sm:px-5 sm:text-sm"
           >
             {t.welcomeGotIt}
           </button>

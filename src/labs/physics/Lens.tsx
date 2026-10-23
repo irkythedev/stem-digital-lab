@@ -441,7 +441,7 @@ export default function Lens() {
       <StageNav
         stage={stage}
         setStage={setStage}
-        labels={{ predict: c.stagePredict, explore: c.stageExplore, conclude: c.stageConclude, redo: c.redoLabel }}
+        labels={{ predict: c.stagePredict, explore: c.stageExplore, conclude: c.stageConclude, next: c.nextStage, redo: c.redoLabel }}
         onRedo={redoAll}
         isDone={{ predict: !!predComplete, explore: observations.length > 0, conclude: !!concludeComplete }}
       />

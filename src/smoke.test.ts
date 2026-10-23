@@ -117,6 +117,7 @@ import {
 import { subjects, subjectList } from './lib/subjects';
 import { cleanTextForTTS } from './lib/use-speak';
 import { latexToSpeech } from './lib/latex-speech';
+import { detectChem } from './lib/chem-speech';
 import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, relativeTime, HISTORY_LIMIT } from './lib/ai-history';
 import { isNearBottom, STICK_THRESHOLD } from './lib/ai-scroll';
 import { loadFeedback, saveFeedback, removeFeedback, submitFeedback, flushFeedbackQueue, FEEDBACK_LIMIT, FEEDBACK_MAX_ATTEMPTS, type FeedbackRecord } from './lib/feedback';
@@ -1230,6 +1231,96 @@ describe('LaTeX → TTS speech conversion', () => {
   test('chemistry compound name lookup: NaCl and CO_2', () => {
     assert.equal(latexToSpeech('NaCl'), '氯化钠');
     assert.equal(latexToSpeech('CO_2'), '二氧化碳');
+  });
+
+  // ── 化学朗读（提示词标准写法 \mathrm{}）：审计发现 60 条化合物表因缺解包分支而全程不可达 ──
+  //    提示词（ai-config.ts:304/344）强制化学式写 \mathrm{}，而旧实现只认裸写法，
+  //    于是 \mathrm{H_2O} 原样吐出 `H_2O` 进 TTS，且 \uparrow / \xrightarrow 也被当普通命令念出。
+  test('chemistry: \mathrm{} 解包后命中化合物表', () => {
+    assert.equal(latexToSpeech('\\mathrm{H_2O}'), '水');
+    assert.equal(latexToSpeech('\\mathrm{CuSO_4}'), '硫酸铜');
+    assert.equal(latexToSpeech('\\mathrm{Fe_3O_4}'), '四氧化三铁');
+    assert.equal(latexToSpeech('\\mathrm{Ca(OH)_2}'), '氢氧化钙', '括号原子团须整体查表');
+  });
+
+  test('chemistry: 单质元素符号读中文名，不念字母', () => {
+    assert.equal(latexToSpeech('\\mathrm{Na}'), '钠');
+    assert.equal(latexToSpeech('\\mathrm{Fe}'), '铁');
+    assert.equal(latexToSpeech('\\mathrm{Cl_2}'), '氯气');
+  });
+
+  test('chemistry: 离子读中文名（含上标电荷）', () => {
+    assert.equal(latexToSpeech('\\mathrm{H^+}'), '氢离子');
+    assert.equal(latexToSpeech('\\mathrm{OH^-}'), '氢氧根离子');
+    assert.equal(latexToSpeech('\\mathrm{Fe^{3+}}'), '铁离子');
+    assert.equal(latexToSpeech('\\mathrm{Fe^{2+}}'), '亚铁离子');
+    assert.equal(latexToSpeech('\\mathrm{SO_4^{2-}}'), '硫酸根离子');
+    assert.equal(latexToSpeech('\\mathrm{CO_3^{2-}}'), '碳酸根离子');
+  });
+
+  test('chemistry: 计量数读「两个水分子」而不是逐字符', () => {
+    assert.equal(latexToSpeech('2\\mathrm{H_2O}'), '两个水分子');
+    assert.equal(latexToSpeech('2\\mathrm{Cu}'), '两个铜原子');
+    assert.equal(latexToSpeech('3\\mathrm{H_2O}'), '三个水分子');
+  });
+
+  test('chemistry: 方程式读条件、生成号与气体箭头', () => {
+    const el = latexToSpeech('2\\mathrm{H_2O} \\xrightarrow{\\ \\text{通电}\\ } 2\\mathrm{H_2\\uparrow} + \\mathrm{O_2\\uparrow}');
+    assert.ok(el.includes('两个水分子'), `缺计量数读法: ${el}`);
+    assert.ok(el.includes('在通电条件下生成'), `缺条件读法: ${el}`);
+    assert.ok(el.includes('两个氢分子'), `缺气体计量数: ${el}`);
+    assert.ok(el.includes('氧气'), `缺氧气: ${el}`);
+    assert.ok(!/uparrow|xrightarrow/.test(el), `不得残留 LaTeX 命令: ${el}`);
+    const neut = latexToSpeech('\\mathrm{HCl} + \\mathrm{NaOH} = \\mathrm{NaCl} + \\mathrm{H_2O}');
+    assert.ok(neut.includes('反应生成'), `= 须读「反应生成」: ${neut}`);
+    assert.ok(neut.includes('和') && !neut.includes('加'), `反应物连接须读「和」: ${neut}`);
+    const ion = latexToSpeech('\\mathrm{H^+} + \\mathrm{OH^-} \\rightarrow \\mathrm{H_2O}');
+    assert.ok(ion.includes('氢离子') && ion.includes('氢氧根离子'), `离子未读出: ${ion}`);
+    assert.ok(ion.includes('生成') && !ion.includes('趋向'), `→ 在化学上下文须读「生成」: ${ion}`);
+  });
+
+  test('chemistry: AI 回答里的公式（\(...\) 包裹）端到端读通', () => {
+    const out = cleanTextForTTS(
+      '电解水的化学方程式是 \\(2\\mathrm{H_2O} \\xrightarrow{\\ \\text{通电}\\ } 2\\mathrm{H_2\\uparrow} + \\mathrm{O_2\\uparrow}\\)，正极产生氧气、负极产生氢气。',
+      'zh',
+    );
+    assert.ok(out.includes('在通电条件下生成'), `缺条件: ${out}`);
+    assert.ok(out.includes('两个水分子') && out.includes('两个氢分子'), `缺计量数: ${out}`);
+    assert.ok(!/[\\$]/.test(out.replace(/[。，、]/g, '')), `不得残留 LaTeX 定界符: ${out}`);
+    const sub = cleanTextForTTS('铁与硫酸铜溶液反应：\\(\\mathrm{Fe} + \\mathrm{CuSO_4} = \\mathrm{FeSO_4} + \\mathrm{Cu}\\)。', 'zh');
+    assert.ok(sub.includes('铁') && sub.includes('硫酸铜') && sub.includes('反应生成'), `置换反应读法: ${sub}`);
+  });
+
+  test('chemistry: 超长 \mathrm{} 不判为化学（嵌套量词回溯防线）', () => {
+    // 长度闸门：放行超长 inner 会让判据里的嵌套量词正则出现 O(n²) 回溯
+    // （实测 4000 字符 141ms、8000 字符 559ms）。真实化学式最长 ≈12 字符。
+    assert.equal(detectChem('\\mathrm{H_2O}'), true, '正常化学式仍须判定为化学');
+    assert.equal(detectChem('\\mathrm{' + 'A'.repeat(200) + '}'), false, '超长 inner 须直接排除');
+    const t0 = Date.now();
+    latexToSpeech('\\mathrm{' + 'A'.repeat(4000) + '}', 'zh');
+    assert.ok(Date.now() - t0 < 100, `超长 inner 不得拖慢主线程（实测 ${Date.now() - t0}ms）`);
+  });
+
+  test('chemistry: 物理模式下化学方程式只按化学口径读（不插「乘以」）', () => {
+    // 化学上下文必须优先于物理口径：否则预处理产出的中文会被物理因子逻辑当成乘积链，
+    // 读成「两个水分子 乘以 生成 乘以 两个氢分子 乘以 和 乘以 氧气」。
+    const out = latexToSpeech('2H_2O \\rightarrow 2H_2 \\uparrow + O_2 \\uparrow', 'zh', 'physics');
+    assert.ok(!out.includes('乘以'), `化学读法不得插「乘以」: ${out}`);
+    assert.ok(out.includes('两个水分子') && out.includes('生成'), `化学口径未生效: ${out}`);
+    // 反向：纯物理公式在 physics 模式下行为不变
+    assert.equal(latexToSpeech('\\rho=\\frac{m}{V}', 'zh', 'physics'), '密度等于质量 与 体积 之比');
+  });
+
+  test('chemistry: 判定保守——数学/物理公式一字不改', () => {
+    // 元素符号形状的字母在物理里到处都是（I=U/R 的 U、I；P=UI），误判会直接把物理公式念错。
+    // 这组是回归哨兵：化学预处理的守门条件一旦放松，这里会立刻红。
+    assert.equal(latexToSpeech('I=\\frac{U}{R}'), 'I等于R 分之 U');
+    assert.equal(latexToSpeech('P=UI'), 'P等于U I');
+    assert.equal(latexToSpeech('E=mc^2'), 'E等于m c 平方');
+    assert.equal(latexToSpeech('F=ma'), 'F等于m a');
+    assert.equal(latexToSpeech('6\\,\\mathrm{V}'), '6，V', '单位 \\mathrm{V} 不得被当化学式');
+    assert.equal(latexToSpeech('\\mathrm{kg} \\cdot m'), 'kg 乘以 m');
+    assert.ok(latexToSpeech('x_1') === 'x 一' && latexToSpeech('a_{12}') === 'a 一二', '数学下标不受影响');
   });
 
   test('non-compound formula falls back to symbol reading (x_1)', () => {
@@ -3124,9 +3215,11 @@ describe('触屏命中区（hover:none + pointer:coarse）', () => {
     assert.ok(touchBlock.includes('.exam-preview-bar button'), '打印预览工具条同样属于底部主操作，需一并保底');
   });
 
-  test('筛选 chip 的 40px 触控基线不可依赖 Tailwind 工具类（会被未分层 button 规则压过）', () => {
-    assert.ok(/button\.chip-tap \{[^}]*min-height: 2\.5rem/.test(touchBlock),
-      'chip-tap 必须写在未分层的触屏块里：实测 min-h-10 在 button 上计算值为 0');
+  test('筛选 chip 的触控基线不可依赖 Tailwind 工具类（会被未分层 button 规则压过）', () => {
+    // P2：chip 从「一律 40px」降到 28px —— 成排 chip 靠水平间距防误触，
+    // 充到 40px 只会让小字浮在大空盒里（实测自我高 28px，被抬 43%）。
+    assert.ok(/button\.chip-tap \{[^}]*min-height: 1\.75rem/.test(touchBlock),
+      'chip-tap 必须是未分层触屏块里的 28px：实测 min-h-10 在 button 上计算值为 0');
     const table = readFileSync('src/pages/PeriodicTable.tsx', 'utf8');
     const marked = (table.match(/className=(?:\{)?[`"]chip-tap/g) || []).length;
     assert.ok(marked >= 5, `周期表搜索/发音/筛选 chip 需标满 chip-tap（实际 ${marked}）`);
@@ -3625,11 +3718,23 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     // 地板本身仍在：L1 阶段导航 / Next / 答题选项要的就是拇指命中区
     assert.match(css, /main button\s*\{[^}]*min-height:\s*40px/, '40px 地板须保留（只兜 L1）');
     assert.match(css, /main button\.compact\s*\{[^}]*min-height:\s*0/, '须有 main button.compact 解除地板');
-    // 触屏保底：compact 只解桌面，小屏仍 40px（与改前一致，零退化）
+    // 触屏 compact 两档（P2）：默认 28px（成排的 chip / 预设 / 重置），
+    // .tap32 提到 32px（分享 / 问 AI / 考考你这类单点辅助）。
+    // 40px 只留给 L1 —— 阶段轨与答题选项，见下一条断言。
     assert.match(
       touchBlock,
-      /main button\.compact\s*\{[^}]*min-height:\s*2\.5rem/,
-      'compact 必须在触屏媒体块里补 40px 保底',
+      /main button\.compact\s*\{[^}]*min-height:\s*1\.75rem/,
+      '触屏 compact 第一档须为 28px',
+    );
+    assert.match(
+      touchBlock,
+      /main button\.compact\.tap32\s*\{[^}]*min-height:\s*2rem/,
+      '触屏 compact 第二档（.tap32）须为 32px',
+    );
+    assert.match(
+      touchBlock,
+      /main \.stage-rail button,[\s\S]{0,80}min-height:\s*1\.75rem/,
+      '阶段轨与「下一步」在触屏下须回到 28px（P4 减重），否则 .tap-area 会把它们顶回 40px',
     );
     // 关闭类幽灵按钮：按下微缩 + 极浅底，绝不铺实底
     assert.match(css, /button\.ghost-x:active:not\(:disabled\)\s*\{[^}]*scale\(0\.95\)/, '关闭按钮须 ghost-x 微缩 0.95');
@@ -3681,7 +3786,11 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     // 历史事故：页脚图标彼此仅隔几像素，+8px 外扩后热区互压，出现「点邮箱触发作品集」。
     // 现在改为「先把间距拉开、再扩区」：间距被改小时本测试立刻失败。
     assert.ok(/flex items-center gap-5/.test(footer), '作者行图标需保留 gap-5：26px 盒 + 20px 间隙 = 中心距 46px ≥ 44px');
-    assert.ok(/gap-x-5/.test(footer) && /gap-y-4/.test(footer), '底部图标行需保留 gap-x-5 / gap-y-4：横向中心距容得下两侧各 8px 扩区，换行后纵向也不撞');
+    // 横向：移动端 16px（gap-x-4）—— 26px 图标盒 + 两端各 8px 扩区 = 42px 命中盒，
+    // 16px 间隙让两盒**恰好相切**（实测重叠 0px），这是零重叠的下限；再小就互抢点击。
+    // 桌面回到 10px（sm:gap-x-2.5）：tap-icon::after 只在 (hover:none) and (pointer:coarse)
+    // 内生成，桌面压根没有扩区，10px 不会撞 —— 因此不再需要统一 20px 去迁就触屏。
+    assert.ok(/gap-x-4/.test(footer) && /sm:gap-x-2\.5/.test(footer) && /gap-y-4/.test(footer), '底部图标行需 gap-x-4（触屏相切）/ sm:gap-x-2.5（桌面冻结）/ gap-y-4（换行不撞）');
     const p15 = (footer.match(/p-1\.5(?! -m)/g) || []).length;
     assert.ok(p15 >= 4, `扩区图标需用 p-1.5 把 14px 视觉盒撑到 26px 命中盒，实际 ${p15} 处`);
     assert.ok(!footer.includes('-m-1\.5'), '扩区图标不得再用 -m-1.5：负外边距会吃掉 flex 间距 12px，中心距掉到 34px 后 42px 扩区必然互压');
@@ -3731,6 +3840,39 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.match(link, /gap-1\.5/, '图标与文字间距须显式给出：右组小屏 gap 只有 6px，靠容器间距会粘在一起');
     const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
     assert.equal((i18n.match(/guideHint:/g) || []).length, 2, 'guideHint 必须中英各一条，否则切到英文会露出 undefined');
+  });
+
+  // ── 平板/iPad 断点（768–1024）：品牌行不许折行、版本号不许错位 ──
+  test('顶栏品牌行：品牌与版本号锁死一行、同轴对齐（触屏 .tap-area 会把这一行撑到 40px）', () => {
+    const header = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    // ① 左簇不被压缩：顶栏是 justify-between 的两组 flex 子项，默认 shrink:1 会先压左簇，
+    //    品牌文字是普通文本，一被压就在词间折行。显式 nowrap + shrink-0 才锁得住。
+    assert.match(
+      header,
+      /<Link to="\/" className="flex flex-nowrap shrink-0 items-center gap-2 /,
+      '左簇须 flex-nowrap + shrink-0：缺任一项，窄窗口下品牌文字先在词间折行、版本号跟着错位',
+    );
+    // ② 两行文字都不许换行
+    assert.match(header, /hidden sm:inline whitespace-nowrap text-\[0\.625rem\] mono-font uppercase/, '品牌文字须 whitespace-nowrap');
+    // ③ 版本号禁止 self-end / mb-0.5 —— coarse 下 .tap-area 把品牌行撑到 40px（桌面 28px），
+    //    self-end 会把版本号钉到行底：实测下沉 6.5px，10px 小字看上去就像「掉到了下一行」。
+    //    只校验按钮自身的 className——注释里会解释这段历史，全局扫词会把说明文字也算进去。
+    const ver = header.match(/className="hidden sm:flex items-center gap-1\.5[^"]*"/)?.[0] ?? '';
+    assert.ok(ver.length > 0, '未找到版本号按钮的 className');
+    assert.ok(!/self-end|mb-0\.5/.test(ver), `版本号不得再用 self-end / mb-0.5：触屏下会相对品牌标题下沉（实测 6.5px）——当前 ${ver}`);
+    assert.ok(ver.includes('whitespace-nowrap'), '版本号须 whitespace-nowrap，彻底禁止折行');
+    assert.ok(ver.includes('tap-pad-10'), '版本号须挂 tap-pad-10：它是顶栏唯一没走 .tap-area 的控件，命中盒只有 42×15');
+    // ④ 热区只在触屏块里扩，桌面视觉零变化
+    const touchBlock = css.slice(css.indexOf('@media (hover: none) and (pointer: coarse)'));
+    assert.match(touchBlock, /\.tap-pad-10::after \{[\s\S]*?inset: -10px -2px;/, '.tap-pad-10 须在触屏块内、横向只扩 2px（左邻品牌文字，横扩会劫持「点标题回首页」）');
+  });
+
+  test('顶栏「使用说明」文案断点：≥1024（lg）才展开文字，平板段保持图标形态', () => {
+    const header = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    const link = header.match(/<Link\s+to="\/guide"[\s\S]*?<\/Link>/)?.[0] ?? '';
+    assert.match(link, /<span className="hidden lg:inline">\{t\.guide\}<\/span>/, '文案须 hidden lg:inline：平板段收成图标形态，右簇回到 40px 方盒节奏');
+    assert.doesNotMatch(link, /hidden sm:inline/, 'sm 断点展开文字会让 iPad（768）右簇 296px 与左簇只剩 62px 余量');
+    assert.match(link, /aria-label=\{t\.guide\}/, '文字隐去后 aria-label 是唯一可访问名，须常驻');
   });
 });
 
@@ -4474,16 +4616,36 @@ describe('AI settings panel layout & control polish', () => {
   test('操作按钮层级：保存实底主操作 / 返回与关闭 ghost / 清除补 40px', () => {
     assert.match(
       ai,
-      /onClick=\{save\} className="tap-primary rounded-md px-3 py-1\.5 text-xs mono-font font-bold border border-transparent bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/,
+      /onClick=\{save\} className="tap-primary tap-ai-primary rounded-md px-3 py-1\.5 text-xs mono-font font-bold border border-transparent bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/,
       '保存必须是实底主操作（亮色黑底 / 暗色白底）',
     );
-    const ghost = ai.match(/tap-primary rounded-md px-3 py-1\.5 text-xs mono-font border border-transparent text-\[var\(--muted\)\] transition-colors hover:bg-\[var\(--accent-light\)\] hover:text-\[var\(--fg\)\]/g) ?? [];
+    const ghost = ai.match(/tap-primary tap-ai-primary rounded-md px-3 py-1\.5 text-xs mono-font border border-transparent text-\[var\(--muted\)\] transition-colors hover:bg-\[var\(--accent-light\)\] hover:text-\[var\(--fg\)\]/g) ?? [];
     assert.ok(ghost.length >= 3, `返回对话 / 关闭 / 取消 都要是 ghost（实测 ${ghost.length} 处）`);
     assert.match(
       ai,
       /className="ml-auto tap-area inline-flex items-center gap-1 text-\[0\.6875rem\] mono-font text-\[var\(--muted\)\] transition-colors hover:text-\[var\(--fg\)\]"/,
       '清除入口必须保持文字链并补 tap-area（触屏 ≥40px）',
     );
+    // ── AI 设置弹窗减重（触屏）：全部只在 .tap-area 上让位，并把省下的高度还给透明伪元素 ──
+    //    chips 40→28、思考强度 40→28（外轨 46→34）、设置 Tab 40→29、常用 chips 40→24、
+    //    吸底栏 44→36、获取模型/测试连接 29.7→34。桌面无 .tap-area，本来就是自然高，故零回归。
+    {
+      const css = readFileSync('src/index.css', 'utf8');
+      assert.match(css, /\.tap-ai-chip\.tap-area,\s*\.tap-ai-tab\.tap-area \{\s*min-height: 0;/, 'chips/Tab 须解除 40px 地板');
+      assert.match(css, /\.tap-ai-tier\.tap-area \{\s*min-height: 1\.75rem;/, '思考强度三档须 28px（外轨随之 34px）');
+      assert.match(css, /\.tap-ai-mini\.tap-area \{\s*min-height: 1\.5rem;/, '常用 chips 须 24px');
+      assert.match(css, /\.tap-primary\.tap-ai-primary \{\s*min-height: 2\.25rem;/, '吸底栏须 36px');
+      // 热区补偿：为减掉的高度补回透明扩区，否则只减不补就是拿触控精度换版式
+      assert.match(css, /\.tap-ai-chip\.tap-area::after \{[^}]*top: -4px;[^}]*bottom: -4px;/, 'chips 须补 ±4px 热区（28+8=36）');
+      assert.match(css, /\.tap-ai-tier\.tap-area::after \{[^}]*inset: -5px -1px;/, '思考强度须补 ±5px 热区（28+10=38）');
+      assert.match(css, /\.tap-ai-text::after \{[^}]*inset: -8px -2px;/, '「查看须知」须补 ±8px 热区（18+16=34）');
+      // 行距必须 ≥ 伪元素外扩之和，否则换行后上下两行互压（页脚图标踩过同一个坑）
+      assert.match(ai, /flex flex-wrap items-center gap-x-1\.5 gap-y-2 sm:gap-y-1\.5/, 'chips 容器纵向行距须 ≥8px（±4 + ±4），桌面仍 6px');
+      // P0：滚动容器底部安全隙，否则内容末段永远落在吸底栏的 69px 带里
+      assert.match(ai, /overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-3 text-sm serif-font sm:pb-0/, '设置滚动区须移动端 pb-6（吸底栏安全隙）、桌面仍 pb-0');
+      // 三处「只在移动端生效」必须带 max-sm / sm: 前缀，否则桌面盒模型会跟着变（用户要求桌面 100% 冻结）
+      assert.match(ai, /whitespace-nowrap max-sm:min-h-\[34px\]/, '辅助按钮的 34px 须限定 max-sm（桌面保持自然高）');
+    }
 
     // 模型行的两个动作按钮：图标语义必须与动作一致，且不得重复「插头」这个身份标。
     // 获取模型 = 重新拉一次清单（RefreshCw，load 时自转）；测试连接 = 探一次活不活（Activity 心跳）。
@@ -5428,6 +5590,46 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
   // 异步用例必须走 testAsync：同步 test() 只调用 fn() 而不 await，
   // 会让它和文件末尾 runAsyncTests() 里的其它用例（尤其是 Feedback 的 fetch mock）并发跑，
   // 本用例的探针就会在半途被别处替换掉 globalThis.fetch —— 结果为随机失败。
+  // ⑰ 侧边悬浮书签已废弃：AI 入口只留顶栏一处，横屏空间靠语言按钮的双断点腾出
+  //    历史：AiSideTab 曾以 24×88 / 32×40 贴右常驻（滚动后页头消失，需要补一个常驻入口）。
+  //    但它始终是页面右缘的异物——实测在 3 个实验里与「下一步 →」的右下角存在 5×10.6px 重叠。
+  //    最终取舍：入口回归顶栏（页头滚走时用户本来也在阅读内容，不需要第二处唤起点）。
+  test('⑰ 侧边书签不得回流：AI 入口仅顶栏一处，语言按钮按断点收成「中」', () => {
+    const app = readFileSync('src/App.tsx', 'utf8');
+    const header = readFileSync('src/components/layout/Header.tsx', 'utf8');
+    const css = readFileSync('src/index.css', 'utf8');
+    // ① 组件文件与 hook 已删除，App 不再引用，CSS 不再留 selector
+    assert.ok(!existsSync('src/components/ai/AiSideTab.tsx'), 'AiSideTab.tsx 须已删除（不留死代码）');
+    assert.ok(!existsSync('src/lib/use-media-query.ts'), 'use-media-query.ts 仅服务于书签，须一并删除');
+    assert.doesNotMatch(app, /AiSideTab/, 'App 不得再引用侧书签');
+    assert.doesNotMatch(css, /ai-side-tab/, 'CSS 不得残留 .ai-side-tab 选择器');
+    // ② AI 图标回归顶栏：整块挂载，移动端不得再隐藏
+    assert.match(header, /<div className="relative flex items-center justify-center">/, 'AI 入口须恢复为整块常驻');
+    assert.doesNotMatch(header, /relative hidden items-center justify-center sm:flex/, 'AI 入口不得再 hidden sm:flex');
+    assert.match(header, /onClick=\{\(\) => setAiOpen\(!aiOpen\)\}/, '图标本体仍须开 AI 面板');
+    // ③ 语言按钮双断点：移动端「中」，桌面「中文」；英文 EN 两档同形
+    assert.match(
+      header,
+      /lang === 'zh' \? \(\s*<>\s*<span className="sm:hidden">中<\/span>\s*<span className="hidden sm:inline">中文<\/span>\s*<\/>\s*\) : \(\s*'EN'\s*\)/,
+      '语言按钮须为「中 / 中文」双断点，英文恒 EN',
+    );
+    // ④ 互斥规则保留且只针对反馈气泡（书签那条 display:none 已随组件移除）
+    assert.match(css, /html\.param-dock-open \.feedback-fab,\s*html\.ai-sheet-open \.feedback-fab \{[^}]*opacity: 0;[^}]*pointer-events: none/, '两种展开态须对反馈气泡用同一套淡出规则');
+    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    assert.match(ai, /cls\.add\('ai-sheet-open'\)/, 'AI 面板须继续把展开状态镜像到 <html>');
+    // ⑤ 右簇仍是 gap-2 / sm:gap-4：5 个控件在 390 下单行
+    assert.match(header, /gap-1\.5 sm:gap-4/, '顶栏右簇间距须为 gap-1.5 sm:gap-4（移动收紧、桌面冻结）');
+    // ⑥ 返回链接移动端左对齐：`.tap-area` 的 justify-content:center 会把满宽盒里的内容居中
+    //    （实测箭头落在 x=160，而标题图标在 x=24）。只能用 align-self 收窄盒宽——justify-*
+    //    是未分层 CSS，工具类压不过它；`max-sm:` 前缀保证桌面盒宽与命中区一字未改。
+    const back = readFileSync('src/components/layout/BackLink.tsx', 'utf8');
+    // 左缘规则取「盒对齐 x=24」：正文列、标题图标盒（w-12）、返回链接同一起点。
+    // 不做墨迹补偿——15 个实验的图标墨迹在 31.3–42.3 之间浮动，单一 padding 对齐不了全部。
+    assert.match(back, /tap-area max-sm:self-start sm:mt-3 sm:mb-6/, '返回链接须 max-sm:self-start（移动左对齐、桌面不变）');
+    assert.doesNotMatch(back, /max-sm:pl-/, '不得用 padding 做逐实验的墨迹补偿（图形留白各不相同）');
+    assert.match(back, /mt-2 mb-1 /, '返回链接移动端下外边距须收到 mb-1');
+  });
+
   testAsync('⑯ 欢迎弹窗双 Tab、Header 帮助入口、AI 角标五态与多端响应式不变量', async () => {
     const wd = readFileSync('src/components/ui/WelcomeDialog.tsx', 'utf8');
     const hd = readFileSync('src/components/layout/Header.tsx', 'utf8');
@@ -5471,14 +5673,20 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     // 同一条导览的 zh + en 各计一次 → 至多 1 条提及元素周期表（= 至多 2 条字符串）
     assert.ok(ptRows.length <= 2, `至多一条导览可提及元素周期表（实测 ${ptRows.length}/8 条命中）`);
     // ④ 触屏热区（本弹窗挂在 body 上，不吃 main button 的 40px 全局底线）
-    //    Tab 走 .tap-area：桌面 36px 的紧凑胶囊，触屏抬到 40px（与 TokenUsageDialog / AI 面板同一口径）
-    assert.match(wd, /tap-area relative z-10 min-h-9 rounded-full px-4 py-1\.5 text-xs mono-font/, 'Tab 须为紧凑胶囊且触屏有热区下限');
+    //    移动端视觉减重：Tab 30px / 轨道 36px / 主按钮 36px + 12px 字；桌面（sm:）全部维持原样。
+    //    Tab 挂 .tap-rail（上下各 +5px 透明扩区）而不是 .tap-area——后者把**视觉盒**撑到 40px，
+    //    正是移动端「小字大壳」的来源；扩区必须落到伪元素上才只动命中不动版式。
+    assert.match(wd, /tap-rail relative z-10 h-\[1\.875rem\] rounded-lg px-3 py-0 text-xs mono-font/, 'Tab 触屏须为 30px 视觉盒（命中由 .tap-rail 补）');
+    assert.match(wd, /sm:h-9 sm:rounded-full sm:px-4 sm:py-1\.5/, 'Tab 桌面须维持 36px 胶囊（移动端减重不得外溢）');
+    // 圆角同心：外轨 10px - 内边距 2px = 滑块 8px（内外同为 10px 时四角留白会显得挤）
+    assert.match(wd, /rounded-\[0\.625rem\][^"]*p-0\.5 sm:rounded-full/, '轨道移动端圆角须为 10px');
+    assert.doesNotMatch(wd, /tap-area relative z-10/, 'Tab 不得再用 .tap-area 撑高视觉盒');
     assert.match(wd, /w-11 h-11 text-\[var\(--muted\)\]/, '关闭 × 热区须 44×44');
-    assert.match(wd, /transition-colors min-h-11 touch-manipulation/, '主按钮热区须 ≥44px');
+    assert.match(wd, /transition-colors min-h-9 touch-manipulation rounded-md sm:min-h-11 sm:px-5 sm:text-sm/, '主按钮移动端 36px / 桌面 44px 两档');
     assert.match(wd, /gap-2 min-h-11 text-xs/, '「下次不再显示」须 ≥44px 热区');
     // ④b Tab：高级分段滑槽——轨道 + 等宽滑块（位移过渡），非孤悬灰块、非实心反色块
-    assert.match(wd, /grid w-fit max-w-full grid-cols-2 items-center rounded-full border border-\[var\(--border\)\]\/60 bg-\[var\(--accent-light\)\]\/60 p-1/, 'Tab 轨道须为胶囊槽且等宽两格');
-    assert.match(wd, /absolute inset-y-1 left-1 w-\[calc\(50%-0\.25rem\)\] rounded-full bg-\[var\(--card-bg\)\] shadow-xs transition-transform/, '须有等宽滑块（抬起面 + 位移过渡）');
+    assert.match(wd, /grid w-fit max-w-full grid-cols-2 items-center rounded-\[0\.625rem\] border border-\[var\(--border\)\]\/60 bg-\[var\(--accent-light\)\]\/60 p-0\.5 sm:rounded-full sm:p-1/, 'Tab 轨道须为等宽两格且移动端 36px');
+    assert.match(wd, /absolute inset-y-0\.5 left-0\.5 w-\[calc\(50%-0\.125rem\)\] rounded-lg[^"]*sm:inset-y-1 sm:left-1 sm:w-\[calc\(50%-0\.25rem\)\] sm:rounded-full/, '须有等宽滑块（抬起面 + 位移过渡，桌面几何不变）');
     assert.match(wd, /transform: tab === 'overview' \? 'translateX\(0\)' : 'translateX\(100%\)'/, '滑块位移须由当前分区驱动');
     assert.doesNotMatch(wd, /bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/, '激活 Tab 不得再用实心反色块');
     assert.doesNotMatch(wd, /flex-1 min-h-11/, 'Tab 不得再撑满整行（通栏）');
@@ -5538,7 +5746,11 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
       '减动效下电子须停anim，不得留循环',
     );
     // ④d 底栏级底注：开源协议 / 作者 / 反馈 一行收敛 + 姊妹作品胶囊
-    assert.match(wd, /justify-between gap-x-4 gap-y-2 px-0\.5 text-\[0\.6875rem\]/, '次级底注须为一行 justify-between');
+    // 行距从 gap-y-2 提到 gap-y-4：这些链接挂着 ±8px 透明热区（tap-pad），
+    // 窄屏换行时两行之间若只有 8px，上一行的下沿热区会压住下一行的上沿，
+    // 实测 AGPL 与 mailto 相差 6px 时互相拦截、测得命中高只剩 21px（应为 32.5）。
+    // 16px = 8+8 的最小不重叠间距。
+    assert.match(wd, /justify-between gap-x-4 gap-y-4 px-0\.5 text-\[0\.6875rem\]/, '次级底注须为一行 justify-between，且换行行距 ≥16px');
     for (const k of ['welcomeLicenseLabel', 'welcomeFeedbackLabel']) {
       assert.ok(wd.includes(`t.${k}`), `底注须含 ${k}`);
     }
@@ -5825,7 +6037,7 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
           Math.max(...hues) - Math.min(...hues) >= 40,
           `品牌色色相跨度只有 ${Math.round(Math.max(...hues) - Math.min(...hues))}°，16px 下会糊成同一色：${lightBrands.join(' ')}`,
         );
-        assert.match(panelSrc, /ai-provider-chip tap-area inline-flex h-7/, '胶囊须带 .ai-provider-chip 钩子供悬停规则命中');
+        assert.match(panelSrc, /ai-provider-chip tap-ai-chip tap-area inline-flex h-7/, '胶囊须带 .ai-provider-chip 钩子（.tap-ai-chip 负责触屏减重）');
         assert.match(panelSrc, /data-brand=\{p\.id\}/, '胶囊须带 data-brand（悬停品牌色的唯一依据）');
         assert.match(panelSrc, /const PROVIDER_BRAND_CLS: Record<string, string> = \{/, '须有品牌色表（完整字面量）');
         // 悬停品牌色走普通 CSS（Tailwind group-hover 变体实测不生效）

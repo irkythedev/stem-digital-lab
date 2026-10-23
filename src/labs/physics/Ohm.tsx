@@ -10,12 +10,13 @@
  *
  * 复用组件：CoordPlane（I-U 图像）、ExploreStage（任务卡+笔记）、LabIcon。
  */
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
 import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
+import ParamDock from '../../components/lab/ParamDock';
 import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MeterProbe, { type MeasurableWire, type MeasurableComp, type MeterTarget } from '../../components/lab/MeterProbe';
@@ -55,6 +56,8 @@ const copy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
+    paramDock: '调节参数',
+    paramDockClose: '收起参数',
     readout: '读数',
     engineWasm: '计算引擎：C++ WebAssembly',
     engineJs: '计算引擎：JS 回退',
@@ -176,6 +179,8 @@ const copy = {
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
+    paramDock: 'Adjust',
+    paramDockClose: 'Close controls',
     readout: 'Readings',
     engineWasm: 'Engine: C++ WebAssembly',
     engineJs: 'Engine: JS fallback',
@@ -311,6 +316,7 @@ export default function Ohm() {
   const [targetV, setTargetV] = useState<number | null>(null);
   const [measureMode, setMeasureMode] = useState(false);
   const [rRevealed, setRRevealed] = useState(false);
+  const circuitRef = useRef<HTMLDivElement>(null);
   const [switchOn, setSwitchOn] = useState(true);
   // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
   const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
@@ -615,7 +621,9 @@ export default function Ohm() {
   return (
     <div className="flex flex-col space-y-6">
 
-      <div className="flex justify-center py-2">
+      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
+          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
+      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
         <Formula tex="I = \frac{U}{R}" block className="text-lg" />
       </div>
 
@@ -642,8 +650,8 @@ export default function Ohm() {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + I-U 图像 + 读数 */}
         <div className="flex flex-col space-y-6">
-          {/* 电路图（SVG，极简线描） */}
-          <div className="border border-[var(--border)] p-4">
+          {/* 电路图（SVG，极简线描）；ref 作为参数抽屉展开时的滚动锚点 */}
+          <div ref={circuitRef} className="border border-[var(--border)] p-4">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.circuitLabel}
             </h3>
@@ -958,6 +966,13 @@ export default function Ohm() {
 
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
+          {/* 参数卡：窄屏收进底部抽屉（ParamDock），桌面原样平铺 */}
+          <ParamDock
+            title={t.paramDock}
+            closeLabel={t.paramDockClose}
+            anchorRef={circuitRef}
+            summary={`${u.toFixed(1)}V / ${measureMode && !rRevealed ? '?' : r}Ω`}
+          >
           <div className="border border-[var(--border)] p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
@@ -1041,6 +1056,7 @@ export default function Ohm() {
               {t.reset}
             </button>
           </div>
+          </ParamDock>
 
           {/* 幕1 预测 */}
           {stage === 'predict' && (

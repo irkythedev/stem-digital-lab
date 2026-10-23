@@ -272,6 +272,16 @@ export default function AiAssistant() {
     }
   }, [open, stopSpeak]);
 
+  // 面板展开状态镜像到 <html>：反馈气泡与 AI 书签按 CSS 统一让位。
+  // 和 ParamDock 的 html.param-dock-open 同一口径 —— 悬浮物互斥只认 <html> 类名，
+  // 不在各组件里各写一套条件渲染（此前气泡靠 z-50 + DOM 顺序被面板 CTA 压住，属巧合而非规则）。
+  useEffect(() => {
+    const cls = document.documentElement.classList;
+    if (open) cls.add('ai-sheet-open');
+    else cls.remove('ai-sheet-open');
+    return () => cls.remove('ai-sheet-open');
+  }, [open]);
+
   // 切换界面语言时停止朗读：正在播的回答绑定旧语言（voice 已在调用时确定），
   // 避免英文界面用英文 voice 读中文回答等混淆——切语言 = 朗读重新开始
   const prevLangRef = useRef(lang);
@@ -2483,7 +2493,7 @@ export default function AiAssistant() {
         </div>
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-0 space-y-3 text-sm serif-font">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-3 text-sm serif-font sm:pb-0">
           {/* 设置 Tab：大模型设置 / 语音朗读。两栏共享同一份配置状态，切换不需要重新保存 */}
           <div className="flex items-center gap-1 border-b border-[var(--border)]" role="tablist" aria-label={lang === 'zh' ? '设置分类' : 'Settings sections'}>
             {([['model', lang === 'zh' ? '大模型设置' : 'Model setup'], ['speech', lang === 'zh' ? '语音朗读' : 'Speech']] as const).map(([id, label]) => (
@@ -2493,7 +2503,7 @@ export default function AiAssistant() {
                 role="tab"
                 aria-selected={settingsTab === id}
                 onClick={() => setSettingsTab(id)}
-                className={`tap-area -mb-px border-b-2 px-3 py-2 text-[0.6875rem] mono-font leading-none transition-colors ${settingsTab === id ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                className={`tap-ai-tab tap-area -mb-px border-b-2 px-3 py-2 text-[0.6875rem] mono-font leading-none transition-colors ${settingsTab === id ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'}`}
               >
                 {label}
               </button>
@@ -2506,14 +2516,14 @@ export default function AiAssistant() {
           <div>
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
-              <button type="button" onClick={() => setView('terms')} className="shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">
+              <button type="button" onClick={() => setView('terms')} className="tap-ai-text shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">
                 {lang === 'zh' ? '查看须知' : 'View terms'}
               </button>
             </div>
             {/* 服务商胶囊：固定高度 + 单行不折，品牌微标继承文字色（未选 --muted / 选中 --fg）。
                 h-7 让 6 个胶囊在桌面严格等高；触屏仍由 .tap-area 撑到 40px 命中区，
                 因为两者对所有胶囊同时生效，折行时行高依然整齐，不会出现"一个高一个矮"。 */}
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 sm:gap-y-1.5">
               {AI_PROVIDERS.map((p) => {
                 const active = providerId === p.id;
                 // 品牌色只在「悬停」或「已选」时点亮；默认随胶囊文字色（未选 --muted）。
@@ -2529,7 +2539,7 @@ export default function AiAssistant() {
                     onClick={() => selectProvider(p.id)}
                     aria-pressed={active}
                     data-brand={p.id}
-                    className={`ai-provider-chip tap-area inline-flex h-7 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[0.6875rem] leading-none mono-font transition-colors ${
+                    className={`ai-provider-chip tap-ai-chip tap-area inline-flex h-7 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[0.6875rem] leading-none mono-font transition-colors ${
                       active
                         ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
                         : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
@@ -2682,7 +2692,7 @@ export default function AiAssistant() {
                 disabled={fetching}
                 aria-label={lang === 'zh' ? '获取模型' : 'Fetch models'}
                 title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
                 <RefreshCw
                   className={`h-3.5 w-3.5 shrink-0 ${fetching ? 'motion-safe:animate-spin' : ''}`}
@@ -2698,7 +2708,7 @@ export default function AiAssistant() {
                 disabled={testing}
                 aria-label={lang === 'zh' ? '测试连接' : 'Test connection'}
                 title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
               >
                 <Activity
                   className={`h-3.5 w-3.5 shrink-0 ${testing ? 'motion-safe:animate-pulse' : ''}`}
@@ -2714,7 +2724,7 @@ export default function AiAssistant() {
             </p>
             {/* 常用气泡：数据源为当前服务商自己的模型清单，不联网也能填；与输入框内容完全一致时高亮 */}
             {provider.models.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 sm:gap-y-1.5">
                 <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '常用：' : 'Common:'}</span>
                 {provider.models.map((m) => (
                   <button
@@ -2722,7 +2732,7 @@ export default function AiAssistant() {
                     type="button"
                     onClick={() => setModel(m)}
                     aria-pressed={modelMatches(m)}
-                    className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
+                    className={`tap-ai-mini tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
                       ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
                       : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
                   >
@@ -2750,7 +2760,7 @@ export default function AiAssistant() {
                     aria-pressed={selected}
                     title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
                     onClick={() => setThinkingEffort(t.id)}
-                    className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
+                    className={`tap-ai-tier tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
                       ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs'
                       : usable
                         ? 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'
@@ -3054,15 +3064,15 @@ export default function AiAssistant() {
           <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
             {config ? (
-              <button type="button" onClick={() => setView('chat')} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
+              <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
                 {lang === 'zh' ? '返回对话' : 'Back to chat'}
               </button>
             ) : (
-              <button type="button" onClick={() => setOpen(false)} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
+              <button type="button" onClick={() => setOpen(false)} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
                 {lang === 'zh' ? '关闭' : 'Close'}
               </button>
             )}
-            <button type="button" onClick={save} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font font-bold border border-transparent bg-[var(--fg)] text-[var(--bg)] transition-colors hover:opacity-90">
+            <button type="button" onClick={save} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font font-bold border border-transparent bg-[var(--fg)] text-[var(--bg)] transition-colors hover:opacity-90">
               {lang === 'zh' ? '保存配置' : 'Save settings'}
             </button>
             <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto tap-area inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]">
@@ -3414,7 +3424,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => setPaperOpen(false)}
-                        className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
+                        className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
                       >
                         {lang === 'zh' ? '取消' : 'Cancel'}
                       </button>
@@ -3870,7 +3880,7 @@ export default function AiAssistant() {
           )}
           {/* 返回对话：子视图无左上角箭头后，返回由本栏左侧承担（与设置页同一形态） */}
           <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center">
-            <button type="button" onClick={() => setView('chat')} className="tap-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
+            <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
               {lang === 'zh' ? '返回对话' : 'Back to chat'}
             </button>
           </div>

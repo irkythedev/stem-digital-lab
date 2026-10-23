@@ -100,6 +100,10 @@ export default function PhysicalConstants() {
       <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+        </h1>
+        {/* 页面动作簇独占一行：此前内联在 h1 里，390px 下「考考你」会单独掉到第二行，
+            被 h1 左缘 + ml-2 顶到 x=32。顺序与实验页统一为「分享 → 问 AI → 考考你」。 */}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <ShareInline
             title={lang === 'zh' ? '物理常量速查 · 数理化数字实验室' : 'Physics Constants · STEM Digital Lab'}
             text={
@@ -108,10 +112,9 @@ export default function PhysicalConstants() {
                 : 'Quick reference for middle-school physics constants by category, with meanings and usage. Free to use!'
             }
           />
-        
-          <AskAiButton question={lang === 'zh' ? '请介绍物理常量速查表包含哪些常量、在初中物理里分别怎么用' : 'Introduce the physical constants reference: what it covers and how each constant is used in middle-school physics'} className="ml-3" />
-          <AskQuizButton className="ml-2 align-middle" />
-        </h1>
+          <AskAiButton question={lang === 'zh' ? '请介绍物理常量速查表包含哪些常量、在初中物理里分别怎么用' : 'Introduce the physical constants reference: what it covers and how each constant is used in middle-school physics'} />
+          <AskQuizButton />
+        </div>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'
             ? '初中物理常用常量与典型数值（依据苏科版教材），按力学/热学/光学/声学/电学分类。做题卡壳时点开看看，附物理意义与应用场景。'

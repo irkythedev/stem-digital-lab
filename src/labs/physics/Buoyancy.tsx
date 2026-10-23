@@ -297,6 +297,7 @@ export default function Buoyancy() {
           predict: c.stagePredict,
           explore: c.stageExplore,
           conclude: c.stageConclude,
+          next: c.nextStage,
           redo: c.redoLabel,
         }}
         onRedo={redoAll}

@@ -128,6 +128,10 @@ export default function PhysicsFormulas() {
       <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
+        </h1>
+        {/* 页面动作簇独占一行：此前内联在 h1 里，390px 下「考考你」会单独掉到第二行，
+            被 h1 左缘 + ml-2 顶到 x=32。顺序与实验页统一为「分享 → 问 AI → 考考你」。 */}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <ShareInline
             title={lang === 'zh' ? '物理公式速查 · 数理化数字实验室' : 'Physics Formulas · STEM Digital Lab'}
             text={
@@ -136,10 +140,9 @@ export default function PhysicsFormulas() {
                 : 'Core middle-school physics formulas with units, conditions and pitfalls. Free to use!'
             }
           />
-        
-          <AskAiButton question={lang === 'zh' ? '请介绍物理公式速查表包含哪些公式、各自的适用条件是什么' : 'Introduce the physics formula reference: what it covers and the conditions for each formula'} className="ml-3" />
-          <AskQuizButton className="ml-2 align-middle" />
-        </h1>
+          <AskAiButton question={lang === 'zh' ? '请介绍物理公式速查表包含哪些公式、各自的适用条件是什么' : 'Introduce the physics formula reference: what it covers and the conditions for each formula'} />
+          <AskQuizButton />
+        </div>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'
             ? '初中物理核心公式（依据苏科版教材），按力学/热学/光学/声学/电学分类。点开看公式、单位、适用条件与易错点，相关常量一键跳转。'

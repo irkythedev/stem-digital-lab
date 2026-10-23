@@ -23,7 +23,7 @@ export default function AskQuizButton({ label, className = '' }: AskQuizButtonPr
     <button
       type="button"
       onClick={openQuiz}
-      className={`compact inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors ${className}`}
+      className={`compact tap32 inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors ${className}`}
     >
       <GraduationCap className="w-3 h-3" />
       {label ?? (lang === 'zh' ? '考考你' : 'Quiz')}

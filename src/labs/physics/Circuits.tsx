@@ -14,11 +14,12 @@
  * 可视化：SVG 电路图（导线/灯泡/闸刀开关/电池/保险丝/变阻器/固定电表）
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
+import ParamDock from '../../components/lab/ParamDock';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import MeterProbe, { type MeterTarget } from '../../components/lab/MeterProbe';
 import MeterGauge from '../../components/lab/MeterGauge';
@@ -71,6 +72,8 @@ const baseCopy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
+    paramDock: '调节参数',
+    paramDockClose: '收起参数',
     readout: '读数',
     reset: '重置',
     styleLabel: '电路样式',
@@ -129,6 +132,8 @@ const baseCopy = {
   en: {
     prompt: 'Predict, explore freely, then draw your own conclusion. You can move between stages any time.',
     params: 'Parameters',
+    paramDock: 'Adjust',
+    paramDockClose: 'Close controls',
     readout: 'Readings',
     reset: 'Reset',
     styleLabel: 'Circuit style',
@@ -272,6 +277,8 @@ export default function Circuits() {
   const parallelI = parallelBranchCurrents(u, effR, style.branchSwitches ? branchSw : undefined, switchOn);
   const branchI = isSeries ? style.elements.map(() => seriesI) : parallelI;
   const i0 = isSeries ? seriesI : branchI.reduce((a, b) => a + b, 0);
+  /** 参数抽屉的滚动锚点：主电路拓扑图所在卡片 */
+  const topoRef = useRef<HTMLDivElement>(null);
   const vPerElem = style.elements.map((_, i) =>
     isSeries ? seriesI * effR[i] : switchOn && (!style.branchSwitches || branchSw[i]) ? u : 0
   );
@@ -442,7 +449,9 @@ export default function Circuits() {
   return (
     <div className="flex flex-col space-y-6">
 
-      <div className="flex justify-center py-2">
+      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
+          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
+      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
         <Formula tex="I = \frac{U}{R}" block className="text-lg" />
       </div>
 
@@ -469,7 +478,7 @@ export default function Circuits() {
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + 读数 */}
         <div className="flex flex-col space-y-6">
-          <div className="border border-[var(--border)] p-4">
+          <div ref={topoRef} className="border border-[var(--border)] p-4">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
               // {t.circuitLabel} · {sc.title}
             </h3>
@@ -774,6 +783,13 @@ export default function Circuits() {
 
         {/* 右列：样式 + 参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
+          {/* 样式切换 + 阻值滑块：窄屏一并收进底部抽屉，摘要给拓扑与干路电流，锚点回到拓扑图 */}
+          <ParamDock
+            title={t.paramDock}
+            closeLabel={t.paramDockClose}
+            anchorRef={topoRef}
+            summary={`${isSeries ? t.modeSeries : t.modeParallel} / ${i0.toFixed(2)}A`}
+          >
           <div className="border border-[var(--border)] p-4 space-y-4">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
               // {t.styleLabel}
@@ -857,6 +873,7 @@ export default function Circuits() {
               {t.reset}
             </button>
           </div>
+          </ParamDock>
 
           {/* 幕1 预测 */}
           {stage === 'predict' && (

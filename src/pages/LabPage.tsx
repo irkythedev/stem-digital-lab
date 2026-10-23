@@ -85,48 +85,48 @@ export default function LabPage() {
     : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
-    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-block)] px-2 sm:mt-[var(--sp-block)] sm:px-6">
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to={subjects[lab.subjectId].path}>
         {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
       </BackLink>
 
-      <div className="rise mb-8">
+      <div className="rise mb-3 sm:mb-8">
+        {/* 第一行：图标 + 标题 + 年级眉标。
+            眉标带 whitespace-nowrap（.t-eyebrow 里也有同名声明），永不被逐字拆开。 */}
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 shrink-0 flex items-center justify-center text-[var(--fg)]">
             <lab.icon className="w-10 h-10" />
           </div>
-          <div className="flex flex-col items-start leading-tight">
+          <div className="flex min-w-0 flex-col items-start leading-tight">
             <h1 className="t-h1 font-medium serif-font text-[var(--fg)]">
               {lab.name[lang]}
-              <span className="t-eyebrow ml-3 text-[var(--muted)] mono-font align-middle">
+              <span className="t-eyebrow ml-3 text-[var(--muted)] mono-font align-middle whitespace-nowrap">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
-              </span>
-              {/* 标题右侧的工具簇：分享 + 问 AI + 考考你。
-                  三者放进同一个 inline-flex 容器，**对齐由 items-center 保证、间距由同一个 gap 保证**——
-                  此前各写 ml-3 / ml-2 且只有其中一个带 align-middle，导致「问 AI」比两侧低 3.2px、三处间距 6/8px 不等。
-                  容器整体 align-middle，与年级 eyebrow 的中线对齐。 */}
-              <span className="ml-3 inline-flex items-center gap-3 align-middle">
-                {/* 分享按钮自带 p-1.5 -m-1.5（撑触屏热区、视觉不动），其 -6px 右边距会把
-                    与「问 AI」的间距吃掉一截（实测光学间距 18 vs 24px）。用 mr-1.5 补回，
-                    让两段光学间距都回到 24px；热区逻辑不动。 */}
-                <span className="inline-flex mr-1.5">
-                  <ShareInline
-                    title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
-                    text={lang === 'zh'
-                      ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
-                      : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
-                  />
-                </span>
-                <AskAiButton labId={lab.id} question={pageAiQuestion} />
-                <AskQuizButton />
               </span>
             </h1>
           </div>
         </div>
+        {/* 第二行：页面动作簇独占一行。
+            此前它内联在 h1 的文本流里，390px 下被挤到标题下一行，与年级眉标的残片
+            并排（「级 + 分享 + 问 AI + 考考你」）；工具页同病（「考考你」单独掉行）。
+            抽成 flex 行后，顺序固定「分享 → 问 AI → 考考你」，对齐由 items-center 保证，
+            间距只由一处 gap 给，不再各自带 ml-3 / ml-2。
+            移动端 mt-1.5：这一行与标题同属一个语义块，桌面仍是 mt-3 的呼吸。 */}
+        <div className="mt-1.5 flex flex-wrap items-center gap-3 sm:mt-3">
+          <ShareInline
+            title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+            text={lang === 'zh'
+              ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+              : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+          />
+          <AskAiButton labId={lab.id} question={pageAiQuestion} />
+          <AskQuizButton />
+        </div>
       </div>
 
-      <p className="mb-5 text-xs serif-font italic text-[var(--muted)]">{lang === 'zh' ? '建议流程：先预测，再自由探索，最后完成结论。你可以随时返回任意阶段。' : 'Suggested flow: predict, explore freely, then conclude. You can revisit any stage at any time.'}</p>
+      {/* 建议流程：移动端 my-2（桌面保持 mb-5、无上边距），避免这句话上下各多出一段留白 */}
+      <p className="mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5">{lang === 'zh' ? '建议流程：先预测，再自由探索，最后完成结论。你可以随时返回任意阶段。' : 'Suggested flow: predict, explore freely, then conclude. You can revisit any stage at any time.'}</p>
       <Lab />
     </main>
   );

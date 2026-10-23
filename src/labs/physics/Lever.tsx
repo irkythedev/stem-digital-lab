@@ -10,11 +10,12 @@
  *
  * 教材依据：ch11「学生实验 探究杠杆的平衡条件」+ 杠杆原理（阿基米德）
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
+import ParamDock from '../../components/lab/ParamDock';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
@@ -32,6 +33,7 @@ const copy = {
   zh: {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '读数', reset: '重置',
+    paramDock: '调节参数', paramDockClose: '收起参数',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
     predictTitle: '预测',
@@ -76,6 +78,7 @@ const copy = {
   en: {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Readings', reset: 'Reset',
+    paramDock: 'Adjust', paramDockClose: 'Close controls',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
     predictTitle: 'Predict',
@@ -159,6 +162,8 @@ export default function Lever() {
   const torque1 = torque(m1, d1);
   const torque2 = torque(m2, d2);
   const isBalanced = isLeverBalanced(torque1, torque2);
+  /** 参数抽屉的滚动锚点：杠杆示意主图 */
+  const beamRef = useRef<HTMLDivElement>(null);
 
   // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
   useEffect(() => {
@@ -280,7 +285,7 @@ export default function Lever() {
       />
 
       {/* ── 杠杆示意 ── */}
-      <div className="border border-[var(--border)] p-3">
+      <div ref={beamRef} className="border border-[var(--border)] p-3">
         <svg viewBox="0 0 520 260" className="w-full" aria-label="杠杆" strokeLinecap="round" strokeLinejoin="round">
           {/* 支点 (固定在底部, 顶尖对准 260, 180) */}
           <polygon points="260,180 248,205 272,205" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.5" />
@@ -365,7 +370,17 @@ export default function Lever() {
         </svg>
       </div>
 
-      {/* ── 参数 ── */}
+      {/* ── 参数 ── 窄屏收进底部抽屉，摘要给力矩平衡状态，锚点回到杠杆主图 */}
+      <ParamDock
+        title={c.paramDock}
+        closeLabel={c.paramDockClose}
+        anchorRef={beamRef}
+        summary={
+          lang === 'zh'
+            ? `${isBalanced ? '平衡' : '不平衡'} ${torque1.toFixed(1)}:${torque2.toFixed(1)}`
+            : `${isBalanced ? 'Balanced' : 'Unbalanced'} ${torque1.toFixed(1)}:${torque2.toFixed(1)}`
+        }
+      >
       <div className="border border-[var(--border)] p-4 space-y-3">
         <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
         <ParamSlider label="m₁" value={m1} min={1} max={4} step={1} onChange={setM1} format={(v) => `${v} 个`} />
@@ -377,6 +392,7 @@ export default function Lever() {
           <span className="text-[var(--muted)]"> · F₂l₂ = </span>{torque2.toFixed(1)}
         </div>
       </div>
+      </ParamDock>
 
       {/* ── 幕内容 ── */}
       {stage === 'predict' && (

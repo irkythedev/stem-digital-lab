@@ -395,7 +395,9 @@ export default function Inverse() {
   return (
     <div className="flex flex-col space-y-6">
 
-      <div className="flex justify-center py-2">
+      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
+          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
+      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
         <Formula tex="y = \frac{k}{x}" block className="text-lg" />
       </div>
 

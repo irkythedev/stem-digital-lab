@@ -727,11 +727,10 @@ export default function PeriodicTable() {
       <div className="mb-6">
         <h1 className="text-3xl sm:text-4xl font-medium tracking-tight serif-font text-[var(--fg)]">
           {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
-          <AskAiButton
-            question={lang === 'zh' ? '请介绍元素周期表的使用方法：如何检索元素、查看详情、听读音，以及中考跟读功能怎么用？' : 'Explain how to use the periodic table: how to search elements, view details, hear pronunciation, and use the exam recite mode.'}
-            className="ml-3"
-          />
-          <AskQuizButton />
+        </h1>
+        {/* 页面动作簇独占一行：此前内联在 h1 里，390px 下「考考你」会单独掉到第二行，
+            被 h1 左缘 + ml-2 顶到 x=32。顺序与实验页统一为「分享 → 问 AI → 考考你」。 */}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <ShareInline
             title={lang === 'zh' ? '元素周期表 · 数理化数字实验室' : 'Periodic Table · STEM Digital Lab'}
             text={
@@ -740,7 +739,11 @@ export default function PeriodicTable() {
                 : '118 elements with real photos, Chinese & English pronunciation, and exam recitation mode. Free to use!'
             }
           />
-        </h1>
+          <AskAiButton
+            question={lang === 'zh' ? '请介绍元素周期表的使用方法：如何检索元素、查看详情、听读音，以及中考跟读功能怎么用？' : 'Explain how to use the periodic table: how to search elements, view details, hear pronunciation, and use the exam recite mode.'}
+          />
+          <AskQuizButton />
+        </div>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {lang === 'zh'
             ? '元素周期表是学习和研究化学的重要工具。由俄国化学家门捷列夫于 1869 年提出，现行版本由国际纯粹与应用化学联合会（IUPAC）维护，随新元素发现持续更新（最近于 2016 年补全 113–118 号）。点击元素查看信息，点小喇叭听读音。'

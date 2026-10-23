@@ -145,7 +145,13 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
       {/* 底线满幅通栏：border 落在满宽 header 上；内容由内层容器收回正文列。
           px-6 sm:px-12 lg:px-14 = 内容列容器的 px-4/sm:px-6/lg:px-8 + <main> 的 px-2 sm:px-6。 */}
       <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl items-center justify-between gap-2 px-6 sm:px-12 lg:px-14">
-      <Link to="/" className="flex items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors tap-area" aria-label={t.brandName}>
+      {/* 左簇（品牌 + 版本号）必须锁死成一行：顶栏是 justify-between 的两组 flex 子项，
+          默认 flex-shrink:1 会先压左簇；品牌文字是普通文本，一被压就在词间折行、
+          版本号跟着错位。所以这里显式 nowrap + shrink-0，宁可左右组间隙变窄，
+          也不让品牌行变成两行（实测 640 处两组间隔只剩 62px，字体度量一变就触界）。
+          版本号**不能**挂 self-end：.tap-area 在触屏下把本行撑到 40px（桌面只有 28px），
+          self-end 会把版本号钉到行底，实测下沉 6.5px —— 10px 的小字看起来就像「掉到了下一行」。 */}
+      <Link to="/" className="flex flex-nowrap shrink-0 items-center gap-2 group p-1 -m-1 rounded-lg hover:bg-[var(--accent-light)]/50 transition-colors tap-area" aria-label={t.brandName}>
         <span className="relative w-5 h-5 text-[var(--fg)] shrink-0">
           {/* 三角（数学）— 上中 */}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
@@ -183,12 +189,14 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
             </button>
           )}
         </span>
-        <span className="hidden sm:inline text-[0.625rem] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
+        <span className="hidden sm:inline whitespace-nowrap text-[0.625rem] mono-font uppercase tracking-wider text-[var(--fg)] group-hover:opacity-70 transition-opacity">
           STEM DIGITAL LAB
         </span>
         {/* 版本号：点击弹出版本历史；有更新时显示绿色呼吸灯圆点，点击圆点刷新到新版本 */}
         {/* 注意：按钮嵌在品牌区 <Link to="/"> 内，必须阻止冒泡，否则会同时跳回首页 */}
-        {/* 版本号（桌面显示；移动端隐藏——移动端仅在有新版时于 logo 右上角显示绿点） */}
+        {/* 版本号（桌面与平板显示；移动端隐藏——移动端仅在有新版时于 logo 右上角显示绿点）
+            与品牌同轴：不再 self-end（触屏下会把版本号压到 40px 行的底部、下沉 6.5px）。
+            tap-pad-10 只补透明热区，视觉仍是 10px 小字（15px 高 → 35px 命中）。 */}
         <button
           type="button"
           onClick={(e) => {
@@ -198,7 +206,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           }}
           title={t.versionTitle.replace('{version}', APP_VERSION)}
           aria-label={t.versionAria}
-          className="hidden sm:flex items-center gap-1.5 self-end mb-0.5 rounded text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          className="hidden sm:flex items-center gap-1.5 whitespace-nowrap tap-pad-10 rounded text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
         >
           <span className="relative">
             v{APP_VERSION}
@@ -233,8 +241,10 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
       {/* 右侧操作簇：统一用 flex gap 排布，不插「|」竖线分隔。
           竖线只夹在中间两个控件之间，两端却是间隙——那条竖线反而把操作簇切成
           「有线的一段」和「没线的一段」，读起来像两个不相干的组。
-          间距直接给在容器上：移动端 gap-1、桌面 gap-4，各控件自己的 padding 再加一层呼吸。 */}
-      <div className="flex items-center gap-1 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
+          间距直接给在容器上：移动端 gap-1.5、桌面 gap-4，各控件自己的 padding 再加一层呼吸。
+          注意：48px 的「节距」里 40px 是控件自身的 .tap-area 命中盒（触屏地板），
+          真正可调的只有这 6px 间隙——所以收紧的观感来自「组更靠拢」，不是图标变小。 */}
+      <div className="flex items-center gap-1.5 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
         {/* 离线教学包：仅下载中 / 已就绪时出现 */}
         {(packRunning || packStatus?.isFull) && (
           <button
@@ -256,6 +266,9 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
 
         {/* AI 入口：图标开面板；状态角标是**附属徽标**，做成标准 Badge 贴在字形右上角。
             角标只表达「连通性」：未配置时不渲染（没配置不是故障）。
+
+            移动端与桌面共用这一处入口（页面右缘不再有悬浮书签）：横向空间由语言按钮的
+            「中 / 中文」双断点（省 12px）腾出来，右簇 5 个控件在 390 下仍单行不溢出。
 
             几何（16×16 盒，落在图标按钮的右上角内）：
             - 图标按钮 36×36，Sparkles 字形 14×14 居中 → 字形四角在 11..25 之间。
@@ -385,7 +398,16 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           title={lang === 'zh' ? 'EN' : '中文'}
           className="inline-flex items-center justify-center leading-none px-2.5 py-1.5 min-h-[1.625rem] rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
-          {lang === 'zh' ? '中文' : 'EN'}
+          {/* 移动端只留「中」：省 12px 横向宽度，给回归的 AI 图标腾位置；
+              桌面（sm:）仍是完整的「中文」。英文侧 EN 两档同形，不需要拆。 */}
+          {lang === 'zh' ? (
+            <>
+              <span className="sm:hidden">中</span>
+              <span className="hidden sm:inline">中文</span>
+            </>
+          ) : (
+            'EN'
+          )}
         </button>
 
         {/* Theme Mode Switcher (single cycle button) */}
@@ -402,6 +424,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         <Link
           to="/guide"
           title={t.guideHint}
+          aria-label={t.guide}
           className="group/guide inline-flex items-center justify-center gap-1.5 leading-none px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
         >
           {/* 媒体指示：说明页顶部就是项目介绍视频；图标与文字同属一个链接，触屏上常驻可见 */}
@@ -409,7 +432,13 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
             className="w-3.5 h-3.5 shrink-0 motion-safe:transition-transform motion-safe:duration-[var(--dur-base)] motion-safe:group-hover/guide:scale-[1.06]"
             aria-hidden="true"
           />
-          {t.guide}
+          {/* <1024 只留图标：右组 5 个入口在 375 下已顶到上限（261.3px / 可用 327），
+              四个汉字占 46px。隐藏后右组降到 219px，320/360 的崩点整体后移。
+              平板段（640–1023）同理收成图标形态：iPad 上右簇 296px + 左簇 198px，
+              两组间隔只剩 62px，字体度量一变就会顶到品牌行；退到图标形态后余量翻倍，
+              且右簇全部 40px 方盒、呼吸节奏与手机端一致。
+              文字隐去不影响可访问名——aria-label 常驻（≥1024 另有 title 提示含演示视频）。 */}
+          <span className="hidden lg:inline">{t.guide}</span>
         </Link>
 
         {/* 帮助入口：幽灵图标按钮，点击打开欢迎弹窗并默认停在「快速上手指引」 */}
