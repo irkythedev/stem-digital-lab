@@ -12,7 +12,7 @@ import BackLink from '../components/layout/BackLink';
 import { Calculator, Gauge, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
-import { labCategories, labsForSubject } from '../lib/labs';
+import { labCategories, regularLabsForSubject, toolsForSubject, labHref } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
 import SubjectHeading from '../components/layout/SubjectHeading';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
@@ -32,8 +32,18 @@ const BADGE_CLS =
 const ARROW_CLS =
   'mono-font text-[var(--muted)] transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:translate-x-1';
 
+/** 工具卡片：静态查表工具与注册表里的专业工具台统一成同一形态 */
+interface ToolCard {
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+  name: { zh: string; en: string };
+  desc: { zh: string; en: string };
+  /** 专业工具台（如电学工作台）：徽标显示「专业工具台」，其余显示「查表」 */
+  pro?: boolean;
+}
+
 /** 查表工具（固定路由；名称与描述同 vite.config.ts 的 GEO 产物口径） */
-const TOOLS: Record<string, { to: string; icon: ComponentType<{ className?: string }>; name: { zh: string; en: string }; desc: { zh: string; en: string } }[]> = {
+const TOOLS: Record<string, ToolCard[]> = {
   math: [
     {
       to: '/math-formulas',
@@ -86,9 +96,19 @@ export default function SubjectPage() {
   }
 
   const meta = t.subjects[subject.id];
-  const labList = labsForSubject(subject.id);
-  const tools = TOOLS[subject.id] ?? [];
+  // 常规实验网格只放三幕式实验；专业工具台（meta.kind === 'tool'）归入「// 工具」栏
+  const labList = regularLabsForSubject(subject.id);
   const categories = labCategories[subject.id] ?? [];
+  const tools: ToolCard[] = [
+    ...toolsForSubject(subject.id).map((lab) => ({
+      to: labHref(lab),
+      icon: lab.icon,
+      name: lab.name,
+      desc: lab.description,
+      pro: true,
+    })),
+    ...(TOOLS[subject.id] ?? []),
+  ];
 
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
@@ -102,18 +122,26 @@ export default function SubjectPage() {
         />
       </div>
 
-      {/* 工具区：数学 → 公式速查；物理 → 常量 + 公式速查；化学 → 元素周期表 */}
+      {/* 工具区：数学 → 公式速查；物理 → 电学工作台 + 常量 + 公式速查；化学 → 元素周期表 */}
       {tools.length > 0 && (
         <section className="mb-8">
           <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
             // {lang === 'zh' ? '工具' : 'Tools'}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {tools.map((tool) => (
               <Link key={tool.to} to={tool.to} className={CARD_CLS}>
                 <div className="flex items-start justify-between gap-3">
                   <tool.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />
-                  <span className={BADGE_CLS}>{lang === 'zh' ? '查表' : 'LOOKUP'}</span>
+                  <span className={tool.pro ? `${BADGE_CLS} border-[var(--fg)] text-[var(--fg)]` : BADGE_CLS}>
+                    {tool.pro
+                      ? lang === 'zh'
+                        ? '专业工具台'
+                        : 'PRO TOOL'
+                      : lang === 'zh'
+                        ? '查表'
+                        : 'LOOKUP'}
+                  </span>
                 </div>
                 <h3 className="mt-3 text-base font-semibold tracking-wide text-[var(--fg)] serif-font">
                   {tool.name[lang]}
@@ -140,7 +168,7 @@ export default function SubjectPage() {
               const badge = lab.meta;
               const cat = categories.find((c) => c.id === lab.category);
               return (
-                <Link key={lab.id} to={`/lab/${lab.id}`} className={CARD_CLS}>
+                <Link key={lab.id} to={labHref(lab)} className={CARD_CLS}>
                   {/* 顶部行：学科图元 + 元信息徽标（C++ 计算核 / 教材定位） */}
                   <div className="flex items-start justify-between gap-3">
                     <lab.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />

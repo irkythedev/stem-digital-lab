@@ -24,6 +24,7 @@ import StageNav from '../../components/lab/StageNav';
 import { loadOhmEngine, sampleQuadratic } from '../physics/stem-engine';
 import { quadraticRoots } from './quadratic-core';
 import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -51,8 +52,6 @@ const copy = {
     paramDock: '调节参数',
     paramDockClose: '收起参数',
     readout: '当前函数',
-    engineWasm: '计算引擎：C++ WebAssembly',
-    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     // 幕导航
     stagePredict: '预测',
@@ -149,8 +148,6 @@ const copy = {
     paramDock: 'Adjust',
     paramDockClose: 'Close controls',
     readout: 'Current function',
-    engineWasm: 'Engine: C++ WebAssembly',
-    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -326,7 +323,8 @@ export default function Quadratic() {
       points: sampleQuadratic(a, b, c),
       label: exprOf(a, b, c),
     }),
-    [a, b, c],
+    // engineKind 进依赖：sampleQuadratic 按门面当前实现采样，WASM 加载完成后须重算
+    [a, b, c, engineKind],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
@@ -570,7 +568,7 @@ export default function Quadratic() {
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.params}
               </h3>
-              <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? t.engineWasm : t.engineJs} />
+              <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
             </div>
             <ParamSlider label="a" value={a} min={-5} max={5} step={0.1} onChange={setA} format={(v) => v.toFixed(1)} />
             <ParamSlider label="b" value={b} min={-6} max={6} step={0.1} onChange={setB} format={(v) => v.toFixed(1)} />

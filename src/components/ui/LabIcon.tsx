@@ -440,3 +440,32 @@ export function PeriodicTableIcon({ className = '' }: LabIconProps) {
     </svg>
   );
 }
+
+/** 电学实验台：接线板 + 表盘 + 电阻（区别于「串并联电路」的固定拓扑图） */
+export function CircuitBenchIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* 接线板外框 */}
+      <rect x="2.6" y="6" width="18.8" height="12.6" rx="1.2" />
+      {/* 表盘：圆 + 指针 */}
+      <circle cx="8.2" cy="12.2" r="3.1" />
+      <path d="M8.2 12.2 L10 10.3" />
+      {/* 电阻：折线 */}
+      <path d="M13 12.2 h1.1 l0.9 -1.8 l1.8 3.6 l1.8 -3.6 l1.8 3.6 l0.9 -1.8 h0.9" />
+      {/* 接线柱 */}
+      <circle cx="3.4" cy="6.8" r="0.55" fill="currentColor" />
+      <circle cx="20.6" cy="17.8" r="0.55" fill="currentColor" />
+      {/* 台脚 */}
+      <path d="M5.5 18.6 V21 M18.5 18.6 V21" />
+    </svg>
+  );
+}

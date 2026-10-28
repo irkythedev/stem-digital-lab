@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.41.0';
+export const APP_VERSION = '0.42.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.42.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 电学工作台：自由画布搭电路——元件拖放、旋转与改接，电路图与仿真图一键切换',
+      '[新增] 电路读数与元件状态监控：电压电流随画布实时联动，损坏的元件可一键修复（先断开再更换）',
+      '[优化] 工作台移入「工具」区、旧链接自动跳转；介绍视频同步更新',
+      '[优化] 「清除 AI 配置」说明更明确：只清本机配置与当前进度，问答历史与错题集不受影响',
+    ],
+    en: [
+      '[New] Circuit Workbench: build circuits on a free canvas — drag, rotate and rewire components, and switch between the circuit and simulation views',
+      '[New] Live readings and a live component monitor: voltages and currents follow the canvas, and a damaged component can be repaired in one step (switch the circuit off first)',
+      '[Improved] The workbench now sits under Tools and older links redirect automatically; the intro film has been refreshed',
+      '[Improved] "Clear AI config" now says exactly what it does: it clears the settings saved on this device and the current session, while your Q&A history and mistake list stay untouched',
+    ],
+  },
   {
     version: '0.41.0',
     date: '2026-10',

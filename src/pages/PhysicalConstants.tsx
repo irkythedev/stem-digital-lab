@@ -15,7 +15,7 @@ import { Search, X } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { CONSTANTS, CONSTANT_CATEGORY_ZH, CONSTANT_CATEGORY_EN, type ConstantCategory, type PhysicalConstant } from '../lib/constants';
 import { PHYSICS_FORMULAS } from '../lib/physics-formulas';
-import { labMap } from '../lib/labs';
+import { labHref, labMap } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
@@ -238,7 +238,7 @@ export default function PhysicalConstants() {
                   <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
                   {selected.labId && labMap[selected.labId] && (
                     <Link
-                      to={`/lab/${selected.labId}`}
+                      to={labHref(labMap[selected.labId])}
                       className="underline hover:text-[var(--fg)]"
                       onClick={(e) => e.stopPropagation()}
                     >

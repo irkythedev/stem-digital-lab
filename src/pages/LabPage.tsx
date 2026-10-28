@@ -6,12 +6,12 @@
  * 依据路由参数 /lab/:labId 从实验注册表读取实验并渲染其组件；
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import BackLink from '../components/layout/BackLink';
 import { useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
 import { translations } from '../lib/i18n';
-import { labMap } from '../lib/labs';
+import { labFromPath, labHref } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
@@ -22,14 +22,17 @@ import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 
 export default function LabPage() {
   const { labId } = useParams<{ labId: string }>();
+  const location = useLocation();
   const { t, lang } = useApp();
 
-  const lab = labId ? labMap[labId] : undefined;
+  // 规范路径（/circuit-bench）与兼容路径（/lab/circuit-bench；/physics/circuit-bench 由路由跳转过来）解析到同一实验。
+  const lab = labFromPath(location.pathname) ?? (labId ? labFromPath(`/lab/${labId}`) : undefined);
+  const canonicalLabId = lab?.id ?? labId;
   const { setAiCtx } = useAiContext();
   // 路由级 meta：标题/描述 + LearningResource 结构化数据
   const pageMeta = useMemo(() => {
     if (!lab) return null;
-    const url = `https://stem.irky.dev/lab/${lab.id}`;
+    const url = `https://stem.irky.dev${labHref(lab)}`;
     return {
       title: `${lab.name[lang]} - ${t.brandName}`,
       description: lang === 'zh'
@@ -50,10 +53,12 @@ export default function LabPage() {
   useEffect(() => {
     if (lab) {
       const grade = subjects[lab.subjectId]?.gradeZh ?? '';
-      setAiCtx({
+      // 合并而非覆盖：实验组件可能已经写入 live 实时摘要。
+      setAiCtx((prev) => ({
+        ...prev,
         topic: `${lab.name.zh}实验（${grade}）`,
         knowledge: `${lab.name.zh}实验（${lab.subjectId === 'physics' ? '苏科版' : '人教版'}）：${lab.description.zh}。${lab.aiKnowledge ? `\n${lab.aiKnowledge}` : ''}`,
-      });
+      }));
     }
     return () => setAiCtx({});
   }, [lab, setAiCtx]);
@@ -63,7 +68,7 @@ export default function LabPage() {
       <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
         <div className="mb-8">
           <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
-            / lab / {labId ?? 'unknown'}
+            / lab / {canonicalLabId ?? 'unknown'}
           </span>
           <h1 className="t-h1 font-medium serif-font mt-2 mb-2 text-[var(--fg)]">
             {t.underConstruction}
@@ -79,6 +84,9 @@ export default function LabPage() {
   }
 
   const Lab = lab.component;
+  // 页头右侧状态徽标（可选）：工作台的 C++ / JS 计算核标识走标准动作簇末尾。
+  const HeaderBadge = lab.headerBadge;
+
   // 页面级「问 AI」的兜底问句：实验自身若注册了更贴切的（含实时读数）问句，点击时以注册的为准
   const pageAiQuestion = lang === 'zh'
     ? `请讲解${lab.name.zh}实验的原理、操作要点与观察重点`
@@ -122,11 +130,26 @@ export default function LabPage() {
           />
           <AskAiButton labId={lab.id} question={pageAiQuestion} />
           <AskQuizButton />
+          {HeaderBadge && (
+            <div className="ml-auto">
+              <HeaderBadge />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* 建议流程：移动端 my-2（桌面保持 mb-5、无上边距），避免这句话上下各多出一段留白 */}
-      <p className="mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5">{lang === 'zh' ? '建议流程：先预测，再自由探索，最后完成结论。你可以随时返回任意阶段。' : 'Suggested flow: predict, explore freely, then conclude. You can revisit any stage at any time.'}</p>
+      {/* 建议流程：移动端 my-2（桌面保持 mb-5、无上边距），避免这句话上下各多出一段留白。
+          工具台（meta.kind === 'tool'）没有三幕式阶段，不能继续提示「先预测…最后完成结论」——
+          那句话会把自由工作台重新说成步骤锁定的实验。此处换成工具台自己的引导。 */}
+      <p className="mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5">
+        {lab.meta?.kind === 'tool'
+          ? lang === 'zh'
+            ? '自由工作台：加载预设或从空白开始，随时接线、读表、记录数据。所有操作都可撤销。'
+            : 'Free workbench: start from a preset or a blank sheet, then wire, meter and record at will. Every action can be undone.'
+          : lang === 'zh'
+            ? '建议流程：先预测，再自由探索，最后完成结论。你可以随时返回任意阶段。'
+            : 'Suggested flow: predict, explore freely, then conclude. You can revisit any stage at any time.'}
+      </p>
       <Lab />
     </main>
   );

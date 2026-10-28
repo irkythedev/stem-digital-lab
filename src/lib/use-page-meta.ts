@@ -22,7 +22,7 @@ export interface PageMeta {
 export const SITE_TITLE = '数理化数字实验室 | STEM Digital Lab';
 
 export const SITE_DESC =
-  '基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台：15 个交互实验 + 4 个查表工具，无需登录、中英双语、深浅主题，可安装为 PWA 离线使用。';
+  '基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台：15 个交互实验 + 5 个工具，无需登录、中英双语、深浅主题，可安装为 PWA 离线使用。';
 
 let jsonLdSeq = 0;
 

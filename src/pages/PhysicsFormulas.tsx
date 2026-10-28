@@ -18,7 +18,7 @@ import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { PHYSICS_FORMULAS, PHYSICS_FORMULA_CATEGORY_ZH, PHYSICS_FORMULA_CATEGORY_EN, type PhysicsFormulaCategory, type PhysicsFormula } from '../lib/physics-formulas';
 import { CONSTANTS } from '../lib/constants';
-import { labMap } from '../lib/labs';
+import { labHref, labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import Formula from '../components/ui/Formula';
@@ -327,7 +327,7 @@ export default function PhysicsFormulas() {
                 {selected.labId && labMap[selected.labId] && (
                   <div className="px-0.5 text-xs">
                     <Link
-                      to={`/lab/${selected.labId}`}
+                      to={labHref(labMap[selected.labId])}
                       className="underline hover:text-[var(--fg)]"
                       onClick={(e) => e.stopPropagation()}
                     >

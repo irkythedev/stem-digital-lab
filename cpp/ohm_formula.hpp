@@ -9,7 +9,9 @@
  * 语义与 src/labs/physics/ohm-core.ts（JS 真源）完全一致：
  *   - 定值电阻动态电阻 = r；灯泡 = r + γ·U（γ = 0.4 Ω/V）
  *   - 定值电阻 I = U / (r + rp)；灯泡 I = U / (r + γ·U + rp)
- *   - 分母为 0 不特判，保持 IEEE 除法语义（inf / nan），短路由交互层处理
+ *   - 与 ohm-core 一致：0/0 -> 0（分母为 0 且 u 也为 0 时返回 +0.0，
+ *     不落回 IEEE 的 NaN——NaN 会顺着 SVG polyline 传下去把整条曲线抹掉）；
+ *     其余分母为 0 的情形保持 IEEE 除法语义（u/±0 = ±inf），短路由交互层处理
  */
 
 #ifndef OHM_FORMULA_HPP
@@ -25,9 +27,11 @@ inline double element_resistance(double r, bool is_bulb, double u) {
   return is_bulb ? r + kBULB_GAMMA * u : r;
 }
 
-/** 电路读数 I（A）。分母为 0 不特判（IEEE 除法语义）。 */
+/** 电路读数 I（A）。分母为 0 且 u 也为 0 时返回 0（与 ohm-core 一致），其余保持 IEEE 除法语义。 */
 inline double current_of(double u, double r, bool is_bulb, double rp) {
-  return is_bulb ? u / (r + kBULB_GAMMA * u + rp) : u / (r + rp);
+  const double denom = is_bulb ? r + kBULB_GAMMA * u + rp : r + rp;
+  if (denom == 0.0) return u == 0.0 ? 0.0 : u / denom;
+  return u / denom;
 }
 
 }  // namespace ohm

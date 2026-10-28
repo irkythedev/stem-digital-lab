@@ -271,13 +271,16 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
             「中 / 中文」双断点（省 12px）腾出来，右簇 5 个控件在 390 下仍单行不溢出。
 
             几何（16×16 盒，落在图标按钮的右上角内）：
-            - 图标按钮 36×36，Sparkles 字形 14×14 居中 → 字形四角在 11..25 之间。
-            - 盒取 right-0 top-0，圆心在「距右边 8 / 距上边 8」，即字形右上角再向外 3px；
-              6px 圆点 + 2px 环（ring-[var(--bg)]）外扩后与字形角重叠约 2px —— 这正是
-              标准通知徽标的「压住一角」关系，读起来是长在图标上，而不是悬在旁边。
+            - 图标按钮 36×36，Sparkles 字形 14×14 居中 → 字形包围盒在 11..25 之间。
+            - 但**包围盒拐角不是空白**：Lucide 的 Sparkles 在字形右上角本身就有墨迹
+              （一条十字短线，含描边实测约 x∈20.91..24.42、y∈11.58..15.08，按钮坐标）。
+              所以角标不能按「压住包围盒一角」摆——那会正好盖住图标自己的那个点。
+            - 盒取 right-0 top-0（16×16，完全落在按钮内 → 不影响 header 高度），圆点再向右 1px、
+              向上 2px：圆心 (29,6) 落在字形拐角**外侧**，与十字墨迹的最近距离是环外缘 2.22px、
+              圆点本体 4.22px —— 既不压住图标自己的点，也没飘到斜上方那团空白里。
             - 盒的下沿止于 y=16，字形中心在 y=18，所以**图标中心仍归图标按钮**（开面板）。
               旧版把盒抬到 -26px 是为了不压字形，代价是圆点飘在图标上方空白里，
-              视觉上完全脱离图标——那个"悬浮错觉"就是这次要修的东西。 */}
+              视觉上完全脱离图标——那个"悬浮错觉"是上一轮修掉的。 */}
         <div className="relative flex items-center justify-center">
           <button
             type="button"
@@ -303,14 +306,15 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                   颜色只用设计令牌，深色主题下随令牌自适应；静态常亮，不做装饰性闪烁
                   （唯一例外：verifying 用 motion-safe 呼吸，表示「正在进行」。
 
-                  点位内收 -3/+3：命中盒留在 16×16 的右上角（不吞图标中心），但圆点自己
-                  向字形拐角里挪 3px，与字形包围盒重叠 3×3px，再叠 ring-2(--bg) 切出一圈
-                  底色——这才是标准 Badge 的「压在拐角上」关系。不挪的话两点只是**角对角相切**，
-                  看着像浮在斜上方一团空里，就是用户说的那个视错觉。 */}
+                  点位 = 盒中心再向右 1px、向上 2px（圆心 (29,6)）：让开字形右上角那条十字墨迹
+                  （含描边墨迹止于 x=24.42 / y=11.58，圆心距它 7.22px ＞ 环半径 5px），
+                  环外缘因此留出 2.22px 底色缝、圆点本体留 4.22px —— 既不压点也不飘远。
+                  旧版是向字形里内收 -3/+3（圆心贴着字形拐角 (25,11)，距墨迹仅 0.82px），
+                  圆点会吃掉图标自己的那个点——本次修的正是这个。 */}
               {isHollowStatus(shownStatus) ? (
-                <span className={`h-2 w-2 rounded-full -translate-x-[3px] translate-y-[3px] ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
+                <span className={`h-2 w-2 rounded-full translate-x-[1px] -translate-y-[2px] ${AI_STATUS_HOLLOW[shownStatus]}`} aria-hidden="true" />
               ) : (
-                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] -translate-x-[3px] translate-y-[3px] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
+                <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] translate-x-[1px] -translate-y-[2px] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
               )}
             </button>
           )}

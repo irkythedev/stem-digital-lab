@@ -1,0 +1,9 @@
+# Issue 模板选择器。
+# 单一事实源：只维护本文件（Gitee 亦读取 .github/ISSUE_TEMPLATE）。
+# 刻意不禁用空白 issue —— 模板只用来把「信息不足」的问题一次问清，不强迫路人填表；
+# 同时把更省事的站内反馈气泡摆在并列位置（已由 smoke 断言锁定）。
+blank_issues_enabled: true
+contact_links:
+  - name: 站内反馈气泡（推荐，免登录）
+    url: https://stem.irky.dev/guide
+    about: 右下角浮动气泡可就地反馈实验或项目问题，自动带上当前页面，离线也能提交、联网后自动补发

@@ -145,6 +145,14 @@ const FIELD_LABEL: Record<string, FieldDef> = {
   done: { zh: '反应', en: 'reaction', bool: { on: { zh: '已发生', en: 'yes' }, off: { zh: '未发生', en: 'no' } } },
   polished: { zh: '金属丝', en: 'metal wire', bool: { on: { zh: '已打磨', en: 'polished' }, off: { zh: '未打磨', en: 'not polished' } } },
   stage: { zh: '当前阶段', en: 'stage' },
+  presetZh: { zh: '实验预设', en: 'preset' },
+  presetEn: { zh: '实验预设', en: 'preset' },   // 英文语境下的取值来源
+  wires: { zh: '导线根数', en: 'wire count' },
+  running: {
+    zh: '仿真状态',
+    en: 'simulation',
+    bool: { on: { zh: '运行中', en: 'running' }, off: { zh: '已暂停', en: 'paused' } },
+  },
 };
 
 /**
@@ -156,6 +164,18 @@ const FIELD_LABEL: Record<string, FieldDef> = {
  * 模型会顺着这个错误量纲继续讲下去（审计实测输出）。
  */
 const FIELD_LABEL_BY_LAB: Record<string, Record<string, FieldDef>> = {
+  'circuit-bench': {
+    // 实验台是多回路自由拓扑：这里报的是「整台实验」的主读数，不冒充某个元件两端电压。
+    i: { zh: '电源干路电流', en: 'supply current', unit: 'A' },
+    u: { zh: '电源电动势', en: 'supply EMF', unit: 'V' },
+    p: { zh: '总功率', en: 'total power', unit: 'W' },
+    r: { zh: '外电路等效电阻', en: 'external equivalent resistance', unit: 'Ω' },
+    switchOn: {
+      zh: '总开关',
+      en: 'main switch',
+      bool: { on: { zh: '闭合', en: 'closed' }, off: { zh: '断开', en: 'open' } },
+    },
+  },
   lens: {
     u: { zh: '物距', en: 'object distance', unit: 'cm' },
     f: { zh: '焦距', en: 'focal length', unit: 'cm' },
@@ -415,8 +435,22 @@ export function clearLabState(labId: string): void {
   LAB_STATE.delete(labId);
 }
 
-/** 从当前路径取实验 id（/lab/ohm → ohm） */
+/**
+ * 规范路径 → 实验 id（含已废弃但需继续可用的历史路径）。
+ * 这里刻意不 import labs.ts：labs 会 import 全部实验组件，而实验组件又 import 本模块，
+ * 形成环。规范路径数量很少，显式表比多一层模块依赖更稳。
+ */
+const CANONICAL_LAB_PATHS: Record<string, string> = {
+  '/circuit-bench': 'circuit-bench',
+  // 历史路径：电学工作台曾挂在 /physics/circuit-bench，路由保留兼容，AI 侧同步认它
+  '/physics/circuit-bench': 'circuit-bench',
+};
+
+/** 从当前路径取实验 id（/lab/ohm → ohm，/circuit-bench → circuit-bench） */
 export function labIdFromPath(pathname: string): string {
+  const clean = (pathname || '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+  const canonical = CANONICAL_LAB_PATHS[clean];
+  if (canonical) return canonical;
   const m = /\/lab\/([A-Za-z0-9_-]+)/.exec(pathname || '');
   return m ? m[1] : '';
 }

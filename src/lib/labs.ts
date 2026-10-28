@@ -19,12 +19,14 @@
 import type { ComponentType } from 'react';
 import type { SubjectId } from './subjects';
 import type { LabIconProps } from '../components/ui/LabIcon';
-import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
+import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, CircuitBenchIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
 import Quadratic from '../labs/math/Quadratic';
 import Inverse from '../labs/math/Inverse';
 import Linear from '../labs/math/Linear';
 import Ohm from '../labs/physics/Ohm';
 import Circuits from '../labs/physics/Circuits';
+import CircuitBench from '../labs/physics/circuit-bench/CircuitBench';
+import CircuitEngineBadge from '../labs/physics/circuit-bench/CircuitEngineBadge';
 import Neutralization from '../labs/chemistry/Neutralization';
 import Lens from '../labs/physics/Lens';
 import Circle from '../labs/math/Circle';
@@ -45,13 +47,25 @@ export interface LabCardMeta {
   grade: { zh: string; en: string };
   /** 核心公式或一句话学科要义（Unicode 纯文本：避免内嵌 KaTeX 的双反斜杠坑，卡片内也更紧凑） */
   formula: string;
-  /** 是否由 C++ / WebAssembly 计算核驱动（全站三处：欧姆定律 / 凸透镜成像 / 二次函数） */
+  /**
+   * 是否由 C++ / WebAssembly 计算核驱动（全站七处：欧姆定律 / 凸透镜成像 / 二次函数 /
+   * 反比例函数 / 酸碱中和 / 浮力，以及经线性求解核的电学工作台）。
+   * 判据是「该实验的算式真的走 stem-engine 门面」，不是「能挂徽标」——
+   * 没接入门面的实验不得标 core，否则卡片上的 C++ 芯片就是假的。
+   */
   core?: boolean;
+  /**
+   * 条目性质：标准三幕式实验（缺省）或专业仿真工具台。
+   * 工具台不设阶段锁定，列表页用独立徽标与「专业沙盒」说明和其他实验区分。
+   */
+  kind?: 'lab' | 'tool';
 }
 
 export interface LabMeta {
   /** 路由 id，如 'quadratic' → /lab/quadratic */
   id: string;
+  /** 规范路由（可选）。有值时入口链接走这里，/lab/:id 仍保持兼容 */
+  path?: string;
   subjectId: SubjectId;
   name: { zh: string; en: string };
   /** 一句话描述（首页展示用） */
@@ -61,6 +75,11 @@ export interface LabMeta {
   /** 实验级图标（区分于科目图标） */
   icon: ComponentType<LabIconProps>;
   component: ComponentType;
+  /**
+   * 页面页头右侧的状态徽标（可选），如工作台的 C++ / JS 计算核标识。
+   * 挂在标准实验页头的动作簇末尾，实验自身不再重复渲染一份。
+   */
+  headerBadge?: ComponentType;
   /** 领域分类（首页学科展开 tab，按教材领域组织） */
   category: LabCategoryId;
   /** 科目页卡片徽标（教材 / 核心公式 / C++ 核）；缺省时卡片退化为「标题 + 描述」 */
@@ -122,6 +141,7 @@ export const labs: LabMeta[] = [
     meta: {
       grade: { zh: '人教版 九上第26章', en: 'PEP · G9 Ch.26' },
       formula: 'y = k / x',
+      core: true,
     },
   },
   {
@@ -165,6 +185,24 @@ export const labs: LabMeta[] = [
     meta: {
       grade: { zh: '苏科版 九上', en: 'SJ · G9' },
       formula: '串联 I = I₁ = I₂｜并联 I = I₁ + I₂',
+    },
+  },
+  {
+    id: 'circuit-bench',
+    path: '/circuit-bench',
+    subjectId: 'physics',
+    name: { zh: '电学工作台', en: 'Circuit Workbench' },
+    description: { zh: '专业电学仿真工作台：自由连线、实时读表、记录并拟合数据', en: 'A professional circuit sandbox: wire freely, read live meters and fit recorded data' },
+    aiKnowledge: '工具定位：这是一个专业电学仿真工作台，不是按步骤锁定的三幕式实验。八个经典预设（串并联、欧姆定律、小灯泡伏安特性、惠斯通电桥、短路与保险丝、焦耳定律、影响电阻大小的因素、空白沙盒）只是起点，学生可随时加删元件、自由改线。操作要点：点两个接线柱完成连线，双击开关或点检查器切换通断；画布卡顶栏可运行/暂停仿真、撤销/重做、清空与适配画布；选中元件或导线时，画布右上角浮出检查器，实时显示读数与故障并可旋转、换极性、删除，画布下方测量面板手动记录读数、作最小二乘拟合并导出 CSV。关键规律：串联电流处处相等、电压按电阻分配；并联各支路电压相等、干路电流为支路之和；I=U/R；小灯泡灯丝电阻随温度升高而增大；R=ρL/S；Q=I²Rt。考点：电路连接与故障判断、电表量程与接法、伏安法测电阻、电桥平衡条件、保险丝作用。',
+    icon: CircuitBenchIcon,
+    component: CircuitBench,
+    headerBadge: CircuitEngineBadge,
+    category: 'electric',
+    meta: {
+      grade: { zh: '苏科版 九上 · 专业工具', en: 'SJ · G9 pro tool' },
+      formula: 'I = U / R｜P = UI｜Q = I²Rt',
+      core: true,
+      kind: 'tool',
     },
   },
   {
@@ -222,6 +260,7 @@ export const labs: LabMeta[] = [
     meta: {
       grade: { zh: '人教版 九下第十单元', en: 'PEP · G9 Unit 10' },
       formula: 'H⁺ + OH⁻ = H₂O',
+      core: true,
     },
   },
   {
@@ -236,6 +275,7 @@ export const labs: LabMeta[] = [
     meta: {
       grade: { zh: '苏科版 九上第9章', en: 'SJ · G9 Ch.9' },
       formula: 'F浮 = ρ液 g V排',
+      core: true,
     },
   },
   {
@@ -313,7 +353,41 @@ export const labs: LabMeta[] = [
 /** id → 实验元信息 的快速索引。 */
 export const labMap: Record<string, LabMeta> = Object.fromEntries(labs.map((lab) => [lab.id, lab]));
 
-/** 取某科目下的实验列表（按注册顺序）。 */
+/** 规范路径 → 实验元信息（无 path 的实验仍只走 /lab/:id）。 */
+export const labPathMap: Record<string, LabMeta> = Object.fromEntries(
+  labs.filter((lab) => !!lab.path).map((lab) => [lab.path as string, lab]),
+);
+
+/** 实验入口链接：优先规范路径，未迁移的实验继续用 /lab/:id。 */
+export function labHref(lab: LabMeta): string {
+  return lab.path ?? `/lab/${lab.id}`;
+}
+
+/** 从 pathname 反查实验：先查规范路径，再兼容 /lab/:id。 */
+export function labFromPath(pathname: string): LabMeta | undefined {
+  const clean = (pathname || '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+  const direct = labPathMap[clean];
+  if (direct) return direct;
+  const m = /^\/lab\/([A-Za-z0-9_-]+)$/.exec(clean);
+  return m ? labMap[m[1]] : undefined;
+}
+
+/** 取某科目下的全部条目（按注册顺序：含常规实验与专业工具台）。 */
 export function labsForSubject(subjectId: SubjectId): LabMeta[] {
   return labs.filter((lab) => lab.subjectId === subjectId);
+}
+
+/** 是否为专业工具台：不设三幕式阶段，科目页归入「// 工具」栏而不是常规实验网格。 */
+export function isToolLab(lab: LabMeta): boolean {
+  return lab.meta?.kind === 'tool';
+}
+
+/** 取某科目下的常规实验（排除专业工具台）。 */
+export function regularLabsForSubject(subjectId: SubjectId): LabMeta[] {
+  return labsForSubject(subjectId).filter((lab) => !isToolLab(lab));
+}
+
+/** 取某科目下登记在注册表的专业工具台（与静态查表工具并列展示）。 */
+export function toolsForSubject(subjectId: SubjectId): LabMeta[] {
+  return labsForSubject(subjectId).filter(isToolLab);
 }

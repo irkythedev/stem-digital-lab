@@ -107,7 +107,7 @@
  */
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { labs, labMap, labsForSubject } from './lib/labs';
+import { labs, labMap, labsForSubject, labHref, labFromPath, isToolLab } from './lib/labs';
 import { translations } from './lib/i18n';
 import { planTasks, formatSize, type PackManifest } from './lib/offline-pack';
 import {
@@ -215,13 +215,35 @@ import * as IC from './components/lab/InteractiveCircle';
 import * as CP2 from './components/lab/CoordPlane';
 import * as BENCH from './components/lab/LensBench';
 import * as CP from './components/lab/circuit/CircuitParts';
+import { registerCircuitBenchTests } from './labs/physics/circuit-bench/circuit-bench.test';
 import { RHEO_ROD_DY as TOPO_RHEO_ROD_DY, genTopology as TOPO_GEN, RIGHT_X as TOPO_RIGHT_X } from './labs/physics/circuitStyles';
 import { quadraticY, sampleQuadratic } from './labs/math/quadratic-core';
 import {
+
   imageV as stemImageV,
   quadraticY as stemQuadraticY,
   sampleQuadratic as stemSampleQuadratic,
 } from './labs/physics/stem-engine';
+
+// ── AI 面板源码全集（P0 拆分 + P1 抽 Hook 后）─────────────────
+// 面板 JSX 已外置到 components/ai/panels/*，业务状态与处理器已抽到 components/ai/hooks/*，
+// 页面学科名的 helper 在 components/ai/page-subject.ts。设计纪律守卫（热区 / 描边 / 图标 /
+// 尺寸 / 文案）与链路守卫（思考参数同一出口、出题走链路默认、信号被消费）原本整片扫
+// AiAssistant.tsx；拆分后若仍只扫主文件，守卫会静默失效（P0 时实测 14 项变红、P1 时 3 项变红）。
+// 约定：这些守卫一律用 readAiPanel() 读「主文件 + 全部外置面板 + 共享件 + 全部 Hook」的拼接。
+const AI_PANEL_FILES = [
+  'src/components/ai/AiAssistant.tsx',
+  'src/components/ai/panels/panel-shared.tsx',
+  'src/components/ai/panels/TermsPanel.tsx',
+  'src/components/ai/panels/SettingsPanel.tsx',
+  'src/components/ai/panels/HistoryPanel.tsx',
+  'src/components/ai/panels/QuizPanel.tsx',
+  'src/components/ai/hooks/useAiSettings.ts',
+  'src/components/ai/hooks/useQuizSession.ts',
+  'src/components/ai/page-subject.ts',
+];
+const readAiPanel = (): string => AI_PANEL_FILES.map((f) => readFileSync(f, 'utf8')).join('\n');
+
 
 let passed = 0;
 let failed = 0;
@@ -267,8 +289,8 @@ async function runAsyncTests() {
 /* ── Lab registration ── */
 
 describe('Lab registration', () => {
-  test('has 15 registered labs', () => {
-    assert.equal(labs.length, 15);
+  test('has 16 registered labs', () => {
+    assert.equal(labs.length, 16);
   });
 
   test('every lab has required fields', () => {
@@ -293,7 +315,7 @@ describe('Lab registration', () => {
 
   test('labsForSubject returns correct counts', () => {
     assert.equal(labsForSubject('math').length, 4);
-    assert.equal(labsForSubject('physics').length, 7);
+    assert.equal(labsForSubject('physics').length, 8);
     assert.equal(labsForSubject('chemistry').length, 4);
   });
 
@@ -540,6 +562,52 @@ describe('Stem engine（loadOhmEngine 后）lens / quadratic 数值', () => {
 
   test('currentOf(6,10,resistor) === 0.6（误差 < 1e-9）', () => {
     assert.ok(Math.abs(currentOf(6, 10, 'resistor', 0) - 0.6) < 1e-9);
+  });
+});
+
+/* ── 计算引擎徽标文案：单点来源 + 结果一致性（老实验三件套与工作台共用一套）── */
+
+describe('计算引擎徽标的悬停文案（单点 + 结果一致性）', () => {
+  test('引擎文案必须来自单点文件：老实验走 formulas、工作台走 circuit，不得再逐字复制', () => {
+    const targets: [string, string][] = [
+      ['src/labs/physics/Ohm.tsx', 'formulas'],
+      ['src/labs/physics/Lens.tsx', 'formulas'],
+      ['src/labs/math/Quadratic.tsx', 'formulas'],
+      ['src/labs/physics/circuit-bench/CircuitEngineBadge.tsx', 'circuit'],
+    ];
+    for (const [f, scope] of targets) {
+      const src = readFileSync(f, 'utf8');
+      assert.match(
+        src,
+        new RegExp(`getEngineTooltip\\([^)]*, '${scope}', lang\\)`),
+        `${f} 须调用单点 getEngineTooltip(…, '${scope}', …)`,
+      );
+      // 裸字面量：三实验旧的两条中英文案、工作台私有的两段标题，一律不得回归
+      assert.doesNotMatch(
+        src,
+        /计算引擎：|Engine: C\+\+ WebAssembly|Engine: JS fallback|线性求解核已加载|WASM 产物未构建时自动回退/,
+        `${f} 不得再有裸的引擎文案字面量（只能从 engine-copy 取）`,
+      );
+      // 各自维护一份 i18n 键 = 复制粘贴的源头（zh/en 各一份都要删干净）
+      assert.doesNotMatch(src, /engineWasm|engineJs/, `${f} 不得再维护自己的 engineWasm/engineJs 键`);
+    }
+  });
+
+  test('八条文案都须含结果一致性语义，且排版无全角半角混排', () => {
+    const code = readFileSync('src/components/lab/engine-copy.ts', 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    const zh = code.match(/zh: '[^']*'/g) ?? [];
+    const en = code.match(/en: '[^']*'/g) ?? [];
+    assert.equal(zh.length, 4, `中文文案须 4 条（2 职责 × 2 态），实测 ${zh.length}`);
+    assert.equal(en.length, 4, `英文文案须 4 条（2 职责 × 2 态），实测 ${en.length}`);
+    // 学生看到徽章变成「JS」时唯一会担心的是「结果会不会变」——这半句必须每条都有
+    for (const s of zh) assert.match(s, /结果与|结果一致/, `中文文案缺结果一致性语义：${s}`);
+    for (const s of en) assert.match(s, /identical results/, `英文文案缺结果一致性语义：${s}`);
+    // 排版：全角括号前不留半角空格（旧文案 `TypeScript 线性核 （…）` 正是反例），
+    // 且 CJK 与拉丁字母之间必须留一个空格（「原生 C++ 计算核」，不是「原生 C++计算核」）
+    assert.doesNotMatch(code, /\s（/, '全角括号前不得留半角空格');
+    assert.doesNotMatch(code, /[\u4e00-\u9fa5][A-Za-z]|[A-Za-z][\u4e00-\u9fa5]/, 'CJK 与拉丁字母之间必须留一个空格');
   });
 });
 
@@ -2887,7 +2955,7 @@ describe('思考参数下发 · 留痕与实发同源（resolveThinkingDispatch�
     assert.ok(body.includes('resolveThinkingDispatch(cfg).params'), 'streamChat 必须用 resolveThinkingDispatch 组装');
     assert.ok(!body.includes('buildThinkingParams(cfg.providerId'), 'streamChat 不得再自己拼一半');
     assert.ok(!body.includes('parseExtraParams(cfg.extraParamsText)'), '透传不得在 streamChat 里另拼一次');
-    const panel = strip(readFileSync('src/components/ai/AiAssistant.tsx', 'utf8'));
+    const panel = strip(readAiPanel());
     assert.ok(
       panel.includes('resolveThinkingDispatch({ providerId, model, thinkingEffort, extraParamsText })'),
       '面板留痕必须走同一出口',
@@ -2920,7 +2988,7 @@ describe('输出上限与空正文（P0 防御：思考型模型 / 本地端点�
   });
 
   test('代码级防漂移：面板不得再给对话/出题/判分写死小上限', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /CHAIN_MAX_TOKENS\.chat/, '对话链路必须走链路默认');
     assert.match(ai, /CHAIN_MAX_TOKENS\.quiz/, '出题链路必须走链路默认');
     assert.match(ai, /CHAIN_MAX_TOKENS\.judge/, '判分链路必须走链路默认');
@@ -2931,7 +2999,7 @@ describe('输出上限与空正文（P0 防御：思考型模型 / 本地端点�
   });
 
   test('空正文入失败态：不落盘、不入历史、给重试', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /if \(outcome === 'empty'\) throw new EmptyAnswerError\(res\.finishReason\)/, '对话空正文必须抛 EmptyAnswerError');
     assert.match(ai, /const body = outcome === 'ok' \? rawBody : markTruncated\(rawBody, lang, outcome === 'cut' \? 'cut' : 'limit'\)/, '没写完的正文必须按成因标注');
     const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
@@ -3103,7 +3171,7 @@ describe('AI 配置 · Key 按服务商隔离', () => {
 /* ── AI 面板文案合规：不得出现不实安全声明 ── */
 
 describe('AI 面板文案合规（安全声明与用量口径）', () => {
-  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const panelSrc = readAiPanel();
   // 只检查用户可见文案：先剥掉注释（注释里出现「加密」二字不算声明，但会误伤断言）
   const panelCopy = panelSrc
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -3135,7 +3203,7 @@ describe('AI 面板文案合规（安全声明与用量口径）', () => {
 /* ── 浮层高度边界：低矮视口下弹窗/面板不得把自己的操作栏挤出可见范围 ── */
 
 describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
-  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const panelSrc = readAiPanel();
   const cssSrc = readFileSync('src/index.css', 'utf8');
 
   test('错题卷导出弹窗：安全最大高度 + 内容区可滚 + 页脚不参与收缩', () => {
@@ -3152,7 +3220,11 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
   });
 
   test('设置面板操作栏吸底常驻（sticky bottom-0 且带不透明底色）', () => {
-    const bar = panelSrc.match(/className="sticky bottom-0[^"]*"/);
+    // P0 拆分后：这里只认「设置面板自己的」吸底栏。AI 聊天区另有一个 sticky bottom-0 的
+    // 「回到最新」浮动层（h-0 + pointer-events-none，本就是透明的空占位），
+    // 若与面板源码拼接在一起判断，首个匹配会取到它，护卫就误报了。
+    const settings = readFileSync('src/components/ai/panels/SettingsPanel.tsx', 'utf8');
+    const bar = settings.match(/className="sticky bottom-0[^"]*"/);
     assert.ok(bar, '设置面板的「保存/清除」操作栏必须吸底，否则长表单下保存按钮滚出可见区');
     assert.ok(bar[0].includes('bg-[var(--bg)]'), '吸底操作栏需要不透明底色，否则滚动内容会从中透出');
     assert.ok(bar[0].includes('border-t'), '吸底操作栏需要上边框与内容区分隔');
@@ -3206,7 +3278,7 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
 
 describe('触屏命中区（hover:none + pointer:coarse）', () => {
   const cssSrc = readFileSync('src/index.css', 'utf8');
-  const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const panelSrc = readAiPanel();
   const touchBlock = cssSrc.match(/@media \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?\n\}/)?.[0] ?? '';
 
   test('命中区规则限定在粗指针媒体查询内（不得误伤桌面）', () => {
@@ -3504,6 +3576,206 @@ describe('元素详情卡：相邻导航 / 电子层胶囊 / 微粒看板', () =
 });
 
 
+/* ── 计数口径：对外文案必须与注册表真值一致（曾出现「15 实验 / 16 实验」「4 工具 / 5 工具」两套数并存） ── */
+
+describe('计数口径（注册表真值 ↔ 对外文案）', () => {
+  const regularLabs = labs.filter((lab) => !isToolLab(lab)).length;
+  const toolLabs = labs.filter((lab) => isToolLab(lab)).length;
+  // 固定路由查表工具：元素周期表 / 物理常量 / 物理公式 / 数学公式（见 vite.config.ts 的固定路由表）
+  const LOOKUP_TOOLS = 4;
+  const TOOL_TOTAL = LOOKUP_TOOLS + toolLabs;
+
+  test('注册表真值：15 个常规实验 + 5 个工具（4 查表 + 1 专业工具台）', () => {
+    assert.equal(regularLabs, 15, `常规实验数变了就须同步全站文案：实测 ${regularLabs}`);
+    assert.equal(toolLabs, 1, `专业工具台数变了就须同步全站文案：实测 ${toolLabs}`);
+    assert.equal(regularLabs + TOOL_TOTAL, 20, '可互动页面总数（实验 + 工具）应仍为 20');
+  });
+
+  const SURFACES: [string, string[]][] = [
+    ['index.html', ['15 个交互实验', '5 个工具']],
+    ['README.md', ['15 个交互实验 + 5 个工具', '15 interactive labs + 5 tools', 'All 15 labs and all 5 tool pages']],
+    ['src/lib/use-page-meta.ts', ['15 个交互实验 + 5 个工具']],
+    ['vite.config.ts', ['15 个交互实验 + 5 个工具']],
+    ['src/lib/i18n.ts', ['15 个实验都按', 'All 15 labs run']],
+  ];
+
+  const STALE = [
+    '16 个交互实验',
+    '4 个查表工具',
+    '16 个实验',
+    '16 interactive labs',
+    '4 lookup tools',
+    '4 tool pages',
+    '4 个工具页',
+    '405 项',
+    '405 assertions',
+  ];
+
+  /** 断言只扫代码段：注释里允许出现旧口径的说明（本项目已两度被自己引用的旧文案绊倒） */
+  const code = (file: string, src: string) =>
+    /\.(ts|tsx)$/.test(file)
+      ? src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+      : src;
+
+  test('对外文案已无过时口径（防回归）', () => {
+    for (const [file] of SURFACES) {
+      const src = code(file, readFileSync(file, 'utf8'));
+      for (const stale of STALE) {
+        assert.ok(!src.includes(stale), `${file} 仍含过时计数口径「${stale}」`);
+      }
+    }
+  });
+
+  test('对外文案写明现行口径', () => {
+    for (const [file, needles] of SURFACES) {
+      const src = code(file, readFileSync(file, 'utf8'));
+      for (const needle of needles) {
+        assert.ok(src.includes(needle), `${file} 缺少现行计数口径「${needle}」`);
+      }
+    }
+  });
+});
+
+/* ── README 首屏纪律：工业风（禁 Emoji）+ 硬指标与实测一致 ── */
+
+describe('README（工业风纪律与硬指标）', () => {
+  const readme = readFileSync('README.md', 'utf8');
+  const hero = readme.split('\n---\n')[0];
+
+  test('全文禁 Emoji（工业/学术风纪律；白名单仅 ▶ 这一个最小几何符号）', () => {
+    // 白名单只有 ▶（U+25B6，首屏「在线体验」的前缀）。它落在几何符号区，
+    // 因此这里把 25A0–25FF 一并纳入扫描范围，让白名单成为「显式的唯一例外」而不是漏网。
+    const WHITELIST = new Set(['▶']);
+    const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{25A0}-\u{25FF}\u{FE0F}]/gu;
+    const hits = (readme.match(EMOJI) || []).filter((ch) => !WHITELIST.has(ch));
+    assert.equal(
+      hits.length,
+      0,
+      `README 全文不得出现 Emoji —— 实测命中：${[...new Set(hits)].join(' ')}`,
+    );
+  });
+
+  test('白名单符号确实在用（白名单不得空转成无解释的例外）', () => {
+    assert.ok(readme.includes('▶'), '白名单里的 ▶ 已不再使用——应把它从白名单移除');
+  });
+
+  test('首屏硬指标须与注册表/实测一致（徽章与三栏表同源）', () => {
+    const regular = labs.filter((lab) => !isToolLab(lab)).length;
+    const tools = labs.filter((lab) => isToolLab(lab)).length + 4; // +4 固定路由查表工具
+    assert.ok(
+      hero.includes(`${regular} 个交互实验 + ${tools} 个工具`),
+      `首屏须写明注册表真值「${regular} 个交互实验 + ${tools} 个工具」`,
+    );
+    // 徽章视觉：统一深炭灰 labelColor，禁用高饱和撞色
+    const badges = hero.match(/https:\/\/img\.shields\.io\/[^\s")]+/g) || [];
+    assert.ok(badges.length >= 5, `首屏徽章数偏少：${badges.length}`);
+    for (const b of badges) {
+      assert.ok(b.includes('labelColor=18181b'), `徽章须统一深炭灰底 labelColor=18181b：${b.slice(0, 60)}…`);
+      assert.ok(!/color=(f|e|d)[0-9a-f]{5}/i.test(b), `徽章值色不得用高饱和亮色：${b.slice(0, 60)}…`);
+    }
+  });
+
+  test('首屏锚点必须指向真实存在的标题（防坏链）', () => {
+    // GitHub 锚点规则：小写、去掉标点、空格转连字符（中文保留），故这里同样 slug 化后再比对
+    const slug = (h: string) =>
+      h.trim().toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').replace(/\s+/g, '-');
+    const headings = readme
+      .split('\n')
+      .filter((l) => /^#{1,3} /.test(l))
+      .map((l) => slug(l.replace(/^#{1,3} /, '')));
+    const anchors = [...hero.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+    assert.ok(anchors.length >= 4, `首屏导航锚点偏少：${anchors.length}`);
+    for (const a of anchors) {
+      assert.ok(
+        headings.includes(decodeURIComponent(a).toLowerCase()),
+        `首屏锚点 #${a} 在 README 里没有对应标题（会变成死链）`,
+      );
+    }
+    assert.ok(!hero.includes('README_EN.md'), 'README 首屏不得链接不存在的 README_EN.md（英文在文内 #english）');
+  });
+
+  test('首屏与正文的测试数必须同源（防只改一处）', () => {
+    const badge = /Tests-(\d+)%20passed/.exec(hero)?.[1];
+    const zh = /\*\*(\d+) 项全绿\*\*/.exec(readme)?.[1];
+    const en = /\*\*(\d+) assertions, all green\*\*/.exec(readme)?.[1];
+    assert.ok(badge && zh && en, `三处测试数都要能取到：徽章 ${badge} / 中文 ${zh} / 英文 ${en}`);
+    assert.equal(badge, zh, `徽章测试数（${badge}）与中文正文（${zh}）不一致`);
+    assert.equal(badge, en, `徽章测试数（${badge}）与英文正文（${en}）不一致`);
+  });
+});
+
+/* ── issue 模板：与 README 提示同一套字段，且刻意保留空白 issue ── */
+
+describe('issue 模板（.github/ISSUE_TEMPLATE）', () => {
+  const form = readFileSync('.github/ISSUE_TEMPLATE/bug.yml', 'utf8');
+  const picker = readFileSync('.github/ISSUE_TEMPLATE/config.yml', 'utf8');
+  const readme = readFileSync('README.md', 'utf8');
+
+  test('缺陷表单含四项必填字段（页面 / 步骤 / 环境 / 版本）', () => {
+    for (const id of ['page', 'steps', 'env', 'version']) {
+      assert.ok(new RegExp(`id: ${id}\\b`).test(form), `issue 表单缺少字段 id: ${id}`);
+    }
+    for (const label of ['出问题的页面', '复现步骤', '浏览器与设备', '版本号']) {
+      assert.ok(form.includes(label), `issue 表单缺少字段标签「${label}」`);
+    }
+    assert.equal(
+      (form.match(/required: true/g) || []).length,
+      4,
+      '必填字段应恰为 4 个（截图一栏必须留可选，不能拿必填把人挡在门外）',
+    );
+  });
+
+  test('表单与 README 提示同源（改一处必须改两处）', () => {
+    for (const needle of ['复现步骤', '浏览器与设备', '版本号']) {
+      assert.ok(readme.includes(needle), `README 反馈段未提示「${needle}」`);
+    }
+    assert.ok(
+      /include the \*\*page, browser and device, and the steps to reproduce\*\*/.test(readme),
+      '英文侧同样要提示字段（中英同步）',
+    );
+  });
+
+  test('保留空白 issue + 并列给出站内反馈气泡入口', () => {
+    assert.ok(/blank_issues_enabled:\s*true/.test(picker), '不得禁用空白 issue（模板只用来把信息问清，不强迫填表）');
+    assert.ok(picker.includes('https://stem.irky.dev/guide'), '选择器须给出站内反馈气泡入口');
+    assert.ok(/name: 缺陷反馈|description: .+/.test(form), '表单须声明 name / description（两平台都要求）');
+  });
+});
+
+/* ── 使用说明页（/guide）与现状同步：发布主打功能不得在说明里缺席、用词须与界面一致 ── */
+
+describe('使用说明页（/guide）文案同步', () => {
+  const src = readFileSync('src/pages/GuidePage.tsx', 'utf8');
+
+  test('覆盖电学工作台与工具区（新功能不得在说明里缺席）', () => {
+    for (const needle of ['工作台接线', '工作台视图', '工作台模拟', '工作台数据', '工具页例外']) {
+      assert.ok(src.includes(needle), `说明页缺少「${needle}」条目`);
+    }
+  });
+
+  test('视图用词与界面一致，且不出现已退役旧词', () => {
+    assert.ok(src.includes('电路图 / 仿真图'), '说明页须用界面词「电路图 / 仿真图」');
+    for (const stale of ['原理图', '实物图', 'schematic', 'realistic']) {
+      assert.ok(!src.includes(stale), `说明页仍含已退役旧词「${stale}」`);
+    }
+  });
+
+  test('中英同步：新增条目两侧都在（防止只加一侧）', () => {
+    const pairs: [string, string][] = [
+      ['工作台接线', 'Workbench wiring'],
+      ['工作台视图', 'Workbench views'],
+      ['工作台模拟', 'Workbench run'],
+      ['工作台数据', 'Workbench data'],
+      ['工具页例外', 'Tool pages'],
+      ['3D 立体模型', '3D model'],
+    ];
+    for (const [zh, en] of pairs) {
+      assert.ok(src.includes(zh), `中文侧缺少「${zh}」`);
+      assert.ok(src.includes(en), `English side missing "${en}"`);
+    }
+  });
+});
+
 /* ── 版本一致性：避免发布时三方（构建产物 / 常量 / 变更记录）不同步 ── */
 
 describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条）', () => {
@@ -3557,6 +3829,22 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     const MECH = /\b(px|rem|SVG|DOM|CSS|React|Tailwind|localStorage|sessionStorage|commit|refactor|SHA|API|WASM)\b/i;
     for (const line of [...first.zh, ...first.en]) {
       assert.doesNotMatch(line, MECH, `用户向条目不得夹带实现细节：${line.slice(0, 48)}…`);
+    }
+  });
+
+  test('首条用词与界面对齐：不得用已退役的界面旧词，也不得夹带内部路径', () => {
+    const first = CHANGELOG[0];
+    // 两个视图的界面用词只有一个来源：circuit-bench-view.ts 的 viewModeLabel
+    // （zh 电路图 / 仿真图，en Circuit / Simulation）——旧词「原理图 / 实物图」早已退役，
+    // 工具栏甚至用断言禁止它们回归；变更记录若继续用旧词，用户在界面上找不到对应物。
+    const RETIRED = ['原理图', '实物图', 'Schematic', 'schematic', 'Physical', 'realistic', '熔毁', '专业电学工作台'];
+    // 禁写清单（规范 §四）：不写实现机制与内部地址，地址栏字符串对非技术读者无意义
+    const ROUTE = /(^|[\s（(])\/[a-z][a-z0-9-]{2,}/;
+    for (const line of [...first.zh, ...first.en]) {
+      for (const stale of RETIRED) {
+        assert.ok(!line.includes(stale), `变更记录仍在用界面已退役的旧词「${stale}」：${line.slice(0, 40)}…`);
+      }
+      assert.doesNotMatch(line, ROUTE, `变更记录不得夹带内部路径（规范 §四 禁写清单）：${line.slice(0, 40)}…`);
     }
   });
 });
@@ -3876,6 +4164,8 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
   });
 });
 
+
+
 // ---------- 离线教学包：清单映射 / 断点续下 / 文案分支 / 与 SW 路由一致性 ----------
 {
   test('离线包按组写进 SW 既有缓存桶，已在本机的条目不再重复下载（断点续下）', () => {
@@ -3968,7 +4258,7 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
     assert.ok(zhAi.localApi.includes('仍然可以继续对话'));
     assert.ok(!zhPack.entryHint.includes('缓存'), '入口说明用大白话，不写「缓存」这类工程词');
     assert.match(readFileSync('src/components/ai/AskAiButton.tsx', 'utf8'), /disabled=\{isOffline\}/, '断网时「问 AI」须温和阻断');
-    assert.match(readFileSync('src/components/ai/AiAssistant.tsx', 'utf8'), /offlineAi\.localApi/, 'AI 面板须按端点类型区分断网文案');
+    assert.match(readAiPanel(), /offlineAi\.localApi/, 'AI 面板须按端点类型区分断网文案');
   });
 }
 
@@ -4111,7 +4401,7 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
   });
 
   test('流式滚动：只用 auto 跟随、仅贴底时跟随，并提供离底解锁与恢复入口', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.ok(!/behavior:\s*'smooth'/.test(ai), "流式滚动不得再用 smooth：每 delta 重启平滑动画会抖，也会吃掉用户手势");
     assert.match(ai, /if \(!el \|\| !stickRef\.current\) return;/, '仅吸底状态才跟随滚动');
     assert.match(ai, /onScroll=\{/, '滚动容器须带 onScroll 才能判定用户是否离底');
@@ -4122,7 +4412,7 @@ describe('触屏热区 · 反向对抗守护（v0.35.0）', () => {
   });
 
   test('中断保全与首包超时：停止后成果入历史与上下文，20s 首包闸，reader 收口', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /const kept = markStopped\(accText, lang\)/, '中断时须用已收正文生成可保留内容');
     assert.match(ai, /lastExchange\.current = \{ user: q, assistant: kept \}/, '中断的那一轮也要写进追问上下文，否则「继续问」接不上');
     assert.match(ai, /answer: kept,/, '中断的内容须落盘到本地历史');
@@ -4228,7 +4518,7 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
   });
 
   test('重试链路源码守卫：快照重放 / 离线仅一次 / 429 倒计时 / 触控 40px', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /const attemptRef = useRef</, '必须保存本轮请求快照，重试才能重放同一份 messages');
     assert.match(ai, /attemptRef\.current = \{ q, followUp, messages: messages\.map/, '发送时固化快照（messages 需深拷贝）');
     assert.match(ai, /void sendQuestion\(a\.q, a\.followUp, a\.messages\)/, '重试必须走快照重放，而不是按当前页面重新拼装');
@@ -4265,7 +4555,7 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
   });
 
   test('文本符号图标化：面板不再出现对勾 / 叉号 / 沙漏字符（一律 Lucide 图标）', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     const glyph = ai.match(/[✓✗⏱]/);
     assert.equal(glyph, null, `AiAssistant 仍有字符符号：${glyph?.[0]}（应改用 Lucide 的 Check / X / Timer）`);
     assert.match(ai, /function Mark\(\{ ok, className = '' \}/, '必须保留统一的行内对错标记组件');
@@ -4282,7 +4572,7 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
   });
 
   test('继续生成链路：钉住本轮上下文 + 剥离标记 + 复用 followUp + 40px 触控', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /lastExchange\.current = \{ user: h\.user, assistant: stripStoppedMark\(h\.assistant\) \}/,
       '续写必须把上下文钉在被中断的那一轮，且剥掉人造标记');
     assert.match(ai, /void sendQuestion\(t\.aiContinue\.ask, true\)/, '续写必须走 followUp 链路（第二个参数 true）');
@@ -4514,7 +4804,7 @@ describe('Token usage chart source guards (零第三方图表依赖)', () => {
   });
 
   test('按钮去硬描边：AI 窗口重试 / 继续生成 / Quiz 重试统一为轻底色胶囊', () => {
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     const pills = ai.match(/rounded-md border border-\[var\(--border\)\]\/80 bg-\[var\(--accent-light\)\] text-\[var\(--fg\)\]/g) ?? [];
     assert.ok(pills.length >= 3, `三处 chip 都要改成轻底色胶囊（实测 ${pills.length} 处）`);
     assert.match(ai, /py-1\.5[^"]*tap-area"\s*>\s*<ChevronsDown/, '继续生成须为紧凑胶囊（py-1.5）+ tap-area 触屏热区 + Lucide 图标');
@@ -4546,7 +4836,7 @@ describe('Token usage chart source guards (零第三方图表依赖)', () => {
 /* ── AI 设置面板：高度自适应与控件质感（本轮精修守卫） ── */
 
 describe('AI settings panel layout & control polish', () => {
-  const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const ai = readAiPanel();
 
   test('保底高度只服务对话视图：表单视图必须内容自适应，不得再被 62dvh 撑出死区', () => {
     assert.match(
@@ -4626,6 +4916,20 @@ describe('AI settings panel layout & control polish', () => {
       /className="ml-auto tap-area inline-flex items-center gap-1 text-\[0\.6875rem\] mono-font text-\[var\(--muted\)\] transition-colors hover:text-\[var\(--fg\)\]"/,
       '清除入口必须保持文字链并补 tap-area（触屏 ≥40px）',
     );
+    // 清除入口的文案必须与行为一致：它只清「本机配置 + 当前会话 + 本轮测验进度」，
+    // 持久化的问答历史与考考你记录（错题集）不在此列 —— 那两样各自在「学习记录」里清。
+    // 旧文案 label「清除 AI 配置与记录」+ title「问答历史与答题统计」是谎报：
+    // 点完历史仍在（历史入口的信息点也还亮着），用户会以为按钮坏了。
+    // 注意：断言只扫代码段（注释里会引用旧文案，扫全文会自我绊倒）。
+    const aiCopy = ai.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.match(aiCopy, /'清除 AI 配置'/, '清除入口的可见 label 不得再声称会清「记录」');
+    assert.match(
+      aiCopy,
+      /清除本机保存的 API Key 与模型设置，重置当前对话与测验进度；问答历史与错题集请在「学习记录」中清空/,
+      'title 须写明真正清掉什么、并指出历史与错题集去哪清',
+    );
+    assert.match(aiCopy, /'Clear AI config'/, '英文 label 须同步（不得仍写 Clear AI data）');
+    assert.doesNotMatch(aiCopy, /清除 AI 配置与记录|Clear AI data|清除 AI 配置、问答历史与答题统计/, '旧的谎报文案不得回归');
     // ── AI 设置弹窗减重（触屏）：全部只在 .tap-area 上让位，并把省下的高度还给透明伪元素 ──
     //    chips 40→28、思考强度 40→28（外轨 46→34）、设置 Tab 40→29、常用 chips 40→24、
     //    吸底栏 44→36、获取模型/测试连接 29.7→34。桌面无 .tap-area，本来就是自然高，故零回归。
@@ -4664,12 +4968,35 @@ describe('AI settings panel layout & control polish', () => {
     assert.ok(!/<List className="w-3 h-3"/.test(ai), '「获取模型」不得再用 List（语义是"看列表"，实际动作是"重新拉取"）');
     assert.ok(ai.includes('import { Activity,') || /import \{[^}]*\bActivity\b[^}]*\} from 'lucide-react'/.test(ai), 'Activity 须从 lucide-react 具名引入');
   });
+
+  test('问答历史入口的「有内容」信息点：口径覆盖两个 Tab，配色不得用墨色或状态色', () => {
+    const ai = readAiPanel();
+    // 提取信息点这一条（位置 + 尺寸 + 配色一起看，避免只断言颜色而漏掉几何回归）
+    const dot = ai.match(/absolute right-[\d.]+ top-[\d.]+ w-1\.5 h-1\.5 rounded-full bg-\[var\(--[a-z-]+\)\]/);
+    assert.ok(dot, '历史入口须有 6px 信息点（位置 / 尺寸 / 配色缺一不可）');
+
+    // 口径：入口指向的面板有「问答历史 / 考考你记录」两个 Tab，只按问答历史点亮会让
+    // 「只做过考考你」的用户看到一个没有提示的空入口（桌面 1280 实测复现过）。
+    assert.match(
+      ai,
+      /\(persistHistory\.length > 0 \|\| quizHistoryData\.length > 0\) && \(/,
+      '信息点须覆盖问答历史与考考你记录两个 Tab；都为空时不渲染',
+    );
+
+    // 配色：必须是有信息语义的强调色（--tech-blue），不得回退到 --accent（浅色纯黑 /
+    // 深色纯白，语义空）、也不得用红/绿/琥珀等状态色（那是错误 / 成功 / 告警的语义）。
+    assert.match(dot![0], /bg-\[var\(--tech-blue\)\]/, '信息点须用 --tech-blue 信息色');
+    assert.doesNotMatch(dot![0], /(accent|error|success|warn|green|red|amber)/, '不得用墨色或状态色表达「有内容」');
+
+    // 几何：不得回到贴角 4px —— History 字形外弧半径 6.67px，贴角时与点相切（实测 0.2px 缝）。
+    assert.doesNotMatch(ai, /absolute right-1 top-1 w-1\.5 h-1\.5 rounded-full/, '信息点不得再贴着按钮角（会与 History 外弧相切）');
+  });
 });
 
 /* ── AI 次级控件：视觉实体与触控热区解耦（去臃肿精修守卫） ── */
 
 describe('AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承托', () => {
-  const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+  const ai = readAiPanel();
 
   test('全文件零 min-h-10：视觉高度不再被 40px 硬撑', () => {
     assert.doesNotMatch(ai, /min-h-10/, '仍有 min-h-10：桌面端会撑出 40px 方块（应改 py-1.5 + tap-area）');
@@ -5615,7 +5942,7 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     );
     // ④ 互斥规则保留且只针对反馈气泡（书签那条 display:none 已随组件移除）
     assert.match(css, /html\.param-dock-open \.feedback-fab,\s*html\.ai-sheet-open \.feedback-fab \{[^}]*opacity: 0;[^}]*pointer-events: none/, '两种展开态须对反馈气泡用同一套淡出规则');
-    const ai = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const ai = readAiPanel();
     assert.match(ai, /cls\.add\('ai-sheet-open'\)/, 'AI 面板须继续把展开状态镜像到 <html>');
     // ⑤ 右簇仍是 gap-2 / sm:gap-4：5 个控件在 390 下单行
     assert.match(header, /gap-1\.5 sm:gap-4/, '顶栏右簇间距须为 gap-1.5 sm:gap-4（移动收紧、桌面冻结）');
@@ -5635,7 +5962,7 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
     const hd = readFileSync('src/components/layout/Header.tsx', 'utf8');
     const app = readFileSync('src/App.tsx', 'utf8');
     const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
-    const panelSrc = readFileSync('src/components/ai/AiAssistant.tsx', 'utf8');
+    const panelSrc = readAiPanel();
     // ① 双 Tab 分段控件 + 初始分区入参（首开仍停在概览）
     assert.match(wd, /type WelcomeTab = 'overview' \| 'guide'/, '须定义两个分区');
     assert.match(wd, /initialTab = 'overview'/, '默认分区须为「实验室概览」（首开自动弹出）');
@@ -5846,6 +6173,14 @@ describe('周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型'
         '角标须贴合成标准 Badge（16×16，落在图标右上角内）',
       );
       assert.doesNotMatch(hd, /-top-\[26px\]/, '旧的悬空 26px 定位不得回归（圆点会飘离图标）');
+      // F3：角标不得盖住字形右上角**自己的那个点**。
+      // Lucide Sparkles 在字形右上角本就有墨迹（一条十字短线，含描边约 x∈20.91..24.42、
+      // y∈11.58..15.08，按钮坐标）。旧实现把圆点圆心放在字形拐角 (25,11) → 距该墨迹只有
+      // 0.82px：圆点压掉 2.18px、2px 外环压掉 4.18px（桌面 1280 实测）。现改为右 1px / 上 2px
+      // （圆心 (29,6)）：环外缘留 2.22px、圆点本体留 4.22px；两端都仍在 16×16 盒内 —— 盒未动，
+      // 因此 header 高度不变（「不为了挪点而撑高顶栏」）。
+      assert.match(hd, /translate-x-\[1px\] -translate-y-\[2px\]/, '角标圆点须让开字形右上角那条十字墨迹（右 1px / 上 2px）');
+      assert.doesNotMatch(hd, /-translate-x-\[3px\]|translate-y-\[3px\]/, '旧的 -3/+3 内收会盖住图标自己的点，不得回归');
       assert.doesNotMatch(hd, /grid h-9 w-9 place-items-(end|center) rounded-full/, '命中盒不得再撑到 36×36（会吞掉图标中心）');
       // 几何不许吞掉图标中心：盒下沿 16 < 字形中心 18，图标中心仍归图标按钮
       assert.match(hd, /flex h-9 w-9 items-center justify-center rounded-lg/, '图标按钮须 36×36');
@@ -7252,4 +7587,11 @@ describe('物理题库守卫', () => {
     assert.ok(n >= 8, `串并联题库应 ≥8 题，实测 ${n}`);
     assert.equal(fails.length, 0, `串并联选项长度失衡：\n  ${fails.join('\n  ')}`);
   });
+});
+
+
+/* ── 电学工作台 M1 ── */
+
+describe('Circuit Bench · 电学工作台 M1', () => {
+  registerCircuitBenchTests(test);
 });

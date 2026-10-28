@@ -19,6 +19,7 @@ import ExploreStage, { type Observation, type ExploreCard } from '../../componen
 import LensBench from '../../components/lab/LensBench';
 import { isBeyondBench } from '../../components/lab/LensBench';
 import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
 import Formula from '../../components/ui/Formula';
 import { imageV, loadOhmEngine } from './stem-engine';
 import { Check, X } from 'lucide-react';
@@ -47,8 +48,6 @@ const copy = {
     prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     readout: '读数',
-    engineWasm: '计算引擎：C++ WebAssembly',
-    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     stagePredict: '预测',
     stageExplore: '探索',
@@ -156,8 +155,6 @@ const copy = {
     prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     readout: 'Readings',
-    engineWasm: 'Engine: C++ WebAssembly',
-    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -314,7 +311,8 @@ export default function Lens() {
   const concludeComplete = conclude1 && conclude2 && conclude3 && conclude4;
 
   const f = 10;
-  const v = useMemo(() => imageV(u, f), [u, f]);
+  // engineKind 进依赖：imageV 按门面当前实现求解，WASM 加载完成后光路须立即重算
+  const v = useMemo(() => imageV(u, f), [u, f, engineKind]);
 
   // AI：把当前阶段与读数写入易失注册表（系统提示词读阶段、动态预置问题读读数）
   useEffect(() => {
@@ -458,7 +456,7 @@ export default function Lens() {
           <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
             // {c.params}
           </h3>
-          <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? c.engineWasm : c.engineJs} />
+          <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <ParamSlider

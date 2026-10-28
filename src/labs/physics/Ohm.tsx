@@ -25,6 +25,7 @@ import { BladeSwitch, Bulb, Rheostat, rheostatWiperX } from '../../components/la
 import { useFlowDots, FLOW_DOT_R, FLOW_DOT_OPACITY, type FlowPolyline } from '../../components/lab/circuit/use-flow-dots';
 import CircuitTooltip from '../../components/lab/circuit/CircuitTooltip';
 import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
 
@@ -59,8 +60,6 @@ const copy = {
     paramDock: '调节参数',
     paramDockClose: '收起参数',
     readout: '读数',
-    engineWasm: '计算引擎：C++ WebAssembly',
-    engineJs: '计算引擎：JS 回退',
     reset: '重置',
     circuitLabel: '电路图',
     elementLabel: '元件',
@@ -182,8 +181,6 @@ const copy = {
     paramDock: 'Adjust',
     paramDockClose: 'Close controls',
     readout: 'Readings',
-    engineWasm: 'Engine: C++ WebAssembly',
-    engineJs: 'Engine: JS fallback',
     reset: 'Reset',
     circuitLabel: 'Circuit',
     elementLabel: 'Element',
@@ -395,7 +392,9 @@ export default function Ohm() {
       points: sampleOhm(r, element, rp),
       label: element === 'bulb' ? `灯泡 R₀=${r}Ω` : `R = ${r}Ω`,
     }),
-    [r, element, rp],
+    // engineKind 必须进依赖：sampleOhm 走的是门面当前的实现（WASM / JS 回退），
+    // WASM 异步加载完成后 engineKind 翻转，不重算就会把 JS 腿采出来的点一直挂在图上。
+    [r, element, rp, engineKind],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
@@ -978,7 +977,7 @@ export default function Ohm() {
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.params}
               </h3>
-              <EngineBadge kind={engineKind} title={engineKind === 'wasm' ? t.engineWasm : t.engineJs} />
+              <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
             </div>
 
             {/* 元件切换 */}

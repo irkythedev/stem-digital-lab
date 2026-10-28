@@ -15,7 +15,7 @@ import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { FORMULAS, FORMULA_CATEGORY_ZH, FORMULA_CATEGORY_EN, type FormulaCategory, type MathFormula } from '../lib/formulas';
-import { labMap } from '../lib/labs';
+import { labHref, labMap } from '../lib/labs';
 import ShareInline from '../components/share/ShareInline';
 import Formula from '../components/ui/Formula';
 import AskAiButton from '../components/ai/AskAiButton';
@@ -281,7 +281,7 @@ export default function MathFormulas() {
                   <span>{lang === 'zh' ? '教材章节' : 'Chapter'}: {selected.chapter}</span>
                   {selected.labId && labMap[selected.labId] && (
                     <Link
-                      to={`/lab/${selected.labId}`}
+                      to={labHref(labMap[selected.labId])}
                       className="underline hover:text-[var(--fg)]"
                       onClick={(e) => e.stopPropagation()}
                     >

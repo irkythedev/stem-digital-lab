@@ -394,11 +394,24 @@ export function HouseholdCircuit({
 }
 
 /* ---------- 保险丝（小矩形 + 内部细线） ---------- */
-export function Fuse({ x, y }: { x: number; y: number }) {
+/**
+ * 保险丝（教科书线稿）：玻璃管 + 中间熔丝。
+ * `blown` 时熔丝从正中断开，留 6 个单位的空档、两端各缩成一截短头 ——
+ * 「熔断」在物理上就是断路，画成一根贯通的线会让学生以为它还能通电。
+ * 默认 false：其余调用点（Circuits 等既有实验）的输出与改动前逐字节一致。
+ */
+export function Fuse({ x, y, blown = false }: { x: number; y: number; blown?: boolean }) {
   return (
     <g>
       <rect x={x - 10} y={y - 3} width="20" height="6" rx="1" fill="var(--card-bg)" stroke="var(--fg)" strokeWidth="1.2" />
-      <line x1={x - 6} y1={y} x2={x + 6} y2={y} stroke="var(--fg)" strokeWidth="0.8" />
+      {blown ? (
+        <>
+          <line x1={x - 6} y1={y} x2={x - 3} y2={y} stroke="var(--fg)" strokeWidth="0.8" />
+          <line x1={x + 3} y1={y} x2={x + 6} y2={y} stroke="var(--fg)" strokeWidth="0.8" />
+        </>
+      ) : (
+        <line x1={x - 6} y1={y} x2={x + 6} y2={y} stroke="var(--fg)" strokeWidth="0.8" />
+      )}
     </g>
   );
 }
@@ -592,6 +605,7 @@ export function FixedMeter({
   unit,
   label,
   readoutDir = 'down',
+  showReadout = true,
 }: {
   x: number;
   y: number;
@@ -602,6 +616,8 @@ export function FixedMeter({
   label?: string;
   /** 读数方向：下（默认，远离上方导线）或上（支路表避让下方导线） */
   readoutDir?: 'down' | 'up';
+  /** 由外部标签层统一画读数时关闭，避免同一块表出现两份数字 */
+  showReadout?: boolean;
 }) {
   // 读数单行（值+单位合并，如 0.90A），距仪表 14px；方向按 readoutDir 避让相邻导线（label safety ≥8px）
   const ry = readoutDir === 'up' ? y - 20 : y + 23;
@@ -612,23 +628,25 @@ export function FixedMeter({
         {label ?? glyph}
       </text>
       {/* 读数底衬：主题自适应半透背景 + 细边框（防压线，统一三表样式） */}
-      <g>
-        <rect
-          x={x - 19}
-          y={ry - 10}
-          width="38"
-          height="13"
-          rx="2"
-          fill="var(--bg)"
-          fillOpacity="0.88"
-          stroke="var(--border)"
-          strokeWidth="0.8"
-        />
-        <text x={x} y={ry} textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">
-          {reading}
-          {unit}
-        </text>
-      </g>
+      {showReadout && (
+        <g>
+          <rect
+            x={x - 19}
+            y={ry - 10}
+            width="38"
+            height="13"
+            rx="2"
+            fill="var(--bg)"
+            fillOpacity="0.88"
+            stroke="var(--border)"
+            strokeWidth="0.8"
+          />
+          <text x={x} y={ry} textAnchor="middle" fontSize="10" fill="var(--fg)" fontFamily="var(--f-mono)">
+            {reading}
+            {unit}
+          </text>
+        </g>
+      )}
     </g>
   );
 }

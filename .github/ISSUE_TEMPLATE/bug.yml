@@ -1,0 +1,61 @@
+# 缺陷反馈表单。
+# 单一事实源：只维护本文件。Gitee 在 .gitee/ISSUE_TEMPLATE 不存在时会回退读取 .github/ISSUE_TEMPLATE，
+# 故两个平台共用这一份；字段与 README「反馈」段的提示必须同源（已由 smoke 断言锁定）。
+name: 缺陷反馈 / Bug report
+description: 实验或工具运行异常、显示错误、无法操作
+title: "[缺陷] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        站内右下角的**反馈气泡**更省事：免登录，自动带上你在哪个页面，离线也能提交、联网后自动补发。随手反馈建议走那里。
+
+        这里适合能说清复现步骤的问题。带 * 的为必填。
+
+  - type: input
+    id: page
+    attributes:
+      label: 出问题的页面
+      description: 页面名或链接，例如「电学工作台」「元素周期表」「浮力」
+      placeholder: 电学工作台
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 你做了什么、实际看到什么、期望看到什么。三步以内说清最好
+      placeholder: |
+        1. 打开 …
+        2. 拖动 / 点击 …
+        3. 实际看到 …，我期望 …
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 浏览器与设备
+      description: 浏览器名称与版本，以及设备类型（手机 / 平板 / 电脑）
+      placeholder: Chrome 130 / Windows 11；Safari / iPad
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本号
+      description: 顶栏或「版本历史」里可以看到
+      placeholder: v0.42.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 截图或补充（可选）
+      description: 图片可直接拖进来
+    validations:
+      required: false

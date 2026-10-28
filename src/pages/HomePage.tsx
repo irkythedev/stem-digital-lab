@@ -8,14 +8,21 @@
  * 每个实验显示：LabIcon + 标题 + 一句话描述 + 点击进入。
  * 大屏 3 列，中屏 2 列，小屏 1 列。
  */
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 import { usePageMeta } from '../lib/use-page-meta';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
 import DailyQuote from '../components/ui/DailyQuote';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
-import { labsForSubject, labs, labCategories, type LabCategoryId } from '../lib/labs';
+import {
+  labs,
+  regularLabsForSubject,
+  toolsForSubject,
+  labCategories,
+  labHref,
+  type LabCategoryId,
+} from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
 
@@ -31,6 +38,45 @@ export function truncateNote(note: string, _maxLen?: number): string {
   const items = note.split('·').map((s) => s.trim()).filter(Boolean);
   if (items.length < MAX_ITEMS) return note;
   return items.slice(0, MAX_ITEMS).join(' · ') + '…';
+}
+
+/** 工具卡：查表工具与注册表专业工具台共用同一外壳；pro 时补「专业工具台」徽标 */
+function ToolCard({
+  to,
+  icon: Icon,
+  title,
+  desc,
+  pro,
+  lang,
+}: {
+  to: string;
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+  pro?: boolean;
+  lang: 'zh' | 'en';
+}) {
+  return (
+    <Link
+      to={to}
+      className="group flex h-full items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
+    >
+      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
+        <Icon className="w-7 h-7" />
+      </div>
+      <div className="min-w-0">
+        <span className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
+          <span className="text-sm font-semibold text-[var(--fg)] serif-font">{title}</span>
+          {pro && (
+            <span className="border border-[var(--fg)] px-1 py-px text-[0.5625rem] leading-none mono-font text-[var(--fg)]">
+              {lang === 'zh' ? '专业工具台' : 'PRO TOOL'}
+            </span>
+          )}
+        </span>
+        <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">{desc}</span>
+      </div>
+    </Link>
+  );
 }
 
 export default function HomePage() {
@@ -50,7 +96,7 @@ export default function HomePage() {
   // 随机探索：从全部实验 + 工具（周期表/物理常量/数学公式）中随机选一个进入
   const randomExplore = () => {
     const destinations: string[] = [
-      ...labs.map((lab) => `/lab/${lab.id}`),
+      ...labs.map(labHref),
       '/periodic-table',
       '/physics-constants',
       '/math-formulas',
@@ -145,7 +191,8 @@ export default function HomePage() {
       <div id="lab-list" className={`relative overflow-hidden ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
-          const allLabs = labsForSubject(subject.id);
+          // 实验网格只放常规实验；专业工具台（meta.kind === 'tool'）单独归入下方「// 工具」
+          const allLabs = regularLabsForSubject(subject.id);
           const cats = labCategories[subject.id];
           // 领域过滤：按当前 tab；无 tab 时（防御）显示全部
           const shownLabs = activeCategory ? allLabs.filter((lab) => lab.category === activeCategory) : allLabs;
@@ -185,15 +232,17 @@ export default function HomePage() {
                   return (
                     <Link
                       key={lab.id}
-                      to={`/lab/${lab.id}`}
+                      to={labHref(lab)}
                       className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
                     >
                       <div className="shrink-0 mt-0.5 text-[var(--fg)]">
                         <Icon className="w-7 h-7" />
                       </div>
                       <div className="min-w-0">
-                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                          {lab.name[lang as 'zh' | 'en']}
+                        <span className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
+                          <span className="text-sm font-semibold text-[var(--fg)] serif-font">
+                            {lab.name[lang as 'zh' | 'en']}
+                          </span>
                         </span>
                         <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                           {lab.description[lang as 'zh' | 'en']}
@@ -247,39 +296,42 @@ export default function HomePage() {
                     </Link>
                   )}
                   {subject.id === 'physics' && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <Link
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {/* 注册表里的专业工具台（电学工作台）与两套速查并列 */}
+                      {toolsForSubject('physics').map((lab) => (
+                        <div key={lab.id} className="min-w-0">
+                          <ToolCard
+                            to={labHref(lab)}
+                            icon={lab.icon}
+                            title={lab.name[lang]}
+                            desc={lab.description[lang]}
+                            pro
+                            lang={lang}
+                          />
+                        </div>
+                      ))}
+                      <ToolCard
                         to="/physics-constants"
-                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
-                      >
-                        <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                          <Gauge className="w-7 h-7" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                            {lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
-                          </span>
-                          <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
-                            {lang === 'zh' ? '常用常量与典型数值一表全览，附物理意义与应用' : 'Common constants at a glance, with meaning and usage'}
-                          </span>
-                        </div>
-                      </Link>
-                      <Link
+                        icon={Gauge}
+                        title={lang === 'zh' ? '物理常量速查' : 'Physics Constants'}
+                        desc={
+                          lang === 'zh'
+                            ? '常用常量与典型数值一表全览，附物理意义与应用'
+                            : 'Common constants at a glance, with meaning and usage'
+                        }
+                        lang={lang}
+                      />
+                      <ToolCard
                         to="/physics-formulas"
-                        className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)]"
-                      >
-                        <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                          <Calculator className="w-7 h-7" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                            {lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
-                          </span>
-                          <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
-                            {lang === 'zh' ? '核心公式分类速览，相关常量一键跳转' : 'Core formulas at a glance, with related constants linked'}
-                          </span>
-                        </div>
-                      </Link>
+                        icon={Calculator}
+                        title={lang === 'zh' ? '物理公式速查' : 'Physics Formulas'}
+                        desc={
+                          lang === 'zh'
+                            ? '核心公式分类速览，相关常量一键跳转'
+                            : 'Core formulas at a glance, with related constants linked'
+                        }
+                        lang={lang}
+                      />
                     </div>
                   )}
                 </div>

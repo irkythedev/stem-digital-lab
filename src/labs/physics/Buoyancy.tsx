@@ -17,8 +17,11 @@ import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
 import { Check, X } from 'lucide-react';
-import { STONE_WEIGHT, buoyantForce, springReading } from './mechanics-core';
+import { STONE_WEIGHT, buoyantForce } from './mechanics-core';
+import { loadOhmEngine, springReading } from './stem-engine';
 
 /* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
 const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
@@ -179,9 +182,23 @@ export default function Buoyancy() {
   const predComplete = predict1 !== null && predict2 !== null;
   const concludeComplete = Boolean(concl.q1 && concl.q2 && concl.q3);
 
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((kind) => {
+      if (alive) setEngineKind(kind);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const G = STONE_WEIGHT; // 石块重 2N（力学核常量）
   const liquid = LIQUIDS.find((l) => l.id === liquidId)!;
   const Fb = buoyantForce(liquid.rho, vSub);
+  // 示数走计算门面（WASM 就绪后 V排 的饱和夹取与「示数不为负」由 C++ 原生核算）；
+  // F浮 仍取力学核真源——C++ 侧没有 buoyant_force 导出，不做无谓镜像
   const FReading = springReading(liquid.rho, vSub);
   /**
    * 弹簧伸长量 = 示数占比 × 25px（挂钩位移）。
@@ -403,7 +420,10 @@ export default function Buoyancy() {
 
       {/* ── 参数 ── */}
       <div className="border border-[var(--border)] p-4 space-y-3">
-        <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {c.params}</h3>
+          <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
+        </div>
         <ParamSlider label="浸入体积" value={vSub} min={0.1} max={1} step={0.1} onChange={setVSub} format={(v) => `${(v * 100).toFixed(0)}%`} />
         <div className="flex items-center gap-2">
           <span className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">{lang === 'zh' ? '液体' : 'Liquid'}</span>

@@ -1,7 +1,7 @@
 {
   "name": "stem-digital-lab",
   "private": true,
-  "version": "0.41.0",
+  "version": "0.42.0",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
   "license": "AGPL-3.0",
   "author": "Ricky <king4g@yeah.net>",
@@ -16,7 +16,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "npx tsx src/smoke.test.ts"
+    "test": "npx tsx src/smoke.test.ts && npx tsx src/stem-core-ext.test.ts"
   },
   "dependencies": {
     "katex": "^0.18.1",

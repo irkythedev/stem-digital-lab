@@ -72,6 +72,8 @@ const SITE_URL = 'https://stem.irky.dev';
 
 interface LabSeo {
   id: string;
+  /** 规范路径（可选）；缺省继续用 /lab/:id */
+  path?: string;
   zhName: string;
   enName: string;
   zhDesc: string;
@@ -95,7 +97,8 @@ function parseLabs(): LabSeo[] {
     const zhName = val(nameBlock, 'zh');
     const enName = val(nameBlock, 'en');
     if (id && zhName && enName) {
-      out.push({ id, zhName, enName, zhDesc: val(descBlock, 'zh'), enDesc: val(descBlock, 'en') });
+      const path = b.match(/path:\s*(["'])(.*?)\1/)?.[2];
+      out.push({ id, zhName, enName, zhDesc: val(descBlock, 'zh'), enDesc: val(descBlock, 'en'), ...(path ? { path } : {}) });
     }
   }
   return out;
@@ -135,12 +138,12 @@ function seoAssets(): Plugin {
       const lines: string[] = [];
       lines.push('# 数理化数字实验室 · STEM Digital Lab');
       lines.push('');
-      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 4 个查表工具，另有 AI 学习助手（自带 Key）。');
+      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 5 个工具，另有 AI 学习助手（自带 Key）。');
       lines.push('');
       lines.push('## 实验 · Labs');
       lines.push('');
       for (const lab of labs) {
-        const u = `${SITE_URL}/lab/${lab.id}`;
+        const u = `${SITE_URL}${lab.path ?? `/lab/${lab.id}`}`;
         const zh = `- [${lab.zhName}（${lab.enName}）](${u})：${lab.zhDesc || '交互探究实验'}`;
         lines.push(zh);
       }
@@ -169,7 +172,7 @@ function seoAssets(): Plugin {
         { path: '/', priority: '1.0', freq: 'weekly' },
         { path: '/guide', priority: '0.5', freq: 'monthly' },
         ...SUBJECT_PAGES.map((s) => ({ path: s.path, priority: '0.7', freq: 'weekly' })),
-        ...labs.map((lab) => ({ path: `/lab/${lab.id}`, priority: '0.8', freq: 'weekly' })),
+        ...labs.map((lab) => ({ path: lab.path ?? `/lab/${lab.id}`, priority: '0.8', freq: 'weekly' })),
         ...TOOLS.map((t) => ({ path: t.path, priority: '0.8', freq: 'weekly' })),
         { path: '/license', priority: '0.3', freq: 'yearly' },
       ];

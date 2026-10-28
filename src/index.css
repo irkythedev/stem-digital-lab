@@ -18,6 +18,11 @@
   --accent-light: #eeeeee;
   /* 错误反馈色（拒绝/非法接法） */
   --error: #dc2626;
+  /* 元件故障态专用色（保险丝熔断叉、发热丝炽红、正极柱红芯）。
+     与 --error 分开是因为它要同时压在「金属灰/卡片白」两类底上：
+     #d64545 在白卡上只有 4.19:1，做 1.2px 细描边会糊；#b3261e 提到 6.5:1。
+     只被 circuit-bench 引用，改它不会影响其它实验。 */
+  --danger: #b3261e;
   /* 成功/正确反馈色（正确答案高亮；与 --error 语义对称） */
   --success: #16a34a;
   /* 警告/降级反馈色（语音降级提示等；与 --error 语义对称，不用于正文文本） */
@@ -42,6 +47,23 @@
   /* 跟随正文色的令牌：智谱用 var(--fg)，明暗两套自动生效，不需要再单独覆盖 */
   --brand-zhipu: var(--fg);
   --brand-doubao: #a569ff;
+  /* 计算引擎标识（引擎徽章里的两枚标）——同一个纪律：色值在 CSS，组件不写 hex。
+     形制是**品牌淡底芯片**（V3）：品牌色以低不透明度铺一层底，同色相深墨画标与文字，
+     徽章整体就是这枚淡底。所以每枚引擎要一组「底 + 墨」，而不是像上面五家那样只有
+     一枚色；并且**明暗各给一组**（html.dark 与 prefers-color-scheme 两处都有覆盖）。
+     为什么不照搬官方十六进制：JS 官方黄 #f7df1e 直接压在 --bg 上只有 1.30:1，
+     C++ 官方蓝 #00599c 压在暗底上只有 2.51:1 —— 两枚色在亮暗里恰好反向失效，
+     照搬必然有一格读不出。改成「品牌色做底、另配一档同色相深墨」后四格全过。
+     取值不许凭印象调：底 = 品牌色按 alpha 合成到 --bg（亮 C++ 13% → #dae5ee、
+     JS 22% → #f9f4ca），墨取同色相的另一档明度。
+     实测墨/底：亮 C++ 7.64、亮 JS 6.79、暗 C++ 4.94、暗 JS 7.52 —— 四格都过
+     WCAG AA 正文 4.5:1（当初就是这么四格逐值比出来的）。
+     底/页底只有 1.07–1.78，**这是有意的**：淡底只做色相提示，徽章的边界由里面的
+     墨迹与文字交代，不靠描边立形（描边路线正是在这一步失败的）。 */
+  --brand-cpp-chip: #dae5ee;
+  --brand-cpp-ink: #004482;
+  --brand-js-chip: #f9f4ca;
+  --brand-js-ink: #6b5000;
   /* 科技蓝：只给「引流 / 外部作品」这类**提示型**角标用。
      不能拿 --accent 顶替——--accent 的语义是「主操作」（浅色黑、深色白），
      它当不了蓝；硬塞进去角标会变成一块黑白方块。 */
@@ -72,6 +94,15 @@
   --chart-4: #b07400;
   --chart-5: #3e7fa8;
   --chart-6: #b0568a;
+  /* ── 电学工作台的画布专用令牌 ─────────────────────────────────────
+     `--cb-wire`：电路图（单色线稿）用导线颜色。仿真图不用它——仿真图的
+     导线走 --chart-1..6 绝缘皮色。显式定义而不是各处写 `var(--cb-wire, var(--fg))`，
+     回退值一旦漂移（历史上是陈旧的 #e07a1f）就没人发现。
+     `--cb-flow`：仿真图「电流方向流动虚线」色。它**只**承载电流方向这一条信息，
+     所以必须在两套主题下都压得住底下的绝缘皮色：浅色 #d97706 对 --card-bg 4.62、
+     暗色 #ffd166 对 --card-bg 11.0，都远高于 3:1 图形元素门槛。 */
+  --cb-wire: var(--fg);
+  --cb-flow: #d97706;
   /* 衬线栈：现代 CJK 宋体真名在前。Linux 实际家族名是 'Noto Serif CJK SC'，
      'Noto Serif SC' 是 Google Fonts 屏幕版名；再以思源旧名 / 苹果 / Windows 宋体兜底，
      Georgia 退居拉丁兜底位（它无 CJK 字形，此前排在首位会先吃掉所有拉丁与标点）。 */
@@ -108,12 +139,23 @@ html.dark {
   --accent: #ffffff;
   --accent-light: #262621;
   --error: #ef4444;
+  /* 暗底上的危险色要整体提亮一档：#ef4444 对 --card-bg 只有 4.19:1，
+     压不住 10–11px 的故障徽标文字（WCAG AA 正文 4.5:1）。
+     #f87171 对 --card-bg 实测 6.05、对 --bg 6.60，与浅色的 #b3261e 语义对称。 */
+  --danger: #f87171;
   --success: #4ade80;
   --warn: #fbbf24;
   --brand-deepseek: #8098ff;
   --brand-qwen: #9b96ff;
   --brand-kimi: #79b6fc;
   --brand-doubao: #c29cfc;
+  /* 引擎淡底芯片：亮暗各一组。暗底上品牌色必须提亮一档才认得出（C++ 墨升到
+     官方 logo 的浅蓝 #659ad2），黄底在暗处转橄榄（#484215）——这是淡底路线在
+     暗色里的代价，换来的是四格对比度都不掉（4.94 / 7.52，仍过 AA 正文）。 */
+  --brand-cpp-chip: #0f2b3f;
+  --brand-cpp-ink: #659ad2;
+  --brand-js-chip: #484215;
+  --brand-js-ink: #f7df1e;
   /* 深色下浮层要亮一档才看得出边界；光晕也加强一点，否则蓝点在炭底上不发光 */
   --tech-blue-glow: rgba(77, 107, 254, 0.55);
   --tip-bg: #262621;
@@ -135,6 +177,10 @@ html.dark {
   --chart-4: #f0b429;
   --chart-5: #7ec8f2;
   --chart-6: #e39bc0;
+  /* 画布专用令牌跟着主题走：电路图导线用前景色，电流流动虚线用亮黄
+     （暗底上 #d97706 只有 3.5:1，压不住深色绝缘皮，读不出方向）。 */
+  --cb-wire: var(--fg);
+  --cb-flow: #ffd166;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -148,12 +194,18 @@ html.dark {
     --accent: #ffffff;
     --accent-light: #262621;
     --error: #ef4444;
+    --danger: #f87171;
     --success: #4ade80;
     --warn: #fbbf24;
     --brand-deepseek: #8098ff;
     --brand-qwen: #9b96ff;
     --brand-kimi: #79b6fc;
     --brand-doubao: #c29cfc;
+    /* 引擎淡底芯片：与 html.dark 逐值相同（同一套暗色令牌，两处必须同步改） */
+    --brand-cpp-chip: #0f2b3f;
+    --brand-cpp-ink: #659ad2;
+    --brand-js-chip: #484215;
+    --brand-js-ink: #f7df1e;
     --tech-blue-glow: rgba(77, 107, 254, 0.55);
     --tip-bg: #262621;
     --tip-fg: #e8e6df;
@@ -169,6 +221,8 @@ html.dark {
     --chart-4: #f0b429;
     --chart-5: #7ec8f2;
     --chart-6: #e39bc0;
+    --cb-wire: var(--fg);
+    --cb-flow: #ffd166;
   }
 }
 
@@ -796,6 +850,24 @@ input[type="range"]::-moz-range-thumb:active {
 /* 开关刀片：闭合/断开平滑切换 */
 .switch-blade {
   transition: d var(--dur-base) var(--ease-out);
+}
+
+/* 电学实验台 · 实物图电流流动层：虚线沿导线循环滚动。
+   只动 stroke-dashoffset（GPU 合成，不触发重排），周期由内联 animationDuration
+   按支路电流大小分档；动画本身由浏览器合成线程驱动，不产生 React 重渲染。 */
+.cb-current-flow {
+  animation-name: cb-current-flow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: stroke-dashoffset;
+}
+@keyframes cb-current-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -12; }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* 减动效偏好下保留「有电流」的视觉提示，但停止滚动，避免持续闪烁。 */
+  .cb-current-flow { animation: none; }
 }
 
 /* 品牌 icon 正三角排布：△（数学）在上，□（化学）左下，○（物理）右下 */

@@ -15,21 +15,35 @@ const copy = {
     backHome: '返回',
     intro: '这是一个本地运行的初中 STEM 数字探究空间，不需要登录；反馈会发送给开发者，离线时自动暂存，联网后补发。首页「每日科学」每天展示一位科学家的名言与小故事。',
     flow: '基本流程',
-    steps: ['选择学科', '选择实验', '预测 → 探索 → 结论'],
+    steps: ['选择学科或工具区，或点首页「随机探索」', '进入实验页或工具页', '实验：预测 → 探索 → 结论', '工具：自由使用，不走三幕式'],
     inquiry: '三幕式探究',
     acts: [
       ['预测', '先根据已有知识形成自己的猜想，不急着看答案。'],
       ['探索', '拖动滑块、操作开关或拖拽图形，观察参数变化带来的结果，并记录证据。'],
       ['结论', '根据观察完成结论题，再查看正误反馈与考点速记。'],
+      ['工具页例外', '电学工作台与四个查表工具不走三幕式：工作台是自由沙盒，查表工具只读，打开即用。'],
     ],
     controls: '常见操作',
-    controlsList: ['滑块：改变实验变量', '圆周上的点：拖动观察几何关系', '电路开关：点击改变通断状态', '表笔：拖到正确的测量点', '记一条观察：保存当前参数与现象', '元素周期表：点元素查看详情与实物照片，点喇叭听读音', '原子结构图：点击电子层查看该层电子数'],
+    controlsList: [
+      '滑块：改变实验变量',
+      '圆周上的点：拖动观察几何关系',
+      '电路开关：点击改变通断状态',
+      '表笔：拖到正确的测量点',
+      '记一条观察：保存当前参数与现象',
+      '工作台接线：依次点两个接线柱连线；双击开关改变通断；右键或长按打开操作菜单',
+      '工作台视图：顶栏切换「电路图 / 仿真图」；画布读数与数据记录面板实时联动',
+      '工作台模拟：运行 / 暂停仿真，撤销 / 重做，清空与适配画布',
+      '工作台数据：记录读数、最小二乘拟合、导出 CSV；元件损坏时点「一键修复」（需先断开开关）',
+      '元素周期表：点元素查看详情与实物照片；点喇叭听读音；可按符号 / 中文名 / 英文名检索',
+      '3D 立体模型：周期表里点「查看 3D 立体模型」进入可拖拽旋转的三维视图，点「课本平面」切回课本规范图',
+      '原子结构图：点击电子层查看该层电子数',
+    ],
     teaching: '教师演示建议',
     teachingText: '先让学生独立预测，再邀请学生描述证据，最后共同完成结论。每一步都可以随时返回、反复调整，不做顺序限制。',
     privacy: '反馈与隐私',
     privacyText: '实验反馈和项目反馈会发送给开发者；离线或网络异常时自动暂存在当前浏览器，联网后补发。无需登录账号。',
     ai: 'AI 学习助手',
-    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），回答末尾会推荐 3 个追问并支持「换一批」；回答可一键朗读，数学公式、化学式按规范读法读出而非逐字符；「考考你」可让 AI 基于当前知识点批量出单选题或填空题（可选题型：单选/填空/混合，支持 AI 辅助判分，可选题量与基础知识/进阶提升/易混淆辨析角度，支持每题限时），作答后即时判分与讲解，错题自动记入错题集；不提供自由输入框。',
+    aiIntro: '顶栏「AI 学习助手」入口可辅助解释数理化知识。您需自行配置 AI 服务商（支持 DeepSeek、通义千问、Kimi、智谱 GLM、豆包等）的 API Key，本站不提供、不代购、不收取任何费用。支持问答历史（仅保存在本机浏览器，可随时清除，支持按科目/知识点筛选），回答末尾会推荐 3 个追问并支持「换一批」；回答可一键朗读，数学公式、化学式按规范读法读出而非逐字符；「考考你」可让 AI 基于当前知识点批量出单选题或填空题（可选题型：单选/填空/混合，支持 AI 辅助判分，可选题量与基础知识/进阶提升/易混淆辨析角度，支持每题限时），作答后即时判分与讲解，错题自动记入错题集。AI 面板不设自由对话输入框：提问从页面上的「问 AI」「考考你」入口发起（「考考你」里的填空框只用于作答）。',
     aiTermsTitle: '使用须知与免责',
     aiTerms: [
       { title: '服务性质与费用', body: '本站为纯前端静态页面，仅提供对话界面，不提供任何 AI 大模型服务，也不收取任何费用。您需自行注册并管理所选 AI 服务商的 API，相关费用由您与服务商结算。' },
@@ -51,21 +65,35 @@ const copy = {
     backHome: 'Back',
     intro: 'A local middle-school STEM exploration space. No login is needed; feedback is sent to the developer, or queued locally while offline and retried when back online. The homepage Daily Science block shares a scientist quote and story each day.',
     flow: 'Basic flow',
-    steps: ['Choose a subject', 'Choose an experiment', 'Predict → Explore → Conclude'],
+    steps: ['Choose a subject or the tools area, or hit "Random explore"', 'Open a lab page or a tool page', 'Labs: Predict → Explore → Conclude', 'Tools: free to use, no three acts'],
     inquiry: 'Three-act inquiry',
     acts: [
       ['Predict', 'Make a guess from what you already know before looking at the result.'],
       ['Explore', 'Adjust sliders, switches, or draggable points. Observe changes and record evidence.'],
       ['Conclude', 'Answer the conclusion questions, then check feedback and key points.'],
+      ['Tool pages', 'The circuit workbench and the four lookup tools skip the three acts: the workbench is a free sandbox and the lookup tools are read-only.'],
     ],
     controls: 'Common controls',
-    controlsList: ['Slider: change an experimental variable', 'Points on a circle: drag to explore geometry', 'Circuit switch: click to open or close', 'Probes: Drag to correct measurement points', 'Note it: save current parameters and observations', 'Periodic table: tap an element for details and photo, tap the speaker to hear its name', 'Bohr diagram: tap a shell to see its electron count'],
+    controlsList: [
+      'Slider: change an experimental variable',
+      'Points on a circle: drag to explore geometry',
+      'Circuit switch: click to open or close',
+      'Probes: Drag to correct measurement points',
+      'Note it: save current parameters and observations',
+      'Workbench wiring: tap two terminals to connect; double-tap a switch to open or close it; right-click or long-press for the component menu',
+      'Workbench views: switch "Circuit / Simulation" in the toolbar; readings and the data table follow the canvas',
+      'Workbench run: run or pause the simulation, undo or redo, clear and fit the canvas',
+      'Workbench data: record readings, least-squares fit, export CSV; when a component is damaged, hit "Repair" (switch it off first)',
+      'Periodic table: tap an element for details and photo; tap the speaker for its name; search by symbol or name',
+      '3D model: in the periodic table, "Open the 3D model" enters a draggable three-dimensional view; "Flat view" returns to the textbook diagram',
+      'Bohr diagram: tap a shell to see its electron count',
+    ],
     teaching: 'Teaching suggestion',
     teachingText: 'Let students predict independently, invite them to describe evidence, then complete the conclusion together. Any act can be revisited; there are no hard locks.',
     privacy: 'Feedback and privacy',
     privacyText: 'Experiment and project feedback is sent to the developer; while offline or on network errors it is queued in this browser and sent automatically when back online. No account is required.',
     ai: 'AI Assistant',
-    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing. Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; each answer recommends 3 follow-up questions with a "refresh" option; answers can be read aloud at one click, with math formulas and chemical names read in standard spoken form instead of raw characters; "Quiz" lets the AI batch-generate single-choice or fill-in questions from the current topic (pick single-choice / fill-in / mixed, with AI-assisted grading, plus the count and an angle — basic knowledge / advanced / easy-to-confuse concepts — with an optional per-question time limit), scoring each instantly with an explanation and auto-saving mistakes to a mistake collection — there is no free-text input.',
+    aiIntro: 'The AI assistant (header entry) helps explain math / physics / chemistry. You configure your own API key (DeepSeek, Qwen, Kimi, Zhipu GLM, Doubao and more); this site provides no key, sells nothing and charges nothing. Q&A history is stored only in your browser, clearable anytime, filterable by subject or topic; each answer recommends 3 follow-up questions with a "refresh" option; answers can be read aloud at one click, with math formulas and chemical names read in standard spoken form instead of raw characters; "Quiz" lets the AI batch-generate single-choice or fill-in questions from the current topic (pick single-choice / fill-in / mixed, with AI-assisted grading, plus the count and an angle — basic knowledge / advanced / easy-to-confuse concepts — with an optional per-question time limit), scoring each instantly with an explanation and auto-saving mistakes to a mistake collection. The panel has no free-form chat box: questions start from the page-level "Ask AI" and "Quiz me" entries — the fill-in field inside "Quiz me" is only for answering.',
     aiTermsTitle: 'Terms & disclaimer',
     aiTerms: [
       { title: 'Service nature and fees', body: 'This site is a pure front-end static page that only provides the chat UI — no AI model service, no fees. You register and manage the API of your chosen provider yourself; fees are settled with that provider.' },
@@ -127,7 +155,7 @@ export default function GuidePage() {
           poster="/videos/stem-intro-poster.webp?v=1"
           className="h-full w-full object-cover"
         >
-          <source src="/videos/stem-intro.mp4?v=e009a61a" type="video/mp4" />
+          <source src="/videos/stem-intro.mp4?v=6fd14c64" type="video/mp4" />
         </video>
         </div>
       </figure>

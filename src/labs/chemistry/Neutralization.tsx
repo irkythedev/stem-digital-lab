@@ -22,6 +22,9 @@ import CoordPlane, { type CoordCurve } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
+import { loadOhmEngine, phFromMoles } from '../physics/stem-engine';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -30,7 +33,8 @@ type PredictTrend = 'slow-fast' | 'linear' | 'flat' | 'up' | null;
 
 /**
  * 计算滴定 pH：向 V0=20mL 浓度为 acidM 的 HCl 中滴入体积 v 的 NaOH（0.1 mol/L）。
- * 强酸强碱中和，简化模型：
+ * 强酸强碱中和，简化模型（式子本体在 `titration-core.ts` 的 phFromMoles，此处只把
+ * 场景量换算成摩尔数与总体积）：
  *  - 中和前：pH = -log10(剩余酸浓度)
  *  - 恰好中和（v = V0 * acidM / 0.1）：pH = 7
  *  - 过量：pH = 14 + log10(过量碱浓度)
@@ -41,16 +45,10 @@ export function phAt(acidM: number, v: number): number {
   const acidMol = acidM * v0; // 酸的毫摩尔
   const baseMol = baseM * v; // 加入碱的毫摩尔
   const total = v0 + v;
-  // 等当点用相对容差判定：否则 v 的浮点误差会让「残余/过量浓度」趋零而使 pH 发散
-  if (Math.abs(baseMol - acidMol) < 1e-9 * Math.max(1, acidMol)) return 7;
-  // 两个分支都必须双向 clamp 到 [0,14]——酸性分支原先只有 Math.max(0,…)，
-  // 缺上界，等当点附近会给出 pH 16.9 这种越界值（曲线上冲出坐标系的尖峰）
-  if (baseMol < acidMol) {
-    const h = (acidMol - baseMol) / total;
-    return Math.min(14, Math.max(0, -Math.log10(h)));
-  }
-  const oh = (baseMol - acidMol) / total;
-  return Math.min(14, Math.max(0, 14 + Math.log10(oh)));
+  // 式子本体在滴定核（titration-core.ts，经 physics/stem-engine 门面转发；WASM 就绪后由
+  // C++ 原生核算）。V0 = 20 mL 与滴定剂浓度 0.1 mol/L 是**实验场景常量**，留在实验里；
+  // 核只吃摩尔数与总体积——每个分支都要除以总体积，两参签名还原不了 pH。
+  return phFromMoles(acidMol, baseMol, total);
 }
 
 /** 横轴与滴入量程上限（mL）：取 50 以保证最高浓度档（0.20 mol/L，V_eq = 40 mL）
@@ -341,6 +339,18 @@ export default function Neutralization() {
 
   const correctKeys = { q1: 's', q2: 'ph7', q3: 'steep', q4: 'basic' } as const;
 
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((k) => {
+      if (alive) setEngineKind(k);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   /** 按 OPTIONS 定义的顺序生成选项（文案键 → 当前语言文案） */
   const opts = (key: keyof typeof OPTIONS) =>
     OPTIONS[key].map(([value, labelKey]) =>
@@ -362,7 +372,8 @@ export default function Neutralization() {
       points: sampleTitration(acidM),
       label: `酸 ${acidM.toFixed(2)} mol/L`,
     }),
-    [acidM],
+    // engineKind 进依赖：sampleTitration 逐点调门面的 phFromMoles，WASM 加载完成后须重算
+    [acidM, engineKind],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
@@ -613,9 +624,12 @@ export default function Neutralization() {
             summary={`pH ${ph.toFixed(1)} / ${volume.toFixed(1)}mL`}
           >
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-              // {t.params}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                // {t.params}
+              </h3>
+              <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
+            </div>
             <ParamSlider
               label="V (NaOH)"
               value={volume}

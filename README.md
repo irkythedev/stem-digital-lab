@@ -2,15 +2,29 @@
 
 # 数理化数字实验室
 
-![version](https://img.shields.io/badge/v0.41.0-0284c7?style=flat) ![license](https://img.shields.io/badge/AGPL--3.0-16a34a?style=flat)
-![stack](https://img.shields.io/badge/React%20%2B%20Vite%20%2B%20KaTeX-087ea4?style=flat) ![wasm](https://img.shields.io/badge/WebAssembly-SINGLE_FILE-654ff0?style=flat) ![cpp](https://img.shields.io/badge/C%2B%2B-17-00599c?style=flat)
+**STEM Digital Lab**
 
-<p>基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。<br/>
-15 个交互实验 + 4 个查表工具　·　纯前端 · 无需登录 · 中英双语 · 深浅主题 · 可离线使用</p>
+面向初中 7–9 年级课程标准的交互式科学探究与数值建模工作台
 
-<p><b><a href="https://stem.irky.dev">▶ 在线体验：https://stem.irky.dev</a></b></p>
+<p>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-2e90fa?style=flat-square&labelColor=18181b" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/Version-v0.42.0-52525b?style=flat-square&labelColor=18181b" alt="Version v0.42.0">
+  <img src="https://img.shields.io/badge/Core-C%2B%2B17%20%2F%20WASM-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=18181b" alt="Core: C++17 / WebAssembly">
+  <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TS-3178C6?style=flat-square&logo=typescript&logoColor=white&labelColor=18181b" alt="Frontend: React 19 + TypeScript">
+  <img src="https://img.shields.io/badge/Tests-627%20passed-16a34a?style=flat-square&labelColor=18181b" alt="627 tests passing">
+</p>
 
-<p><a href="#中文说明">中文说明</a>　·　<a href="#english">English</a></p>
+<p>
+  <a href="https://stem.irky.dev"><b>▶ 在线体验 (stem.irky.dev)</b></a>
+  <span>&nbsp;·&nbsp;</span>
+  <a href="#实验与工具清单">实验矩阵</a>
+  <span>&nbsp;·&nbsp;</span>
+  <a href="#计算引擎">架构机理</a>
+  <span>&nbsp;·&nbsp;</span>
+  <a href="#快速开始">本地构建</a>
+  <span>&nbsp;·&nbsp;</span>
+  <a href="#english">English</a>
+</p>
 
 <table align="center">
   <thead>
@@ -25,6 +39,22 @@
 </table>
 
 </div>
+
+| 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
+| :--- | :--- | :--- |
+| **15 个交互实验 + 5 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 627 项单测门禁 |
+
+无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
+
+<!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
+     15 实验 + 5 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 4 个固定路由查表工具，smoke 计数守卫会核对）
+     627 passed     ← npm test 实测（smoke 604 + 三方对拍 23；新增断言须同步徽章 / 中英正文 / 三栏表）
+     C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
+     React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
+     GB/T 4728      ← 《电气简图用图形符号》国标族，电路图线稿按国标绘制（render/schematic.tsx）
+     WCAG AA        ← 电学工作台配色令牌对比度实测（仅此范围，勿扩大为全站声明）
+     徽章视觉        ← labelColor=18181b 统一深炭灰底，值色只做低饱和区分，禁用高饱和撞色
+     首屏禁用 Emoji   ← 与站内 UI 同一纪律（正文既有条目另行处理） -->
 
 ---
 
@@ -49,15 +79,15 @@
 
 数理化数字实验室是一个**无需登录**的初中 STEM 探究空间，每个实验遵循**三幕式探究**（预测 → 探索 → 结论），鼓励学生先猜想、再操作、后归纳，而非被动跟随固定步骤。
 
-- 🌐 中英双语，右上角一键切换
-- 🌗 深浅主题（默认浅色，适合希沃/投影大屏）
-- 📱 响应式：手机 / 平板 / PC / 希沃大屏
-- 🎲 首页「随机探索」一键随机进入实验或工具
-- 🧪 15 个交互实验 + 4 个查表工具：元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
-- 🤖 AI 学习助手（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
-- 📦 可安装为应用离线使用（PWA）
-- 💬 首页「每日科学」：每天一位科学家的名言、考点速记与小故事
-- 📘 **使用说明与版本历史**：顶栏内置交互式使用指引（`/guide`）与版本更新日志弹窗，右下角提供快速反馈通道
+- **中英双语**：右上角一键切换
+- **深浅主题**：默认浅色，适合希沃 / 投影大屏
+- **多端响应式**：手机 / 平板 / PC / 希沃大屏
+- **随机探索**：首页一键随机进入实验或工具
+- **15 个交互实验 + 5 个工具**：电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图 · 读表与元件状态监控）、元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
+- **AI 学习助手**（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
+- **可离线安装**：安装为应用后离线使用（PWA）
+- **每日科学**：首页每天一位科学家的名言、考点速记与小故事
+- **使用说明与版本历史**：顶栏内置交互式使用指引（`/guide`）与版本更新日志弹窗，右下角提供快速反馈通道
 
 ### 实验与工具清单
 
@@ -67,9 +97,9 @@
 
 **化学** `9`　质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性
 
-**工具**　元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
+**工具**　电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图）· 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
 
-> 15 个实验与 4 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
+> 15 个实验与 5 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
 
 ### 路线图（探索中）
 
@@ -126,8 +156,9 @@ npm run test       # 运行测试
 npm test           # 运行全部测试（无需任何服务）
 ```
 
-内置测试套件 **405 项全绿**，秒级完成，**100% 离线**：仅使用 Node 内置模块（`node:assert` / `node:fs`），不启动服务器、不访问网络、不需要数据库或环境变量。三类断言并存：
+内置测试套件 **627 项全绿**（`src/smoke.test.ts` 604 项 + `src/stem-core-ext.test.ts` 23 项），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
+- **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
 - **源码级约束**：触控命中区 ≥40px、不引入第三方图表库、界面不出现 Emoji、中英文案必须对称；
 - **进程内替身**：涉及请求的用例一律替换 `fetch` 并在 `finally` 中恢复，绝不触发真实请求。
@@ -168,22 +199,29 @@ npm test           # 运行全部测试（无需任何服务）
 
 ### 计算引擎
 
-- 交互层仍是 React：欧姆定律、凸透镜成像与二次函数实验的数值核共用一份 C++ 实现（`cpp/stem_core.cpp` + 各公式 hpp），经 Emscripten 编译为同一份 WebAssembly（SINGLE_FILE），在浏览器中按需调用
-- 已接入实验：欧姆定律（/lab/ohm）、凸透镜成像（/lab/lens）、二次函数（/lab/quadratic），公式与页面模型一致——定值电阻 I = U/(R+Rp)，灯泡 I = U/(R + 0.4U + Rp)（γ = 0.4）；像距 v = uf/(u−f)；y = ax² + bx + c
-- 编译：`npm run build:wasm`（需 emsdk / em++），产物为 SINGLE_FILE 的 `src/wasm/stemCore.js`；未配置 em++、编译失败或运行时加载失败时，自动回退各 JS 真源（`src/labs/physics/ohm-core.ts`、`lens-core.ts`、`src/labs/math/quadratic-core.ts`），实验照常可用
-- 三个实验的参数卡会显示当前引擎：「计算引擎：C++ WebAssembly」或「计算引擎：JS 回退」
-- 另附一份仅依赖 C++ 标准库的命令行版（`cpp/cli.cpp`），用 `g++` 即可编译，便于离线验证欧姆公式
+- 交互层仍是 React：欧姆定律、凸透镜成像、二次函数、反比例函数、酸碱中和、浮力的数值核共用一份 C++ 实现（`cpp/stem_core.cpp` + 各公式 hpp：`ohm_formula` / `lens_formula` / `math_fn` / `bulb_formula` / `chem_formula` / `mechanics_formula`），经 Emscripten 编译为同一份 WebAssembly（SINGLE_FILE），在浏览器中按需调用，共 10 个标量导出
+- 电学工作台另有一份独立的直流求解核（`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`）：按节点法求解网表，元件热模型与保险丝判定留在前端；编译 `bash scripts/build-wasm-circuit.sh`，产物为 `src/wasm/circuitBench.js`，未载入时自动回退前端求解。工作台的灯泡热积分与弹簧测力计读数也走上面那份公式核（`bulb_temp_step` / `bulb_resistance` / `spring_reading`）
+- 已接入实验：欧姆定律（/lab/ohm）、凸透镜成像（/lab/lens）、二次函数（/lab/quadratic）、反比例函数（/lab/inverse）、酸碱中和（/lab/neutralization）、浮力（/lab/buoyancy），公式与页面模型一致——定值电阻 I = U/(R+Rp)，灯泡 I = U/(R + 0.4U + Rp)（γ = 0.4）；像距 v = uf/(u−f)；y = ax² + bx + c；y = k/x（x = 0 为定义域外的 NaN 哨兵）；灯泡 R(T) 与灯丝温度单步积分；滴定 pH（等当点恰好 7）；F示 = max(0, G − ρ液·g·V排)
+- 编译：`npm run build:wasm`（需 emsdk / em++），产物为 SINGLE_FILE 的 `src/wasm/stemCore.js`；未配置 em++、编译失败、运行时加载失败或**任一导出缺失**时，自动整颗回退各 JS 真源（`src/labs/physics/ohm-core.ts`、`lens-core.ts`、`bulb-core.ts`、`mechanics-core.ts`、`src/labs/math/quadratic-core.ts`、`inverse-core.ts`、`src/labs/chemistry/titration-core.ts`），实验照常可用
+- 六个实验的参数卡与电学工作台的页头徽标会显示当前引擎：「计算引擎：C++ WebAssembly」或「计算引擎：JS 回退」
+- 三方对拍：`npm test` 中的 `src/stem-core-ext.test.ts` 用 `g++` 现场编译 `cpp/stem_cli.cpp` 得到原生真值，与 WASM 导出、TS 回退真源三方逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）
+- 另附两份仅依赖 C++ 标准库的命令行版：`cpp/cli.cpp` 覆盖欧姆公式，`cpp/stem_cli.cpp` 覆盖全部 10 个导出（stdin 协议），均用 `g++` 即可编译，便于离线验证
 
 ### 项目结构
 
 ```
+cpp/                   # C++ 计算核（公式核 / 电学求解器 / 对拍 CLI），编译脚本在 scripts/
 src/
 ├── labs/              # 实验组件（math / physics / chemistry）
+│   └── physics/circuit-bench/   # 电学工作台（画布 / 渲染 / 求解器 / 状态监控）
+├── wasm/              # Emscripten 产物（SINGLE_FILE，随仓库提交）
 ├── components/
 │   ├── lab/           # 共享实验原语（坐标平面/表盘/反馈面板等）
 │   │   └── circuit/   # 电路部件（电阻/灯泡/变阻器/电表等 SVG）
 │   ├── layout/        # 外壳（Header / Footer）
-│   ├── ai/            # AI 学习助手（面板/问 AI 按钮）
+│   ├── ai/            # AI 学习助手（面板 / 问 AI 按钮）
+│   │   ├── panels/    # 四块域名面板（须知 / 设置 / 记录 / 刷题）
+│   │   └── hooks/     # 设置域与刷题域 Hook
 │   ├── feedback/      # 反馈气泡与面板 / 分享对话框 / 离线教学包
 │   ├── share/         # 标题内嵌分享按钮
 │   └── ui/            # 通用 UI（科目/实验图标、公式、占位页）
@@ -194,6 +232,8 @@ src/
 ### 反馈
 
 右下角浮动气泡提供**实验反馈**与**项目反馈**，提交后实时推送到开发者（钉钉 / 微信）；离线或网络异常时自动暂存本机，联网后自动补发。无需登录账号。
+
+在 GitHub / Gitee 上提 issue 时，请附**出问题的页面、浏览器与设备、复现步骤**（版本号见顶栏或「版本历史」），有截图更好——缺陷模板已内置这几项；功能建议与使用提问请直接走上面的反馈气泡。
 
 ### 许可
 
@@ -228,15 +268,15 @@ src/
 
 **STEM Digital Lab** is a **no-login** middle-school STEM exploration space (Grades 7–9). Live at https://stem.irky.dev. Every lab follows a **three-act inquiry** (Predict → Explore → Conclude) that asks students to guess first, explore freely, then conclude — not to follow fixed step-locks.
 
-- 🌐 Bilingual (zh/en), switchable from the header
-- 🌗 Light & dark themes (light by default for classroom projection)
-- 📱 Responsive: mobile / tablet / PC / Seewo interactive screen
-- 🎲 "Random explore" button on the homepage jumps into a random lab or tool
-- 🧪 15 interactive labs + 4 lookup tools: Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
-- 🤖 AI assistant (header entry): renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
-- 📦 Installable as an app for offline use (PWA)
-- 💬 Daily Science on the homepage: a scientist quote, key-point tip and short story each day
-- 📘 **Guide & Version History**: Built-in interactive user guide (`/guide`), release changelog dialog, and a persistent feedback entry
+- **Bilingual (zh/en)** — switchable from the header
+- **Light & dark themes** — light by default for classroom projection
+- **Responsive layout** — mobile / tablet / PC / Seewo interactive screen
+- **Random explore** — a homepage button jumps into a random lab or tool
+- **15 interactive labs + 5 tools** — Circuit Workbench (free canvas · circuit and simulation views · live meters and component status), Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
+- **AI assistant** (header entry) — renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
+- **Offline install** — installable as an app and usable offline (PWA)
+- **Daily Science** — a scientist quote, key-point tip and short story each day on the homepage
+- **Guide & Version History** — built-in interactive user guide (`/guide`), release changelog dialog, and a persistent feedback entry
 
 ### Labs & Tools
 
@@ -246,9 +286,9 @@ src/
 
 **Chemistry** `9`　Conservation of Mass · Titration · Electrolysis · Metal Activity
 
-**Tool**　Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
+**Tools**　Circuit Workbench (free canvas · circuit and simulation views) · Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
 
-> All 15 labs and all 4 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
+> All 15 labs and all 5 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
 
 ### Roadmap (experimental)
 
@@ -305,8 +345,9 @@ npm run test       # Run tests
 npm test           # Run the whole suite (no service required)
 ```
 
-The built-in suite runs **405 assertions, all green**, in seconds and is **100% offline**: it only uses Node built-ins (`node:assert` / `node:fs`) — no server, no network, no database, no environment variables. Three kinds of checks live side by side:
+The built-in suite runs **627 assertions, all green** (`src/smoke.test.ts` 604 + `src/stem-core-ext.test.ts` 23), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
+- **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;
 - **Source-level constraints**: touch targets ≥40px, no third-party chart library, no emoji in the UI, zh/en copy must stay symmetric;
 - **In-process stand-ins**: every request-related case replaces `fetch` and restores it in `finally`, so no real request ever fires.
@@ -347,22 +388,29 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 
 ### Computation engine
 
-- The interaction layer stays in React: the Ohm's law, convex-lens and quadratic-function labs share one C++ numeric core (`cpp/stem_core.cpp` + per-formula headers), compiled to a single WebAssembly binary (SINGLE_FILE) and invoked on demand in the browser
-- Wired up labs: Ohm's law (/lab/ohm), lens (/lab/lens), quadratic (/lab/quadratic), with formulas identical to the on-page models: fixed resistor I = U/(R+Rp); bulb I = U/(R + 0.4U + Rp) (γ = 0.4); image distance v = uf/(u−f); y = ax² + bx + c
-- Build with `npm run build:wasm` (requires emsdk / em++); the output is a single-file `src/wasm/stemCore.js`. If em++ is absent, the build fails or the runtime load fails, each lab falls back to its JS core (`src/labs/physics/ohm-core.ts`, `lens-core.ts`, `src/labs/math/quadratic-core.ts`) and keeps working as usual
-- The three labs show the active engine in their parameter card: "Engine: C++ WebAssembly" or "Engine: JS fallback"
-- A stdlib-only command-line twin (`cpp/cli.cpp`) can be compiled with plain `g++` to verify the Ohm formulas offline
+- The interaction layer stays in React: the Ohm's law, convex-lens, quadratic-function, inverse-variation, acid-base titration and buoyancy labs share one C++ numeric core (`cpp/stem_core.cpp` + per-formula headers: `ohm_formula` / `lens_formula` / `math_fn` / `bulb_formula` / `chem_formula` / `mechanics_formula`), compiled to a single WebAssembly binary (SINGLE_FILE) and invoked on demand in the browser — 10 scalar exports in total
+- The circuit workbench has a separate DC solver core (`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`): nodal analysis over the netlist, while component heat and fuse behaviour stay in the frontend; build with `bash scripts/build-wasm-circuit.sh` into `src/wasm/circuitBench.js`, falling back to the frontend solver when it cannot load. The workbench's bulb heat integration and spring-scale readings also go through the formula core above (`bulb_temp_step` / `bulb_resistance` / `spring_reading`)
+- Wired up labs: Ohm's law (/lab/ohm), lens (/lab/lens), quadratic (/lab/quadratic), inverse variation (/lab/inverse), acid-base titration (/lab/neutralization), buoyancy (/lab/buoyancy), with formulas identical to the on-page models: fixed resistor I = U/(R+Rp); bulb I = U/(R + 0.4U + Rp) (γ = 0.4); image distance v = uf/(u−f); y = ax² + bx + c; y = k/x (x = 0 carries a NaN sentinel as an out-of-domain marker); bulb R(T) plus the filament temperature step; titration pH (exactly 7 at equivalence); spring reading = max(0, G − ρ·g·V_displaced)
+- Build with `npm run build:wasm` (requires emsdk / em++); the output is a single-file `src/wasm/stemCore.js`. If em++ is absent, the build fails, the runtime load fails, or **any export is missing**, every lab falls back to its JS core (`src/labs/physics/ohm-core.ts`, `lens-core.ts`, `bulb-core.ts`, `mechanics-core.ts`, `src/labs/math/quadratic-core.ts`, `inverse-core.ts`, `src/labs/chemistry/titration-core.ts`) and keeps working as usual
+- The six labs show the active engine in their parameter card, and the circuit workbench shows it in its page-header badge: "Engine: C++ WebAssembly" or "Engine: JS fallback"
+- Three-way parity: `src/stem-core-ext.test.ts` (part of `npm test`) compiles `cpp/stem_cli.cpp` with `g++` on the spot for native truth, then checks it point by point against the WASM exports and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides)
+- Two stdlib-only command-line twins ship with the repo: `cpp/cli.cpp` covers the Ohm formulas, `cpp/stem_cli.cpp` covers all 10 exports over a stdin protocol; both compile with plain `g++` for offline verification
 
 ### Project Structure
 
 ```
+cpp/                   # C++ cores (formula core / circuit solver / parity CLI); build scripts live in scripts/
 src/
 ├── labs/              # Lab components (math / physics / chemistry)
+│   └── physics/circuit-bench/   # Circuit workbench (canvas / render / solver / status monitor)
+├── wasm/              # Emscripten output (SINGLE_FILE, committed)
 ├── components/
 │   ├── lab/           # Shared primitives (coord plane / gauges / feedback)
 │   │   └── circuit/   # Circuit parts (resistor / bulb / rheostat / meters)
 │   ├── layout/        # Shell (Header / Footer)
 │   ├── ai/            # AI assistant (panel / ask buttons)
+│   │   ├── panels/    # Four domain panels (terms / settings / history / quiz)
+│   │   └── hooks/     # Settings and quiz domain hooks
 │   ├── feedback/      # Feedback FAB & panel / share dialog / offline pack
 │   ├── share/         # Inline share button
 │   └── ui/            # Generic UI (subject/lab icons, formula, placeholders)
@@ -373,6 +421,8 @@ src/
 ### Feedback
 
 A floating bubble at the bottom-right provides **experiment feedback** and **project feedback**, sent to the developer in real time (DingTalk / WeChat); while offline or on network errors it is queued locally and retried automatically. No account is required.
+
+When filing an issue on GitHub / Gitee, include the **page, browser and device, and the steps to reproduce** (the version is in the header or under Version History); a screenshot helps. The bug form already asks for these — for feature ideas or usage questions, use the feedback bubble above.
 
 ### License
 

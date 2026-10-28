@@ -20,31 +20,15 @@ import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import EngineBadge from '../../components/lab/EngineBadge';
+import { getEngineTooltip } from '../../components/lab/engine-copy';
+import { loadOhmEngine, sampleInverse } from '../physics/stem-engine';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
 /** 预测题：k>0 时图像在哪些象限 */
 type PredictQuadrant = 'i-iii' | 'ii-iv' | 'all' | 'none' | null;
 type PredictQuadrantNeg = 'i-iii-neg' | 'ii-iv-neg' | 'all-neg' | 'none-neg' | null;
-
-/**
- * 采样反比例函数：x ∈ [-4, 4]，跳过 x=0 邻域，分两支。
- * 第一象限/第三象限（k>0）或第二/第四象限（k<0）。
- */
-function sampleInverse(k: number): [number, number][][] {
-  // 反比例函数定义 k ≠ 0；k=0 时返回空段（不画任何曲线）
-  if (k === 0) return [[], []];
-  const neg: [number, number][] = [];
-  const pos: [number, number][] = [];
-  // 索引乘法取点（勿用逐点浮点累加：末点会漂移成 3.9999… 并对不齐坐标刻度）
-  const N = Math.round((4 - 0.15) / 0.05);
-  for (let i = 0; i <= N; i++) {
-    const x = 0.15 + i * 0.05;
-    neg.push([-4 + i * 0.05, k / (-4 + i * 0.05)]); // 左支：-4 → -0.15（与右支同为升序，点序与旧实现一致）
-    pos.push([x, k / x]); // 右支：0.15 → 4
-  }
-  return [neg, pos];
-}
 
 const copy = {
   zh: {
@@ -276,6 +260,18 @@ export default function Inverse() {
     q4: 'nocross' | 'cross' | 'none' | null;
   }>({ q1: null, q2: null, q3: null, q4: null });
 
+  // 计算引擎（C++ WebAssembly / JS 回退）：默认 JS；mount 后异步尝试加载 WASM，失败静默回退
+  const [engineKind, setEngineKind] = useState<'js' | 'wasm'>('js');
+  useEffect(() => {
+    let alive = true;
+    loadOhmEngine().then((kind) => {
+      if (alive) setEngineKind(kind);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   /** 判分表：引用导出的注册表（单一事实源） */
   const correctKeys = QUIZ_CORRECT;
   const conclusionComplete =
@@ -288,7 +284,8 @@ export default function Inverse() {
       segments: sampleInverse(k),
       label: `y = ${k}/x`,
     }),
-    [k],
+    // engineKind 进依赖：sampleInverse 按门面当前实现采样，WASM 加载完成后须重算
+    [k, engineKind],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
@@ -449,9 +446,12 @@ export default function Inverse() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-6">
           <div className="border border-[var(--border)] p-4 space-y-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-              // {t.params}
-            </h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                // {t.params}
+              </h3>
+              <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
+            </div>
             <ParamSlider
               label="k"
               value={k}

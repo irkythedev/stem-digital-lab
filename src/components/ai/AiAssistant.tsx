@@ -15,152 +15,73 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
-import { Activity, ArrowDown, ArrowLeft, BookOpen, Check, ChevronDown, ChevronsDown, CircleX, Coins, Copy, ExternalLink, Eye, EyeOff, GraduationCap, History, Lightbulb, Loader2, Minus, Pause, Play, Printer, RefreshCw, RotateCcw, Scale, Settings, ShieldCheck, Sparkles, Square, Timer, Trash2, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
+import { ArrowDown, ChevronDown, ChevronUp, ChevronsDown, GraduationCap, History, Lightbulb, Minus, Pause, Play, RotateCcw, Settings, ShieldCheck, Sparkles, Square, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
-import { useTtsPreview, TTS_SAMPLE } from '../../lib/use-tts-preview';
-import { resetTtsStatus, useTtsStatus } from '../../lib/tts-status';
 import TtsStatusBadge from './TtsStatusBadge';
 import { symbolsForTopic } from '../../lib/physics-speech-symbols';
-import {
-  loadTtsConfig,
-  saveTtsConfig,
-  groupLocalVoices,
-  type TtsConfig,
-  type LocalVoice,
-} from '../../lib/tts-config';
-import { labMap } from '../../lib/labs';
+import { labFromPath, labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
-import { QUIZ_SENTINEL, buildQuizPrompt, buildQuizSummaryPrompt, buildFillJudgePrompt, logPromptIssue } from '../../lib/ai-config';
+import { buildQuizSummaryPrompt, logPromptIssue } from '../../lib/ai-config';
 import { formatLabState, getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
-import { parseQuizBatchChecked, dedupeQuizQuestions, shuffleOptions, parseJudgeVerdict, parseQuizQuestion, judgeFillAnswer, type QuizQuestion } from '../../lib/ai-quiz';
-import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, relativeTime, type AiHistoryEntry } from '../../lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
-import { clearQuizHistory, listQuizHistory, saveQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
+import { clearQuizHistory, listQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
-import { reportAiFailure, reportAiSuccess, verifyAiStatus } from '../../lib/ai-status';
-import { addTokenUsage, clearTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
+import { verifyAiStatus } from '../../lib/ai-status';
+import { addTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer, prettyScripts } from './AnswerRich';
+import { Mark, useStable } from './panels/panel-shared';
+import TermsPanel from './panels/TermsPanel';
+import SettingsPanel from './panels/SettingsPanel';
+import HistoryPanel from './panels/HistoryPanel';
+import QuizPanel from './panels/QuizPanel';
+import useAiSettings from './hooks/useAiSettings';
+import useQuizSession from './hooks/useQuizSession';
+import { pageSubject } from './page-subject';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import ProviderIcon from '../ui/ProviderIcon';
-import {
-  AI_PROVIDERS, buildSystemPrompt, clearAiConfig, countCjk, estimateTokens, fetchModels, loadAiConfig, normalizeBaseUrl, providerLabel, saveAiConfig, streamChat,
-  classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, isLengthTruncated, resolveMaxTokens, type ChatFailure,
-  effectiveThinkingEffort, thinkingPlanFor, keysByProviderOf, resolveThinkingDispatch, isTierLocked,
-  type AiConfig, type AiProvider, type QuizAngle, type QuizQType, type ThinkingEffort, type ThinkingNote,
-} from '../../lib/ai-config';
+import { buildSystemPrompt, countCjk, estimateTokens, streamChat, classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, type ChatFailure } from '../../lib/ai-config';
 
 /** 面板内的失败态：分类结果 + 本轮累计失败次数（≥3 时追加「检查网络」提示） */
 type FailureState = ChatFailure & { attempts: number };
 
 /**
- * 行内对错标记：面板统一用 Lucide 图标，不再用对勾 / 叉号的文本符号。
- * 正确沿用所在段落的常规色（或 accent），错误固定用 --error；对齐用 align-[-2px] 压到基线。
+ * 外壳皮肤：与同页「实验导读」浮卡（PresetBriefing）同一套圆角与悬浮层级。
+ * 全站语言是 rounded-2xl + 大阴影 + 毛玻璃，AI 窗口此前是直角 + 浅阴影，两块浮层
+ * 叠在一起时割裂；这里把两者对齐，并让 AI 窗口的层级高于导读卡（见下方 z 值）。
+ * 背景用 --card-bg/95：不透明度过低时，底下的电路画布会从面板里透出来搅乱正文。
+ * 移动端不吃这一套（近全宽抽屉贴底，改了会露出下方画布），单独留在分支里。
  */
-function Mark({ ok, className = '' }: { ok: boolean; className?: string }) {
-  const Icon = ok ? Check : X;
-  return (
-    <Icon
-      className={`inline-block h-3.5 w-3.5 align-[-2px] ${ok ? '' : 'text-[var(--error)]'} ${className}`}
-      aria-hidden="true"
-    />
-  );
-}
+const SHELL_SKIN =
+  'rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md';
 
-/** 思考强度三档（顺序即界面顺序）。「标准」不再标注「默认」：它现在会显式下发较低力度值，
- *  与部分服务商的默认（DeepSeek/百炼默认即高强度）并不相同。 */
-const THINKING_TIERS: { id: ThinkingEffort; zh: string; en: string }[] = [
-  { id: 'off', zh: '关闭', en: 'Off' },
-  { id: 'standard', zh: '标准', en: 'Standard' },
-  { id: 'deep', zh: '深度思考', en: 'Deep thinking' },
-];
-
-/** 档位不可用的原因文案（与 lib/ai-config 的 ThinkingNote 一一对应） */
-const THINKING_NOTE: Record<ThinkingNote, { zh: string; en: string }> = {
-  cannotDisable: {
-    zh: '该模型始终进行推理，不支持关闭思考，因此「关闭」档不可选。',
-    en: 'This model always reasons, so thinking cannot be turned off — the Off tier is disabled.',
-  },
-  alwaysThinksNoKnob: {
-    zh: '该模型始终进行推理，也不提供力度调节。',
-    en: 'This model always reasons and offers no effort control.',
-  },
-  noEffortTier: {
-    zh: '该模型只支持开启或关闭思考，不提供力度档位。',
-    en: 'This model only supports on/off; it has no effort tier.',
-  },
-  noThinkingSupport: {
-    zh: '该模型不在深度思考支持范围内，未下发任何思考参数。',
-    en: 'This model is not in the deep-thinking support list, so no thinking parameter is sent.',
-  },
-  unverified: {
-    zh: '该模型的思考参数暂无官方依据，因此不下发任何相关字段。',
-    en: 'No documented thinking parameter for this model, so none is sent.',
-  },
-  passthroughOnly: {
-    zh: '自定义端点不预设思考参数，请用下方透传框自行指定。',
-    en: 'Custom endpoints preset nothing — specify parameters in the passthrough box below.',
-  },
-};
-
-/** 档位一句话说明（界面上只留这一行，12px）。
- *  为什么砍掉原来那两段：档位的差别用一句话就说得清，而「当前下发 xxx」「深度思考烧 token」
- *  那几行要么是重复（成本已经在说明里），要么是诊断信息（属于排障，不属于日常设置）。 */
-const TIER_HINT: Record<ThinkingEffort, { zh: string; en: string }> = {
-  off: {
-    zh: '禁用思考过程，极速响应，适合查速查表',
-    en: 'Fastest replies — best for quick lookups',
-  },
-  standard: {
-    zh: '适度启发引导，兼顾质量与响应速度（推荐）',
-    en: 'Balanced — quality and speed (recommended)',
-  },
-  deep: {
-    zh: '展开完整推理草稿，Token 消耗增加，适合大题推导',
-    en: 'Full reasoning — more tokens, best for long problems',
-  },
-};
+/** 历史刻度轨（minimap notches）单条短横：视觉 20×4，Hover 拉宽到 32 并转主题色。 */
+const NOTCH_BASE =
+  'h-1 w-5 rounded-full bg-[var(--border)] transition-all duration-200 group-hover/notch:w-8 group-hover/notch:bg-[var(--accent)]';
+/** 当前正在查看的那一轮：常亮主题色 + 与 Hover 同宽（Hover 时不会缩回去）。 */
+const NOTCH_ACTIVE = 'h-1 w-8 rounded-full bg-[var(--accent)] transition-all duration-200';
 
 /** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
 function turnKey(user: string, assistant: string): string {
   return `${user}\u0000${assistant}`;
 }
 
-/* ── 当前页面 → 主题提示（注入系统提示词） ── */
-function pageSubject(pathname: string, lang: 'zh' | 'en'): string | undefined {
-  const zh = lang === 'zh';
-  if (pathname.startsWith('/lab/')) {
-    const id = pathname.split('/')[2];
-    const lab = labMap[id];
-    if (lab) return zh ? `${lab.name.zh}实验` : `${lab.name.en} lab`;
-    return zh ? '物理化学实验' : 'science lab';
-  }
-  if (pathname.startsWith('/math-formulas')) return zh ? '数学公式速查' : 'Math formulas';
-  if (pathname.startsWith('/physics-formulas')) return zh ? '物理公式速查' : 'Physics formulas';
-  if (pathname.startsWith('/physics-constants')) return zh ? '物理常量速查' : 'Physics constants';
-  if (pathname.startsWith('/periodic-table')) return zh ? '元素周期表' : 'Periodic table';
-  if (pathname.startsWith('/subject/math')) return zh ? '初中数学' : 'Middle-school math';
-  if (pathname.startsWith('/subject/physics')) return zh ? '初中物理（苏科版）' : 'Middle-school physics (Su-Ke)';
-  if (pathname.startsWith('/subject/chemistry')) return zh ? '初中化学' : 'Middle-school chemistry';
-  return undefined;
-}
-
 /** 空状态快捷提问：按页面类型生成贴合措辞的问题（实验→原理与操作；工具→内容与用法；学科/首页不显示） */
 function quickAsk(pathname: string, lang: 'zh' | 'en'): { q: string; label: string } | null {
   const zh = lang === 'zh';
-  // 实验页：实验有原理与操作步骤，措辞贴切
-  if (pathname.startsWith('/lab/')) {
-    const lab = labMap[pathname.split('/')[2]];
-    if (!lab) return null;
+  // 实验页：实验有原理与操作步骤，措辞贴切（含 /physics/circuit-bench 规范路径）
+  const lab = labFromPath(pathname);
+  if (lab) {
     const name = zh ? lab.name.zh : lab.name.en;
     return zh
       ? { q: `请讲解${name}实验的原理与操作要点`, label: `试试问：讲解${name}实验` }
       : { q: `Explain the principle and key steps of the ${name} lab`, label: `Ask: explain the ${name} lab` };
   }
+  if (pathname.startsWith('/lab/')) return null;
   // 工具页：介绍内容与使用方法
   const tools: { prefix: string; zh: string; en: string }[] = [
     { prefix: '/periodic-table', zh: '元素周期表', en: 'Periodic Table' },
@@ -245,19 +166,6 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
   return { body: text.slice(0, idx).trim(), recs };
 }
 
-/**
- * 服务商品牌色：只在**悬停或已选**时点亮胶囊里的 logo，正文与文字色仍走 --muted / --fg。
- * 两张表都写完整字面量——Tailwind 静态扫描扫不到 `group-hover/x:text-[…]` 这类拼接。
- * 明暗两档在 index.css 里是 --brand-* 的两套取值，这里只引用令牌，不写 hex。
- */
-const PROVIDER_BRAND_CLS: Record<string, string> = {
-  deepseek: 'text-[var(--brand-deepseek)]',
-  dashscope: 'text-[var(--brand-qwen)]',
-  moonshot: 'text-[var(--brand-kimi)]',
-  zhipu: 'text-[var(--brand-zhipu)]',
-  volcengine: 'text-[var(--brand-doubao)]',
-  custom: 'text-[var(--muted)]',
-};
 
 export default function AiAssistant() {
   const { lang, t, isOffline } = useApp();
@@ -265,6 +173,28 @@ export default function AiAssistant() {
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal, settingsSignal } = useAiContext();
+
+  /*
+   * 跨域共用件（设置域与刷题域都读同一份）：轻量 Toast 出口 + 累计 token 用量 + 会话用量。
+   * 留在主组件而非某个 Hook：谁都能写、谁都能读，放进任一侧都会造成两域互相依赖。
+   */
+  // 动作结果轻量 Toast（获取模型 / 测试连接）：即时反馈；完整报错仍留在下方结果行
+  const [actToast, setActToast] = useState<{ ok: boolean; msg: string } | null>(null);
+  const actToastTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (actToastTimer.current) window.clearTimeout(actToastTimer.current); }, []);
+  const flashToast = (ok: boolean, msg: string) => {
+    setActToast({ ok, msg });
+    if (actToastTimer.current) window.clearTimeout(actToastTimer.current);
+    actToastTimer.current = window.setTimeout(() => setActToast(null), 2600);
+  };
+  // 用量统计（估算）：会话累计 token 数 + 最近一轮输出速度（对话完成时更新，视觉低调）
+  const [usage, setUsage] = useState<{ tokens: number; speed: number } | null>(null);
+  // 跨会话累计 token 用量（按模型 × 日期分桶，localStorage 持久化；设置页展示）
+  const [tokenUsage, setTokenUsage] = useState<TokenUsageData>(() => loadTokenUsage());
+  const refreshTokenUsage = () => setTokenUsage(loadTokenUsage());
+  const tokenUsageTotalCount = tokenUsageTotal(tokenUsage);
+  // token 用量明细弹窗（树状图：模型 → 日期）
+  const [showTokenUsage, setShowTokenUsage] = useState(false);
   useEffect(() => {
     if (!open) {
       stopSpeak();
@@ -319,7 +249,7 @@ export default function AiAssistant() {
         }
         className={`tap-area inline-flex items-center justify-center transition-colors p-1.5 ${
           speakState === 'synthesizing'
-            ? (waitingLong ? 'text-[#d97706]' : 'text-[var(--muted)]')
+            ? (waitingLong ? 'text-[var(--warn)]' : 'text-[var(--muted)]')
             : 'text-[var(--muted)] hover:text-[var(--fg)]'
         }`}
       >
@@ -365,89 +295,38 @@ export default function AiAssistant() {
     </div>
   );
   };
-  const [config, setConfig] = useState<AiConfig | null>(() => loadAiConfig());
+  const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
+
+  /*
+   * 设置域 Hook：模型配置 / 连通性检测 / 语音朗读 / 思考强度的状态与处理器全部内聚在 useAiSettings。
+   * 主组件只做两件事：把跨域依赖注入进去、把返回的面板三袋透传给 SettingsPanel。
+   */
+  const aiSettings = useAiSettings({
+    lang,
+    t,
+    view,
+    setView,
+    setOpen,
+    setConfigured,
+    settingsSignal,
+    flashToast,
+    refreshTokenUsage,
+    tokenUsageTotalCount,
+    setShowTokenUsage,
+  });
+  const {
+    config,
+    savedToast,
+    clearSettings,
+    state: settingsState,
+    refs: settingsRefs,
+    openedRef: settingsOpenedRef,
+  } = aiSettings;
+
   // 局域网/本机端点：断网时仍值得一试（这类推理服务不依赖外网）
   const localEndpoint = /^https?:\/\/(127\.0\.0\.1|localhost|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(
     (config?.baseUrl ?? '').trim(),
   );
-  const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
-  const [providerId, setProviderId] = useState(AI_PROVIDERS[0].id);
-  const [apiKey, setApiKey] = useState('');
-  /** 语音朗读配置（默认端侧离线；云端为使用者自配的可选扩展，仅存本机） */
-  const [ttsCfg, setTtsCfg] = useState<TtsConfig>(() => loadTtsConfig());
-  /** 系统可用语音（设置面板里选端侧发音人） */
-  const [localVoices, setLocalVoices] = useState<LocalVoice[]>([]);
-  const groupedVoices = groupLocalVoices(localVoices);
-  /** 设置视图内的 Tab：model = 大模型设置（默认）；speech = 语音朗读。切换不触发保存 */
-  const [settingsTab, setSettingsTab] = useState<'model' | 'speech'>('model');
-  /** 原位试听（独立于朗读主链路：试听失败不静默换声） */
-  const ttsPreview = useTtsPreview();
-  /** 语音通道状态（就绪 / 已降级 / 连接异常）：供状态胶囊与试听按钮共用 */
-  const { status: ttsStatus } = useTtsStatus();
-  /**
-   * 打开语音页即做一次轻量探测：未核验就展示「就绪」等于虚报状态，故初始为「未检测」，
-   * 由这次真实合成把它变成就绪 / 降级 / 异常。probe 自取已保存配置，不依赖 ttsCfg（避免输入时反复探测）。
-   */
-  useEffect(() => {
-    if (view !== 'settings' || settingsTab !== 'speech' || ttsStatus !== 'unknown') return;
-    void ttsPreview.probe();
-  }, [view, settingsTab, ttsStatus, ttsPreview]);
-  /** 云端 TTS 的 API Key 明文/隐藏切换（与大模型设置的 showKey 同一范式） */
-  const [showTtsKey, setShowTtsKey] = useState(false);
-  const updateTts = (patch: Partial<TtsConfig>) =>
-    setTtsCfg((prev) => {
-      const next = { ...prev, ...patch };
-      saveTtsConfig(next);
-      return next;
-    });
-  const [customUrl, setCustomUrl] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [model, setModel] = useState('');
-  // 思考强度档位（默认 standard：按模型能力表下发，模型不支持则不下发）
-  const [thinkingEffort, setThinkingEffort] = useState<ThinkingEffort>('standard');
-  // 各服务商各自保存的 Key：切服务商时按此回填，未配置过则为空（绝不复用上一家的 Key）
-  const [keyByProvider, setKeyByProvider] = useState<Record<string, string>>({});
-  // 自定义端点附加请求参数（JSON 文本，仅「自定义端点」显示与生效）
-  const [extraParamsText, setExtraParamsText] = useState('');
-  const [extraParamsOpen, setExtraParamsOpen] = useState(false);
-  /** 输出上限输入框（文本态：留空 = 不下发 max_tokens；只接受数字） */
-  const [maxTokensText, setMaxTokensText] = useState('');
-  const [liveModels, setLiveModels] = useState<string[]>([]);
-  const [modelMenuOpen, setModelMenuOpen] = useState(false);
-  const modelMenuRef = useRef<HTMLDivElement | null>(null);
-  // 模型下拉：点击外部关闭
-  useEffect(() => {
-    if (!modelMenuOpen) return;
-    const onDocPointerDown = (e: PointerEvent) => {
-      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
-        setModelMenuOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', onDocPointerDown);
-    return () => document.removeEventListener('pointerdown', onDocPointerDown);
-  }, [modelMenuOpen]);
-  const [modelNote, setModelNote] = useState<string | null>(null);
-  const [testing, setTesting] = useState(false);
-  // 「获取模型」是独立动作，与「测试连接」互不阻塞：两者各有自己的 loading 态
-  const [fetching, setFetching] = useState(false);
-  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  // 在途闸门：fetching / testing 是异步 state，同一个 tick 内连点拦不住（状态还没重渲染），
-  // 用 ref 做同步锁，请求返回前一律拦截后续点击，避免对限流严格的服务商打出重复请求。
-  const fetchingRef = useRef(false);
-  const testingRef = useRef(false);
-  // 保存成功 toast（面板内提示，2 秒自动消失）
-  const [savedToast, setSavedToast] = useState(false);
-  const savedToastTimer = useRef<number | null>(null);
-  useEffect(() => () => { if (savedToastTimer.current) window.clearTimeout(savedToastTimer.current); }, []);
-  // 动作结果轻量 Toast（获取模型 / 测试连接）：即时反馈；完整报错仍留在下方结果行
-  const [actToast, setActToast] = useState<{ ok: boolean; msg: string } | null>(null);
-  const actToastTimer = useRef<number | null>(null);
-  useEffect(() => () => { if (actToastTimer.current) window.clearTimeout(actToastTimer.current); }, []);
-  const flashToast = (ok: boolean, msg: string) => {
-    setActToast({ ok, msg });
-    if (actToastTimer.current) window.clearTimeout(actToastTimer.current);
-    actToastTimer.current = window.setTimeout(() => setActToast(null), 2600);
-  };
   // 复制状态：成功按钮上显示「已复制」+ 对勾图标，失败显示「复制失败」；2 秒后恢复
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
@@ -790,328 +669,6 @@ export default function AiAssistant() {
     setQuizSummaryConfirm(false);
     setQuizSummaryLoading(false);
   };
-  // ── 出题练习（Quiz）：批量出题（一次 N 题），本地判分，练习统计内存态 ──
-  /** 出题设置（null = 尚未设置，显示设置面板） */
-  const [quizSetup, setQuizSetup] = useState<{ count: number; angle: QuizAngle; timeLimit: number; qtype: QuizQType } | null>(null);
-  /** 设置面板本地状态 */
-  const [setupCount, setSetupCount] = useState(5);
-  const [setupAngle, setSetupAngle] = useState<QuizAngle>('basic');
-  const [setupTimeLimit, setSetupTimeLimit] = useState(0);
-  const [setupQType, setSetupQType] = useState<QuizQType>('choice');
-  /** AI 辅助判分开关（填空规则判错时兜底；localStorage 持久化，默认关） */
-  const FILL_AI_JUDGE_KEY = 'stem-ai-fill-judge';
-  const [fillAiJudge, setFillAiJudge] = useState<boolean>(() => {
-    try { return window.localStorage.getItem(FILL_AI_JUDGE_KEY) === '1'; } catch { return false; }
-  });
-  const toggleFillAiJudge = (v: boolean) => {
-    setFillAiJudge(v);
-    try { window.localStorage.setItem(FILL_AI_JUDGE_KEY, v ? '1' : '0'); } catch { /* 静默 */ }
-  };
-  const [fillJudging, setFillJudging] = useState(false); // AI 判分中（按钮禁用）
-  /** 本批题目（一次生成，逐题作答） */
-  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
-  /** 当前题下标 */
-  const [quizIdx, setQuizIdx] = useState(0);
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quizSelected, setQuizSelected] = useState<number | null>(null); // 学生选的选项下标
-  const [quizFillInput, setQuizFillInput] = useState(''); // 填空输入
-  const [quizError, setQuizError] = useState<string | null>(null);
-  const [quizStats, setQuizStats] = useState<{ correct: number; total: number }>({ correct: 0, total: 0 });
-  const [quizDone, setQuizDone] = useState(false); // 本轮结束（显示小结）
-  const quizAbortRef = useRef<AbortController | null>(null);
-  const quizOpenedRef = useRef(false); // 标记面板由 openQuiz 打开，open effect 不覆盖 view
-  const settingsOpenedRef = useRef(false); // 标记面板由顶栏健康卡片「去设置」打开，open effect 不覆盖 view
-  // 计时：每题限时倒计时（秒）
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const clearTimer = () => {
-    if (timerRef.current !== null) { window.clearInterval(timerRef.current); timerRef.current = null; }
-    setTimeLeft(null);
-  };
-  // 当前题 = 批量数组中的当前项
-  const quizQ: QuizQuestion | null = quizQuestions[quizIdx] ?? null;
-
-  // 页面级入口 openQuiz：自增信号 → 打开面板并进入 quiz 视图（显示设置面板）
-  useEffect(() => {
-    if (quizSignal > 0) {
-      quizOpenedRef.current = true;
-      resetQuiz();
-      setView('quiz');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizSignal]);
-
-  // 顶栏健康卡片「去设置」：自增信号 → 打开面板并直接落到设置视图（不回须知页）
-  useEffect(() => {
-    if (settingsSignal > 0) {
-      settingsOpenedRef.current = true;
-      setView('settings');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsSignal]);
-
-  // 当前题变化时重置选择与计时
-  useEffect(() => {
-    setQuizSelected(null);
-    setQuizFillInput('');
-    clearTimer();
-    if (quizQ && quizSetup && quizSetup.timeLimit > 0) {
-      setTimeLeft(quizSetup.timeLimit);
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev === null || prev <= 1) {
-            // 超时：判错
-            if (prev !== null && prev <= 1 && quizSelected === null) {
-              handleTimeout();
-            }
-            clearTimer();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quizIdx, quizQuestions]);
-
-  const resetQuiz = () => {
-    quizAbortRef.current?.abort();
-    setQuizSetup(null);
-    setQuizQuestions([]);
-    setQuizIdx(0);
-    setQuizLoading(false);
-    setQuizSelected(null);
-    setQuizFillInput('');
-    setQuizError(null);
-    setQuizStats({ correct: 0, total: 0 });
-    setQuizDone(false);
-    clearTimer();
-  };
-
-  // 开始新一轮（用新的设置生成一批题）
-  const startQuiz = (count: number, angle: QuizAngle, timeLimit: number, qtype: QuizQType = 'choice') => {
-    setQuizSetup({ count, angle, timeLimit, qtype });
-    setQuizStats({ correct: 0, total: 0 });
-    setQuizDone(false);
-    setQuizQuestions([]);
-    setQuizIdx(0);
-    void loadQuizBatch(count, angle, timeLimit, qtype);
-  };
-
-  // 批量出题（一次生成 N 题，流式，复用 streamChat；结果走批量宽容解析）
-  const loadQuizBatch = async (overrideCount?: number, overrideAngle?: QuizAngle, overrideTimeLimit?: number, overrideQType?: QuizQType) => {
-    if (!config) return;
-    const count = overrideCount ?? quizSetup?.count ?? 5;
-    const angle = overrideAngle ?? quizSetup?.angle ?? 'basic';
-    const timeLimit = overrideTimeLimit ?? quizSetup?.timeLimit ?? 0;
-    const qtype = overrideQType ?? quizSetup?.qtype ?? 'choice';
-    setQuizLoading(true);
-    setQuizError(null);
-    quizAbortRef.current = new AbortController();
-    const messages: { role: 'system' | 'user'; content: string }[] = [
-      { role: 'system', content: buildQuizPrompt(
-        lang,
-        aiCtx.topic ?? pageSubject(location.pathname, lang),
-        // 「考考你」与「问 AI」读同一份实时状态：出题也能落到学生此刻的读数上
-        [
-          aiCtx.knowledge,
-          formatLabState(labIdFromPath(location.pathname), getLabState(labIdFromPath(location.pathname)), lang),
-        ].filter(Boolean).join('\n'),
-        count, angle, timeLimit, qtype,
-      ) },
-      { role: 'user', content: lang === 'zh' ? `请围绕当前页面知识点（${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? '当前主题'}）按格式出 ${count} 道题。` : `Please create ${count} questions in the specified format, based on the current page knowledge (${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? 'current topic'}).` },
-    ];
-    try {
-      const t0 = performance.now();
-      // 用量实时统计：与对话视图共用同一 usage state（会话级累计）
-      const baseTokens = usage?.tokens ?? 0;
-      const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
-      let received = 0;
-      const res = await streamChat(
-        config,
-        messages,
-        (delta) => {
-          received += delta.length;
-          const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
-          const outTokens = estimateTokens(received);
-          setUsage({
-            tokens: baseTokens + promptTokens + outTokens,
-            speed: Math.round(outTokens / elapsedSec),
-          });
-        },
-        quizAbortRef.current.signal,
-        // 默认不下发上限：出题对思考型模型同样会被思考吃满预算，护栏交给下面的完整性校验 + 一次修复
-        CHAIN_MAX_TOKENS.quiz,
-      );
-      const full = res.text;
-      const outcome = classifyStreamOutcome(res);
-      // 跨会话累计 token（出题请求 = prompt + 实际输出）
-      addTokenUsage(config?.model, promptTokens + estimateTokens(full));
-      refreshTokenUsage();
-      let parsed = parseQuizBatchChecked(full, count);
-      if (parsed.reason) {
-        logPromptIssue('quiz-parse', `${parsed.reason}${outcome === 'limit' ? '（端点已按输出上限截断）' : outcome === 'cut' ? '（连接被中途切断）' : ''}`);
-        // 一次修复重试：只回灌上一次输出的尾部，要求补出缺失题目（无对话窗口，学生无法自己重来）
-        try {
-          const repair = await streamChat(
-            config,
-            [
-              messages[0],
-              { role: 'assistant', content: full.slice(-2000) },
-              {
-                role: 'user',
-                content: lang === 'zh'
-                  ? `上一次输出${parsed.reason}。请只补出缺失的题目，沿用同一格式与字段名，写完输出 ${QUIZ_SENTINEL}；直接从缺失的【第N题】开始输出，不要输出任何寒暄或解释前缀；不要重复已出过的考点（已出：${parsed.items.map((q) => q.question.slice(0, 12)).join('、') || '无'}）。`
-                  : `The previous answer ${parsed.reason}. Output ONLY the missing questions in the same format and field names, then print ${QUIZ_SENTINEL}; start directly with the missing question number — no greeting or explanation prefix; do not repeat topics already covered (${parsed.items.map((q) => q.question.slice(0, 12)).join(', ') || 'none'}).`,
-              },
-            ],
-            () => {},
-            quizAbortRef.current.signal,
-            CHAIN_MAX_TOKENS.quiz,
-          );
-          const merged = parseQuizBatchChecked(`${full}\n${repair.text}`, count);
-          if (merged.items.length > parsed.items.length) parsed = merged;
-        } catch {
-          logPromptIssue('quiz-repair', '修复重试失败，按首次结果继续');
-        }
-      }
-      // 去重（重试最容易产出重复题）+ 选项洗牌（正确项位置交给代码，不交给模型）
-      const items = dedupeQuizQuestions(parsed.items).slice(0, count).map((q) => shuffleOptions(q));
-      if (items.length === 0) {
-        // 空/无法解析一律给分类文案：空正文（思考吃满预算）与普通失败对学生是两种提示
-        setQuizError(full.trim() ? t.aiError.other : t.aiError.empty);
-        setQuizQuestions([]);
-        setQuizLoading(false);
-        return;
-      }
-      // 题数不足必须让学生知道：静默少给几题会被当成「系统只出这么多题」
-      if (items.length < count) {
-        flashToast(false, lang === 'zh'
-          ? `模型只给出 ${items.length}/${count} 题（输出被截断），可重新出题`
-          : `The model produced only ${items.length}/${count} questions (output cut off) — try again`);
-      }
-      setQuizQuestions(items);
-      setQuizIdx(0);
-      setQuizLoading(false);
-    } catch (e) {
-      if (quizAbortRef.current && quizAbortRef.current.signal.aborted) return;
-      // 与对话链路同一套分类：英文原文只进开发者日志，学生看到的是中文分类文案
-      const classified = classifyChatFailure(e, { offline: isOffline });
-      if (classified.raw) logPromptIssue('quiz-error', classified.raw);
-      setQuizError(t.aiError[classified.kind]);
-      setQuizLoading(false);
-    }
-  };
-
-  // 记录一次作答到本地错题集（localStorage，独立于问答历史）
-  const recordQuizAnswer = (q: QuizQuestion, picked: number, correct: boolean, timedOut: boolean, elapsedSec: number, userAnswer?: string) => {
-    saveQuizHistory({
-      path: location.pathname + location.search,
-      subject: pageSubject(location.pathname, lang) ?? '',
-      topic: aiCtx.topic ?? pageSubject(location.pathname, lang) ?? '',
-      question: q.question,
-      options: q.options,
-      answerIdx: q.answerIdx,
-      pickedIdx: picked,
-      correct,
-      type: q.type,
-      fillAnswers: q.type === 'fill' ? q.fillAnswers : undefined,
-      userAnswer: q.type === 'fill' ? (userAnswer ?? '') : undefined,
-      explanation: q.explanation || undefined,
-      timeLimit: quizSetup?.timeLimit ?? 0,
-      elapsedMs: Math.round(elapsedSec * 1000),
-      timedOut,
-      model: config?.model ?? '',
-    });
-    setQuizHistoryData(listQuizHistory());
-  };
-
-  // 学生选择选项（单选题）：本地判分，计入统计；若解析失败（无选项）不判
-  const pickQuizOption = (idx: number) => {
-    if (quizSelected !== null || !quizQ || quizQ.type !== 'choice') return;
-    setQuizSelected(idx);
-    clearTimer();
-    if (quizQ.answerIdx === -1) return; // 无标准答案，不判分
-    setQuizStats((s) => ({ correct: s.correct + (idx === quizQ.answerIdx ? 1 : 0), total: s.total + 1 }));
-    recordQuizAnswer(quizQ, idx, idx === quizQ.answerIdx, false, quizSetup?.timeLimit ? quizSetup.timeLimit - (timeLeft ?? quizSetup.timeLimit) : 0);
-  };
-
-  // 学生提交填空答案：judgeFillAnswer 归一化判分，规则判错时 AI 兜底
-  const submitFillAnswer = async () => {
-    if (quizSelected !== null || !quizQ || quizQ.type !== 'fill' || fillJudging) return;
-    const input = quizFillInput.trim();
-    if (!input) return; // 空输入不判（允许继续作答）
-    const ruleCorrect = judgeFillAnswer(input, quizQ.fillAnswers);
-    let finalCorrect = ruleCorrect;
-    // 规则判错 + 开关开 + 有配置 + 答案长度合理 → AI 兜底判分
-    // 长度上限：全站唯一的学生自由输入，超长既吃掉上下文、也把判分器暴露给「输入里写 Y」的玩法
-    const answerForAi = input.slice(0, 200);
-    if (!ruleCorrect && fillAiJudge && config && quizQ.fillAnswers.length > 0 && input.length <= 200) {
-      setFillJudging(true);
-      const { system, user } = buildFillJudgePrompt(lang, quizQ.question, answerForAi, quizQ.fillAnswers);
-      try {
-        const signal = new AbortController(); // 判分超时 20 秒（思考型模型需要先想再回一个字母）
-        const timeoutId = setTimeout(() => signal.abort(), 20000);
-        const res = await streamChat(
-          config,
-          [{ role: 'system', content: system }, { role: 'user', content: user }],
-          () => {},
-          signal.signal,
-          CHAIN_MAX_TOKENS.judge,
-        );
-        clearTimeout(timeoutId);
-        // 取第一个 Y/N，而不是首字符（解析见 ai-quiz.ts parseJudgeVerdict）
-        if (parseJudgeVerdict(res.text)) finalCorrect = true;
-        else if (!res.text.trim()) {
-          // 空正文（思考吃满预算最常见）：判分不可用就保留规则判分结果——
-          // 绝不能因为「AI 没回话」把学生答对的题判错（旧实现正是如此）
-          logPromptIssue('fill-judge', `空正文（finish_reason=${res.finishReason}）：保留规则判分结果`);
-        }
-      } catch (e) {
-        // AI 判分失败（网络/Key 超时等）：静默回退规则结果，不抛错、不卡 UI
-        logPromptIssue('fill-judge', (e as Error).message);
-      } finally {
-        setFillJudging(false);
-      }
-    } else if (!ruleCorrect && fillAiJudge && config && input.length > 200) {
-      logPromptIssue('fill-judge', `答案超长（${input.length} 字符）跳过 AI 兜底`);
-    }
-    setQuizSelected(finalCorrect ? 0 : -2); // 0 答对 / -2 答错（-1 保留给超时语义）
-    clearTimer();
-    setQuizStats((s) => ({ correct: s.correct + (finalCorrect ? 1 : 0), total: s.total + 1 }));
-    recordQuizAnswer(quizQ, -1, finalCorrect, false, quizSetup?.timeLimit ? quizSetup.timeLimit - (timeLeft ?? quizSetup.timeLimit) : 0, input);
-  };
-
-  // 超时：未作答视为答错
-  const handleTimeout = () => {
-    if (quizSelected !== null || !quizQ) return;
-    if (quizQ.type === 'fill') {
-      setQuizSelected(-1); // -1 标记超时
-      setQuizStats((s) => ({ correct: s.correct, total: s.total + 1 }));
-      recordQuizAnswer(quizQ, -1, false, true, quizSetup?.timeLimit ?? 0, '');
-      return;
-    }
-    if (quizQ.answerIdx === -1) return; // 无标准答案，不判
-    setQuizSelected(-1); // -1 标记超时
-    setQuizStats((s) => ({ correct: s.correct, total: s.total + 1 }));
-    recordQuizAnswer(quizQ, -1, false, true, quizSetup?.timeLimit ?? 0);
-  };
-
-  // 下一题 / 本轮结束
-  const nextQuiz = () => {
-    clearTimer();
-    setQuizSelected(null);
-    if (quizIdx + 1 < quizQuestions.length) {
-      setQuizIdx(quizIdx + 1);
-    } else {
-      setQuizDone(true);
-    }
-  };
-
-  // 重新开始一轮（同设置再出一批）
-  const restartQuiz = () => {
-    if (quizSetup) startQuiz(quizSetup.count, quizSetup.angle, quizSetup.timeLimit, quizSetup.qtype);
-  };
 
   const navigate = useNavigate();
   // 使用须知条款折叠（默认全部展开，标题点击收起/展开，避免长条款挤占滚动空间）
@@ -1208,17 +765,24 @@ export default function AiAssistant() {
     return () => clearInterval(t);
   }, [busy]);
   const aiWaitingLong = aiElapsed > 4;
-  // 用量统计（估算）：会话累计 token 数 + 最近一轮输出速度（对话完成时更新，视觉低调）
-  const [usage, setUsage] = useState<{ tokens: number; speed: number } | null>(null);
-  // 跨会话累计 token 用量（按模型 × 日期分桶，localStorage 持久化；设置页展示）
-  const [tokenUsage, setTokenUsage] = useState<TokenUsageData>(() => loadTokenUsage());
-  const refreshTokenUsage = () => setTokenUsage(loadTokenUsage());
-  const tokenUsageTotalCount = tokenUsageTotal(tokenUsage);
-  // token 用量明细弹窗（树状图：模型 → 日期）
-  const [showTokenUsage, setShowTokenUsage] = useState(false);
   // 同页内多轮问答历史（内存态，上限 20 条；关闭面板/切换页面时清空——对齐页面锚定设计；持久化历史独立保留在 localStorage）
   const [history, setHistory] = useState<{ user: string; assistant: string }[]>([]);
   const HISTORY_MAX = 20;
+  /*
+   * 历史刻度轨（minimap notches）：轮次 ≥2 之后，对话流里只留「正在看的那一轮」，
+   * 其余收折成面板顶部的一条条短横 —— 二十问二十答的长文本全铺在流里，最新那条要翻
+   * 五屏才看得见。三个状态各管一件事：
+   *  · focusTurn   手动定位到第几轮（null = 跟随最新；新问题一来就回到 null）
+   *  · peekTurn    Hover/聚焦哪条短横（决定气泡里的问题摘要）
+   *  · historyExpanded  「展开历史」开关：习惯纵向通读的学生一键把全部轮次摊回流里
+   */
+  const [focusTurn, setFocusTurn] = useState<number | null>(null);
+  const [peekTurn, setPeekTurn] = useState<number | null>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  // 刻度轨点击后要滚到的那一轮（收折态下它刚展开，下一帧才量得到位置）
+  const turnRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // 点刻度那一次平滑滚动的收尾定时器（滚完要把 scroll-behavior 摘回 auto）
+  const jumpScrollTimer = useRef<number | null>(null);
   const lastExchange = useRef<{ user: string; assistant: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const prevPathRef = useRef(location.pathname);
@@ -1237,11 +801,26 @@ export default function AiAssistant() {
     setUsage(null);
     setBusy(false);
     setHistory([]);
+    // 刻度轨状态跟着会话一起归零：新页面只剩空对话，没有「第 3 轮」可定位
+    setFocusTurn(null);
+    setPeekTurn(null);
+    setHistoryExpanded(false);
+    turnRefs.current = [];
     lastExchange.current = null;
     resetQuiz(); // 清 quiz 状态与统计（P1）
     // 切页/关面板时若停留在 quiz 视图，回到对话（新页面知识点不同，避免空 quiz 卡住）
     setView((v) => (v === 'quiz' ? 'chat' : v));
   };
+  /*
+   * 清除全部 AI 数据 = 清对话 + 清刷题 + 清设置。三个域各自只清自己，
+   * 跨域编排放在主组件：Hook 之间因此互不依赖，view 状态机也仍只有一处。
+   */
+  const clearAll = () => {
+    resetConversation();
+    quizSession.resetQuiz();
+    clearSettings();
+  };
+
   // 页面切换时清空对话内容（不与新页面知识锚定错位；保持面板打开与配置不变）
   useEffect(() => {
     const prev = prevPathRef.current;
@@ -1496,39 +1075,6 @@ export default function AiAssistant() {
   // 每次渲染后把拖拽中的样式再写一遍，保证拖拽视觉不被撤回。
   useEffect(() => { if (dragStateRef.current) applyDragStyles(); });
 
-
-  const provider: AiProvider = AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
-
-  // 当前模型的思考能力（模型为空时不判定，避免输入过程中闪烁）
-  const thinkingPlan = model.trim() ? thinkingPlanFor(providerId, model) : null;
-  // 实际生效的档位：所选档位在当前模型不可用时回落（标准优先）
-  const activeEffort = effectiveThinkingEffort(providerId, model, thinkingEffort);
-  // 只有「模型有可调档位、但缺这一档」才置灰；模型完全没有可调参数（未收录 / 自定义端点 /
-  // 无可调项）时三档仍可点——保证点击永远有反馈，实际发不发由下方「本次下发」一行交代
-  const tiersRestricted = !!thinkingPlan && thinkingPlan.available.length > 0;
-  const tierLocked = (id: ThinkingEffort) => !!thinkingPlan && isTierLocked(thinkingPlan, id);
-  const selectedEffort: ThinkingEffort = tiersRestricted ? (activeEffort ?? 'standard') : thinkingEffort;
-  // 本次真正会下发的思考参数：与底层请求体共用同一个出口（resolveThinkingDispatch），
-  // 因此留痕与实发逐字节一致——既含自定义端点的透传，也含非法档位的安全回落。
-  const dispatch = resolveThinkingDispatch({ providerId, model, thinkingEffort, extraParamsText });
-  const sentDesc = dispatch.summaryText;
-
-  // 模型名匹配一律大小写不敏感：用户手输 QWEN-PLUS 也应命中常用气泡的 qwen-plus，
-  // 否则「已选中的模型」看起来没有任何反馈。
-  const modelMatches = (m: string) => m.trim().toLowerCase() === (model || '').trim().toLowerCase();
-
-  // 自定义参数文本是否为「可用的 JSON 对象」（仅用于界面提示；非法时请求端同样忽略，不阻断）
-  const extraParamsValid = (() => {
-    const t = extraParamsText.trim();
-    if (!t) return true;
-    try {
-      const v: unknown = JSON.parse(t);
-      return !!v && typeof v === 'object' && !Array.isArray(v);
-    } catch {
-      return false;
-    }
-  })();
-
   // 打开时：已配置 → 对话视图；未配置 → 须知视图（两步流程第一步）
   // 例外：openQuiz / 顶栏「去设置」打开的面板已在各自 effect 设过 view，不覆盖
   useEffect(() => {
@@ -1545,32 +1091,6 @@ export default function AiAssistant() {
       if (config) void verifyAiStatus(config, { auto: true });
     }
   }, [open, config]);
-
-  // 进入设置视图时回填已保存配置（刷新/重开不丢 provider/key/端点/模型）
-  useEffect(() => {
-    // 系统语音列表：部分浏览器要等 voiceschanged 才有（语音包异步加载）
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const readVoices = () => setLocalVoices((window.speechSynthesis.getVoices() || []) as unknown as LocalVoice[]);
-    readVoices();
-    window.speechSynthesis.addEventListener?.('voiceschanged', readVoices);
-    return () => window.speechSynthesis.removeEventListener?.('voiceschanged', readVoices);
-  }, []);
-
-  useEffect(() => {
-    if (view === 'settings' && config) {
-      const keys = keysByProviderOf(config);
-      setKeyByProvider(keys);
-      setProviderId(config.providerId);
-      // Key 按服务商取：当前服务商没配置过就是空，绝不复用其他服务商的 Key
-      setApiKey(keys[config.providerId] ?? '');
-      if (config.providerId === 'custom') setCustomUrl(config.baseUrl);
-      setModel(config.model);
-      setThinkingEffort(config.thinkingEffort ?? 'standard');
-      setExtraParamsText(config.extraParamsText ?? '');
-      setMaxTokensText(typeof config.maxOutputTokens === 'number' && config.maxOutputTokens > 0 ? String(config.maxOutputTokens) : '');
-      setTestResult(null);
-    }
-  }, [view]);
 
   // 页面「问 AI」触发：携带预填问题
   useEffect(() => {
@@ -1644,178 +1164,6 @@ export default function AiAssistant() {
     };
   }, [open, view]);
 
-  // 切换预设
-  const selectProvider = (id: string) => {
-    setProviderId(id);
-    // Key 跟着服务商走：该家没配置过就清空，绝不把上一家的 Key 留在输入框里
-    setApiKey(keyByProvider[id] ?? '');
-    setModel('');
-    setLiveModels([]);
-    setModelNote(null);
-    setTestResult(null);
-    setFetching(false);
-    setTesting(false);
-    if (id !== 'custom') setCustomUrl('');
-  };
-
-  /** 取端点（自定义用输入值，预设用服务商地址），返回 null 表示地址无效 */
-  // 表单与「已保存配置」是否一致：不一致就明说，避免测试过了、提问却用旧配置
-  const formMatchesSaved = useMemo(() => {
-    if (!config) return false;
-    const formUrl = normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl);
-    return (
-      config.providerId === providerId &&
-      config.baseUrl === formUrl &&
-      config.apiKey === apiKey.trim() &&
-      config.model === model.trim() &&
-      (config.thinkingEffort ?? 'standard') === thinkingEffort
-    );
-  }, [config, providerId, customUrl, provider.baseUrl, apiKey, model, thinkingEffort]);
-
-  const resolveBaseUrl = (): string | null =>
-    normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl) || null;
-
-  // 【获取模型】只做一件事：GET /models 列出该家可用模型（该接口不需要模型名）。
-  // 不验证「能否对话」——那是「测试连接」的职责，两者拆开才能分别诊断。
-  const fetchModelList = async () => {
-    if (fetchingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
-    if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
-    const baseUrl = resolveBaseUrl();
-    if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
-    fetchingRef.current = true;
-    setFetching(true);
-    setTestResult(null);
-    try {
-      const ids = await fetchModels(baseUrl, apiKey);
-      // 注意：列出模型**不置绿**。GET /models 只证明「凭证与端点通」，不证明当前选的模型能对话；
-      // 早期版本在这里调用 reportAiSuccess，导致「列表拿到了、模型名却不存在」也显示已就绪（假绿）。
-      // 置绿只有两条路：设置页「测试连接」的真实 200，或顶栏角标/面板首开的 verifyAiStatus。
-      if (ids.length > 0) {
-        setLiveModels(ids);
-        setModel(ids[0]);
-        setModelNote(lang === 'zh' ? `已获取 ${ids.length} 个可用模型` : `${ids.length} model${ids.length === 1 ? '' : 's'} available`);
-        setTestResult({ ok: true, msg: lang === 'zh' ? `已列出 ${ids.length} 个模型，请再点「测试连接」确认能否对话` : `${ids.length} models listed — now use "Test connection"` });
-        flashToast(true, lang === 'zh' ? `已获取 ${ids.length} 个模型` : `${ids.length} models fetched`);
-      } else {
-        setLiveModels([]);
-        setModelNote(lang === 'zh' ? '该端点未返回模型列表，可手输模型名' : 'No model list — type a model name');
-        setTestResult({ ok: false, msg: lang === 'zh' ? '该端点未返回模型列表，请手动输入模型名（仍可用「测试连接」验证能否对话）' : 'No model list returned — type a model name (you can still use "Test connection")' });
-        flashToast(false, lang === 'zh' ? '该端点未返回模型列表' : 'No model list from this endpoint');
-      }
-    } catch (e) {
-      if (formMatchesSaved && config) reportAiFailure(config, e);
-      const msg = (e as Error).message;
-      setLiveModels([]);
-      setTestResult({
-        ok: false,
-        msg: msg.slice(0, 80),
-      });
-      flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
-    } finally {
-      // 成功/失败/异常都要释放闸门，避免异常路径把后续点击永久锁死
-      fetchingRef.current = false;
-      setFetching(false);
-    }
-  };
-
-  // 【测试连接】只做一件事：发一次极小的 chat 请求，验证 Key / 端点 / 模型三者确实可用。
-  // 与「获取模型」分开：有些端点不提供 /models 但能正常对话，只有真发一次才验证得住。
-  // 注意：该动作会消耗极少量 token（由用户自己的 Key 承担）。
-  const testConnection = async () => {
-    if (testingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
-    if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
-    const baseUrl = resolveBaseUrl();
-    if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
-    const probeModel = model.trim() || provider.models[0] || '';
-    if (!probeModel) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先选择或输入模型名，再测试连接' : 'Choose or type a model name first' }); return; }
-    testingRef.current = true;
-    setTesting(true);
-    setTestResult(null);
-    try {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey.trim()}` },
-        body: JSON.stringify({ model: probeModel, messages: [{ role: 'user', content: 'hi' }], max_tokens: 8 }),
-      });
-      if (res.ok) {
-        // 实战联动：表单与「已保存配置」一致时，这次成功就是当前生效配置的连通性证据。
-        // 不一致（正在改配置还没保存）则不动状态——角标只对「生效中的配置」负责。
-        if (formMatchesSaved && config) reportAiSuccess(config);
-        setTestResult({ ok: true, msg: lang === 'zh' ? `连接成功：模型 ${probeModel} 可正常对话` : `Connected — ${probeModel} responds` });
-        flashToast(true, lang === 'zh' ? '连接成功' : 'Connected');
-      } else {
-        if (formMatchesSaved && config) reportAiFailure(config, { status: res.status });
-        const j = await res.json().catch(() => null);
-        const detail = (j?.error?.message || `HTTP ${res.status}`).slice(0, 80);
-        setTestResult({ ok: false, msg: detail });
-        flashToast(false, lang === 'zh' ? '连接失败，详见下方说明' : 'Connection failed — see the message below');
-      }
-    } catch (e) {
-      if (formMatchesSaved && config) reportAiFailure(config, e);
-      const msg = (e as Error).message;
-      setTestResult({
-        ok: false,
-        msg: msg.slice(0, 80),
-      });
-      flashToast(false, lang === 'zh' ? '无法访问该端点' : 'Cannot reach the endpoint');
-    } finally {
-      testingRef.current = false;
-      setTesting(false);
-    }
-  };
-
-  // 保存配置
-  const save = () => {
-    const baseUrl = normalizeBaseUrl(providerId === 'custom' ? customUrl.trim() : provider.baseUrl);
-    if (!apiKey.trim() || !baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写 API Key 与端点地址' : 'Fill in API key and endpoint' }); return; }
-    if (!model.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请填写或选择模型' : 'Choose or type a model' }); return; }
-    const trimmedKey = apiKey.trim();
-    // Key 按服务商归档：本次填写的 Key 只记到当前服务商名下
-    const nextKeys = { ...keyByProvider, [providerId]: trimmedKey };
-    setKeyByProvider(nextKeys);
-    // 输出上限：留空 = 不下发 max_tokens（思考型模型的思考也计入上限，填小了会挤出空白回答）
-    const maxOutRaw = maxTokensText.trim();
-    const maxOutNum = /^\d+$/.test(maxOutRaw) ? Number(maxOutRaw) : 0;
-    const cfg: AiConfig = { providerId, apiKey: trimmedKey, baseUrl, model, agreed: true, thinkingEffort, keyByProvider: nextKeys, extraParamsText: providerId === 'custom' ? extraParamsText.trim() : undefined, maxOutputTokens: maxOutNum > 0 ? maxOutNum : undefined };
-    saveAiConfig(cfg);
-    setConfigured(true);
-    setConfig(cfg);
-    setView('chat');
-    // 保存成功 toast
-    setSavedToast(true);
-    if (savedToastTimer.current) window.clearTimeout(savedToastTimer.current);
-    savedToastTimer.current = window.setTimeout(() => setSavedToast(false), 2000);
-  };
-
-  // 清除全部 AI 数据
-  const clearAll = () => {
-    resetConversation();
-    resetQuiz(); // 清 quiz 状态与统计（P2：清全部后 quiz 不残留旧题/统计）
-    clearAiConfig();
-    setConfigured(false);
-    setConfig(null);
-    setView('terms');
-    setProviderId(AI_PROVIDERS[0].id);
-    setApiKey('');
-    setCustomUrl('');
-    setShowKey(false);
-    setModel('');
-    setKeyByProvider({});
-    setThinkingEffort('standard');
-    setExtraParamsText('');
-    setExtraParamsOpen(false);
-    setMaxTokensText('');
-    setLiveModels([]);
-    setModelNote(null);
-    setTesting(false);
-    setFetching(false);
-    setTestResult(null);
-    setSavedToast(false);
-    // 闸门一并复位：清空后再点「获取模型 / 测试连接」不应被残留锁挡住
-    testingRef.current = false;
-    fetchingRef.current = false;
-  };
-
   // 复制到剪贴板（带降级：优先 navigator.clipboard，降级隐藏 textarea + execCommand，覆盖 http 环境）
   const copyToClipboard = async (text: string): Promise<boolean> => {
     if (navigator.clipboard?.writeText) {
@@ -1883,7 +1231,9 @@ export default function AiAssistant() {
     const lab = labId ? labMap[labId] : undefined;
     // 静态页面知识与实时读数**分开注入**：两者权威级不同，混在一个 <页面资料> 里会让
     // 模型把学生眼前的真实读数当「可选背景」，转而自己按公式算一个。
-    const liveState = formatLabState(labId, getLabState(labId), lang);
+    const liveState = [aiCtx.live, formatLabState(labId, getLabState(labId), lang)]
+      .filter(Boolean)
+      .join('\n');
     return buildSystemPrompt(
       lang,
       aiCtx.topic ?? pageSubject(location.pathname, lang),
@@ -1892,6 +1242,8 @@ export default function AiAssistant() {
       // 实验页用注册表里的学科判定（显示名里没有「物理」二字）；非实验页留给主题串回退
       lab ? lab.subjectId === 'physics' : undefined,
       liveState,
+      // 页面人设（探究页的苏格拉底导师）：只改讲法，禁令仍以系统提示词第三节为准
+      aiCtx.persona,
     );
   };
 
@@ -1912,6 +1264,9 @@ export default function AiAssistant() {
       return;
     }
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
+    // 新问题即最新一轮：刻度轨回到「跟随最新」，旧轮的 Hover 预览一并收起
+    setFocusTurn(null);
+    setPeekTurn(null);
     setAnswer('');
     setReasoning('');
     setReasoningStreaming(false);
@@ -2202,6 +1557,50 @@ export default function AiAssistant() {
     try { window.localStorage.setItem('stem-ai-pos', JSON.stringify({ x, y })); } catch { /* 静默 */ }
   }, [collapsed]);
 
+  // ── 外置面板的域对象（P0 拆分）─────────────────────────────
+  // state：按值 memo —— 身份只在面板真正读到的值变化时才变；
+  // actions：useStable —— 身份恒定但闭包每次渲染刷新（否则 memo 每轮都被新对象击穿）。
+
+  /*
+   * 刷题域 Hook：组卷 / 判分 / 解析 / 统计内聚在 useQuizSession。
+   * 作答记录写回历史域（setQuizHistoryData）与用量统计由主组件注入。
+   */
+  const quizSession = useQuizSession({
+    config,
+    busy,
+    lang,
+    t,
+    isOffline,
+    location,
+    aiCtx,
+    quizSignal,
+    usage,
+    setUsage,
+    refreshTokenUsage,
+    flashToast,
+    setQuizHistoryData,
+    setView,
+  });
+  const {
+    state: quizState,
+    actions: quizActions,
+    resetQuiz,
+    abortRef: quizAbortRef,
+    openedRef: quizOpenedRef,
+  } = quizSession;
+
+  /*
+   * 设置面板的动作袋：域内动作来自 useAiSettings；clearAll 横跨三个域，只能在主组件编排，
+   * 故在此合并后再交给面板。面板读到的 props 形状与拆分前完全一致。
+   */
+  const settingsActions = useStable(() => ({ ...aiSettings.actions, clearAll }));
+
+  const termsState = useMemo(() => ({ collapsedTerms, pending }), [collapsedTerms, pending]);
+  const termsActions = useStable(() => ({ setView, toggleTerm }));
+  const historyState = useMemo(() => ({ aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen }), [aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen]);
+  const historyActions = useStable(() => ({ backToPaperOptions, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView }));
+  const historyRefs = useMemo(() => ({ quizTopicMenuRef, topicMenuRef }), [quizTopicMenuRef, topicMenuRef]);
+
   if (!open) return null;
 
   // 移动端（<640px，含窄屏）：面板改为顶部锚定的近全宽卡片——忽略桌面拖拽/缩放记忆、隐藏缩放手柄、限制最大高度不超可视区
@@ -2213,6 +1612,55 @@ export default function AiAssistant() {
     !isMobile && pos && typeof window !== 'undefined'
       ? clampPos(pos.x, pos.y)
       : null;
+
+
+
+  /* ── 历史刻度轨（minimap notches）：轮次口径与定位 ── */
+  // 「一轮」= 历史里已收尾的一轮，或正在流式显示的这一轮（有则算一轮）
+  const liveTurn = !!(answer || pending || busy || failure);
+  const turnCount = history.length + (liveTurn ? 1 : 0);
+  const railOn = turnCount >= 2; // ≥2 轮才有「历史」可收折
+  const folding = railOn && !historyExpanded;
+  // 正在查看的那一轮：手动定位优先，否则跟随最新（流式中=流式区，空闲=最后一条历史）。
+  // 流式那一轮取不到 turnRefs，所以定位只对历史条目生效，对不上任何条目 = 全部收折。
+  const focusedIdx = focusTurn ?? (liveTurn ? history.length : Math.max(0, history.length - 1));
+  const notchQuestion = (i: number) =>
+    i < history.length ? history[i].user : pending || currentQuestion || '';
+  const peekQuestion = peekTurn !== null ? notchQuestion(peekTurn) : '';
+
+  /** 点刻度：切到该轮（收折态下即把它展开），并平滑滚到它。 */
+  const jumpToTurn = (i: number) => {
+    setFocusTurn(i);
+    // 学生主动回看旧轮次 → 先解除吸底，免得下一段流式把视线又拽回底部
+    syncStick(false);
+    // 双 rAF：等「该轮展开」这次提交渲染完，位置才是最终值
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const box = answerRef.current;
+        const el = turnRefs.current[i];
+        if (!box || !el) return;
+        // 平滑只给这一次「用户点击」——滚动容器平时必须是 auto：流式每来一个 delta
+        // 都重启一次平滑动画会抖，也会吃掉用户手势。所以这里临时挂 scroll-behavior，
+        // 滚完立刻摘掉；「减动效」偏好下全局的 `scroll-behavior: auto !important` 会压过它，
+        // 自动退化成瞬时跳转。
+        const prev = box.style.scrollBehavior;
+        box.style.scrollBehavior = 'smooth';
+        box.scrollTo({ top: Math.max(0, el.offsetTop - box.offsetTop - 4) });
+        if (jumpScrollTimer.current) window.clearTimeout(jumpScrollTimer.current);
+        jumpScrollTimer.current = window.setTimeout(() => {
+          box.style.scrollBehavior = prev;
+          jumpScrollTimer.current = null;
+        }, 420);
+      }),
+    );
+  };
+
+  /** 刻度轨右侧开关：展开=全部轮次摊回对话流纵向通读；收起=只留最新一轮。 */
+  const toggleHistory = () => {
+    setHistoryExpanded((v) => !v);
+    setFocusTurn(null);
+    setPeekTurn(null);
+  };
 
   return (
     <>
@@ -2226,15 +1674,15 @@ export default function AiAssistant() {
       )}
       <div
         ref={panelRef}
-        className={`fixed z-50 border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ${
+        className={`fixed z-50 flex flex-col overflow-hidden ${
           isMobile
-            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]'
+            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)]'
             : collapsed
-              ? 'w-auto'
+              ? `w-auto ${SHELL_SKIN}`
               // 62dvh 保底只服务「对话视图」（防空会话塌到 221px）；用户拖过高度时同样让位。
               // 设置/条款/学习记录是表单视图：一律随内容紧凑包裹，否则高视口下会在吸底栏下方留大片死区
               //（1440 视口实测 184px；阈值 ≈ 62dvh 超过内容高 ≈ 视口 1145px）。
-              : `w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]${view === 'chat' && height === 0 ? ' min-h-[min(62dvh,calc(100dvh-4.5rem))]' : ''}`
+              : `${SHELL_SKIN} w-[calc(100vw-2rem)] max-h-[calc(100dvh-4.5rem)]${view === 'chat' && height === 0 ? ' min-h-[min(62dvh,calc(100dvh-4.5rem))]' : ''}`
         }`}
         style={{
           ...(!isMobile
@@ -2296,7 +1744,7 @@ export default function AiAssistant() {
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
           {lang === 'zh' ? '已保存' : 'Saved'}
           <Mark ok className="ml-1" />
@@ -2304,14 +1752,16 @@ export default function AiAssistant() {
       )}
       {/* 动作结果轻量 Toast（获取模型 / 测试连接）：放第二行，避免与「已保存」重叠 */}
       {actToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
           <span className={`w-1.5 h-1.5 rounded-full ${actToast.ok ? 'bg-green-500' : 'bg-[var(--error)]'}`} aria-hidden="true" />
           {actToast.msg}
         </div>
       )}
-      {/* 头部 */}
+      {/* 头部：rounded-t-2xl 与外层圆角同半径 —— 顶栏吃的是外壳底色，
+          大圆角下靠 overflow-hidden 裁形；显式写上是为了将来给顶栏加底色时不会露直角。
+          移动端是 rounded-t-xl 的贴底抽屉，别在这里给更大的半径。 */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0"
+        className={`${isMobile ? '' : 'rounded-t-2xl '}flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0`}
         onPointerDown={(e) => beginDrag('title', e)}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
@@ -2344,15 +1794,27 @@ export default function AiAssistant() {
               <Settings className="w-4 h-4" />
             </button>
           )}
-          {/* 问答历史入口：仅对话视图显示（子视图回对话走底部左侧「返回对话」）；有记录时挂一个小圆点 */}
+          {/* 问答历史入口：仅对话视图显示（子视图回对话走底部左侧「返回对话」）。
+              右上角的信息点表示「入口里有内容可看」。 */}
           {config && view === 'chat' && (
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
               title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
               className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
               <History className="w-4 h-4" />
-              {persistHistory.length > 0 && (
-                <span className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" aria-hidden="true" />
+              {/* 信息点（有内容可看）：口径覆盖入口指向的**两个 Tab**——问答历史与考考你记录，
+                  任一非空才亮；都为空时整点不渲染（空入口不该挂点）。
+
+                  配色用 --tech-blue（本应用的「AI/科技」强调色，页脚模型名、历史条目里的模型名
+                  都用它），而不是原来的 --accent：后者浅色下是纯黑（墨色，语义空）、深色下翻成
+                  纯白，读不出「有内容」；它还会和站内已有的**状态色**语境撞车。红/绿一律排除：
+                  绿=可更新、红=出错，那是状态语义，挂在这里等于说「历史出问题了」。
+
+                  点位离按钮角 2px（right-0.5/top-0.5）：History 字形是「圆环 + 左上箭头」，
+                  外弧半径 6.67px。贴着角 4px 时点与外弧相切（实测仅 0.2px 缝，看着像糊在一起），
+                  退到 2px 后有 3.1px 缝；点仍在 28×28 按钮内，不参与布局。 */}
+              {(persistHistory.length > 0 || quizHistoryData.length > 0) && (
+                <span className="absolute right-0.5 top-0.5 w-1.5 h-1.5 rounded-full bg-[var(--tech-blue)]" aria-hidden="true" />
               )}
             </button>
           )}
@@ -2383,1841 +1845,84 @@ export default function AiAssistant() {
 
       {view === 'terms' ? (
         /* ── 第一步：使用须知（先同意才能进入设置） ── */
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* 条款区：内容超高时独立滚动 */}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-4 space-y-3">
-          <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
-            {lang === 'zh' ? '使用须知' : 'Terms'}
-          </p>
-          <p className="flex items-start gap-1.5 border-l-4 border-l-[var(--error)] bg-[color-mix(in_srgb,var(--error)_10%,transparent)] px-3 py-2 text-[0.6875rem] text-[var(--error)] serif-font leading-relaxed">
-            <TriangleAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-            <span>{lang === 'zh' ? '配置/使用 AI 助手前，请阅读并同意以下条款：' : 'Before configuring or using the AI assistant, please read and accept the terms below:'}</span>
-          </p>
-          {pending && (
-            <p className="text-[0.6875rem] text-[var(--fg)] serif-font leading-relaxed">
-              {lang === 'zh' ? '您点击的问题将在配置完成后自动发送。' : 'Your question will be sent automatically once you finish the setup.'}
-            </p>
-          )}
-          <div className="space-y-2 text-[0.6875rem] text-[var(--muted)] leading-relaxed">
-            {lang === 'zh' ? (
-              <>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(0)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><Coins className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />1. 服务性质与费用<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[0] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[0] && (
-
-                  <p>本站为纯前端静态页面，<strong className="font-bold text-[var(--fg)]">仅提供对话界面，不提供任何 AI 大模型服务</strong>，也不收取任何费用。您需自行注册并管理所选 AI 服务商的 API，相关费用由您与服务商结算。</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(1)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><ShieldCheck className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />2. 数据与隐私安全<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[1] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[1] && (
-
-                  <p>您的 API Key 仅保存在您本机浏览器的本地存储中。本站<strong className="font-bold text-[var(--fg)]">无后端服务器，不采集、不存储、不中转</strong>任何密钥或对话内容。对话数据由您的浏览器直接发送至您所选的服务商。请妥善保管您的 API Key，防范泄露风险。</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(2)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><BookOpen className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />3. 学习辅助声明<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[2] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[2] && (
-
-                  <p>本 AI 助手专为初中数理化学习辅助设计。AI 生成的内容存在不准确的可能，<strong className="font-bold text-[var(--fg)]">仅供参考，请务必以学校教材和任课老师的讲解为准</strong>。未成年人请在监护人的指导下配置和使用。</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(3)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><Scale className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />4. 合规与责任限制<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[3] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[3] && (
-
-                  <p>请合法合规使用本工具，严禁用于生成或传播任何违法违规内容。由于网络环境或服务商跨域（CORS）限制导致的连接问题，本站无法干预。因使用本工具及所选 AI 服务产生的相关权责，<strong className="font-bold text-[var(--fg)]">由您与服务商自行承担</strong>。</p>
-
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(0)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><Coins className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />1. Service nature and fees<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[0] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[0] && (
-
-                  <p>This site is a pure front-end static page that <strong className="font-bold text-[var(--fg)]">only provides the chat UI — no AI model service</strong>, no fees. You register and manage the API of your chosen provider yourself; fees are settled with that provider.</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(1)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><ShieldCheck className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />2. Data and privacy<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[1] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[1] && (
-
-                  <p>Your API key stays only in your browser's local storage. This site <strong className="font-bold text-[var(--fg)]">has no backend — it never collects, stores or relays</strong> keys or conversations. Chat data goes straight from your browser to your chosen provider. Keep your key safe.</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(2)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><BookOpen className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />3. Learning aid only<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[2] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[2] && (
-
-                  <p>This assistant is for middle-school science learning only. AI output may be inaccurate — <strong className="font-bold text-[var(--fg)]">for reference; always defer to the textbook and your teacher</strong>. Minors should configure and use it under a guardian's guidance.</p>
-
-                  )}
-                </div>
-                <div>
-                  <button type="button" onClick={() => toggleTerm(3)} className="flex w-full items-center gap-1.5 font-bold text-[var(--fg)] text-left"><Scale className="w-3.5 h-3.5 text-[var(--muted)] shrink-0" />4. Compliance and liability<ChevronDown className={`w-3 h-3 ml-auto shrink-0 text-[var(--muted)] transition-transform ${collapsedTerms[3] ? '-rotate-90' : ''}`} /></button>
-
-                  {!collapsedTerms[3] && (
-
-                  <p>Use this tool lawfully; never generate or spread unlawful content. Connection issues caused by network or provider CORS restrictions are outside this site's control. Responsibility for using this tool and your chosen AI service <strong className="font-bold text-[var(--fg)]">lies with you and that provider</strong>.</p>
-
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          </div>
-          {/* 同意按钮固定在底部（始终可见，不与条款一起滚动） */}
-          <div className="shrink-0 px-4 pb-4 pt-2.5 border-t border-[var(--border)]">
-          <button
-            type="button"
-            onClick={() => setView('settings')}
-            className="tap-primary w-full px-3 py-2 text-xs mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
-          >
-            {lang === 'zh' ? '我同意并继续 →' : 'I agree and continue →'}
-          </button>
-          </div>
-        </div>
+        <TermsPanel lang={lang} state={termsState} actions={termsActions} />
       ) : view === 'settings' ? (
         /* ── 第二步：配置表单（已同意） ── */
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-3 text-sm serif-font sm:pb-0">
-          {/* 设置 Tab：大模型设置 / 语音朗读。两栏共享同一份配置状态，切换不需要重新保存 */}
-          <div className="flex items-center gap-1 border-b border-[var(--border)]" role="tablist" aria-label={lang === 'zh' ? '设置分类' : 'Settings sections'}>
-            {([['model', lang === 'zh' ? '大模型设置' : 'Model setup'], ['speech', lang === 'zh' ? '语音朗读' : 'Speech']] as const).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={settingsTab === id}
-                onClick={() => setSettingsTab(id)}
-                className={`tap-ai-tab tap-area -mb-px border-b-2 px-3 py-2 text-[0.6875rem] mono-font leading-none transition-colors ${settingsTab === id ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {settingsTab === 'model' ? (
-            <>
-          {/* 服务商预设 */}
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-1.5">
-              <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '选择服务商' : 'Provider'}</p>
-              <button type="button" onClick={() => setView('terms')} className="tap-ai-text shrink-0 rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors">
-                {lang === 'zh' ? '查看须知' : 'View terms'}
-              </button>
-            </div>
-            {/* 服务商胶囊：固定高度 + 单行不折，品牌微标继承文字色（未选 --muted / 选中 --fg）。
-                h-7 让 6 个胶囊在桌面严格等高；触屏仍由 .tap-area 撑到 40px 命中区，
-                因为两者对所有胶囊同时生效，折行时行高依然整齐，不会出现"一个高一个矮"。 */}
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 sm:gap-y-1.5">
-              {AI_PROVIDERS.map((p) => {
-                const active = providerId === p.id;
-                // 品牌色只在「悬停」或「已选」时点亮；默认随胶囊文字色（未选 --muted）。
-                // 悬停色走 index.css 里按 data-brand 写的普通规则，**不用** Tailwind 的
-                // group-hover 变体：实测该变体规则存在、svg 也能 matches 到，但计算色仍被
-                // 继承/层级压住而不生效——这种"规则在、却不生效"的调试成本不值得付。
-                // 图标自身不写 text-[--muted]（会与悬停色同层竞争），让它继承父级 currentColor。
-                const brand = PROVIDER_BRAND_CLS[p.id] ?? PROVIDER_BRAND_CLS.custom;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectProvider(p.id)}
-                    aria-pressed={active}
-                    data-brand={p.id}
-                    className={`ai-provider-chip tap-ai-chip tap-area inline-flex h-7 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[0.6875rem] leading-none mono-font transition-colors ${
-                      active
-                        ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
-                        : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
-                    }`}
-                  >
-                    <ProviderIcon
-                      id={p.id}
-                      className={`h-4 w-4 shrink-0 transition-colors ${active ? brand : ''}`}
-                    />
-                    <span>{providerLabel(p, lang)}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {provider.note && <p className="text-[0.625rem] text-[var(--muted)] mt-1">{provider.note}</p>}
-          </div>
-
-          {/* 端点（自定义时显示） */}
-          {providerId === 'custom' && (
-            <div>
-              <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? 'Base URL（OpenAI 兼容）' : 'Base URL (OpenAI-compatible)'}</p>
-              <input
-                id="ai-custom-url"
-                type="text"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder={lang === 'zh' ? 'https://your-proxy.example.com/v1 或完整端点 /chat/completions' : 'https://your-proxy.example.com/v1 or full endpoint /chat/completions'}
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-              />
-              <p className="mt-1 text-[0.625rem] leading-snug text-[var(--muted)]">
-                {lang === 'zh'
-                  ? '支持任意兼容 OpenAI 接口的端点。若连接局域网私有模型，请确保该服务端已开启 CORS 跨域访问。'
-                  : 'Works with any OpenAI-compatible endpoint. For a private model on your LAN, make sure that server has CORS enabled.'}
-              </p>
-            </div>
-          )}
-
-          {/* API Key：标签行右侧带官方入口。链接跟着服务商走（docUrl 来自 AI_PROVIDERS），
-              自定义端点没有 docUrl 就不显示——用户填的是别人家的端点，硬指一个官网等于编造。 */}
-          <div>
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{`API Key (${providerLabel(provider, lang)})`}</p>
-              {provider.docUrl && (
-                <a
-                  href={provider.docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
-                >
-                  {lang === 'zh' ? '获取 Key / 官方文档' : 'Get a key / docs'}
-                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                </a>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                type={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-                className="w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 pr-8 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowKey((v) => !v)}
-                aria-label={showKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
-                className="tap-icon absolute right-2 top-1/2 -translate-y-1/2 rounded-md text-[var(--muted)] hover:text-[var(--fg)]"
-              >
-                {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-            {/* 安全声明：只陈述事实（明文存于本机 localStorage），严禁「加密」等不实表述 */}
-            <p className="mt-1 flex items-start gap-1 text-[0.625rem] text-[var(--muted)] leading-snug">
-              <ShieldCheck className="mt-[1px] w-3 h-3 shrink-0" aria-hidden="true" />
-              <span>
-                {lang === 'zh'
-                  ? '密钥仅保存在本机浏览器的本地存储（localStorage）中，请求直连您所选服务商端点，不上报任何开发者服务器。'
-                  : 'The key is kept only in this browser\'s local storage (localStorage); requests go straight to the endpoint you chose and are never sent to any developer server.'}
-              </span>
-            </p>
-          </div>
-
-          {/* 模型：单行 Combobox（输入框内嵌 ▾）+ 获取模型 / 测试连接 + 常用气泡 */}
-          <div>
-            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
-              {lang === 'zh' ? '模型' : 'Model'}
-              {modelNote && <span className="ml-1.5 text-[0.625rem] text-[var(--fg)]">({modelNote})</span>}
-            </p>
-            {/* 单行：可输入下拉框 + 两个独立动作按钮（按钮在相对定位容器之外，不与浮层抢位置） */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* Combobox：输入框与内嵌 ▾ 同属一个容器，浮层锚定其正下方；
-                  value 直接绑定 model，默认即展示当前生效模型，可随时改写 */}
-              <div ref={modelMenuRef} className="relative min-w-[3.5rem] flex-1">
-                <input
-                  type="text"
-                  role="combobox"
-                  aria-expanded={modelMenuOpen}
-                  aria-controls="ai-model-listbox"
-                  aria-autocomplete="list"
-                  aria-label={lang === 'zh' ? '模型' : 'Model'}
-                  placeholder={lang === 'zh' ? '可直接输入，或点 ▾ 选择' : 'Type a name, or click ▾ to pick'}
-                  value={model}
-                  onChange={(e) => setModel(e.target.value.trim())}
-                  onClick={() => { if (liveModels.length > 0) setModelMenuOpen(true); }}
-                  className="w-full min-w-0 rounded-md border border-[var(--border)] bg-[var(--bg)] py-1.5 pl-2 pr-7 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-                />
-                {/* ▾ 内嵌在输入框右侧；未拉取到列表时禁用并说明原因 */}
-                <button
-                  type="button"
-                  disabled={liveModels.length === 0}
-                  onClick={() => setModelMenuOpen((v) => !v)}
-                  aria-label={lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list'}
-                  title={liveModels.length > 0
-                    ? (lang === 'zh' ? '展开已获取的模型列表' : 'Open the fetched model list')
-                    : (lang === 'zh' ? '先点「获取模型」拉取可用列表' : 'Click "Fetch models" first')}
-                  className="tap-icon absolute right-0.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[var(--muted)] transition-colors hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${modelMenuOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                </button>
-                {modelMenuOpen && liveModels.length > 0 && (
-                  <div
-                    id="ai-model-listbox"
-                    role="listbox"
-                    className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
-                  >
-                    {liveModels.map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        role="option"
-                        aria-selected={modelMatches(m)}
-                        onClick={() => { setModel(m); setModelMenuOpen(false); }}
-                        className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                          modelMatches(m)
-                            ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                            : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {/* 图标语义：这里是「重新拉一次清单」，不是「打开一个列表」——用 RefreshCw；
-                  请求进行中让它自己转（motion-safe 下才转，减少动效偏好时保持静止）。 */}
-              <button
-                type="button"
-                onClick={fetchModelList}
-                disabled={fetching}
-                aria-label={lang === 'zh' ? '获取模型' : 'Fetch models'}
-                title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 shrink-0 ${fetching ? 'motion-safe:animate-spin' : ''}`}
-                  aria-hidden="true"
-                />
-                {fetching ? (lang === 'zh' ? '获取中…' : 'Fetching…') : (lang === 'zh' ? '获取模型' : 'Fetch')}
-              </button>
-              {/* 图标语义：这里是「探一次对方活不活」，用 Activity（心跳波形）而不是插头——
-                  插头已经是「自定义端点」的身份标（ProviderIcon 的 Plug 退化），两处都用插头会重复指认。 */}
-              <button
-                type="button"
-                onClick={testConnection}
-                disabled={testing}
-                aria-label={lang === 'zh' ? '测试连接' : 'Test connection'}
-                title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
-              >
-                <Activity
-                  className={`h-3.5 w-3.5 shrink-0 ${testing ? 'motion-safe:animate-pulse' : ''}`}
-                  aria-hidden="true"
-                />
-                {testing ? (lang === 'zh' ? '测试中…' : 'Testing…') : (lang === 'zh' ? '测试连接' : 'Test')}
-              </button>
-            </div>
-            <p className="text-[0.625rem] text-[var(--muted)] mt-1 leading-snug">
-              {lang === 'zh'
-                ? '「获取模型」列出该家可用模型；「测试连接」发一次极小请求验证能否对话（消耗极少量 token）。'
-                : '"Fetch models" lists what the provider offers; "Test connection" sends one tiny request to confirm it replies (a few tokens).'}
-            </p>
-            {/* 常用气泡：数据源为当前服务商自己的模型清单，不联网也能填；与输入框内容完全一致时高亮 */}
-            {provider.models.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 sm:gap-y-1.5">
-                <span className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '常用：' : 'Common:'}</span>
-                {provider.models.map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setModel(m)}
-                    aria-pressed={modelMatches(m)}
-                    className={`tap-ai-mini tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${modelMatches(m)
-                      ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium'
-                      : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 思考强度：三档；可用档位由当前模型的能力表决定，不可用档位置灰并说明原因 */}
-          <div>
-            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '思考强度' : 'Thinking effort'}</p>
-            {/* 整体分段滑槽：三档同槽，选中由背景滑块承托（不再用符号点表达状态） */}
-            <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '思考强度' : 'Thinking effort'}>
-              {THINKING_TIERS.map((t) => {
-                // 只有「模型有档位集合但缺这一档」才置灰；其余情况三档都可点，保证点击有反馈
-                const usable = !tierLocked(t.id);
-                const selected = usable && selectedEffort === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    disabled={!usable}
-                    aria-pressed={selected}
-                    title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
-                    onClick={() => setThinkingEffort(t.id)}
-                    className={`tap-ai-tier tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
-                      ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs'
-                      : usable
-                        ? 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'
-                        : 'text-[var(--muted)] border-transparent opacity-40 cursor-not-allowed'}`}
-                  >
-                    {lang === 'zh' ? t.zh : t.en}
-                  </button>
-                );
-              })}
-            </div>
-            {/* 单行动态说明：模型没有思考旋钮时，说「按服务商默认策略处理」，
-                具体原因（哪一档不可用、是否透传）落到 title 里——排障时才需要的细节不该占版面。 */}
-            <p
-              className="mt-1 text-xs text-[var(--muted)] leading-snug"
-              title={
-                thinkingPlan?.note
-                  ? THINKING_NOTE[thinkingPlan.note][lang === 'zh' ? 'zh' : 'en']
-                  : sentDesc
-                    ? (lang === 'zh' ? `本次下发 ${sentDesc}` : `Sending ${sentDesc}`)
-                    : (lang === 'zh' ? '不下发思考参数' : 'No thinking parameter sent')
-              }
-            >
-              {thinkingPlan?.note
-                ? (lang === 'zh' ? '当前模型按服务商默认策略处理。' : 'This model follows its provider default policy.')
-                : TIER_HINT[selectedEffort][lang === 'zh' ? 'zh' : 'en']}
-            </p>
-            {/* 输出上限（留空＝不下发 max_tokens）：思考型模型的思考也算进上限，填小了会挤出空白回答。
-                那整段解释已收进 input 的 title——它是「填小了会怎样」的边界知识，不是每次都要读的正文。 */}
-            <div className="mt-1.5 flex items-center gap-2">
-              <label htmlFor="ai-max-out-tokens" className="shrink-0 text-xs text-[var(--muted)]">
-                {lang === 'zh' ? '输出上限 (tokens)：' : 'Output limit (tokens):'}
-              </label>
-              <input
-                id="ai-max-out-tokens"
-                type="text"
-                inputMode="numeric"
-                value={maxTokensText}
-                onChange={(e) => setMaxTokensText(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
-                placeholder={lang === 'zh' ? '不限' : 'none'}
-                title={
-                  lang === 'zh'
-                    ? '思考型模型（R1 / 思考版千问 / 本地模型）的思考也计入这个上限：填小了思考会吃满预算，回答就是空白。除非要控成本，建议留空。'
-                    : 'Thinking models (R1 / thinking Qwen / local servers) count their reasoning against this limit — set it too low and the answer comes back blank. Leave it empty unless you need a cost cap.'
-                }
-                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-              />
-            </div>
-            {providerId === 'custom' && (
-              <div className="mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setExtraParamsOpen((v) => !v)}
-                  className="inline-flex items-center gap-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]"
-                >
-                  <ChevronDown className={`w-3 h-3 transition-transform ${extraParamsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  {lang === 'zh' ? '自定义请求参数（JSON，选填）' : 'Custom request params (JSON, optional)'}
-                </button>
-                {extraParamsOpen && (
-                  <>
-                    <textarea
-                      value={extraParamsText}
-                      onChange={(e) => setExtraParamsText(e.target.value)}
-                      rows={3}
-                      placeholder={'{"reasoning_effort": "high"}'}
-                      className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
-                    />
-                    {!extraParamsValid && (
-                      <p className="text-[0.625rem] text-[var(--error)] mt-0.5 leading-snug">
-                        {lang === 'zh' ? 'JSON 格式无效，已忽略（不影响保存与提问）' : 'Invalid JSON — ignored (saving and asking still work)'}
-                      </p>
-                    )}
-                    <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
-                      {lang === 'zh'
-                        ? '注意：部分模型在深度思考模式下会忽略 temperature 等采样参数（不报错，但不生效）。'
-                        : 'Note: in deep-thinking mode some models ignore sampling parameters such as temperature (no error, just no effect).'}
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* 累计 token 用量（跨会话；一行总数，明细点开树状图） */}
-          <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[0.625rem] mono-font font-bold text-[var(--fg)] tracking-widest">
-                {lang === 'zh' ? '累计用量' : 'Total usage'}
-              </p>
-              <span className="flex items-center gap-2">
-                {tokenUsageTotalCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowTokenUsage(true)}
-                    title={lang === 'zh' ? '查看每日用量明细' : 'View daily usage'}
-                    aria-label={lang === 'zh' ? '用量明细' : 'Usage details'}
-                    className="inline-flex items-center gap-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-                  >
-                    <Coins className="w-3 h-3" aria-hidden="true" />
-                    {lang === 'zh' ? '明细' : 'Detail'}
-                  </button>
-                )}
-                {tokenUsageTotalCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => { clearTokenUsage(); refreshTokenUsage(); }}
-                    className="rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_10%,transparent)] active:bg-[color-mix(in_srgb,var(--error)_20%,transparent)] active:text-[var(--error)] transition-colors"
-                  >
-                    {lang === 'zh' ? '清零' : 'Reset'}
-                  </button>
-                )}
-              </span>
-            </div>
-            <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
-              {tokenUsageTotalCount > 0
-                ? (lang === 'zh'
-                    ? `累计消耗 ≈ ${tokenUsageTotalCount.toLocaleString()} tokens（本地估算值，非服务商账单口径；实际计费以服务商后台为准）`
-                    : `≈ ${tokenUsageTotalCount.toLocaleString()} tokens in total (local estimate, not the provider\'s billing figure — check your provider dashboard for actual charges)`)
-                : (lang === 'zh' ? '还没有使用记录。对话、出题、AI 总结的消耗会累计在这里。' : 'No usage yet. Chat, quiz and AI-summary usage will accumulate here.')}
-            </p>
-          </div>
-
-          {/* 配置是否已生效：未保存时明说，提问用的永远是已保存的那份 */}
-        {!formMatchesSaved && (
-          <p className="text-[0.625rem] leading-snug text-[var(--muted)] border border-[var(--border)] px-2 py-1.5">
-            {config
-              ? (lang === 'zh' ? '当前填写尚未保存：请点「保存」，否则提问仍使用上一次保存的配置。' : 'Unsaved changes: press Save, or asking will use the previously saved config.')
-              : (lang === 'zh' ? '还没有保存过配置：先「测试连接」，确认可用后点「保存」。' : 'Nothing saved yet: run Test connection, then press Save.')}
-          </p>
-        )}
-          </>
-          ) : (
-            <>
-              {/* 引擎：默认端侧离线（零配置、断网可用）；云端为使用者自配的可选扩展。
-                  通道状态胶囊与引擎栏标题同行右对齐：切换栏本身已占满面板宽度（实测需 473px、可用 350px），
-                  胶囊与两个 Tab 按钮无法真正同行，故贴在标题行右端，窄屏自动换行、间距保持紧凑 */}
-              <div>
-                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 mb-1.5">
-                  <p className="text-[0.6875rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '朗读引擎' : 'Speech engine'}</p>
-                  <TtsStatusBadge />
-                </div>
-                <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '朗读引擎' : 'Speech engine'}>
-                    {([['scf', lang === 'zh' ? '内置高质量语音（推荐，免配置）' : 'Built-in HD voice (recommended)'], ['cloud', lang === 'zh' ? '自定义云端' : 'Custom cloud']] as const).map(([id, label]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={ttsCfg.engine === id}
-                        onClick={() => { ttsPreview.stop(); updateTts({ engine: id }); resetTtsStatus(); }}
-                        className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${ttsCfg.engine === id ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs' : 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                </div>
-              </div>
-
-              {ttsCfg.engine === 'scf' ? (
-                <div className="space-y-2">
-                  <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
-                    {lang === 'zh'
-                      ? '内置高拟真语音（晓晓 / Aria 等自然音色）：免配置开箱即用，Windows / macOS / Linux / 移动端音色一致。'
-                      : 'Built-in lifelike voices (Xiaoxiao / Aria and other natural voices): zero-config out of the box; the same voice on Windows, macOS, Linux and mobile.'}
-                  </p>
-                  <div className="flex items-center flex-wrap gap-2.5">
-                    {(['zh', 'en'] as const).map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => void ttsPreview.preview(key, ttsCfg)}
-                        aria-label={lang === 'zh' ? `试听内置${key === 'zh' ? '中文' : '英文'}语音` : `Preview built-in ${key === 'zh' ? 'Chinese' : 'English'}`}
-                        title={TTS_SAMPLE[key]}
-                        className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
-                      >
-                        {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                          : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
-                        {ttsPreview.activeKey === key
-                          ? (ttsStatus === 'probing'
-                            ? (lang === 'zh' ? '检测中…' : 'Checking…')
-                            : (lang === 'zh' ? '播放中…' : 'Playing…'))
-                          : (lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}` : `Preview ${key === 'zh' ? 'Chinese' : 'English'}`)}
-                      </button>
-                    ))}
-                  </div>
-                  {ttsPreview.error && (
-                    <p className="text-[0.625rem] text-[var(--error)] leading-snug" role="alert">{ttsPreview.error}</p>
-                  )}
-                  <div className="border-t border-[var(--border)]/60 pt-2">
-                    <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
-                      {lang === 'zh' ? '回退语音（内置语音不可用时自动使用）' : 'Fallback voice (used automatically when the built-in voice is unavailable)'}
-                    </p>
-                    {(['zh', 'en'] as const).map((key) => {
-                      const label = key === 'zh' ? (lang === 'zh' ? '中文发音人' : 'Chinese voice') : (lang === 'zh' ? '英文发音人' : 'English voice');
-                      const value = key === 'zh' ? ttsCfg.localVoiceZh : ttsCfg.localVoiceEn;
-                      return (
-                        <div key={key} className="flex items-center gap-2.5 mb-1.5">
-                          <span className="w-20 shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">{label}</span>
-                          <select
-                            value={value}
-                            onChange={(e) => updateTts(key === 'zh' ? { localVoiceZh: e.target.value } : { localVoiceEn: e.target.value })}
-                            aria-label={label}
-                            className="min-h-9 w-full sm:w-72 max-w-xs rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-                          >
-                            <option value="">{lang === 'zh' ? '自动（按语言选择）' : 'Automatic (by language)'}</option>
-                            {(key === 'zh' ? groupedVoices.zh : groupedVoices.en).map((v) => (
-                              <option key={v.voiceURI || v.name} value={v.voiceURI || v.name}>{`${v.name} · ${v.lang}`}</option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => void ttsPreview.preview(key, ttsCfg)}
-                            aria-label={lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}发音人` : `Preview ${key === 'zh' ? 'Chinese' : 'English'} voice`}
-                            title={TTS_SAMPLE[key]}
-                            className={`tap-area inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
-                          >
-                            {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                              ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                              : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
-                            {ttsPreview.activeKey === key
-                              ? (ttsStatus === 'probing'
-                                ? (lang === 'zh' ? '检测中…' : 'Checking…')
-                                : (lang === 'zh' ? '播放中…' : 'Playing…'))
-                              : (lang === 'zh' ? '试听' : 'Preview')}
-                          </button>
-                        </div>
-                      );
-                    })}
-                    <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
-                      {groupedVoices.zh.length + groupedVoices.en.length === 0
-                        ? (lang === 'zh' ? '当前浏览器未提供系统语音包：内置语音失败时可能无声，建议先安装中文/英文语音。' : 'No system voices detected: install a Chinese/English voice pack for fallback.')
-                        : (lang === 'zh' ? '自动模式优先挑选自然、拟真的系统音色。断网或云端异常时会静默改用这里的发音人，并提示「已切换为本地离线语音」。' : 'Automatic mode prefers natural, lifelike system voices. If cloud reading fails it switches silently to these voices.')}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {([['endpoint', lang === 'zh' ? 'API 端点' : 'API endpoint', lang === 'zh' ? 'https://.../v1/audio/speech（填接口根地址亦可）' : 'https://.../v1/audio/speech (a base URL also works)', ttsCfg.endpoint, (v: string) => updateTts({ endpoint: v })],
-                     ['apiKey', 'API Key', 'sk-…', ttsCfg.apiKey, (v: string) => updateTts({ apiKey: v })],
-                     ['model', lang === 'zh' ? '模型（选填）' : 'Model (optional)', 'tts-1', ttsCfg.model, (v: string) => updateTts({ model: v })],
-                     ['voice', lang === 'zh' ? '音色（选填）' : 'Voice (optional)', 'alloy', ttsCfg.voice, (v: string) => updateTts({ voice: v })]] as const).map(([key, label, ph, value, onChange]) => (
-                    <div key={key} className="flex items-center gap-2">
-                      <span className="w-20 shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">{label}</span>
-                      <div className="relative flex-1 min-w-0">
-                        <input
-                          type={key === 'apiKey' ? (showTtsKey ? 'text' : 'password') : 'text'}
-                          value={value}
-                          onChange={(e) => onChange(e.target.value)}
-                          placeholder={ph}
-                          aria-label={label}
-                          className={`min-h-9 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] ${key === 'endpoint' ? 'w-full sm:w-96 max-w-md' : key === 'apiKey' ? 'w-full sm:w-96 max-w-md pr-8' : 'w-full sm:w-72 max-w-xs'}`}
-                        />
-                        {key === 'apiKey' && (
-                          <button
-                            type="button"
-                            onClick={() => setShowTtsKey((v) => !v)}
-                            aria-label={showTtsKey ? (lang === 'zh' ? '隐藏 Key' : 'Hide key') : (lang === 'zh' ? '显示 Key' : 'Show key')}
-                            /* 刻意不用 tap-icon：锁定用例限定该标记只允许 2 处（密钥眼睛 + 模型下拉箭头）。
-                               这里用 32×32 自身盒尺寸达到同等热区（图标仍 14px），视觉与范式保持一致 */
-                            className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-8 h-8 text-[var(--muted)] hover:text-[var(--fg)]"
-                          >
-                            {showTtsKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex items-center flex-wrap gap-2.5">
-                    {(['zh', 'en'] as const).map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => void ttsPreview.preview(key, ttsCfg)}
-                        aria-label={lang === 'zh' ? `试听云端${key === 'zh' ? '中文' : '英文'}` : `Preview cloud ${key === 'zh' ? 'Chinese' : 'English'}`}
-                        title={TTS_SAMPLE[key]}
-                        className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
-                      >
-                        {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
-                          : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
-                        {ttsPreview.activeKey === key
-                          ? (ttsStatus === 'probing'
-                            ? (lang === 'zh' ? '检测中…' : 'Checking…')
-                            : (lang === 'zh' ? '播放中…' : 'Playing…'))
-                          : (lang === 'zh' ? `试听${key === 'zh' ? '中文' : '英文'}` : `Preview ${key === 'zh' ? 'Chinese' : 'English'}`)}
-                      </button>
-                    ))}
-                  </div>
-                  {ttsPreview.error && (
-                    <p className="text-[0.625rem] text-[var(--error)] leading-snug" role="alert">{ttsPreview.error}</p>
-                  )}
-                  <p className="text-[0.625rem] text-[var(--muted)] leading-snug">
-                    {lang === 'zh'
-                      ? '兼容标准 /v1/audio/speech 协议；端点与 Key 仅存本机浏览器，调用与费用由使用者自理。朗读失败时仍会自动回退系统语音。'
-                      : 'Compatible with the standard /v1/audio/speech API. Endpoint and key stay in this browser only; usage and cost are yours. Falls back to system speech on failure.'}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-
-        {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
-          <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
-            <div className="flex items-center gap-2">
-            {config ? (
-              <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
-                {lang === 'zh' ? '返回对话' : 'Back to chat'}
-              </button>
-            ) : (
-              <button type="button" onClick={() => setOpen(false)} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
-                {lang === 'zh' ? '关闭' : 'Close'}
-              </button>
-            )}
-            <button type="button" onClick={save} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font font-bold border border-transparent bg-[var(--fg)] text-[var(--bg)] transition-colors hover:opacity-90">
-              {lang === 'zh' ? '保存配置' : 'Save settings'}
-            </button>
-            <button type="button" onClick={clearAll} title={lang === 'zh' ? '清除 AI 配置、问答历史与答题统计（错题集请在「学习记录」中单独清空）' : 'Clear AI config, chat history and quiz stats (clear the mistake set separately under Records)'} className="ml-auto tap-area inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]">
-              <Trash2 className="w-3 h-3" />
-              {lang === 'zh' ? '清除 AI 配置与记录' : 'Clear AI data'}
-            </button>
-            </div>
-            {testResult && (
-              <p className={`text-[0.6875rem] mono-font ${testResult.ok ? 'text-[var(--fg)]' : 'text-[var(--error)]'}`}>{testResult.msg}</p>
-            )}
-          </div>
-        </div>
+        <SettingsPanel lang={lang} state={settingsState} actions={settingsActions} refs={settingsRefs} />
       ) : view === 'history' ? (
         /* ── 学习记录：问答历史 / 考考你记录（纯本地持久化）── */
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* 记录类型 tab */}
-          <div className="shrink-0 flex items-center gap-1 px-3 pt-2.5 pb-1 border-b border-[var(--border)]/60">
-            <button
-              type="button"
-              onClick={() => setHistoryTab('qa')}
-              className={`px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
-                historyTab === 'qa' ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-              }`}
-            >
-              {lang === 'zh' ? '问答历史' : 'Q&A'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setHistoryTab('quiz')}
-              className={`px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
-                historyTab === 'quiz' ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
-              }`}
-            >
-              {lang === 'zh' ? '错题集' : 'Mistakes'}
-            </button>
-          </div>
-          {historyTab === 'qa' ? (
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* 隐私提示（与免责条同视觉层级） */}
-          <p className="shrink-0 px-4 pt-2.5 flex items-center gap-1.5 text-[0.625rem] text-[var(--muted)] leading-snug">
-            <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-            {lang === 'zh' ? '仅保存在本机浏览器 · 可随时清除' : 'Stored only in your browser · clearable anytime'}
-          </p>
-          {/* 筛选：科目 chips + 知识点下拉（动态提取，空历史时隐藏） */}
-          {persistHistory.length > 0 && (
-            <div className="shrink-0 px-3 pt-2 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setSubjFilter(null)}
-                  className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${
-                    subjFilter === null ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
-                  }`}
-                >
-                  {lang === 'zh' ? '全部' : 'All'}
-                </button>
-                {histSubjects.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setSubjFilter(subjFilter === s ? null : s)}
-                    className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${
-                      subjFilter === s ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-                {hasFilter && (
-                  <button
-                    type="button"
-                    onClick={() => { setSubjFilter(null); setTopicFilter(null); }}
-                    className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
-                  >
-                    {lang === 'zh' ? '清除筛选' : 'Clear filters'}
-                  </button>
-                )}
-              </div>
-              {histTopics.length > 0 && (
-                <div ref={topicMenuRef} className="flex items-center gap-1.5">
-                  <span className="text-[0.625rem] mono-font text-[var(--muted)] shrink-0">{lang === 'zh' ? '知识点' : 'Topic'}:</span>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setTopicMenuOpen((v) => !v)}
-                      className="w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
-                    >
-                      <span className="truncate text-left">{topicFilter ?? (lang === 'zh' ? '全部知识点' : 'All topics')}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${topicMenuOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    {topicMenuOpen && (
-                      <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                        <button
-                          type="button"
-                          onClick={() => { setTopicFilter(null); setTopicMenuOpen(false); }}
-                          className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                            topicFilter === null
-                              ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                              : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                          }`}
-                        >
-                          <span className="block truncate">{lang === 'zh' ? '全部知识点' : 'All topics'}</span>
-                        </button>
-                        {histTopics.map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => { setTopicFilter(t); setTopicMenuOpen(false); }}
-                            className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                              topicFilter === t
-                                ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                                : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                            }`}
-                          >
-                            <span className="block truncate">{t}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
-            {filteredHistory.length === 0 ? (
-              <div className="pt-8 text-center space-y-2">
-                <History className="w-6 h-6 mx-auto text-[var(--muted)]" aria-hidden="true" />
-                <p className="text-xs text-[var(--muted)] italic">
-                  {hasFilter
-                    ? (lang === 'zh' ? '没有匹配的问答。试试清除筛选。' : 'No matching Q&A. Try clearing the filters.')
-                    : (lang === 'zh' ? '暂无历史问答。提问后会自动保存在本机。' : 'No history yet. Questions you ask will be saved on this device.')}
-                </p>
-              </div>
-            ) : (
-              pagedHistory.map((h) => (
-                <div key={h.id} className="border border-[var(--border)]">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedHistId(expandedHistId === h.id ? null : h.id)}
-                    className="w-full text-left px-2.5 py-2 flex items-start justify-between gap-2 hover:bg-[var(--accent-light)]/40 transition-colors"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs serif-font leading-snug line-clamp-2"><InlineAnswer text={h.question} /></span>
-                      <span className="block mt-0.5 text-[0.625rem] mono-font text-[var(--muted)]">
-                        {relativeTime(h.ts, lang)}
-                        {h.subject ? ` · ${h.subject}` : ''}
-                        {h.topic && h.topic !== h.subject && !h.topic.includes(h.subject) ? ` · ${h.topic.replace(/[（(].*?[）)]/g, '')}` : ''}
-                        {h.model ? <span className="text-[#1565c0]"> · {h.model}</span> : ''}
-                      </span>
-                    </span>
-                    <ChevronDown className={`w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--muted)] transition-transform ${expandedHistId === h.id ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  </button>
-                  {expandedHistId === h.id && (
-                    <div className="border-t border-[var(--border)] px-2.5 py-2 space-y-1.5">
-                      <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '回答' : 'Answer'}:</p>
-                      <div className="text-left">
-                        <div className="inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
-                          <AnswerRich text={h.answer} />
-                          {renderSpeakControls(h.answer, h.topic)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <button type="button" onClick={() => gotoHistoryPath(h.path)}
-                          title={lang === 'zh' ? '回到来源页' : 'Back to source page'}
-                          className="tap-area rounded-md inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font leading-none border border-transparent bg-[var(--accent-light)]/50 transition-colors hover:bg-[var(--accent-light)]">
-                          <ArrowLeft className="w-3 h-3" aria-hidden="true" />
-                          {lang === 'zh' ? '回到来源页' : 'Back to source'}
-                        </button>
-                        <button type="button" onClick={() => void copyAnswer(h.id, h.answer)}
-                          title={lang === 'zh' ? '复制回答' : 'Copy answer'}
-                          className={`tap-area rounded-md inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font leading-none border border-transparent transition-colors ${
-                            copiedId === h.id
-                              ? 'bg-[var(--accent-light)] text-[var(--fg)]'
-                              : copyFailedId === h.id
-                                ? 'bg-[var(--error)]/10 text-[var(--error)]'
-                                : 'bg-[var(--accent-light)]/50 hover:bg-[var(--accent-light)]'
-                          }`}>
-                          {copiedId === h.id ? <Check className="w-3 h-3" aria-hidden="true" />
-                            : copyFailedId === h.id ? <CircleX className="w-3 h-3" aria-hidden="true" />
-                            : <Copy className="w-3 h-3" aria-hidden="true" />}
-                          {copiedId === h.id ? (lang === 'zh' ? '已复制' : 'Copied')
-                            : copyFailedId === h.id ? (lang === 'zh' ? '复制失败' : 'Copy failed')
-                            : (lang === 'zh' ? '复制' : 'Copy')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-          {/* 清空历史（只清历史，不动配置与当前会话；二次确认） */}
-          <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between gap-2">
-            <span className="text-[0.625rem] text-[var(--muted)] mono-font shrink-0">
-              {lang === 'zh'
-                ? (hasFilter ? `筛选出 ${filteredHistory.length} 条 / 共 ${persistHistory.length} 条` : `共 ${persistHistory.length} 条 · 自动保留最近 100 条`)
-                : (hasFilter ? `${filteredHistory.length} of ${persistHistory.length} items` : `${persistHistory.length} items · keeps latest 100`)}
-            </span>
-            {/* 翻页：一页 8 条 */}
-            {histPageCount > 1 && (
-              <span className="flex items-center gap-1 mono-font text-[0.625rem] text-[var(--muted)]">
-                <button
-                  type="button"
-                  onClick={() => setHistPage((p) => Math.max(1, p - 1))}
-                  disabled={histPage <= 1}
-                  aria-label={lang === 'zh' ? '上一页' : 'Previous page'}
-                  className="px-1.5 py-0.5 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors"
-                >‹</button>
-                <span>{histPage} / {histPageCount}</span>
-                <button
-                  type="button"
-                  onClick={() => setHistPage((p) => Math.min(histPageCount, p + 1))}
-                  disabled={histPage >= histPageCount}
-                  aria-label={lang === 'zh' ? '下一页' : 'Next page'}
-                  className="px-1.5 py-0.5 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors"
-                >›</button>
-              </span>
-            )}
-            {persistHistory.length > 0 && (
-              <button
-                type="button"
-                onClick={clearHistoryAll}
-                className={`inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors shrink-0 ${confirmClearHist ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
-              >
-                <Trash2 className="w-3 h-3" />
-                {confirmClearHist ? (lang === 'zh' ? '确认清空？' : 'Confirm clear?') : (lang === 'zh' ? '清空历史' : 'Clear history')}
-              </button>
-            )}
-          </div>
-          </div>
-          ) : (
-          /* ── 考考你记录：正确率统计 + 错题集（独立 localStorage） ── */
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-            {/* 统计概览 */}
-            <div className="shrink-0 px-4 pt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.625rem] mono-font text-[var(--muted)]">
-              <span>{lang === 'zh' ? `已答 ${quizStatsData.total} 题` : `${quizStatsData.total} answered`}</span>
-              <span className={quizStatsData.correct > 0 ? 'text-[var(--fg)]' : ''}>{lang === 'zh' ? `答对 ${quizStatsData.correct}` : `${quizStatsData.correct} correct`}</span>
-              {quizStatsData.wrong > 0 && <span className="text-[var(--error)]">{lang === 'zh' ? `答错 ${quizStatsData.wrong}` : `${quizStatsData.wrong} wrong`}</span>}
-              {quizStatsData.total > 0 && <span>{lang === 'zh' ? `正确率 ${quizStatsData.rate}%` : `${quizStatsData.rate}% accuracy`}</span>}
-              {/* 全部 / 仅错题切换 */}
-              <span className="ml-auto flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setQuizScope('wrong')}
-                  className={`px-1.5 py-0.5 border transition-colors ${quizScope === 'wrong' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
-                >
-                  {lang === 'zh' ? '仅错题' : 'Wrong'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuizScope('all')}
-                  className={`px-1.5 py-0.5 border transition-colors ${quizScope === 'all' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
-                >
-                  {lang === 'zh' ? '全部' : 'All'}
-                </button>
-                {/* 导出错题卷：范围即当前筛选，忽略每页 8 条的浏览分页 */}
-                <button
-                  type="button"
-                  onClick={() => setPaperOpen(true)}
-                  disabled={filteredQuizHistory.length === 0}
-                  title={lang === 'zh' ? '把当前筛选的错题排成 A4 复习卷，可直接打印或另存为 PDF' : 'Lay out the current mistakes as an A4 sheet you can print or save as PDF'}
-                  className="tap-primary ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Printer className="w-3 h-3" aria-hidden="true" />
-                  {lang === 'zh' ? '导出错题卷' : 'Export paper'}
-                </button>
-              </span>
-            </div>
-            {/* 错题卷配置弹窗（方案 A：确认后生成快照并调起浏览器打印） */}
-            {paperOpen &&
-              createPortal(
-                <div
-                  className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-label={lang === 'zh' ? '导出错题卷' : 'Export paper'}
-                >
-                  <div className="absolute inset-0 bg-black/45" onClick={() => setPaperOpen(false)} aria-hidden="true" />
-                  <div className="relative z-10 flex flex-col w-full max-w-sm max-h-[85dvh] bg-[var(--bg)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
-                    <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-                      <h2 className="text-xs font-bold mono-font tracking-widest">
-                        {lang === 'zh' ? '导出错题卷' : 'EXPORT PAPER'}
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => setPaperOpen(false)}
-                        aria-label={lang === 'zh' ? '关闭' : 'Close'}
-                        title={lang === 'zh' ? '关闭' : 'Close'}
-                        className="tap-area p-1.5 text-[var(--muted)] hover:text-[var(--fg)] text-lg leading-none"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3">
-                      <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
-                        {lang === 'zh'
-                          ? `将导出当前筛选的全部 ${filteredQuizHistory.length} 题（忽略每页 8 条的浏览分页）`
-                          : `Exports all ${filteredQuizHistory.length} records in the current filter (the 8-per-page view is ignored)`}
-                      </p>
-                      <label className="flex items-start gap-2 cursor-pointer text-xs serif-font">
-                        <input
-                          type="checkbox"
-                          checked={paperOpts.includeAnswers}
-                          onChange={(e) => setPaperOpts((o) => ({ ...o, includeAnswers: e.target.checked }))}
-                          className="mt-0.5"
-                        />
-                        <span>{lang === 'zh' ? '含答案与解析（文末独立起页）' : 'Include answers and explanations (own page at the end)'}</span>
-                      </label>
-                      <div>
-                        <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '演算留白' : 'Working space'}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {([
-                            ['compact', '紧凑', 'Compact'],
-                            ['standard', '标准 20mm', 'Standard 20mm'],
-                            ['roomy', '宽松 35mm', 'Roomy 35mm'],
-                          ] as [PaperBlankLevel, string, string][]).map(([id, zhLabel, enLabel]) => (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => setPaperOpts((o) => ({ ...o, blankLevel: id }))}
-                              className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.blankLevel === id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                            >
-                              {lang === 'zh' ? zhLabel : enLabel}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '排序方式' : 'Order'}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {([
-                            ['topic', '按知识点分组', 'By topic'],
-                            ['time', '按时间倒序', 'Newest first'],
-                          ] as [PaperSortMode, string, string][]).map(([id, zhLabel, enLabel]) => (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => setPaperOpts((o) => ({ ...o, sortMode: id }))}
-                              className={`tap-area rounded-md px-2 py-0.5 text-[0.625rem] mono-font border transition-colors ${paperOpts.sortMode === id ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                            >
-                              {lang === 'zh' ? zhLabel : enLabel}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-[var(--border)]">
-                      <button
-                        type="button"
-                        onClick={() => setPaperOpen(false)}
-                        className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
-                      >
-                        {lang === 'zh' ? '取消' : 'Cancel'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => exportPaper(false)}
-                        disabled={filteredQuizHistory.length === 0}
-                        className="tap-primary ml-auto inline-flex items-center gap-1 px-3 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-50"
-                      >
-                        <Printer className="w-3 h-3" aria-hidden="true" />
-                        {lang === 'zh' ? '直接打印' : 'Print now'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => exportPaper(true)}
-                        disabled={filteredQuizHistory.length === 0}
-                        className="tap-primary inline-flex items-center gap-1 px-3 py-1.5 text-xs mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--bg)] disabled:opacity-50"
-                      >
-                        <Eye className="w-3 h-3" aria-hidden="true" />
-                        {lang === 'zh' ? '预览' : 'Preview'}
-                      </button>
-                    </div>
-                  </div>
-                </div>,
-                document.body,
-              )}
-            {/* 打印/预览卷面：仅在有快照时挂载（屏幕端由 CSS 控制显隐，打印时独占页面） */}
-            {paperData && (
-              <QuizPaperPrint
-                paper={paperData.paper}
-                lang={lang}
-                generatedAt={paperData.generatedAt}
-                preview={paperPreview}
-              />
-            )}
-            {/* 预览工具栏：屏幕端浮在底部；打印时作为 body 子元素被打印样式整体隐藏 */}
-            {paperData &&
-              paperPreview &&
-              createPortal(
-                <div className="exam-preview-bar" role="toolbar" aria-label={lang === 'zh' ? '打印预览' : 'Print preview'}>
-                  <span className="text-[0.6875rem] mono-font text-[var(--muted)]">
-                    {lang === 'zh'
-                      ? `预览 · 共 ${paperData.paper.total} 题${paperData.paper.includeAnswers ? ' · 含答案页' : ''}`
-                      : `Preview · ${paperData.paper.total} questions${paperData.paper.includeAnswers ? ' · with answers' : ''}`}
-                  </span>
-                  <span className="ml-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={backToPaperOptions}
-                      className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)]"
-                    >
-                      {lang === 'zh' ? '返回修改' : 'Back'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaperPreview(false)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[0.6875rem] mono-font font-bold border border-[var(--fg)] text-[var(--fg)] transition-colors hover:bg-[var(--fg)] hover:text-[var(--bg)]"
-                    >
-                      <Printer className="w-3 h-3" aria-hidden="true" />
-                      {lang === 'zh' ? '打印 / 另存为 PDF' : 'Print / Save as PDF'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={closePaperPreview}
-                      aria-label={lang === 'zh' ? '关闭预览' : 'Close preview'}
-                      title={lang === 'zh' ? '关闭预览（Esc）' : 'Close preview (Esc)'}
-                      className="px-2 py-1 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
-                    >
-                      ×
-                    </button>
-                  </span>
-                </div>,
-                document.body,
-              )}
-            {/* 学情概览 + AI 归纳（默认折叠；仅在有记录时显示） */}
-            {filteredQuizHistory.length > 0 && (
-              <div className="shrink-0 px-3 pt-2">
-                <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
-                  {/* 折叠头部：标题 + 摘要 + AI 按钮（始终可见） */}
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setQuizOverviewOpen((v) => !v)}
-                      className="inline-flex items-center gap-1 text-[0.625rem] mono-font font-bold text-[var(--fg)] hover:opacity-80 transition-opacity"
-                    >
-                      <span>{lang === 'zh' ? '学情概览' : 'Overview'}</span>
-                      <ChevronDown className={`w-3 h-3 text-[var(--muted)] transition-transform ${quizOverviewOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                    </button>
-                    {/* 折叠态摘要行 */}
-                    {!quizOverviewOpen && quizOverview.weakTopics.length > 0 && (
-                      <span className="text-[0.625rem] mono-font text-[var(--muted)] truncate">
-                        {lang === 'zh' ? '薄弱点' : 'Weak'}: {quizOverview.weakTopics.map((t) => t.topic).join('、')}
-                        {quizOverview.trend && ` | ${lang === 'zh' ? '趋势' : 'Trend'}: ${quizOverview.trend.recentRate}%`}
-                      </span>
-                    )}
-                    {/* AI 按钮（始终可见） */}
-                    <span className="ml-auto">
-                      {!quizSummaryText && !quizSummaryLoading && !quizSummaryConfirm && (
-                        <button
-                          type="button"
-                          onClick={() => setQuizSummaryConfirm(true)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] transition-colors disabled:opacity-50"
-                          disabled={!config}
-                        >
-                          <Sparkles className="w-3 h-3" aria-hidden="true" />
-                          {lang === 'zh' ? '让 AI 总结' : 'AI Summary'}
-                        </button>
-                      )}
-                      {quizSummaryText && (
-                        <button
-                          type="button"
-                          onClick={() => setQuizSummaryConfirm(true)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-                        >
-                          <Sparkles className="w-3 h-3" aria-hidden="true" />
-                          {lang === 'zh' ? '重新生成' : 'Regenerate'}
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                  {/* 展开内容：完整概览数据 */}
-                  {quizOverviewOpen && (
-                    <div className="text-[0.625rem] mono-font text-[var(--muted)] space-y-1 pt-1">
-                      {quizOverview.subjects.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          {quizOverview.subjects.map((s) => (
-                            <span key={s.subject} className="flex items-center gap-1">
-                              <span>{lang === 'zh' ? '科目正确率' : 'By subject'}（{s.subject}）</span>
-                              <span className={s.rate >= 60 ? 'text-[var(--success)]' : 'text-[var(--error)]'}>{s.rate}%</span>
-                              <span className="text-[var(--muted)] opacity-70">({s.correct}/{s.total})</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {quizOverview.weakTopics.length > 0 && (
-                        <div>
-                          <span className="text-[var(--fg)]">{lang === 'zh' ? '薄弱点' : 'Weak spots'}:</span>{' '}
-                          {quizOverview.weakTopics.map((t, i) => (
-                            <span key={t.topic} className="mr-1.5">
-                              {i > 0 ? '、' : ''}
-                              <span className="text-[var(--error)]">{t.topic}</span>
-                              <span className="opacity-70">({lang === 'zh' ? '错' : '×'}{t.wrong})</span>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {quizOverview.errorKinds.timeout + quizOverview.errorKinds.confuse + quizOverview.errorKinds.slow + quizOverview.errorKinds.fast > 0 && (
-                        <div>
-                          <span className="text-[var(--fg)]">{lang === 'zh' ? '类型' : 'Patterns'}:</span>{' '}
-                          {quizOverview.errorKinds.timeout > 0 && <span className="mr-1.5">{lang === 'zh' ? `超时未答 ${quizOverview.errorKinds.timeout}` : `Timed out ${quizOverview.errorKinds.timeout}`}</span>}
-                          {quizOverview.errorKinds.confuse > 0 && <span className="mr-1.5">{lang === 'zh' ? `易混反复错 ${quizOverview.errorKinds.confuse}` : `Repeated same wrong ${quizOverview.errorKinds.confuse}`}</span>}
-                          {quizOverview.errorKinds.slow > 0 && <span className="mr-1.5">{lang === 'zh' ? `犹豫答错 ${quizOverview.errorKinds.slow}` : `Slow & wrong ${quizOverview.errorKinds.slow}`}</span>}
-                          {quizOverview.errorKinds.fast > 0 && <span className="mr-1.5">{lang === 'zh' ? `过快答错 ${quizOverview.errorKinds.fast}` : `Too quick ${quizOverview.errorKinds.fast}`}</span>}
-                        </div>
-                      )}
-                      {quizOverview.trend && (
-                        <div>
-                          <span className="text-[var(--fg)]">{lang === 'zh' ? '趋势' : 'Trend'}:</span>{' '}
-                          <span>
-                            {lang === 'zh'
-                              ? `最近 ${quizOverview.trend.recentCount} 题正确率 ${quizOverview.trend.recentRate}%（整体 ${quizOverview.trend.overallRate}%）${quizOverview.trend.recentRate >= quizOverview.trend.overallRate ? '，比整体上扬' : '，比整体回落'}`
-                              : `Last ${quizOverview.trend.recentCount}: ${quizOverview.trend.recentRate}% overall ${quizOverview.trend.overallRate}%${quizOverview.trend.recentRate >= quizOverview.trend.overallRate ? ', better than overall' : ', below overall'}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {/* AI 确认 / 加载 / 输出 / 错误（始终按状态渲染，不随概览折叠） */}
-                  <div className={`${quizOverviewOpen ? 'pt-1.5 border-t border-[var(--border)]/60' : ''}`}>
-                    {quizSummaryConfirm && (
-                      <div className="pt-1.5 space-y-1.5">
-                        <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
-                          <ShieldCheck className="w-3 h-3 inline-block mr-1 align-[-2px]" aria-hidden="true" />
-                          {lang === 'zh'
-                            ? `将把「${quizSummaryScopeLabel}」范围内的作答记录发给 AI 生成诊断。数据仅存你本机，AI 诊断仅供参考、可能有误，请以教材和老师讲解为准。确定？`
-                            : `This will send the ${quizSummaryScopeLabel} records to the AI for a diagnosis. Your data stays on this device. AI output is for reference only and may be inaccurate — defer to your textbook and teacher. Proceed?`}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void runQuizSummary()}
-                            disabled={quizSummaryLoading}
-                            className="px-2 py-1 text-[0.625rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors disabled:opacity-50"
-                          >
-                            {lang === 'zh' ? '生成' : 'Generate'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuizSummaryConfirm(false)}
-                            className="tap-area rounded-md px-2.5 py-1 text-[0.625rem] mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
-                          >
-                            {lang === 'zh' ? '取消' : 'Cancel'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {quizSummaryLoading && (
-                      <p className="pt-1.5 text-[0.625rem] mono-font text-[var(--muted)]">
-                        <Sparkles className="w-3 h-3 inline-block mr-1 align-[-2px] animate-pulse" aria-hidden="true" />
-                        {lang === 'zh' ? '正在总结…' : 'Summarizing…'}
-                      </p>
-                    )}
-                    {quizSummaryText && (
-                      <div className="pt-1.5">
-                        <div className="text-left">
-                          <div className="inline-block w-full px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed ai-answer">
-                            <AnswerRich text={quizSummaryText} />
-                            {renderSpeakControls(quizSummaryText, aiCtx.topic)}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    {quizSummaryError && (
-                      <p className="pt-1.5 text-[0.625rem] mono-font text-[var(--error)] leading-snug">
-                        {lang === 'zh' ? '生成失败：' : 'Failed: '}{quizSummaryError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* 筛选：科目 chips + 知识点下拉（动态提取，与问答历史一致）*/}
-            {(quizSubjects.length > 0 || hasQuizFilter) && (
-              <div className="shrink-0 px-3 pt-2 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {quizSubjects.length > 0 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setQuizSubjFilter(null)}
-                        className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === null ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                      >
-                        {lang === 'zh' ? '全部' : 'All'}
-                      </button>
-                      {quizSubjects.map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setQuizSubjFilter(quizSubjFilter === s ? null : s)}
-                          className={`tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font border transition-colors ${quizSubjFilter === s ? 'border-[var(--fg)]/25 bg-[var(--accent-light)] text-[var(--fg)] font-medium' : 'border-transparent text-[var(--muted)] hover:bg-[var(--accent-light)]/60 hover:text-[var(--fg)]'}`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </>
-                  )}
-                  {hasQuizFilter && (
-                    <button
-                      type="button"
-                      onClick={() => { setQuizSubjFilter(null); setQuizTopicFilter(null); }}
-                      className="ml-auto rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
-                    >
-                      {lang === 'zh' ? '清除筛选' : 'Clear filters'}
-                    </button>
-                  )}
-                </div>
-                {quizTopics.length > 0 && (
-                  <div ref={quizTopicMenuRef} className="flex items-center gap-1.5">
-                    <span className="text-[0.625rem] mono-font text-[var(--muted)] shrink-0">{lang === 'zh' ? '知识点' : 'Topic'}:</span>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setQuizTopicMenuOpen((v) => !v)}
-                        className="w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
-                      >
-                        <span className="truncate text-left">{quizTopicFilter ?? (lang === 'zh' ? '全部知识点' : 'All topics')}</span>
-                        <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${quizTopicMenuOpen ? 'rotate-180' : ''}`} />
-                      </button>
-                      {quizTopicMenuOpen && (
-                        <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                          <button
-                            type="button"
-                            onClick={() => { setQuizTopicFilter(null); setQuizTopicMenuOpen(false); }}
-                            className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                              quizTopicFilter === null
-                                ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                                : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                            }`}
-                          >
-                            <span className="block truncate">{lang === 'zh' ? '全部知识点' : 'All topics'}</span>
-                          </button>
-                          {quizTopics.map((t) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => { setQuizTopicFilter(t); setQuizTopicMenuOpen(false); }}
-                              className={`w-full text-left px-2.5 py-1.5 text-xs mono-font transition-colors ${
-                                quizTopicFilter === t
-                                  ? 'bg-[var(--accent-light)] text-[var(--fg)] font-bold border-l-2 border-l-[var(--accent)]'
-                                  : 'text-[var(--muted)] hover:bg-[var(--accent-light)] hover:text-[var(--fg)]'
-                              }`}
-                            >
-                              <span className="block truncate">{t}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {/* 记录列表 */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
-              {filteredQuizHistory.length === 0 ? (
-                <div className="pt-8 text-center space-y-2">
-                  <GraduationCap className="w-6 h-6 mx-auto text-[var(--muted)]" aria-hidden="true" />
-                  <p className="text-xs text-[var(--muted)] italic">
-                    {hasQuizFilter
-                      ? (lang === 'zh' ? '没有匹配的记录。试试调整或清除筛选。' : 'No matching records. Try adjusting or clearing the filters.')
-                      : (lang === 'zh' ? '暂无考考你记录。在实验、工具页做几道题就会自动保存在这里。' : 'No quiz records yet. Answer a few questions on lab or tool pages and they will be saved here.')}
-                  </p>
-                </div>
-              ) : (
-                pagedQuizHistory.map((e) => {
-                  const expanded = quizExpandedId === e.id;
-                  return (
-                    <div key={e.id} className="border border-[var(--border)]">
-                      <button
-                        type="button"
-                        onClick={() => setQuizExpandedId(expanded ? null : e.id)}
-                        className="w-full text-left px-2.5 py-2 flex items-start justify-between gap-2 hover:bg-[var(--accent-light)]/40 transition-colors"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5">
-                            <span className={`inline-flex items-center gap-0.5 text-[0.6875rem] mono-font font-bold ${e.correct ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
-                              <Mark ok={e.correct} />
-                            </span>
-                            <span className="block text-xs serif-font leading-snug line-clamp-2"><InlineAnswer text={e.question} /></span>
-                          </span>
-                          <span className="block mt-0.5 text-[0.625rem] mono-font text-[var(--muted)]">
-                            {relativeTime(e.ts, lang)}
-                            {e.subject ? ` · ${e.subject}` : ''}
-                            {e.topic && e.topic !== e.subject && !e.topic.includes(e.subject) ? ` · ${e.topic.replace(/[（(].*?[）)]/g, '')}` : ''}
-                            {e.model ? <span className="text-[#1565c0]"> · {e.model}</span> : ''}
-                          </span>
-                        </span>
-                        <ChevronDown className={`w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--muted)] transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
-                      </button>
-                      {expanded && (
-                        <div className="border-t border-[var(--border)] px-2.5 py-2 space-y-1.5">
-                          {/* 选择题：选项 + 正确答案高亮，我的错误选择标红 */}
-                          {(e.type !== 'fill') ? (
-                            <div className="flex flex-col gap-1">
-                              {e.options.map((opt, idx) => {
-                                const isAnswer = idx === e.answerIdx;
-                                const isPicked = idx === e.pickedIdx;
-                                let cls = 'text-[var(--muted)]';
-                                if (isAnswer) cls = 'text-[var(--success)] font-bold';
-                                else if (isPicked && !e.correct) cls = 'text-[var(--error)]';
-                                return (
-                                  <p key={idx} className={`text-xs serif-font leading-relaxed ${cls}`}>
-                                    <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
-                                    <InlineAnswer text={opt} />
-                                    {isAnswer && <span className="ml-1 inline-flex items-center gap-0.5 text-[0.625rem] mono-font text-[var(--success)]"><Mark ok />{lang === 'zh' ? '正确答案' : 'Answer'}</span>}
-                                    {isPicked && !e.correct && <span className="ml-1 text-[0.625rem] mono-font text-[var(--error)]">{lang === 'zh' ? '← 你的选择' : '← Your pick'}</span>}
-                                  </p>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            /* 填空题：显示你的答案 vs 正确答案 */
-                            <div className="space-y-1">
-                              {e.fillAnswers && e.fillAnswers.length > 0 && (
-                                <p className="text-xs serif-font leading-relaxed text-[var(--success)] font-bold">
-                                  {lang === 'zh' ? '正确答案：' : 'Correct answer: '}
-                                  {e.fillAnswers.join(lang === 'zh' ? ' 或 ' : ' or ')}
-                                </p>
-                              )}
-                              {e.userAnswer && !e.correct && (
-                                <p className="text-xs serif-font leading-relaxed text-[var(--error)]">
-                                  {lang === 'zh' ? '你的答案：' : 'Your answer: '}<InlineAnswer text={e.userAnswer} />
-                                </p>
-                              )}
-                            </div>
-                          )}
-                          {/* AI 解析讲解（旧数据无该字段则不显示） */}
-                          {e.explanation && (
-                            <div className="pt-1">
-                              <p className="text-[0.625rem] mono-font font-bold text-[var(--fg)]">{lang === 'zh' ? '解析' : 'Explanation'}:</p>
-                              <div className="text-xs serif-font leading-relaxed text-[var(--muted)]">
-                                <AnswerRich text={e.explanation} />
-                              </div>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={retryWrongQuestion}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
-                            >
-                              <GraduationCap className="w-3 h-3" aria-hidden="true" />
-                              {lang === 'zh' ? '再来一题' : 'Try again'}
-                            </button>
-                            {!e.correct && (
-                              <button
-                                type="button"
-                                onClick={() => void copyAnswer(e.id, e.question)}
-                                title={lang === 'zh' ? '复制题目' : 'Copy question'}
-                                className={`inline-flex items-center gap-1 px-2 py-1 text-[0.625rem] mono-font border transition-colors ${
-                                  copiedId === e.id ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] hover:border-[var(--fg)]'
-                                }`}
-                              >
-                                {copiedId === e.id ? <Check className="w-3 h-3" aria-hidden="true" /> : <Copy className="w-3 h-3" aria-hidden="true" />}
-                                {copiedId === e.id ? (lang === 'zh' ? '已复制' : 'Copied') : (lang === 'zh' ? '复制题目' : 'Copy')}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            {/* 清空记录（二次确认） */}
-            <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between gap-2">
-              <span className="text-[0.625rem] text-[var(--muted)] mono-font shrink-0">
-                {lang === 'zh' ? `共 ${quizStatsData.total} 条 · 自动保留最近 100 条` : `${quizStatsData.total} items · keeps latest 100`}
-              </span>
-              {/* 翻页：一页 8 条 */}
-              {quizPageCount > 1 && (
-                <span className="flex items-center gap-1 mono-font text-[0.625rem] text-[var(--muted)]">
-                  <button
-                    type="button"
-                    onClick={() => setQuizPage((p) => Math.max(1, p - 1))}
-                    disabled={quizPage <= 1}
-                    aria-label={lang === 'zh' ? '上一页' : 'Previous page'}
-                    className="px-1.5 py-0.5 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors"
-                  >‹</button>
-                  <span>{quizPage} / {quizPageCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuizPage((p) => Math.min(quizPageCount, p + 1))}
-                    disabled={quizPage >= quizPageCount}
-                    aria-label={lang === 'zh' ? '下一页' : 'Next page'}
-                    className="px-1.5 py-0.5 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 disabled:hover:border-[var(--border)] transition-colors"
-                  >›</button>
-                </span>
-              )}
-              {quizHistoryData.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearQuizHistoryAll}
-                  className={`inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors ${confirmClearQuiz ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                  {confirmClearQuiz ? (lang === 'zh' ? '确认清空？' : 'Confirm clear?') : (lang === 'zh' ? '清空记录' : 'Clear records')}
-                </button>
-              )}
-            </div>
-          </div>
-          )}
-          {/* 返回对话：子视图无左上角箭头后，返回由本栏左侧承担（与设置页同一形态） */}
-          <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center">
-            <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">
-              {lang === 'zh' ? '返回对话' : 'Back to chat'}
-            </button>
-          </div>
-        </div>
+        <HistoryPanel lang={lang} state={historyState} actions={historyActions} refs={historyRefs} />
       ) : view === 'quiz' ? (
         /* ── 考考你：AI 批量出单选题，本地判分 ── */
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto overscroll-contain p-3 space-y-2.5">
-            {!config ? (
-              /* 未配置：提示先完成配置 */
-              <div className="pt-6 text-center space-y-2">
-                <p className="text-xs text-[var(--muted)] italic">
-                  {lang === 'zh' ? '请先配置 AI 服务，再开始出题练习。' : 'Configure the AI service first to start quiz practice.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setView('settings')}
-                  className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors"
-                >
-                  {lang === 'zh' ? '去配置 →' : 'Configure →'}
-                </button>
-              </div>
-            ) : !quizSetup ? (
-              /* 出题设置面板 */
-              <div className="space-y-3 pt-2">
-                <p className="text-[0.6875rem] font-bold mono-font text-[var(--fg)] tracking-widest">
-                  {lang === 'zh' ? '出题设置' : 'Quiz setup'}
-                </p>
-                {/* 题量 */}
-                <div>
-                  <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '题量' : 'Questions'}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[5, 10, 15].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setSetupCount(n)}
-                        className={`px-2.5 py-1 text-[0.6875rem] mono-font border transition-colors ${setupCount === n ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
-                      >
-                        {n} {lang === 'zh' ? '题' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* 出题角度 */}
-                <div>
-                  <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '出题角度' : 'Angle'}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {([
-                      ['basic', lang === 'zh' ? '基础知识' : 'Basic'],
-                      ['advanced', lang === 'zh' ? '进阶提升' : 'Advanced'],
-                      ['tricky', lang === 'zh' ? '易混淆辨析' : 'Tricky'],
-                    ] as [QuizAngle, string][]).map(([angle, label]) => (
-                      <button
-                        key={angle}
-                        type="button"
-                        onClick={() => setSetupAngle(angle)}
-                        className={`px-2.5 py-1 text-[0.6875rem] mono-font border transition-colors ${setupAngle === angle ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* 题型 */}
-                <div>
-                  <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '题型' : 'Type'}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(['choice', 'fill', 'mixed'] as QuizQType[]).map((qt) => {
-                      const label = qt === 'choice' ? (lang === 'zh' ? '单选' : 'Choice') : qt === 'fill' ? (lang === 'zh' ? '填空' : 'Fill-in') : (lang === 'zh' ? '混合' : 'Mixed');
-                      return (
-                        <button
-                          key={qt}
-                          type="button"
-                          onClick={() => setSetupQType(qt)}
-                          className={`px-2.5 py-1 text-[0.6875rem] mono-font border transition-colors ${setupQType === qt ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* AI 辅助判分（仅填空/混合题型时显示） */}
-                {setupQType !== 'choice' && (
-                  <div>
-                    <label className="flex items-start gap-2 text-[0.625rem] mono-font text-[var(--muted)] cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={fillAiJudge}
-                        onChange={(e) => toggleFillAiJudge(e.target.checked)}
-                        className="accent-[var(--fg)] w-3.5 h-3.5 mt-0.5"
-                      />
-                      <span>
-                        {lang === 'zh' ? 'AI 辅助判分（填空题规则判错时，让 AI 再判断一次是否等价）' : 'AI-assisted grading (when rule grading fails on fill-in, ask AI to re-check equivalence)'}
-                      </span>
-                    </label>
-                  </div>
-                )}
-                {/* 每题限时 */}
-                <div>
-                  <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-1.5">{lang === 'zh' ? '每题限时（超时算错）' : 'Time limit per question (timeout = wrong)'}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {([[0, lang === 'zh' ? '不限时' : 'None'], [30, '30s'], [60, '60s'], [90, '90s']] as [number, string][]).map(([sec, label]) => (
-                      <button
-                        key={sec}
-                        type="button"
-                        onClick={() => setSetupTimeLimit(sec)}
-                        className={`px-2.5 py-1 text-[0.6875rem] mono-font border transition-colors ${setupTimeLimit === sec ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => startQuiz(setupCount, setupAngle, setupTimeLimit, setupQType)}
-                  className="px-3 py-1.5 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
-                >
-                  {lang === 'zh' ? '开始作答 →' : 'Start →'}
-                </button>
-              </div>
-            ) : quizLoading ? (
-              /* 出题中 */
-              <div className="py-8 flex flex-col items-center gap-2">
-                <ThinkingOrb state="shaping" size={20} theme="auto" />
-                <p className="text-xs text-[var(--muted)] italic">{lang === 'zh' ? '正在出题…' : 'Creating questions…'}</p>
-              </div>
-            ) : quizError ? (
-              /* 错误 */
-              <div className="space-y-2">
-                <p className="text-xs text-[var(--error)] mono-font">{quizError}</p>
-                <button
-                  type="button"
-                  onClick={() => void loadQuizBatch()}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] tap-area"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                  {lang === 'zh' ? '重试' : 'Retry'}
-                </button>
-              </div>
-            ) : quizDone ? (
-              /* 本轮完成小结 */
-              <div className="pt-6 text-center space-y-2.5">
-                <p className="text-sm serif-font">
-                  {lang === 'zh'
-                    ? `本轮答对 ${quizStats.correct} / ${quizStats.total} 题`
-                    : `This round: ${quizStats.correct} / ${quizStats.total} correct`}
-                </p>
-                {quizStats.total > 0 && (
-                  <p className="text-[0.6875rem] mono-font text-[var(--muted)]">
-                    {lang === 'zh'
-                      ? `正确率 ${Math.round((quizStats.correct / quizStats.total) * 100)}%`
-                      : `${Math.round((quizStats.correct / quizStats.total) * 100)}% accuracy`}
-                  </p>
-                )}
-                <div className="flex items-center justify-center gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={restartQuiz}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors"
-                  >
-                    {lang === 'zh' ? '再来一轮 →' : 'Another round →'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { resetQuiz(); setView('chat'); }}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
-                  >
-                    {lang === 'zh' ? '返回问答' : 'Back to chat'}
-                  </button>
-                </div>
-              </div>
-            ) : quizQ && (
-              /* 题目 */
-              <div className="space-y-2.5">
-                {/* 进度 + 倒计时 */}
-                <div className="flex items-center justify-between text-[0.625rem] mono-font text-[var(--muted)]">
-                  <span>
-                    {lang === 'zh'
-                      ? `第 ${quizIdx + 1} / ${quizQuestions.length} 题`
-                      : `Q${quizIdx + 1} / ${quizQuestions.length}`}
-                  </span>
-                  {timeLeft !== null && timeLeft > 0 && (
-                    <span className={timeLeft <= 5 ? 'text-[var(--error)] font-bold' : ''}>
-                      <Timer className="mr-0.5 inline-block h-3 w-3 align-[-2px]" aria-hidden="true" />{timeLeft}s
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm serif-font leading-relaxed">
-                  <AnswerRich text={quizQ.question} />
-                </p>
-                {quizQ.type === 'fill' ? (
-                  /* 填空题：输入框 + 提交 */
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={quizFillInput}
-                        onChange={(e) => setQuizFillInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && quizSelected === null && !fillJudging) void submitFillAnswer(); }}
-                        disabled={quizSelected !== null || fillJudging}
-                        placeholder={lang === 'zh' ? '输入你的答案…' : 'Type your answer…'}
-                        maxLength={60}
-                        className="flex-1 rounded-md border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)] disabled:opacity-60"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void submitFillAnswer()}
-                        disabled={quizSelected !== null || !quizFillInput.trim() || fillJudging}
-                        className="px-3 py-1.5 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors disabled:opacity-40"
-                      >
-                        {fillJudging ? (lang === 'zh' ? '判分中…' : 'Grading…') : (lang === 'zh' ? '提交' : 'Submit')}
-                      </button>
-                    </div>
-                    {/* 答后反馈（填空） */}
-                    {quizSelected !== null && (
-                      <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
-                        <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
-                          {quizSelected === -1
-                            ? <><Timer className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{lang === 'zh' ? '超时未作答' : 'Timed out'}</>
-                            : quizSelected === 0
-                              ? <><Mark ok className="mr-1" />{lang === 'zh' ? '回答正确' : 'Correct'}</>
-                              : <><Mark ok={false} className="mr-1" />{lang === 'zh' ? `正确答案：${quizQ.fillAnswers.join(' 或 ')}` : `Correct answer: ${quizQ.fillAnswers.join(' or ')}`}</>}
-                        </p>
-                        {quizSelected !== -1 && quizFillInput && quizSelected !== 0 && (
-                          <p className="text-[0.625rem] mono-font text-[var(--muted)]">
-                            {lang === 'zh' ? `你的答案：${quizFillInput}` : `Your answer: ${quizFillInput}`}
-                          </p>
-                        )}
-                        {quizQ.explanation && (
-                          <div className="text-xs serif-font leading-relaxed">
-                            <AnswerRich text={quizQ.explanation} />
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* 选择题：选项按钮 */
-                  <div className="flex flex-col gap-1.5">
-                    {quizQ.options.map((opt, idx) => {
-                      const isPicked = quizSelected === idx;
-                      const isAnswer = idx === quizQ.answerIdx;
-                      let cls = 'border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)]';
-                      if (quizSelected !== null && quizQ.answerIdx !== -1) {
-                        // 答完：正确项高亮（即使学生没选它），错误选择标红
-                        if (isAnswer) cls = 'border-[var(--success)] text-[var(--success)] font-bold';
-                        else if (isPicked) cls = 'border-[var(--error)] text-[var(--error)]';
-                        else cls = 'border-[var(--border)] text-[var(--muted)]';
-                      }
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => pickQuizOption(idx)}
-                          disabled={quizSelected !== null}
-                          className={`text-left text-xs serif-font px-2.5 py-1.5 border transition-colors disabled:cursor-default ${cls}`}
-                        >
-                          <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
-                          <InlineAnswer text={opt} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {/* 答后反馈：对/错 + 解析（选择题；填空已在其输入框区内反馈） */}
-                {quizQ.type === 'choice' && quizSelected !== null && quizQ.answerIdx !== -1 && (
-                  <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
-                    <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === quizQ.answerIdx ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
-                      {quizSelected === -1
-                        ? <><Timer className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{lang === 'zh' ? '超时未作答' : 'Timed out'}</>
-                        : quizSelected === quizQ.answerIdx
-                          ? <><Mark ok className="mr-1" />{lang === 'zh' ? '回答正确' : 'Correct'}</>
-                          : <><Mark ok={false} className="mr-1" />{lang === 'zh' ? `正确答案是 ${String.fromCharCode(65 + quizQ.answerIdx)}` : `Correct answer: ${String.fromCharCode(65 + quizQ.answerIdx)}`}</>}
-                    </p>
-                    {quizQ.explanation && (
-                      <div className="text-xs serif-font leading-relaxed">
-                        <AnswerRich text={quizQ.explanation} />
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* 无标准答案（解析失败降级）：给出原样题目，不判分 */}
-                {quizQ.type === 'choice' && quizSelected !== null && quizQ.answerIdx === -1 && (
-                  <p className="text-[0.6875rem] text-[var(--muted)] italic">
-                    {lang === 'zh' ? '本题未识别出标准答案，未计分。可点击「下一题」。' : 'No standard answer detected for this question, not scored. Try "Next question".'}
-                  </p>
-                )}
-                {/* 操作：下一题 / 返回 */}
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={nextQuiz}
-                    disabled={quizSelected === null || quizLoading}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--fg)] text-[var(--fg)] transition-colors disabled:opacity-40"
-                  >
-                    {lang === 'zh' ? '下一题 →' : 'Next question →'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { resetQuiz(); setView('chat'); }}
-                    className="px-2.5 py-1 text-[0.6875rem] mono-font border border-[var(--border)] hover:border-[var(--fg)] transition-colors"
-                  >
-                    {lang === 'zh' ? '返回问答' : 'Back to chat'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          {/* 免责条 + 模型/用量（与 AI 对话底部对齐；移动端单行截断） */}
-          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2">
-            <div className="flex items-center justify-between gap-2">
-              <p
-                className="flex items-center gap-1.5 min-w-0 flex-1 text-[0.625rem] text-[var(--muted)] leading-snug"
-                title={lang === 'zh' ? '题目与解析由 AI 生成，仅供参考，请以教材和老师讲解为准' : 'Questions and explanations are AI-generated for reference, trust the textbook and your teacher'}
-              >
-                <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
-                <span className="truncate">{lang === 'zh' ? '题目由 AI 生成，仅供参考' : 'AI-generated, for reference'}</span>
-              </p>
-              {/* 模型名 + 用量统计（与对话视图共用样式） */}
-              <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">
-                {config?.model && <span className="text-[0.625rem] text-[#1565c0] font-semibold">{config.model}</span>}
-                {usage && (
-                  <span className="flex items-center gap-1 text-[var(--fg)]">
-                    <span className="text-[0.6875rem]">≈{usage.tokens.toLocaleString()} tokens</span>
-                    <span className="text-[0.6875rem] text-[var(--muted)]">{busy ? (lang === 'zh' ? '· 生成中…' : '· Generating…') : `· ${usage.speed} t/s`}</span>
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
+        <QuizPanel lang={lang} state={quizState} actions={quizActions} />
       ) : (
         /* ── 由页面驱动 + AI 推荐追问（无自由输入） ── */
         <>
+          {/* 历史刻度轨：轮次 ≥2 才出现。每条短横是一轮问答——Hover 出问题摘要，
+              点击把那一轮展开并滚过去；右侧「展开历史」把全部轮次摊回对话流纵读。
+              放在滚动区之外（shrink-0）而不是 sticky 进流里：不必和正文抢 z 序，
+              Hover 气泡也能安稳地浮在正文之上。 */}
+          {railOn && (
+            <div className="relative shrink-0 border-b border-[var(--border)]/70 px-3 py-1.5">
+              <div className="flex items-center gap-2">
+                <div
+                  role="group"
+                  aria-label={lang === 'zh' ? '历史问答刻度轨' : 'History notches'}
+                  className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+                >
+                  {Array.from({ length: turnCount }, (_, i) => {
+                    const isFocus = i === focusedIdx;
+                    const question = notchQuestion(i);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => jumpToTurn(i)}
+                        onMouseEnter={() => setPeekTurn(i)}
+                        onMouseLeave={() => setPeekTurn((p) => (p === i ? null : p))}
+                        onFocus={() => setPeekTurn(i)}
+                        onBlur={() => setPeekTurn((p) => (p === i ? null : p))}
+                        // 不用原生 title：它要悬停 1 秒才出、样式也不可控，这里换成自绘气泡
+                        aria-label={
+                          lang === 'zh'
+                            ? `第 ${i + 1} 轮：${question.slice(0, 40)}`
+                            : `Turn ${i + 1}: ${question.slice(0, 40)}`
+                        }
+                        aria-current={isFocus ? 'true' : undefined}
+                        /* 触屏用 .tap-y 把命中盒上下各撑 7px（短横视觉只有 4px 高）；
+                           按钮自身 24px 高 + 左右各 4px 内边距，鼠标的命中区也够用 */
+                        className="tap-y group/notch relative flex h-6 shrink-0 cursor-pointer items-center px-1"
+                      >
+                        <span className={isFocus ? NOTCH_ACTIVE : NOTCH_BASE} />
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleHistory}
+                  aria-expanded={historyExpanded}
+                  className="tap-ai-text shrink-0 inline-flex items-center gap-1 rounded px-1 text-[0.625rem] mono-font leading-none text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] cursor-pointer"
+                >
+                  {historyExpanded ? (
+                    <ChevronUp className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3 shrink-0" aria-hidden="true" />
+                  )}
+                  {historyExpanded
+                    ? (lang === 'zh' ? '收起' : 'Collapse')
+                    : (lang === 'zh' ? '展开历史' : 'Expand history')}
+                </button>
+              </div>
+              {/* Hover 预览：该轮的问题摘要（回答不进气泡——气泡是「找哪一轮」的线索，不是预览全文） */}
+              {peekTurn !== null && peekQuestion && (
+                <div className="pointer-events-none absolute left-3 top-full z-20 mt-1 max-w-[calc(100%-1.5rem)] rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-2.5 py-1.5 text-[0.6875rem] leading-snug text-[var(--fg)] shadow-xl">
+                  <span className="mono-font text-[var(--muted)]">Q: </span>
+                  <span className="line-clamp-2">{peekQuestion}</span>
+                </div>
+              )}
+            </div>
+          )}
           {/* 移动端内层原 60dvh 会先于抽屉的 85dvh 到顶，白白浪费约 25% 的高度配额 */}
           <div
             ref={answerRef}
@@ -4251,8 +1956,17 @@ export default function AiAssistant() {
             {history.length > 0 || answer || pending || busy || failure ? (
               <>
                 {/* 多轮历史（内存态，同页内可回看；关页/切页即清） */}
-                {history.map((h, i) => (
-                  <div key={i} className="space-y-1.5">
+                {history.map((h, i) =>
+                  // 收折态下只渲染「正在查看的那一轮」，其余收进顶部刻度轨
+                  //（短横 + Hover 问题摘要 + 点击定位就是它们的入口，不在流里堆叠长文本）
+                  folding && i !== focusedIdx ? null : (
+                  <div
+                    key={i}
+                    ref={(el) => {
+                      turnRefs.current[i] = el;
+                    }}
+                    className="space-y-1.5"
+                  >
                     <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={h.user} /></p>
                     {reasoningByTurn[turnKey(h.user, h.assistant)] && (
                       <div className="text-left">
@@ -4287,7 +2001,8 @@ export default function AiAssistant() {
                       </button>
                     )}
                   </div>
-                ))}
+                  )
+                )}
                 {/* 当前轮（流式显示中） */}
                 {(answer || pending || busy || failure) && (
                   <>
@@ -4448,7 +2163,9 @@ export default function AiAssistant() {
               </button>
             </div>
           )}
-          <div className="border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2 shrink-0">
+          {/* 底部状态栏：rounded-b-2xl 让这块 --accent-light 底色自己贴合外壳圆角，
+              不靠裁剪也能收干净（否则四角会留一条底色的直角边）。移动端底部是方的（border-b-0）。 */}
+          <div className={`${isMobile ? '' : 'rounded-b-2xl '}border-t border-[var(--border)] bg-[var(--accent-light)] px-3 py-2 shrink-0`}>
             <div className="flex items-center justify-between gap-2">
               <p
                 className="flex items-center gap-1.5 min-w-0 flex-1 text-[0.625rem] text-[var(--muted)] leading-snug"
@@ -4459,7 +2176,7 @@ export default function AiAssistant() {
               </p>
               {/* 当前模型名（电压表蓝区分，加粗）+ 用量统计（数值加大，流式中 token 滚动增长） */}
               <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">
-                {config?.model && <span className="text-[0.625rem] text-[#1565c0] font-semibold">{config.model}</span>}
+                {config?.model && <span className="text-[0.625rem] text-[var(--tech-blue)] font-semibold">{config.model}</span>}
                 {usage && (
                   <span className="flex items-center gap-1 text-[var(--fg)]">
                     <span className="text-[0.6875rem]">≈{usage.tokens.toLocaleString()} tokens</span>
@@ -4479,4 +2196,5 @@ export default function AiAssistant() {
     )}
     </>
   );
+
 }

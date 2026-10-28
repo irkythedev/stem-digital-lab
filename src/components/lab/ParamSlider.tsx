@@ -16,6 +16,11 @@ interface ParamSliderProps {
   onChange: (value: number) => void;
   format?: (value: number) => string;
   disabled?: boolean;
+  /**
+   * 取整小数位。缺省按 step 推导（≥1 → 0 位，≥0.1 → 1 位，其余 → 2 位）；
+   * 极小步长（如横截面积 1e-7 m²）的实验须显式传入，否则会被取整成 0。
+   */
+  precision?: number;
 }
 
 export default function ParamSlider({
@@ -27,15 +32,18 @@ export default function ParamSlider({
   onChange,
   format,
   disabled = false,
+  precision,
 }: ParamSliderProps) {
-  // 修复浮点精度：根据 step 取整
-  const value = step >= 1 ? Math.round(rawValue) : step >= 0.1 ? Math.round(rawValue * 10) / 10 : Math.round(rawValue * 100) / 100;
+  // 修复浮点精度：根据 step（或显式 precision）取整
+  const decimals = precision ?? (step >= 1 ? 0 : step >= 0.1 ? 1 : 2);
+  const quantize = (v: number) => Number(v.toFixed(decimals));
+
+  const value = quantize(rawValue);
 
   const handleStep = (delta: number) => {
     if (disabled) return;
     const nextRaw = Math.min(max, Math.max(min, value + delta));
-    const rounded = step >= 1 ? Math.round(nextRaw) : step >= 0.1 ? Math.round(nextRaw * 10) / 10 : Math.round(nextRaw * 100) / 100;
-    onChange(rounded);
+    onChange(quantize(nextRaw));
   };
 
   return (
@@ -64,11 +72,7 @@ export default function ParamSlider({
           step={step}
           value={value}
           disabled={disabled}
-          onChange={(e) => {
-            const raw = Number(e.target.value);
-            const rounded = step >= 1 ? Math.round(raw) : step >= 0.1 ? Math.round(raw * 10) / 10 : Math.round(raw * 100) / 100;
-            onChange(rounded);
-          }}
+          onChange={(e) => onChange(quantize(Number(e.target.value)))}
           className="h-11 min-h-[44px] flex-1 cursor-pointer accent-[var(--fg)] touch-manipulation"
         />
         <button

@@ -17,7 +17,7 @@
  */
 import { refreshAiStatus, reportAiFailure, reportAiSuccess } from './ai-status';
 
-export const PROMPT_VERSION = '2026.10.v2';
+export const PROMPT_VERSION = '2026.10.v3';
 
 /** 出题输出的结束标记：提示词要求模型写完所有题后输出它，解析端据此判断末题是否被截断。 */
 export const QUIZ_SENTINEL = '===END===';
@@ -242,6 +242,9 @@ export function buildSystemPrompt(
   /** 实时读数（formatLabState 的输出）。**独立成槽**，不与 knowledge 混在一起：
    *  两者的权威级不同——教材知识是「仅供参考」，读数是「必须照抄，不许自己算」。 */
   readings?: string,
+  /** 本页专属教学人设（如电学工作台的苏格拉底探究导师）。只改「怎么讲」，
+   *  不改范围与禁令——见 personaBlock 的从属声明。 */
+  persona?: string,
 ): string {
   const subject = subjectHint || '';
   // 物理分支：优先用调用方给的显式判定（实验页由 labMap[].subjectId 推得，显示名里通常没有「物理」二字），
@@ -266,6 +269,14 @@ export function buildSystemPrompt(
     : '';
   const stageZh = stage ? `；当前阶段：${stage}` : '';
   const stageEn = stage ? `; stage: ${stage}` : '';
+  // 页面人设独立成块、且**明确从属于**范围与禁令：探究页要求 AI「引导而非直接给结论」，
+  // 与第三节「不许向学生提问」天生有张力（面板没有输入框，学生回不了话）。
+  // 所以这里把边界写死在块首：人设只改讲法，追问一律写成「引导学生自己想」的陈述句。
+  const personaBlock = persona
+    ? lang === 'zh'
+      ? `\n\n【八、本页教学人设】<教学人设> 只调整「怎么讲」，不改变【一、范围与口径】与【三、绝对禁止】；两者冲突时以规则为准——尤其是人设里的「追问」必须写成引导学生自己想的话，不能写成等他回答的问句。\n<教学人设>\n${persona}\n</教学人设>`
+      : `\n\n[8. Page teaching persona] <teaching_persona> only changes HOW you explain; it never overrides sections [1] and [3]. Where they conflict the rules win — in particular any "probe" in the persona must be phrased as something for the student to think through, never as a question awaiting an answer.\n<teaching_persona>\n${persona}\n</teaching_persona>`
+    : '';
   if (lang === 'zh') {
     return [
       '你是「数理化数字实验室」的初中数理化学习助手，面向初中生（7-9 年级）。',
@@ -310,7 +321,7 @@ export function buildSystemPrompt(
 ].join('\n')
       .replace('{SUBJECT}', subject || '（未指定）')
       .replace('{STAGE}', stageZh)
-      .replace('{READING}', readingRule) + readingsBlock + ref;
+      .replace('{READING}', readingRule) + personaBlock + readingsBlock + ref;
   }
   return [
     'You are the science learning assistant of "STEM Digital Lab" for middle-school students (grades 7-9).',
@@ -349,7 +360,7 @@ export function buildSystemPrompt(
 ].join('\n')
     .replace('{SUBJECT}', subject || 'unspecified')
     .replace('{STAGE}', stageEn)
-    .replace('{READING}', readingRule) + readingsBlock + ref;
+    .replace('{READING}', readingRule) + personaBlock + readingsBlock + ref;
 }
 
 /** 出题角度 */

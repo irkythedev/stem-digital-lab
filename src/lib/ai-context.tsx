@@ -16,6 +16,18 @@ export interface AiPageContext {
   topic?: string;
   /** 页面知识摘要（注入系统提示词，供 AI 参考） */
   knowledge?: string;
+  /**
+   * 当前实验的实时状态摘要（如「预设：欧姆定律 · 阶段：探索 · I=0.42 A」）。
+   * 与 ai-dynamic-questions 的易失读数注册表互补：live 变化不频繁，
+   * 适合随系统提示词一起发送；逐帧读数仍走 getLabState。
+   */
+  live?: string;
+  /**
+   * 本页专属教学人设（如电学工作台的苏格拉底探究导师，见 socraticPersona）。
+   * 与 topic 同级显示，但**不随 topic 变更清空会话**：它换的是「讲法」而不是「在讲哪一课」。
+   * 页面离开时由设置方自己清掉（`persona: undefined`），否则会渗到别的页。
+   */
+  persona?: string;
 }
 
 interface AiContextValue {
@@ -26,7 +38,8 @@ interface AiContextValue {
   configured: boolean;
   setConfigured: (v: boolean) => void;
   aiCtx: AiPageContext;
-  setAiCtx: (ctx: AiPageContext) => void;
+  /** 支持函数式更新：子组件只改 live，不覆盖页面注入的 topic/knowledge。 */
+  setAiCtx: (ctx: AiPageContext | ((prev: AiPageContext) => AiPageContext)) => void;
   /** 一键问 AI：页面按钮携带的预填问题（消费后清空） */
   ask: string | null;
   askAi: (question: string) => void;
