@@ -13,6 +13,6 @@ export const GITHUB_PATH =
 
 /** 品牌外链（Issue）地址，页脚与欢迎弹窗共用 */
 export const ISSUE_URLS = {
-  gitee: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues',
-  github: 'https://github.com/irkythedev/stem-digital-lab/issues',
+  gitee: 'https://gitee.com/K4Ricky2Win/stem-digital-lab/issues/new/choose',
+  github: 'https://github.com/irkythedev/stem-digital-lab/issues/new/choose',
 } as const;

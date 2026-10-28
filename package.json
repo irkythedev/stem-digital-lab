@@ -6,7 +6,7 @@
   "license": "AGPL-3.0",
   "author": "Ricky <king4g@yeah.net>",
   "repository": { "type": "git", "url": "git+https://gitee.com/K4Ricky2Win/stem-digital-lab.git" },
-  "bugs": { "url": "https://gitee.com/K4Ricky2Win/stem-digital-lab/issues" },
+  "bugs": { "url": "https://gitee.com/K4Ricky2Win/stem-digital-lab/issues/new/choose" },
   "homepage": "https://stem.irky.dev",
   "type": "module",
   "scripts": {
