@@ -8,7 +8,7 @@
 
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-2e90fa?style=flat-square&labelColor=18181b" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/Version-v0.42.0-52525b?style=flat-square&labelColor=18181b" alt="Version v0.42.0">
+  <img src="https://img.shields.io/badge/Version-v0.43.0-52525b?style=flat-square&labelColor=18181b" alt="Version v0.43.0">
   <img src="https://img.shields.io/badge/Core-C%2B%2B17%20%2F%20WASM-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=18181b" alt="Core: C++17 / WebAssembly">
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TS-3178C6?style=flat-square&logo=typescript&logoColor=white&labelColor=18181b" alt="Frontend: React 19 + TypeScript">
   <img src="https://img.shields.io/badge/Tests-657%20passed-16a34a?style=flat-square&labelColor=18181b" alt="657 tests passing">

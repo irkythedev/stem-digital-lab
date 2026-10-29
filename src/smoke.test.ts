@@ -1342,6 +1342,12 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
       pkg.version,
       'APP_VERSION 与 package.json 不一致：构建产物里的版本号来自 package.json，界面显示的来自 APP_VERSION',
     );
+    // README 首屏的版本徽章没有第二个守卫，改版本时最容易漏掉它，在这里一起核。
+    const readme = readFileSync('README.md', 'utf8');
+    const badge = /badge\/Version-v(\d+\.\d+\.\d+)-/.exec(readme)?.[1];
+    const alt = /alt="Version v(\d+\.\d+\.\d+)"/.exec(readme)?.[1];
+    assert.equal(badge, APP_VERSION, `README 版本徽章（${badge}）与 APP_VERSION（${APP_VERSION}）不一致`);
+    assert.equal(alt, APP_VERSION, `README 版本徽章 alt（${alt}）与 APP_VERSION（${APP_VERSION}）不一致`);
   });
 
   test('变更记录首条即当前版本，且版本号不重复', () => {
