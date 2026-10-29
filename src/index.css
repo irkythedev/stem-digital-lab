@@ -1523,6 +1523,115 @@ input[type="range"]::-moz-range-thumb:active {
   }
 }
 
+/* ── 短横屏（手机横放 / 矮窗口）：工作台头部压成一行 ──────────────────
+   病灶（V3 844×390 实测）：页面头部三块纵向堆叠——返回链接 40px + 图标标题行 48px
+   + 动作簇（另起一行）32px + 说明句 16px，再加各自的留白，把画布槽顶推到 y=454；
+   视口只有 390px 高，首屏一个像素的画布都看不到，学生必须先盲滚一段才知道画布在哪。
+
+   处置：只在「高度 ≤520px 且宽度 ≥640px」时把头部并成一行——
+   · 图标标题行与动作簇同排（`.rise` 改 flex 行，动作簇撤掉自己的上外边距）；
+   · 返回链接、说明句、章节间距全部收一档（只改外边距，不删任何内容）；
+   · 画布槽给 220px 下限，电路在矮屏里不被压成一条。
+   合并后画布槽顶从 454 提到约 303，首屏就能看见画布与预设胶囊。
+
+   桌面 1440×900 / 1280×800 高度都 >520，永不命中；`sm:`/`lg:` 类名一个未动。
+   `:has()` 把作用域钉死在电学工作台（根节点带 `data-bench-shell`），
+   其它实验页即使横放也保持原样。 */
+@media (max-height: 520px) and (min-width: 640px) {
+  main:has([data-bench-shell]) {
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  /* 返回链接：40px 命中区保留，只收上下外边距 */
+  main:has([data-bench-shell]) > a {
+    margin-top: 0.125rem;
+    margin-bottom: 0.25rem;
+  }
+  /* 头部并成一行：图标标题 + 动作簇同排；换行时也只多一行 */
+  main:has([data-bench-shell]) > .rise {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 0.375rem;
+  }
+  /* 动作簇原本 `mt-1.5 sm:mt-3` 是为了在标题下方另起一行，同排后必须归零 */
+  main:has([data-bench-shell]) > .rise > div:last-child {
+    margin-top: 0;
+  }
+  /* 建议流程句：保留，只把上下留白收到一行文字的高度 */
+  main:has([data-bench-shell]) > p {
+    margin-top: 0;
+    margin-bottom: 0.375rem;
+  }
+  /* 画布槽下限：常态高度由 benchLayout 内联给出（V3 约 466px），矮屏里一旦
+     被容器压到更矮，也保住 220px 的可视高度。 */
+  [data-bench-canvas-slot] {
+    min-height: 220px;
+  }
+  /* 数据记录：短视口里它排在画布卡下方（V3 实测收起钮在 y≈777，视口只有 390），
+     不滚两屏根本够不到，审计 §4 直接判 OUT-OF-VIEWPORT。这一档把面板挪出页面流，
+     与窄屏 / 全屏同一副身子：收起是左下角一枚胶囊，展开是贴底抽屉（45dvh 上限，
+     两三行记录时自己缩回去）。全屏态本来就有抽屉（`measureDrawerClass`），
+     这里再钉一次会把它从左下角拽出来，所以排除 `:fullscreen`。 */
+  [data-bench-shell]:not(:fullscreen) [data-measure-card] {
+    position: fixed;
+    left: 0.5rem;
+    bottom: 0.5rem;
+    z-index: 40;
+    width: auto;
+    max-width: calc(100vw - 1rem);
+  }
+  [data-bench-shell]:not(:fullscreen) [data-measure-card][data-open] {
+    right: 0.5rem;
+    max-height: 45dvh;
+    overflow: auto;
+  }
+}
+
+/* ── 触屏竖屏平板（768 级）：导读浮卡与手机同形，改成贴底抽屉 ──────────
+   病灶（审计 V4 768×1024 实测）：导读卡是 380×884 的可拖浮卡，画布只有 670 宽，
+   卡片一摊开就盖住 53% 的墨迹，画布可点面积 44.3%——低于「任一单浮层展开 ≥60%」。
+
+   `max-sm` 只管到 639px，管不到 768；这里补的一档不是新断点，而是三个既有条件的
+   交集：粗指针（`hover: none`，与 `.tap-area`/`.compact` 的触屏档同一媒体条件）
+   + 横向放不下 380px 浮卡 + 竖向还有余量。于是：
+     · 桌面鼠标（`hover: hover`）永不命中 → 1440/1280 的浮卡位置一个像素都不动；
+     · 844×390 横屏手机被 `min-height` 挡掉 → 它那边浮卡只盖 61%，本来就是够的；
+     · 375/390 竖屏手机同时命中，取值与 `max-sm:` 那套完全一致，不打架。
+   选择器写两个属性（0,2,0）而不是单个属性，是为了稳压 Tailwind 的 `max-h-*`
+   工具类——工具类和本块同源，靠先后顺序决胜负太脆。 */
+@media (hover: none) and (max-width: 900px) and (min-height: 700px) {
+  [data-guide-card][data-guide-sheet] {
+    position: fixed;
+    inset-inline: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 55dvh;
+    border-radius: 1rem 1rem 0 0;
+  }
+  /* 全屏 + 浮层：全屏没有页面可滚，「把画布滚到抽屉上方」这招失效，改成把绘制区
+     收进抽屉上方那条带子——画布卡让出 55dvh 的底边，槽位随之变矮，
+     CircuitCanvas 的 ResizeObserver 会重新取景，电路整体落在抽屉之上。
+     （全屏时工作台根节点就是 :fullscreen 宿主，所以判据挂在它身上。） */
+  [data-bench-shell][data-sheet-open]:fullscreen [data-bench-canvas-card] {
+    padding-bottom: 55dvh;
+  }
+  /* 同一档宽度的工具条：12 个控件在 670px 里溢出 55px，末尾的「全屏」被右缘裁掉
+     一半——命中盒只剩 18px，点中心会落到画布卡上（实测 `elementFromPoint` 返回 main）。
+     触屏没有 hover，文字提示帮不上忙，所以留主操作（选择/接线/运行/全屏）的文字，
+     去掉「清空/适配」这两个次要按钮的文字，行距 6→4px，腾出约 80px。
+     仅这一档：桌面 `sm:`/`lg:` 的类序列与 1440/1280 的排版一字未动。 */
+  [data-bench-shell] .bench-opt-label {
+    display: none;
+  }
+  [data-bench-shell] [data-bench-toolbar] {
+    gap: 0.25rem;
+  }
+}
+
 /* 焦点环裁切修正（实测：首页学科卡/实验卡等 19 个可聚焦元素位于 .overflow-hidden 容器内，
    外置 4px 焦点环被裁掉，键盘用户看不到任何指示）。
    命中该类祖先时把环改为内缩绘制，仍在元素边界内可见。 */

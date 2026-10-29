@@ -181,12 +181,23 @@ export default function MeasurementPanel({
 
   return (
     <div
+      // 短视口（横屏手机）由 `index.css` 的 `(max-height: 520px) and (min-width: 640px)`
+      // 一档挪成贴底浮层：那边只能用属性选择器命中，`max-sm:` 管不到 844 宽。
+      // `data-open` 区分「展开抽屉 / 收起胶囊」两种姿态，与 `max-sm:` 那套一一对应。
+      data-measure-card=""
+      data-open={open ? '' : undefined}
       className={
         floating
           ? open
             ? 'pointer-events-auto max-h-full w-full max-w-3xl overflow-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md'
             : 'pointer-events-auto rounded-full border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md'
-          : 'rounded-xl border border-[var(--border)] bg-[var(--card-bg)]'
+          : `rounded-xl border border-[var(--border)] bg-[var(--card-bg)] ${
+              open
+                ? // 窄屏：数据记录不再占页面流的高度，改成贴底抽屉（与全屏那套同一个姿态）。
+                  // 45dvh 是上限而不是定高，两三行记录时它自己缩回去，画布留得更多。
+                  'max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:z-40 max-sm:max-h-[45dvh] max-sm:overflow-auto'
+                : 'max-sm:fixed max-sm:left-2 max-sm:bottom-2 max-sm:z-40 max-sm:w-auto max-sm:rounded-full'
+            }`
       }
     >
       <button
@@ -234,7 +245,7 @@ export default function MeasurementPanel({
                 onClick={record}
                 // 画布上一个可记录的量都没有时置灰：这时候点下去只会得到一句报错。
                 disabled={noOptions}
-                className="compact h-8 shrink-0 rounded-lg bg-[var(--fg)] px-4 text-xs font-medium text-[var(--bg)] transition-opacity hover:opacity-90 disabled:opacity-45 disabled:hover:opacity-45"
+                className="compact tap32 h-8 shrink-0 rounded-lg bg-[var(--fg)] px-4 text-xs font-medium text-[var(--bg)] transition-opacity hover:opacity-90 disabled:opacity-45 disabled:hover:opacity-45"
               >
                 {zh ? '记录当前读数' : 'Record'}
               </button>
@@ -242,7 +253,7 @@ export default function MeasurementPanel({
                 type="button"
                 onClick={exportCsv}
                 disabled={!rows.length}
-                className="compact h-8 shrink-0 rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-45"
+                className="compact tap32 h-8 shrink-0 rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-45"
               >
                 CSV
               </button>
@@ -250,7 +261,7 @@ export default function MeasurementPanel({
                 type="button"
                 onClick={() => setRows([])}
                 disabled={!rows.length}
-                className="compact h-8 shrink-0 rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] transition-colors hover:border-[var(--danger)] disabled:opacity-45"
+                className="compact tap32 h-8 shrink-0 rounded-lg border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] transition-colors hover:border-[var(--danger)] disabled:opacity-45"
               >
                 {zh ? '清空' : 'Clear'}
               </button>
@@ -296,12 +307,12 @@ export default function MeasurementPanel({
             </div>
 
             <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--muted)]">
-              <label className="flex items-center gap-1.5">
+              <label className="flex min-h-9 items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={throughOrigin}
                   onChange={(e) => setThroughOrigin(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                  className="h-4 w-4 accent-[var(--accent)]"
                 />
                 {zh ? '过原点拟合' : 'Through origin'}
               </label>

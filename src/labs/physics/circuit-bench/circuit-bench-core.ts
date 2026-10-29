@@ -14,6 +14,8 @@
 import {
   FUSE_TAU,
   FUSE_TRIP_HEAT,
+  HEATER_COOL_TAU,
+  HEATER_MIN_CURRENT,
   T_AMBIENT,
   T_BULB_BURN,
   bulbHeatCapacity,
@@ -921,8 +923,19 @@ export function stepSimulation(state: BenchState, dt: number): { state: BenchSta
         const mass = Math.max(1e-5, finite(el.params?.mass, 0.02));
         const c = Math.max(1, finite(el.params?.specificHeat, 460));
         const dQ = I * I * R * total;
-        st.heat += dQ;
-        st.temp = clamp(st.temp + dQ / (mass * c), T_AMBIENT, 2000);
+        if (I > HEATER_MIN_CURRENT && dQ > 0) {
+          st.heat += dQ;
+          st.temp = clamp(st.temp + dQ / (mass * c), T_AMBIENT, 2000);
+        } else {
+          // 断电 / 开路 / 被保险丝切断：牛顿冷却，温度与累计热一起指数回落。
+          // 只加热不冷却会让 `I=0` 之后检查器里的温度永远停在断电前那一刻
+          // （看板与画布已按实时功率切回冷态，两处口径对不上）。
+          const decay = Math.exp(-total / HEATER_COOL_TAU);
+          st.temp = T_AMBIENT + (st.temp - T_AMBIENT) * decay;
+          st.heat *= decay;
+          if (Math.abs(st.temp - T_AMBIENT) < 0.01) st.temp = T_AMBIENT;
+          if (st.heat < 1e-6) st.heat = 0;
+        }
       }
       return { ...el, state: st };
     }),

@@ -212,6 +212,47 @@ export default function ElementPalette({
     });
   };
 
+  /**
+   * 一格元件按钮。桌面的分组竖排与窄屏的横向长条共用这一份——两处各写一遍
+   * 迟早会有一处忘了接 pointer 拖拽，或者忘了 `handledAt` 的去重，
+   * 变成「桌面上点一次加一个、手机上点一次加两个」。
+   */
+  const itemButton = (item: PaletteItem, extra = '') => (
+    <button
+      key={item.kind}
+      type="button"
+      disabled={full}
+      onClick={(e) => {
+        // 指针路径（pointerdown→up）已经处理过这次交互；这里只接
+        // 键盘 Enter/Space 合成的点击，以及 pointer 事件缺失的兜底。
+        if (e.timeStamp - handledAt.current < 500) return;
+        onAdd(item.kind);
+      }}
+      onPointerDown={(e) => onItemDown(e, item.kind)}
+      onPointerMove={onItemMove}
+      onPointerUp={(e) => endDrag(e, e.currentTarget)}
+      onPointerCancel={(e) => endDrag(e, e.currentTarget, true)}
+      title={
+        full
+          ? limitTitle
+          : `${paletteItemLabel(item.kind, zh)} · ${
+              zh ? '点击或拖入画布' : 'click or drag onto the canvas'
+            }`
+      }
+      aria-label={zh ? `添加${item.zh}` : `Add ${item.en}`}
+      className={`${TOUCH_GUARD} compact flex cursor-grab flex-col items-center gap-1 rounded-md px-0.5 py-1 text-[var(--fg)] transition-colors active:cursor-grabbing ${
+        full ? 'cursor-not-allowed opacity-40' : 'hover:bg-[var(--accent-light)]'
+      } ${extra}`}
+    >
+      {/* 缩略图 = 画布本体等比缩小：视口按模式裁到刚好包住图形，
+          撑满 40×32（窄元件按比例取宽），线宽随缩放一起变粗。
+          高度定 32、宽度按 viewBox 比例自适应并封顶在单元格内，
+          所以扁元件（导线）不会被拉长，方元件（灯泡）也不会留大空档。 */}
+      <PaletteGlyph kind={item.kind} viewMode={viewMode} className="h-8 max-w-full shrink-0 text-[var(--fg)]" />
+      <span className="whitespace-nowrap text-xs leading-none font-medium">{zh ? item.zh : item.en}</span>
+    </button>
+  );
+
   return (
     <>
       {collapsed ? (
@@ -228,7 +269,10 @@ export default function ElementPalette({
       ) : (
         <div
           data-view-mode={viewMode}
-          className={`pointer-events-auto flex max-h-full w-[124px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md ${TOUCH_GUARD}`}
+          /* 窄屏换形态：贴画布底边的横向长条坞（fixed 到视口底），而不是 124px 宽的
+             竖板——375px 的屏上竖板会吃掉三分之一画布宽度，而横向长条只吃掉约
+             110px 高度，剩下的画布仍然能接线。桌面宽度、圆角、阴影一个字符不动。 */
+          className={`pointer-events-auto flex max-h-full w-[124px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-40 max-sm:max-h-40 max-sm:w-auto ${TOUCH_GUARD}`}
         >
           <div className="flex shrink-0 items-center gap-0.5 border-b border-[var(--border)]/70 px-1.5 py-1">
             <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-[var(--fg)]">
@@ -246,7 +290,8 @@ export default function ElementPalette({
                     ? '全部收起'
                     : 'Collapse all'
               }
-              className="compact flex h-5 items-center rounded px-1 text-[9px] text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
+              /* 窄屏横向长条没有分组标题，「全部展开/收起」无从下手，收起来。 */
+              className="compact flex h-5 items-center rounded px-1 text-[9px] text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] max-sm:hidden"
             >
               {allClosed ? (zh ? '全部展开' : 'Expand all') : zh ? '全部收起' : 'Collapse all'}
             </button>
@@ -255,13 +300,14 @@ export default function ElementPalette({
               onClick={() => setCollapsed(true)}
               title={zh ? '收起元件库' : 'Hide parts library'}
               aria-label={zh ? '收起元件库' : 'Hide parts library'}
-              className="compact flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
+              className="compact tap-area flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
             >
               <Minus className="h-3 w-3 shrink-0" />
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1">
+          {/* 桌面：按物理用途分组竖排；窄屏隐藏（改用下面的横向长条）。 */}
+          <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-1 max-sm:hidden">
             {PALETTE_GROUPS.map((group) => {
               const expanded = open[group.id] !== false;
               const Chevron = expanded ? ChevronDown : ChevronRight;
@@ -273,61 +319,27 @@ export default function ElementPalette({
                     onClick={() => setOpen((s) => toggleGroup(s, group.id))}
                     aria-expanded={expanded}
                     title={label}
-                    className="compact flex h-5 w-full items-center gap-0.5 rounded px-0.5 text-[9px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                    className="compact tap32 flex h-5 w-full items-center gap-0.5 rounded px-0.5 text-[9px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
                   >
                     <Chevron className="h-3 w-3 shrink-0" />
                     <span className="min-w-0 flex-1 truncate text-left">{label}</span>
                   </button>
                   {expanded && (
-                    <div className="grid grid-cols-2 gap-0.5">
-                      {itemsOf(group.kinds).map((item) => (
-                        <button
-                          key={item.kind}
-                          type="button"
-                          disabled={full}
-                          onClick={(e) => {
-                            // 指针路径（pointerdown→up）已经处理过这次交互；这里只接
-                            // 键盘 Enter/Space 合成的点击，以及 pointer 事件缺失的兜底。
-                            if (e.timeStamp - handledAt.current < 500) return;
-                            onAdd(item.kind);
-                          }}
-                          onPointerDown={(e) => onItemDown(e, item.kind)}
-                          onPointerMove={onItemMove}
-                          onPointerUp={(e) => endDrag(e, e.currentTarget)}
-                          onPointerCancel={(e) => endDrag(e, e.currentTarget, true)}
-                          title={
-                            full
-                              ? limitTitle
-                              : `${paletteItemLabel(item.kind, zh)} · ${
-                                  zh ? '点击或拖入画布' : 'click or drag onto the canvas'
-                                }`
-                          }
-                          aria-label={zh ? `添加${item.zh}` : `Add ${item.en}`}
-                          className={`${TOUCH_GUARD} compact flex w-full cursor-grab flex-col items-center gap-1 rounded-md px-0.5 py-1 text-[var(--fg)] transition-colors active:cursor-grabbing ${
-                            full
-                              ? 'cursor-not-allowed opacity-40'
-                              : 'hover:bg-[var(--accent-light)]'
-                          }`}
-                        >
-                          {/* 缩略图 = 画布本体等比缩小：视口按模式裁到刚好包住图形，
-                              撑满 40×32（窄元件按比例取宽），线宽随缩放一起变粗。
-                              高度定 32、宽度按 viewBox 比例自适应并封顶在单元格内，
-                              所以扁元件（导线）不会被拉长，方元件（灯泡）也不会留大空档。 */}
-                          <PaletteGlyph
-                            kind={item.kind}
-                            viewMode={viewMode}
-                            className="h-8 max-w-full shrink-0 text-[var(--fg)]"
-                          />
-                          <span className="whitespace-nowrap text-xs leading-none font-medium">
-                            {zh ? item.zh : item.en}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
+                    <div className="grid grid-cols-2 gap-0.5">{itemsOf(group.kinds).map((item) => itemButton(item, 'w-full'))}</div>
                   )}
                 </div>
               );
             })}
+          </div>
+
+          {/* 窄屏：一条可横向滚动的元件长条。
+              分组标题在这个高度里塞不下（40px 标题 × 4 组就把 160px 的坞吃光），
+              所以窄屏放弃分组、按原来的组序铺成一排；11 只元件约 750px 宽，
+              一指横扫即可，比纵向滚一个 110px 高的小窗更好找。 */}
+          <div className="hidden min-h-0 flex-1 items-stretch gap-1 overflow-x-auto overflow-y-hidden p-1 max-sm:flex">
+            {PALETTE_GROUPS.flatMap((group) => itemsOf(group.kinds)).map((item) =>
+              itemButton(item, 'w-[64px] shrink-0'),
+            )}
           </div>
 
           {max > 0 && (

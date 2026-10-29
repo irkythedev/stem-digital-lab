@@ -73,7 +73,7 @@ function CloseButton({ zh, onClose }: { zh: boolean; onClose: () => void }) {
       onClick={onClose}
       title={zh ? '收起参数面板' : 'Close parameters'}
       aria-label={zh ? '收起参数面板' : 'Close parameters'}
-      className="compact flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)]"
+      className="compact tap-area relative z-40 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)]"
     >
       <X className="h-3.5 w-3.5 shrink-0" />
     </button>
@@ -113,7 +113,7 @@ export default function InspectorPanel({
       return `${owner ? elementName(state, owner, lang) : id}.${t}`;
     };
     return (
-      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md">
+      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
         <div className="flex items-center justify-between gap-1">
           <span className="text-[11px] font-semibold text-[var(--fg)]">{zh ? '导线' : 'Wire'}</span>
           <span className="flex shrink-0 items-center gap-1">
@@ -123,7 +123,7 @@ export default function InspectorPanel({
                 (onRemoveWire ?? (() => {}))(wire.id);
                 onSelect(null);
               }}
-              className="compact flex h-7 items-center gap-1 rounded-md border border-[var(--danger)]/50 px-2 text-xs text-[var(--danger)] hover:bg-[var(--danger)]/10"
+              className="compact tap32 flex h-7 items-center gap-1 rounded-md border border-[var(--danger)]/50 px-2 text-xs text-[var(--danger)] hover:bg-[var(--danger)]/10"
             >
               <Trash2 className="h-3 w-3 shrink-0" />
               {zh ? '移除导线' : 'Remove wire'}
@@ -141,14 +141,14 @@ export default function InspectorPanel({
   if (!el) {
     if (!warnings.length) return null;
     return (
-      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/85 p-2 shadow-lg backdrop-blur-md">
+      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/85 p-2 shadow-lg backdrop-blur-md max-sm:w-full">
         <WarningList warnings={warnings} zh={zh} />
       </div>
     );
   }
 
   return (
-    <div className="pointer-events-auto flex max-h-full w-[256px] flex-col overflow-y-auto rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md">
+    <div className="pointer-events-auto flex max-h-full w-[256px] flex-col overflow-y-auto rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
       <div className="mb-1.5 flex items-center justify-between gap-1">
         <span className="truncate text-[11px] font-semibold text-[var(--fg)]">
           {elementName(state, el, zh ? 'zh' : 'en')}
@@ -164,7 +164,7 @@ export default function InspectorPanel({
           type="button"
           onClick={() => onChange(rotateComponent(state, el.id))}
           title={zh ? '旋转 90°' : 'Rotate 90°'}
-          className="compact flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
+          className="compact tap32 flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
         >
           <RotateCw className="h-3.5 w-3.5 shrink-0" />
           {zh ? '旋转 90°' : 'Rotate 90°'}
@@ -174,7 +174,7 @@ export default function InspectorPanel({
             type="button"
             onClick={() => onChange(swapPolarity(state, el.id))}
             title={zh ? '调换极性' : 'Swap polarity'}
-            className="compact flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
+            className="compact tap32 flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-[var(--border)] px-2 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
           >
             <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" />
             {zh ? '调换极性' : 'Polarity'}
@@ -188,7 +188,7 @@ export default function InspectorPanel({
           }}
           title={zh ? '移除' : 'Remove'}
           aria-label={zh ? '移除' : 'Remove'}
-          className="compact flex h-7 items-center justify-center rounded-md border border-[var(--danger)]/50 px-2 text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10"
+          className="compact tap32 flex h-7 items-center justify-center rounded-md border border-[var(--danger)]/50 px-2 text-[var(--danger)] transition-colors hover:bg-[var(--danger)]/10"
         >
           <Trash2 className="h-3.5 w-3.5 shrink-0" />
         </button>
@@ -216,7 +216,7 @@ export default function InspectorPanel({
         <button
           type="button"
           onClick={() => onChange(toggleSwitch(state, el.id))}
-          className="compact mt-1.5 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--accent-light)] px-2 text-xs font-medium text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
+          className="compact tap32 mt-1.5 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--accent-light)] px-2 text-xs font-medium text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
         >
           {el.params.closed === false ? (zh ? '闭合开关' : 'Close switch') : zh ? '断开开关' : 'Open switch'}
         </button>
@@ -236,7 +236,7 @@ export default function InspectorPanel({
           // 上层会在带电时先弹「实验要求先断开开关再更换」——否则从这块面板点
           // 「更换灯泡」就成了一条不用断电的后门，规范提示等于形同虚设。
           onClick={() => (onRepair ? onRepair(el.id) : onChange(resetElementState(state, el.id)))}
-          className="compact mt-1.5 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--accent-light)] px-2 text-xs font-medium text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
+          className="compact tap32 mt-1.5 h-7 w-full rounded-md border border-[var(--border)] bg-[var(--accent-light)] px-2 text-xs font-medium text-[var(--fg)] transition-colors hover:border-[var(--accent)]"
         >
           {el.kind === 'bulb' ? (zh ? '更换灯泡' : 'Replace bulb') : zh ? '更换保险丝' : 'Replace fuse'}
         </button>
@@ -406,7 +406,7 @@ function MeterGears({
               type="button"
               aria-pressed={on}
               onClick={() => onChange({ range: g })}
-              className={`compact h-7 flex-1 rounded-md border px-2 font-mono text-[11px] tabular-nums transition-colors ${
+              className={`compact tap32 h-7 flex-1 rounded-md border px-2 font-mono text-[11px] tabular-nums transition-colors ${
                 on
                   ? 'border-[var(--accent)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]'
@@ -454,7 +454,7 @@ function ResetParamButton({
       aria-label={label}
       title={zh ? '恢复出厂值' : 'Restore default'}
       onClick={() => onChange({ [field.key]: def })}
-      className="compact mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)] disabled:cursor-default disabled:opacity-30 disabled:hover:border-[var(--border)] disabled:hover:text-[var(--muted)]"
+      className="compact tap32 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)] disabled:cursor-default disabled:opacity-30 disabled:hover:border-[var(--border)] disabled:hover:text-[var(--muted)]"
     >
       <RotateCcw className="h-3.5 w-3.5 shrink-0" />
     </button>
@@ -475,13 +475,13 @@ function Params({ el, onChange, zh }: { el: CircuitComponent; onChange: (patch: 
       <MeterGears el={el} onChange={onChange} zh={zh} />
 
       {el.kind === 'resistor' && (
-        <label className="flex items-center justify-between rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[10px] text-[var(--fg)]">
+        <label className="flex min-h-9 items-center justify-between rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[10px] text-[var(--fg)] max-sm:min-h-10">
           <span>{zh ? '电阻定律试样' : 'Resistivity specimen'}</span>
           <input
             type="checkbox"
             checked={el.params.mode === 'specimen'}
             onChange={(e) => onChange({ mode: e.target.checked ? 'specimen' : 'fixed' })}
-            className="h-3.5 w-3.5 accent-[var(--accent)]"
+            className="h-4 w-4 accent-[var(--accent)]"
           />
         </label>
       )}

@@ -10,10 +10,10 @@
  *
  * 视觉设计说明：
  * - 时间线排版（左侧 01-02-03 节点 + 竖线），去内层闭合线框，靠间距与对齐建立秩序
- * - 步骤图标贴近系统真实语义：Share（方框上箭头）→ SquarePlus（方框加号）→ CheckCircle2
+ * - 步骤图标贴近系统真实语义：Share（方框上箭头）→ SquarePlus（方框加号）→ CircleCheck
  * - 标题用品牌三角方块圆（与 Header logo 同源）；iOS 附价值副标题；底部单一主按钮「我知道了」
  */
-import { CheckCircle2, ExternalLink, MoreHorizontal, MoreVertical, Share, SquarePlus } from 'lucide-react';
+import { CircleCheck, Ellipsis, EllipsisVertical, ExternalLink, Share, SquarePlus } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useEscapeKey } from '../../lib/use-escape-key';
 
@@ -136,7 +136,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
               />
               <TimelineStep
                 no="03"
-                icon={<CheckCircle2 className="w-5 h-5" />}
+                icon={<CircleCheck className="w-5 h-5" />}
                 title={t.installIosStep3}
                 last
               />
@@ -146,7 +146,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
             <ol className="mt-1">
               <TimelineStep
                 no="01"
-                icon={<MoreHorizontal className="w-5 h-5" />}
+                icon={<Ellipsis className="w-5 h-5" />}
                 title={hint}
               />
               <TimelineStep
@@ -161,7 +161,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
             <ol className="mt-1">
               <TimelineStep
                 no="01"
-                icon={<MoreVertical className="w-5 h-5" />}
+                icon={<EllipsisVertical className="w-5 h-5" />}
                 title={t.installMenuHint}
                 last
               />

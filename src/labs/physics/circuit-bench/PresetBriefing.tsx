@@ -35,6 +35,7 @@ import { GripVertical, Palette, Sigma, Sparkles, Target, X, Zap } from 'lucide-r
 
 import Formula from '../../../components/ui/Formula';
 import { TOUCH_GUARD } from './circuit-bench-touch';
+import { useNarrow, useTabletSheet } from './use-bench-media';
 import type { CircuitPreset } from './circuit-bench-presets';
 import {
   hasPromptText,
@@ -120,6 +121,16 @@ export interface PresetBriefingProps {
   zh: boolean;
   /** 点击追问胶囊：把整理好的提问交给工作台，由它注入教学人设并打开 AI 助手。 */
   onAsk: (question: string) => void;
+  /**
+   * 落位时额外下移的像素（全屏档用）。
+   *
+   * 常态下 `top: 56` 落在页头下方的留白里，画布卡的工具栏还在更下面；
+   * 一进全屏，工作台根节点接管整个视口，工具栏被顶到 `y≈59–103`，
+   * 而卡片仍从 56 起——右上角正好盖住工具栏末尾的「退出全屏」按钮
+   * （审计 V3 ⑩：`elementFromPoint` 命中卡片的「实验导读」标签）。
+   * 全屏不是模态框，卡片不该吃掉工作台自己的控件，所以由工作台把这一档高度传进来。
+   */
+  topInset?: number;
   /** portal 宿主：工作台根节点（全屏宿主）。缺省回退到 body。 */
   mount?: HTMLElement | null;
 }
@@ -131,6 +142,7 @@ export default function PresetBriefing({
   zh,
   onAsk,
   mount,
+  topInset = 0,
 }: PresetBriefingProps) {
   // 「挂载」与「淡入」分两拍：open 变 true 时先以透明+缩小挂上，下一帧才切到终态，
   // 否则首帧就是终点状态，transition 不会发生（这一条在抽屉版上实测踩过）。
@@ -145,6 +157,19 @@ export default function PresetBriefing({
   );
 
   const inquiry = presetInquiry(preset.id);
+  /**
+   * 窄屏形态：底部抽屉。桌面这张卡是「可停在任意角落的浮卡」，窄屏没有角落可停——
+   * 380px 宽压进 375px 视口后，卡片本身就把画布盖住了，拖动更没意义。
+   * 所以窄屏换成贴底的整宽抽屉，并且不再吃 `pos`（内联 left/top 会压过
+   * `max-sm:inset-x-0`，必须整条 style 都不给）。
+   *
+   * 竖屏平板（768 级触屏）同理：画布只有 670 宽，380 的浮卡照样盖掉一半
+   * （审计 V4 ④ 可点 44.3%）。样式那半在 `index.css` 的同名媒体查询里，
+   * 这里只负责「不吃内联坐标、不许拖」这两件 JS 才能决定的事。
+   */
+  const narrow = useNarrow();
+  const tabletSheet = useTabletSheet();
+  const sheet = narrow || tabletSheet;
   const title = zh ? preset.title.zh : preset.title.en;
   const prompts = inquiry.prompts.filter(hasPromptText);
   // principle 只是把公式串再念一遍的预设（如串并联：I = I₁ = I₂…）不再重复渲染那一行，
@@ -170,14 +195,16 @@ export default function PresetBriefing({
 
   // 每次打开都回到初始位置（`right-6 top-14`）：上一节课停在哪一角不该影响下一节课。
   // 用 layout effect：在浏览器绘制前算好，卡片不会先在屏幕左上角闪一下。
+  // `topInset` 也在依赖里：开着卡片直接按全屏（或退出全屏）时视口语义整个变了，
+  // 落位要跟着重新算，否则卡片停在旧坐标系里、正好压住刚被顶上去的工具栏。
   useLayoutEffect(() => {
     if (!open) {
       setPos(null);
       return;
     }
     const w = cardRef.current?.offsetWidth ?? CARD_W;
-    setPos(clampToViewport(window.innerWidth - w - DEFAULT_RIGHT, DEFAULT_TOP, w, 0));
-  }, [open]);
+    setPos(clampToViewport(window.innerWidth - w - DEFAULT_RIGHT, DEFAULT_TOP + topInset, w, 0));
+  }, [open, topInset]);
 
   // 视口变化时把已在屏幕外的卡片拉回来（旋转平板、伸缩窗口、软键盘）。
   useEffect(() => {
@@ -202,6 +229,8 @@ export default function PresetBriefing({
 
   /* ── 拖拽：只在标题栏按下才生效 ── */
   const onDragDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // 贴底抽屉：位置由样式（`max-sm:` / `index.css` 的平板档）决定，拖也拖不动。
+    if (sheet) return;
     // 标题栏里的按钮（关闭 ✕）不参与拖动，否则按住它就变成拖着卡片走。
     if ((e.target as HTMLElement).closest('button')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -249,10 +278,11 @@ export default function PresetBriefing({
       role="dialog"
       aria-label={zh ? `实验导读 · ${title}` : `Lab guide · ${title}`}
       data-guide-card=""
-      className={`fixed z-50 flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none ${
+      data-guide-sheet={sheet ? '' : undefined}
+      className={`fixed z-50 flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[55dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl ${
         shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
       }`}
-      style={pos ? { left: pos.x, top: pos.y } : { right: DEFAULT_RIGHT, top: DEFAULT_TOP }}
+      style={sheet ? undefined : pos ? { left: pos.x, top: pos.y } : { right: DEFAULT_RIGHT, top: DEFAULT_TOP + topInset }}
     >
       {/* 标题栏 = 拖拽把手：左侧六点手柄是给眼睛看的、`cursor-grab` 是给鼠标看的，
           大屏上直接按着任意空白处拖。 */}
@@ -261,13 +291,13 @@ export default function PresetBriefing({
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
-        className={`flex shrink-0 items-center gap-2.5 rounded-t-2xl border-b border-[var(--border)]/70 px-3 py-2.5 ${TOUCH_GUARD} ${
+        className={`flex shrink-0 items-center gap-2.5 rounded-t-2xl border-b border-[var(--border)]/70 px-3 py-2.5 ${TOUCH_GUARD} max-sm:cursor-default ${
           dragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
         title={zh ? '按住这里拖动卡片' : 'Drag here to move the card'}
       >
         <GripVertical
-          className={`h-4 w-4 shrink-0 transition-colors ${dragging ? 'text-[var(--accent)]' : 'text-[var(--muted)]/50'}`}
+          className={`h-4 w-4 shrink-0 transition-colors max-sm:hidden ${sheet ? 'hidden' : ''} ${dragging ? 'text-[var(--accent)]' : 'text-[var(--muted)]/50'}`}
           aria-hidden
         />
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--bg)] text-[var(--accent)]">

@@ -12,7 +12,14 @@ import { useAiContext } from './ai-context';
 
 export type ParamDockState = 'hidden' | 'collapsed' | 'open';
 
-const NARROW_QUERY = '(max-width: 639px)';
+/**
+ * 窄屏唯一权威判据（与 Tailwind 的 `sm` 断点同界）。
+ *
+ * 导出给同一批需要「JS 侧窄屏分支」的组件用（电学工作台的底部停靠与浮层互斥），
+ * 避免第二处再写一遍 `(max-width: 639px)`——两处字面量一旦漂移，就会出现
+ * 「CSS 认为窄屏、JS 认为宽屏」的半截状态。
+ */
+export const NARROW_QUERY = '(max-width: 639px)';
 
 function subscribeNarrow(onChange: () => void): () => void {
   if (typeof window === 'undefined' || !window.matchMedia) return () => undefined;

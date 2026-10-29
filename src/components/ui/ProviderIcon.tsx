@@ -16,6 +16,8 @@
  * （内网/断网会挂）。品牌标识归各家所有，此处仅作「这是哪一家」的指认用途。
  *
  * 自定义端点不是服务商，没有品牌标：退化为一个 2px 描边的插头（与品牌实心标的视觉重量对齐）。
+ * 描边走 lucide 默认值 2，不再单写 strokeWidth——这里曾标 1.75，是全仓唯一一处没有理由的
+ * 线宽例外，而 16px 下 1.75 与 2 的差别肉眼看不出来，留下的只是「这一处跟别处不一样」。
  */
 import { Plug } from 'lucide-react';
 
@@ -71,7 +73,7 @@ export default function ProviderIcon({ id, className = 'h-4 w-4' }: ProviderIcon
   const ds = key ? PROVIDER_PATHS[key] : null;
   if (!ds) {
     // 自定义端点：无品牌标，用插头指认「这是一根线，不是一家厂商」
-    return <Plug className={className} strokeWidth={1.75} aria-hidden="true" />;
+    return <Plug className={className} aria-hidden="true" />;
   }
   return (
     <svg

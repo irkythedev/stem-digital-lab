@@ -47,6 +47,7 @@ import {
   type Pt,
   type ViewTransform,
 } from './circuit-bench-geometry';
+import { useNarrow, useTouchOnly } from './use-bench-media';
 import {
   LONG_PRESS_MS,
   TERMINAL_TAP_PX,
@@ -72,7 +73,7 @@ export type CanvasTool = 'select' | 'wire';
 export interface CircuitCanvasHandle {
   clientToWorld(clientX: number, clientY: number): Pt | null;
   worldToClient(p: Pt): Pt | null;
-  /** 内容适配到画布（右键菜单「适配画布居中」）。 */
+  /** 内容适配到画布（工具条与右键菜单的「适配画布」同一个入口）。 */
   fit(): void;
 }
 
@@ -165,6 +166,16 @@ const HUD_RIGHT_INSET = 140;
  */
 const HUD_BOX_CSS = { width: 256, right: 16, top: 56, height: 200 };
 
+/**
+ * 窄屏停靠时的监控 HUD 占位（CSS 像素）：`right-4 bottom-4` + `w-64`。
+ *
+ * 窄屏把 HUD 改成底部停靠/底部 Sheet 之后，避让方向必须跟着从「左推」改成「上推」，
+ * 否则预留量会把本来就窄的画布内容推出左缘（审计实测 3–6px）。
+ * 这里只描述**常态药丸/展开体所在的那条底带**；Sheet 展开到 45dvh 时仍由
+ * `max-h` 自己收口，取景按 200px 的保守带预留即可。
+ */
+const HUD_BOTTOM_BOX_CSS = { width: 256, right: 16, bottom: 16, height: 200 };
+
 /** 浮窗左缘与电路墨迹之间至少留出的空隙（CSS 像素）。 */
 const HUD_CLEARANCE_CSS = 32;
 
@@ -218,6 +229,8 @@ export default function CircuitCanvas({
 }: CircuitCanvasProps) {
   const { lang } = useApp();
   const zh = lang === 'zh';
+  const narrow = useNarrow();
+  const touchOnly = useTouchOnly();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [view, setView] = useState<ViewTransform>(DEFAULT_VIEW);
@@ -324,7 +337,9 @@ export default function CircuitCanvas({
       { w: WORLD_W, h: WORLD_H },
       110,
       fill,
-      HUD_RIGHT_INSET,
+      // 窄屏 HUD 停底部：横向不再预留，否则 140 世界单位（V1 上 ≈45px）会把
+      // 电路整体推出画布左缘。纵向的净空由下面 boxClearanceShift 的 'y' 分支量。
+      narrow ? 0 : HUD_RIGHT_INSET,
     );
     /*
      * 固定预留量管的是「整幅图看起来偏左」；真的被浮窗压住的墨迹还得按几何推开，
@@ -355,15 +370,31 @@ export default function CircuitCanvas({
     }
     const insetX = (rect.width - WORLD_W * k) / 2;
     const insetY = (rect.height - WORLD_H * k) / 2;
+    // 浮窗世界矩形：桌面按右上角，窄屏按底部停靠——两者必须与真实锚点一一对应，
+    // 否则避让量算的是一块画布上根本不存在的空带。
+    const boxCss = narrow ? HUD_BOTTOM_BOX_CSS : HUD_BOX_CSS;
     const hud: Bounds = {
-      x: (rect.width - HUD_BOX_CSS.right - HUD_BOX_CSS.width - insetX) / k,
-      y: (HUD_BOX_CSS.top - insetY) / k,
-      w: HUD_BOX_CSS.width / k,
-      h: HUD_BOX_CSS.height / k,
+      x: (rect.width - boxCss.right - boxCss.width - insetX) / k,
+      y:
+        (narrow
+          ? // 底带同样要减掉居中留白：世界坐标 = (CSS 像素 − insetY) / k，
+            // 少减这一项会把浮窗当成比实际低 ~108 个世界单位，
+            // 于是避让量算少、电路下缘照样压在 HUD 上。
+            rect.height - HUD_BOTTOM_BOX_CSS.bottom - HUD_BOTTOM_BOX_CSS.height - insetY
+          : HUD_BOX_CSS.top - insetY) / k,
+      w: boxCss.width / k,
+      h: boxCss.height / k,
     };
-    const shift = boxClearanceShift(current, next, hud, HUD_CLEARANCE_CSS / k, routesRef.current);
-    setView(shift > 0 ? { ...next, tx: next.tx - shift } : next);
-  }, [viewMode]);
+    const shift = boxClearanceShift(
+      current,
+      next,
+      hud,
+      HUD_CLEARANCE_CSS / k,
+      routesRef.current,
+      narrow ? 'y' : 'x',
+    );
+    setView(shift > 0 ? { ...next, tx: next.tx - (narrow ? 0 : shift), ty: next.ty - (narrow ? shift : 0) } : next);
+  }, [viewMode, narrow]);
 
   /* 切换电路图 / 仿真图时，视图变换用 320ms 过渡滑过去，而不是瞬移。 */
   const [viewAnimating, setViewAnimating] = useState(false);
@@ -1080,6 +1111,9 @@ export default function CircuitCanvas({
                   glow={highlightId === el.id}
                   pendingTerminal={pending}
                   terminalHitRadius={terminalHitRadius}
+                  // 本体热区在窄屏/触屏上按当前缩放外扩；桌面这两个值等于关闭。
+                  pxPerWorld={pxPerWorld}
+                  expandBodyHit={narrow || touchOnly}
                   viewMode={viewMode}
                   wireCounts={wireCounts}
                   wireColors={wireColors}
@@ -1326,9 +1360,10 @@ export default function CircuitCanvas({
         </div>
       )}
 
-      {/* 操作提示降级为右下角水印：不再挡住画布正上方，也不再随交互淡出——
-          它是常驻的辅助说明，低对比度即可。 */}
-      <div className="pointer-events-none absolute right-2 bottom-1.5 z-20 max-w-[70%] text-right text-[10px] leading-tight text-[var(--muted)] opacity-60 select-none">
+      {/* 操作提示降级为水印：桌面停在右下角，不再挡住画布正上方；窄屏上移到画布顶部，
+          因为底部现在是监控 HUD 与元件库 Dock 的地盘，水印留在下面会被直接吃掉。
+          文案按输入能力分档：触屏没有滚轮，提「滚轮」等于教一个用不了的手势。 */}
+      <div className="pointer-events-none absolute right-2 bottom-1.5 z-20 max-w-[70%] text-right text-[10px] leading-tight text-[var(--muted)] opacity-60 select-none max-sm:top-1.5 max-sm:bottom-auto max-sm:text-left">
         {tool === 'wire'
           ? pendingTerminal
             ? zh
@@ -1337,9 +1372,13 @@ export default function CircuitCanvas({
             : zh
               ? '点两个接线柱完成接线'
               : 'Tap two terminals to wire'
-          : zh
-            ? '拖拽元件 · 从接线柱拖出导线 · 滚轮/双指缩放'
-            : 'Drag parts · drag from a terminal to wire · wheel/pinch to zoom'}
+          : touchOnly
+            ? zh
+              ? '拖拽元件 · 从接线柱拖出导线 · 双指缩放 · 长按元件出菜单'
+              : 'Drag parts · drag a terminal to wire · pinch to zoom · long-press for menu'
+            : zh
+              ? '拖拽元件 · 从接线柱拖出导线 · 滚轮/双指缩放'
+              : 'Drag parts · drag from a terminal to wire · wheel/pinch to zoom'}
       </div>
 
     </div>

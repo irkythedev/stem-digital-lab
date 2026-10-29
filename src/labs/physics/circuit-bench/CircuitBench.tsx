@@ -91,6 +91,7 @@ import {
 import { readingReversed } from './circuit-bench-labels';
 import { deenergizePlan, type DeenergizePlan } from './circuit-bench-monitor';
 import { loadCircuitBenchEngine, solveNow, type CircuitEngineKind } from './circuit-bench-engine';
+import { useNarrow, useShortViewport, useTabletSheet } from './use-bench-media';
 
 const LAB_ID = 'circuit-bench';
 
@@ -159,6 +160,18 @@ export default function CircuitBench() {
    * 双击元件、或右键菜单里的「详细参数…」才打开它。
    */
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  /**
+   * 实时监控面板的展开态。桌面由面板自己管；窄屏必须提到这一层，因为
+   * 「同一时刻只允许一块浮层」的互斥要跨四个兄弟节点（导读卡 / 元件库 /
+   * 检查器 / 监控），谁都只能看见自己，只有实验台能替它们互相收。
+   */
+  const [monitorOpen, setMonitorOpen] = useState(false);
+  /** 窄屏判据（与 Tailwind `sm` 断点同界，见 use-bench-media）。 */
+  const narrow = useNarrow();
+  /** 竖屏平板：导读卡放不下 380px 浮卡，改走贴底抽屉（见 use-bench-media）。 */
+  const tabletSheet = useTabletSheet();
+  /** 矮视口（横屏手机）：数据记录改成贴底浮层，否则它永远在折叠线以下（见 use-bench-media）。 */
+  const shortViewport = useShortViewport();
   /** 右键 / 长按菜单：屏幕坐标 + 打的是谁。 */
   const [menu, setMenu] = useState<{ x: number; y: number; target: MenuTarget } | null>(null);
 
@@ -240,6 +253,81 @@ export default function CircuitBench() {
   }, [fullscreen]);
 
   /**
+   * 窄屏默认收起数据记录。
+   *
+   * 桌面它是一整块页面流卡片，学生往下滚就能看到；窄屏它被改成贴底抽屉（见
+   * MeasurementPanel 的 `max-sm:fixed`），默认展开就等于一进实验台先盖住半块画布。
+   * 所以进窄屏先收成药丸，并把桌面的选择记下来——回到宽屏时原样还回去，
+   * 不替学生做「我是不是不想看记录」的决定。
+   */
+  const narrowMeasureChoice = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (narrow) {
+      if (narrowMeasureChoice.current === null) {
+        narrowMeasureChoice.current = measureOpen;
+        setMeasureOpen(false);
+      }
+    } else if (narrowMeasureChoice.current !== null) {
+      setMeasureOpen(narrowMeasureChoice.current);
+      narrowMeasureChoice.current = null;
+    }
+    // 只在跨越窄屏断点时切换；学生自己在窄屏里展开/收起不应被这个 effect 覆盖。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narrow]);
+
+  /**
+   * 矮视口（横屏手机）同样默认收起。
+   *
+   * 这一档面板也是贴底浮层（样式在 `index.css` 的 `(max-height: 520px) and
+   * (min-width: 640px)` 一档，与 `useShortViewport` 同一条件），默认展开就等于
+   * 一进实验台先盖住画布下半截。与窄屏那条完全同构：进这一档收成药丸，
+   * 记下原来的选择，回到常态原样还回去。
+   *
+   * 两条互斥（`max-sm` 到 639，这条从 640 起），不会互相覆盖同一个 ref。
+   */
+  const shortMeasureChoice = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (shortViewport) {
+      if (shortMeasureChoice.current === null) {
+        shortMeasureChoice.current = measureOpen;
+        setMeasureOpen(false);
+      }
+    } else if (shortMeasureChoice.current !== null) {
+      setMeasureOpen(shortMeasureChoice.current);
+      shortMeasureChoice.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shortViewport]);
+
+  /**
+   * 窄屏「浮层让位」：贴底抽屉打开前，先把画布滚到视口上沿。
+   *
+   * 病灶（审计 V1/V2 实测）：竖屏画布槽顶在 y≈459，视口只有 667/844 高；
+   * 45–55dvh 的抽屉一摊开就从底边一直盖到画布中部，可点面积掉到 0–40%。
+   * 抽屉高度是内容决定的（改小就读不了），能动的只有页面滚动——把画布带到
+   * 抽屉上方那条空带里，学生一边看公式/参数，一边还能看见电路本身。
+   *
+   * 只做「对齐到上沿」这一件事：已经在位（顶端 0–24px）就一动不动，避免每次
+   * 点药丸都把页面抖一下；全屏没有页面滚动，直接跳过（画布本来就在抽屉上方
+   * 那一半，靠抽屉自己的 max-h 收口——全屏下的另一种解法见 index.css 里
+   * 「画布卡让出底边」那条规则）。
+   *
+   * `force`：竖屏平板上只有导读卡是抽屉（其余浮层仍是浮卡），它的打开动作要
+   * 借这一手把画布带上来，所以由调用方显式放行，而不是把判据放宽成「平板一律滚」。
+   *
+   * 矮视口（横屏手机）也走这一手：那边数据记录同样是贴底抽屉（见 `index.css`），
+   * 不先把画布顶到上沿，抽屉一摊开就正好压住唯一露出来的那一条画布。
+   */
+  const revealCanvasAboveSheet = (force = false) => {
+    if ((!narrow && !shortViewport && !force) || fullscreen) return;
+    const el = canvasRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    if (top >= 0 && top <= 24) return;
+    window.scrollTo({ top: Math.max(0, Math.round(top + window.scrollY - 8)), behavior: 'smooth' });
+  };
+
+  /**
    * 左控右看：画布左侧同一时刻只站一块操作面板。
    *
    * 元件坞真正收起的条件 = 学生自己的收起选择 ∪ 导读卡打开 ∪ 检查器打开——
@@ -250,13 +338,44 @@ export default function CircuitBench() {
    * 收起状态收敛成一个受控值，省掉第二份 ref，也不再有两条 effect 抢着写同一个
    * state 的竞态（学生手快一点就会互相覆盖）。
    */
-  const paletteHidden = paletteCollapsed || infoOpen || inspectorOpen;
+  const paletteHidden = paletteCollapsed || infoOpen || inspectorOpen || (narrow && monitorOpen);
   const onPaletteCollapsedChange = (v: boolean) => {
     setPaletteCollapsed(v);
     if (!v) {
       setInspectorOpen(false);
       setInfoOpen(false);
+      // 窄屏元件库是底部横向坞、监控面板也是底部抽屉，两者叠在一起会互相压死；
+      // 桌面一左一右并不冲突，所以只收窄屏这一档。
+      if (narrow) {
+        setMonitorOpen(false);
+        setMeasureOpen(false);
+        revealCanvasAboveSheet();
+      }
     }
+  };
+
+  /**
+   * 窄屏单层约束：四块浮层（导读卡 / 元件库 / 检查器 / 监控）同一时刻只留一块。
+   *
+   * 桌面有 1440/1280 的横向余量，两块浮层各占一角反而能同屏对照；窄屏 375px
+   * 一块抽屉就吃掉半个屏幕，四块全开时画布的可点面积几乎归零（审计实测 <40%）。
+   * 所以窄屏在任何一块「打开」的动作里，先把其余三块收起——包括把元件库的
+   * `paletteCollapsed` 真的置回 true，而不是只靠 `paletteHidden` 遮住：
+   * 否则关掉检查器时元件库会自己弹回来，学生看到的就是「我明明收过它」。
+   */
+  const closeOverlaysFor = (keep: 'briefing' | 'palette' | 'inspector' | 'monitor' | 'measure') => {
+    // 竖屏平板（768 级）上的导读卡也是贴底抽屉，和手机同一副身子：
+    // 抽屉一摊开就吃掉 55dvh，再叠一块底边面板同样谁也点不到，所以一并进互斥。
+    // 桌面（无 `tabletSheet`）保持一左一右可同屏对照。
+    if (!narrow && !tabletSheet) return;
+    if (keep !== 'briefing') setInfoOpen(false);
+    if (keep !== 'palette') setPaletteCollapsed(true);
+    if (keep !== 'inspector') setInspectorOpen(false);
+    if (keep !== 'monitor') setMonitorOpen(false);
+    // 数据记录在窄屏也是贴底抽屉（桌面是页面流里的卡片，不受这条约束）。
+    // 它不属于审计点名的「四浮层」，但同样是底边一块整宽面板——
+    // 两块叠在一起谁也点不到，所以一并进互斥。
+    if (keep !== 'measure') setMeasureOpen(false);
   };
 
   /* ── 撤销 / 重做快捷键（输入控件内不拦截） ── */
@@ -496,7 +615,10 @@ export default function CircuitBench() {
       setHistory((h) => commit(h, toggleSwitch(h.present, id)));
       return;
     }
+    closeOverlaysFor('inspector');
     setInspectorOpen(true);
+    // 窄屏检查器是贴底抽屉：先把画布带上去，别让参数表把刚点的那只元件盖住。
+    revealCanvasAboveSheet();
   };
 
   /* ── 熔毁元件：顶栏、状态看板顶部、画布徽章、右键菜单四处共用同一套复位动作 ── */
@@ -621,7 +743,9 @@ export default function CircuitBench() {
       }
       case 'inspect':
         if (elId) selectElement(elId);
+        closeOverlaysFor('inspector');
         setInspectorOpen(true);
+        revealCanvasAboveSheet();
         return;
       case 'delete':
         if (elId) {
@@ -787,6 +911,29 @@ export default function CircuitBench() {
   const hasSelection = !!(selectedId || selectedWireId);
   const showInspector = hasSelection ? inspectorOpen : (result?.warnings?.length ?? 0) > 0;
 
+  /**
+   * 贴底抽屉是否开着：窄屏的四块浮层都算；竖屏平板只有导读卡改成了抽屉
+   * （其余浮层仍是浮卡，滚页面反而多余）。只用于「补滚动余量 / 全屏让出底边」。
+   */
+  const sheetOpen = narrow ? infoOpen || monitorOpen || showInspector || measureOpen : tabletSheet && infoOpen;
+
+  /**
+   * 抽屉打开时给页面补一段滚动余量（渲染在 shell 末尾的那块空白）。
+   *
+   * 病灶（审计 V2 实测）：竖屏文档只有 1015px 高，页面能滚到的极限让画布槽停在
+   * 视口中部，55dvh 的导读抽屉再从底边盖上来——画布可点面积只剩 19.3%。抽屉高度
+   * 是内容决定的（改小就读不了），能动的只有页面高度：抽屉开着时垫一块与它同高的
+   * 空白，画布就能被滚到抽屉上方那条带子里。
+   *
+   * 必须放在 effect 里而不是点击回调里：余量是这次渲染才垫进 DOM 的，点击那一刻
+   * 页面还没长高，`scrollTo` 会被 clamp 在旧上限（实测就卡在 348，抽屉照样压着画布）。
+   */
+  useEffect(() => {
+    if (!sheetOpen || fullscreen) return;
+    revealCanvasAboveSheet(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetOpen, infoOpen, monitorOpen, showInspector, measureOpen, fullscreen]);
+
   /** 右键 / 长按菜单的内容：按打的是谁挑一套。 */
   const menuTarget: MenuTarget | null = menu ? menu.target : null;
   let menuItems: MenuItem[] = [];
@@ -802,13 +949,28 @@ export default function CircuitBench() {
   return (
     // 全屏时这一层就是 :fullscreen 根容器：必须自己铺主题底色，否则 gap 与
     // 无背景的行会漏出浏览器 ::backdrop 的纯黑（见 benchShellClass）。
-    <div ref={shellRef} data-bench-shell="" className={benchShellClass(fullscreen)}>
+    <div
+      ref={shellRef}
+      data-bench-shell=""
+      // 贴底抽屉开着时挂个标记：全屏没有页面可滚，index.css 靠它让画布卡让出底边。
+      data-sheet-open={sheetOpen ? '' : undefined}
+      className={benchShellClass(fullscreen)}
+    >
       {/* 预设胶囊行：与画布卡同宽，右侧固定「实验导读」 */}
       <PresetPicker
         activeId={presetId}
         onPick={(id) => pickPreset(getPreset(id))}
         infoOpen={infoOpen}
-        onToggleInfo={() => setInfoOpen((v) => !v)}
+        onToggleInfo={() => {
+          const next = !infoOpen;
+          // 窄屏单层约束：导读卡是「打开」动作，先替它收掉其余三块浮层。
+          if (next) {
+            closeOverlaysFor('briefing');
+            // 竖屏平板上导读卡同样是贴底抽屉，放行这一手把画布带上来。
+            revealCanvasAboveSheet(tabletSheet);
+          }
+          setInfoOpen(next);
+        }}
         zh={zh}
       />
 
@@ -822,10 +984,23 @@ export default function CircuitBench() {
         zh={zh}
         onAsk={askInquiry}
         mount={shellRef.current}
+        // 全屏时工具栏被顶到视口顶部（实测 844×390 下 y≈59–103），卡片再按常态的
+        // top:56 落位就会压住工具栏末尾的「退出全屏」——那不是模态框，不能吃工作台控件。
+        // 56 = 工具栏 44 + 12 的呼吸位。
+        // 只在浮卡真会撞上工具条的那几档下移：桌面 1440/1280 的工具条按钮止于 x≈760，
+        // 而浮卡从右边缘起（1440 下 x≈1036），两者横向不相交——桌面全屏一个像素都不动
+        // （实测「退出全屏」命中的是它自己的 span，改动前后一致）。
+        topInset={fullscreen && (narrow || shortViewport || tabletSheet) ? 56 : 0}
       />
 
-      {/* 画布卡：工具栏是卡片标题栏；全屏时 flex-1 吃掉剩余高度，电路才铺得开 */}
-      <div className={canvasCardClass(fullscreen)}>
+      {/* 画布卡：工具栏是卡片标题栏；全屏时 flex-1 吃掉剩余高度，电路才铺得开。
+          全屏 + 抽屉打开时让出 55dvh 的底边（手机这档走 `max-sm:`，平板那档在
+          index.css 的同名媒体查询里）：画布槽跟着变矮，ResizeObserver 重新取景，
+          电路整体落在抽屉上方——全屏没有页面可滚，这是唯一能让出位置的解法。 */}
+      <div
+        data-bench-canvas-card=""
+        className={`${canvasCardClass(fullscreen)} ${fullscreen && sheetOpen ? 'max-sm:pb-[55dvh]' : ''}`}
+      >
         <BenchToolbar
           tool={tool}
           onTool={(next) => {
@@ -852,9 +1027,12 @@ export default function CircuitBench() {
           zh={zh}
         />
 
-        {/* 画布槽位：常态高度由 benchLayout 写死；全屏改由 flex 决定，内联高度必须撤掉 */}
+        {/* 画布槽位：常态高度由 benchLayout 写死；全屏改由 flex 决定，内联高度必须撤掉。
+            `data-bench-canvas-slot` 只给 index.css 的短横屏分支（max-height:520px）当锚点，
+            用来给矮屏兜一个 220px 的高度下限；桌面与窄屏竖屏都不命中那段媒体查询。 */}
         <div
           ref={canvasRef}
+          data-bench-canvas-slot=""
           className={canvasSlotClass(fullscreen)}
           style={fullscreen ? undefined : { height: layout.canvasH }}
         >
@@ -917,8 +1095,18 @@ export default function CircuitBench() {
 
           {/* 左侧（控）：检查器与元件坞共用画布左内缘——左半边只谈「怎么调」。
               检查器停在 `left-4 top-14`：上边给元件坞胶囊留出一条，两者叠不到一起；
-              未选中时这里是一条轻量统计胶囊（窄屏才有，xl 以上顶栏已经在报计数）。 */}
-          <div className="pointer-events-none absolute left-4 top-14 z-20 flex max-h-[calc(100%-4.5rem)] flex-col items-start">
+              未选中时这里是一条轻量统计胶囊（窄屏才有，xl 以上顶栏已经在报计数）。
+              窄屏（`max-sm:`）换形态：256px 竖卡压在 325px 宽的画布上会吃掉七成可点面积，
+              改成与导读卡/监控同一套贴底抽屉——画布留在抽屉上方，面板内部自己滚。 */}
+          <div
+            className={`pointer-events-none absolute left-4 top-14 z-20 flex max-h-[calc(100%-4.5rem)] flex-col items-start ${
+              // 只有「检查器真的开着」才转抽屉：没选中元件时这里只是一条计数胶囊，
+              // 也套 fixed 会把它拉成整宽横条，正压在元件库坞上。
+              showInspector
+                ? 'max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-40 max-sm:max-h-[45dvh] max-sm:items-stretch max-sm:overflow-y-auto'
+                : ''
+            }`}
+          >
             {showInspector ? (
               <InspectorPanel
                 state={bench}
@@ -972,6 +1160,8 @@ export default function CircuitBench() {
           {/* 右上（看）：元件状态 HUD 常驻右上角，左半边只控、右半边只看，两块浮板
               各占一边，互不遮挡。导读卡（fixed z-50）默认也停在右上角，它开着时 HUD
               自动挪到右下角，两块卡不会叠在同一角上。
+              窄屏只有一列，右下角改成底部抽屉（max-sm:fixed），元件库展开时它让回
+              右上角——底部横向坞是元件库的地盘。
               出现熔毁元件时 HUD 自己展开并亮出「一键修复」，折叠成药丸也不会漏掉故障。
               点某一行 = 选中画布上那只元件，与检查器同一套选中语义。
               空台面时它换成「放元件 → 接线 → 合闸」的三步引导，那枚「打开元件库」
@@ -979,8 +1169,26 @@ export default function CircuitBench() {
           <CircuitMonitor
             state={bench}
             readings={result?.elements}
+            shortCircuit={!!result?.warnings.some((w) => w.code === 'short-circuit')}
             selectedId={selectedId}
-            corner={infoOpen ? 'bottom-right' : 'top-right'}
+            corner={
+              narrow
+                ? paletteHidden
+                  ? 'bottom-right'
+                  : 'top-right'
+                : infoOpen
+                  ? 'bottom-right'
+                  : 'top-right'
+            }
+            open={monitorOpen}
+            onOpenChange={(v) => {
+              // 故障自动摊开时也会走到这里：窄屏上它同样要独占屏幕。
+              if (v) {
+                closeOverlaysFor('monitor');
+                revealCanvasAboveSheet();
+              }
+              setMonitorOpen(v);
+            }}
             onSelect={(id) => {
               selectElement(id);
               if (!id) setInspectorOpen(false);
@@ -995,7 +1203,17 @@ export default function CircuitBench() {
       {/* 数据记录：常态在页面流里占一整块卡片；全屏改成浮层——收起时只剩左下角
           一枚胶囊，展开时是贴着底边的抽屉。外层容器一直在同一棵子树位置上，
           所以进出全屏、折叠展开都不会卸载面板、丢掉已记录的读数。 */}
-      <div className={fullscreen ? measureDrawerClass(measureOpen) : ''}>
+      <div
+        className={
+          fullscreen
+            ? measureDrawerClass(measureOpen)
+            : // 窄屏元件库展开时它占满画布底边，数据记录药丸正压在上面；
+              // 药丸本身不是浮层、也不参与互斥，索性在这一档让位，收起元件库就回来。
+              narrow && !paletteHidden
+              ? 'max-sm:hidden'
+              : ''
+        }
+      >
         <MeasurementPanel
           state={bench}
           result={result}
@@ -1003,7 +1221,14 @@ export default function CircuitBench() {
           resetToken={dataEpoch}
           open={measureOpen}
           floating={fullscreen}
-          onToggle={() => setMeasureOpen((v) => !v)}
+          onToggle={() => {
+            const next = !measureOpen;
+            if (next) {
+              closeOverlaysFor('measure');
+              revealCanvasAboveSheet();
+            }
+            setMeasureOpen(next);
+          }}
           onProbeHover={setProbeHighlight}
         />
       </div>
@@ -1018,6 +1243,11 @@ export default function CircuitBench() {
           onCancel={() => setPendingRepair(null)}
         />
       )}
+      {/* 抽屉的滚动余量：抽屉开着时才垫，高度与最高的那块抽屉（导读 55dvh）齐平。
+          关掉抽屉它立刻消失，页面回到原本的高度，不留一块永久空滚区。
+          竖屏平板同垫：那边导读卡也是 55dvh 抽屉，而它一开就顺手收掉数据记录卡
+          （见 closeOverlaysFor），页面反而变短——不垫这一块，画布根本滚不到抽屉上方。 */}
+      {sheetOpen && !fullscreen && <div aria-hidden className="h-[55dvh] shrink-0" />}
     </div>
   );
 }

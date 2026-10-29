@@ -28,7 +28,7 @@ export type MenuAction =
   | 'toggle-values'
   | 'clear';
 
-/** 图标名：组件把它映射到 lucide 图标，模型层不依赖 React。 */
+/** 图标名：组件把它映射到图标本体（多数是 lucide，`fit` 是内联自绘），模型层不依赖 React。 */
 export type MenuIcon =
   | 'rotate-cw'
   | 'rotate-ccw'
@@ -38,7 +38,7 @@ export type MenuIcon =
   | 'trash'
   | 'power'
   | 'wrench'
-  | 'maximize'
+  | 'fit'
   | 'eye'
   | 'eraser';
 
@@ -99,7 +99,9 @@ export function wireMenuItems(): MenuItem[] {
 /** 空白处右键 / 长按菜单：视图类操作，「显示/隐藏读数」是开关。 */
 export function blankMenuItems(showValues: boolean): MenuItem[] {
   return [
-    item('fit', '适配画布居中', 'Fit to canvas', 'maximize'),
+    // 与工具条那颗按钮同一个动作，文案与图标都必须一字不差：「适配画布居中」这个
+    // 只在菜单里出现的说法，会让人以为菜单能做的事比按钮多一件。
+    item('fit', '适配画布', 'Fit to canvas', 'fit'),
     item(
       'toggle-values',
       showValues ? '隐藏读数' : '显示读数',

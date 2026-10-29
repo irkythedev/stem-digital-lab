@@ -21,7 +21,7 @@
  * 全屏时工作台根节点就是 `:fullscreen` 宿主，浮层挂在它里面才跟着一起全屏。
  */
 import { useEffect, useRef } from 'react';
-import { AlertTriangle, PowerOff, X } from 'lucide-react';
+import { PowerOff, TriangleAlert, X } from 'lucide-react';
 
 import type { DeenergizePlan } from './circuit-bench-monitor';
 
@@ -88,7 +88,7 @@ export default function RepairConfirm({ plan, zh, onConfirm, onCancel }: RepairC
       <div className="relative w-full max-w-[340px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] p-3 shadow-xl">
         <div className="flex items-start gap-1.5">
           {/* 琥珀而非红：带电操作是「流程没走对」，不是元件已经坏了，别用故障色吓人。 */}
-          <AlertTriangle className="mt-px h-4 w-4 shrink-0 text-amber-700 [html.dark_&]:text-amber-400" />
+          <TriangleAlert className="mt-px h-4 w-4 shrink-0 text-amber-700 [html.dark_&]:text-amber-400" />
           <span className="min-w-0 text-xs leading-[15px] font-semibold text-[var(--fg)]">{plan.title}</span>
         </div>
 

@@ -15,7 +15,7 @@
  * 2. **一格一只元件**。2 列微型仪表盘：首行「名字 + 状态徽标」，次行一枚等宽读数，
  *    六只元件压进三行；这里是「扫一眼」而不是「读报表」的地方，没有进度条、没有大留白。
  * 3. **故障不会被折起来忘掉**。出现熔毁元件时看板自动展开、顶部立刻亮起红色横幅
- *    与「⚡ 一键修复」；就算学生手动收成了 30px 药丸，药丸自己也转成告警色并把
+ *    与「一键修复」；就算学生手动收成了 30px 药丸，药丸自己也转成告警色并把
  *    「一键修复」摆在旁边，不必先把面板摊开。红条还负责把「修不修得住」说清楚：
  *    短接开关还闭着就修，换上的保险丝 0.1 秒内还会熔断，所以按钮下面直接写出
  *    「先断开 S₂ 再修复」（`repairCaution`）——提示必须赶在按钮被按下之前。
@@ -37,7 +37,7 @@
  * 表格只呈现 `circuit-bench-monitor` 算好的行，组件本身不做任何物理判断。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Gauge, Plus, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, Gauge, Plus, Wrench } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
 import type { BenchState, ElementReading } from './circuit-bench-core';
@@ -54,6 +54,11 @@ import {
 export interface CircuitMonitorProps {
   state: BenchState;
   readings?: Record<string, ElementReading> | null;
+  /**
+   * 求解器报出的短路告警。看板据此把电源标红——短路时端电压接近 0，
+   * 只看读数与轻载分不开，拓扑判定才是权威的。
+   */
+  shortCircuit?: boolean;
   selectedId: string | null;
   /** 点某一格：选中画布上那只元件（再点一次取消）。 */
   onSelect?: (id: string | null) => void;
@@ -72,6 +77,13 @@ export interface CircuitMonitorProps {
    * 两块卡各占一角才不至于把实时读数整个盖住。
    */
   corner?: 'top-right' | 'bottom-right';
+  /**
+   * 受控展开态。窄屏要保证「同一时刻只有一块浮层」，而这块卡会因故障自动摊开——
+   * 上层必须知道它摊开了（才能收起其它浮层），也必须能替它收起。
+   * 不传则退回组件内部状态（桌面行为与旧版一致）。
+   */
+  open?: boolean;
+  onOpenChange?: (v: boolean) => void;
 }
 
 /**
@@ -190,12 +202,15 @@ function meterCell(row: MeterRow, zh: boolean): Cell {
 export default function CircuitMonitor({
   state,
   readings,
+  shortCircuit = false,
   selectedId,
   onSelect,
   onRepairAll,
   onRepairElement,
   onOpenPalette,
   corner = 'top-right',
+  open: openProp,
+  onOpenChange,
 }: CircuitMonitorProps) {
   const { lang } = useApp();
   const zh = lang === 'zh';
@@ -207,12 +222,23 @@ export default function CircuitMonitor({
    * 几只损坏 / 空白画布），要细节再点开。注意别把默认值改回去：这是有意的默认，
    * 不是漏写的 `true`。
    */
-  const [open, setOpen] = useState(false);
-  // 停靠角：常态贴画布右上角（工具栏 `top-14` 之下），导读卡占着右上角时让到右下角。
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean) => {
+    setOpenState(v);
+    onOpenChange?.(v);
+  };
+  /**
+   * 停靠角：常态贴画布右上角（工具栏 `top-14` 之下），导读卡占着右上角时让到右下角。
+   *
+   * 窄屏由上层传 `bottom-right`（元件库展开时临时让回 `top-right`，见 CircuitBench）：
+   * 右上角在窄屏是参数面板关闭钮与全屏按钮的地盘，HUD 胶囊压上去就会出现
+   * 「想关面板、结果展开了监控」的误触（审计 P0-2）。
+   */
   const anchor = corner === 'bottom-right' ? 'absolute right-4 bottom-4 z-30' : 'absolute top-14 right-4 z-30';
   const model = useMemo(
-    () => buildMonitorModel({ state, readings, lang: zh ? 'zh' : 'en' }),
-    [state, readings, zh],
+    () => buildMonitorModel({ state, readings, lang: zh ? 'zh' : 'en', shortCircuit }),
+    [state, readings, zh, shortCircuit],
   );
   const faultCount = model.faultIds.length;
   const faultKey = model.faultIds.join(',');
@@ -291,7 +317,7 @@ export default function CircuitMonitor({
       onClick={() => setOpen(true)}
       aria-expanded={false}
       title={pillTitle}
-      className={`compact flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[11px] leading-none shadow-lg backdrop-blur-md ${
+      className={`compact tap32 flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[11px] leading-none shadow-lg backdrop-blur-md ${
         faultCount > 0
           ? 'border-[var(--danger)] bg-[var(--danger)]/12 text-[var(--danger)]'
           : 'border-[var(--border)] bg-[var(--card-bg)]/75 text-[var(--muted)]'
@@ -320,9 +346,9 @@ export default function CircuitMonitor({
             type="button"
             onClick={() => onRepairAll?.()}
             title={zh ? '一键修复损坏元件' : 'Repair damaged parts'}
-            className="compact flex h-[30px] items-center gap-1 rounded-full bg-[var(--danger)] px-3 text-[11px] leading-none font-medium text-[var(--card-bg)] shadow-lg transition-colors hover:bg-[var(--danger)]/85"
+            className="compact tap32 flex h-[30px] items-center gap-1 rounded-full bg-[var(--danger)] px-3 text-[11px] leading-none font-medium text-[var(--card-bg)] shadow-lg transition-colors hover:bg-[var(--danger)]/85"
           >
-            <Zap className="h-3 w-3 shrink-0" />
+            <Wrench className="h-3 w-3 shrink-0" />
             <span className="whitespace-nowrap">{zh ? '一键修复' : 'Repair'}</span>
           </button>
         )}
@@ -332,7 +358,7 @@ export default function CircuitMonitor({
 
   return (
     <div
-      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md`}
+      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-40 max-sm:max-h-[45dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
     >
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-2">
         <Gauge className="h-3 w-3 shrink-0 text-[var(--muted)]" />
@@ -356,7 +382,7 @@ export default function CircuitMonitor({
           aria-expanded
           title={zh ? '最小化为药丸' : 'Minimize'}
           aria-label={zh ? '最小化元件状态监控' : 'Minimize live monitor'}
-          className="compact ml-auto -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
+          className="compact tap-area relative z-40 ml-auto -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
         >
           <ChevronUp className="h-3 w-3 shrink-0" />
         </button>
@@ -385,7 +411,7 @@ export default function CircuitMonitor({
               }
               className="compact flex shrink-0 items-center gap-0.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] leading-[14px] font-medium text-white transition-colors hover:bg-red-700"
             >
-              <Zap className="h-3 w-3 shrink-0" />
+              <Wrench className="h-3 w-3 shrink-0" />
               <span className="whitespace-nowrap">{zh ? '一键修复' : 'Repair'}</span>
             </button>
           </div>

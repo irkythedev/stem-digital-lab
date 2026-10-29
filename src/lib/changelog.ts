@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.42.0';
+export const APP_VERSION = '0.43.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.43.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 电学工作台适配手机竖屏：底部抽屉切换元件与读数，按钮更好点按',
+      '[修复] 公式朗读更准确：根式、分式与化学式按规范中文念法播报，不再念成字母',
+      '[修复] 工作台不再残留上次状态：断开电路或换预设后，加热与实时读数回到初始',
+      '[优化] 使用说明页按四层重排，全站操作图标统一为一事一图',
+    ],
+    en: [
+      '[New] The circuit workbench now fits phone screens: bottom sheets switch between components and readings, and buttons are easier to tap',
+      '[Fixed] Spoken formulas are more accurate: roots, fractions and chemical formulas are read in standard Chinese instead of letter by letter',
+      '[Fixed] The workbench no longer keeps the previous state: after opening the circuit or switching presets, heating and live readings reset',
+      '[Improved] The guide page is regrouped into four layers, and one icon now stands for one action across the site',
+    ],
+  },
   {
     version: '0.42.0',
     date: '2026-10',

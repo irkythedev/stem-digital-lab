@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import BackLink from '../components/layout/BackLink';
-import { Loader2, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
+import { LoaderCircle, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import OfflinePackPanel from '../components/feedback/OfflinePackPanel';
 import { useOfflinePack } from '../lib/use-offline-pack';
@@ -1304,7 +1304,7 @@ export default function PeriodicTable() {
                       }`}
                     >
                       {speakState === 'loading' ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <LoaderCircle className="w-4 h-4 animate-spin" />
                       ) : (
                         <Volume2 className={`w-4 h-4 ${speakState === 'playing' ? 'animate-pulse' : ''}`} />
                       )}

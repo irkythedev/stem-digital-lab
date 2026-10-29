@@ -20,7 +20,7 @@ import {
   type ElementKind,
   type ElementReading,
 } from './circuit-bench-core';
-import { componentBodySize, componentInkBox, terminalHitRadiusFor, terminalNormal, terminalPoint } from './circuit-bench-geometry';
+import { bodyHitPadFor, componentBodySize, componentInkBox, terminalHitRadiusFor, terminalNormal, terminalPoint } from './circuit-bench-geometry';
 import type { CircuitViewMode } from './circuit-bench-view';
 import { strategyFor } from './render';
 
@@ -49,6 +49,13 @@ export interface CircuitSymbolProps {
   wireColors?: Record<string, string[]>;
   onPointerDown?: (event: ReactPointerEvent<SVGGElement>, id: string) => void;
   onTerminalDown?: (event: ReactPointerEvent<SVGCircleElement>, ref: string) => void;
+  /**
+   * 当前「1 世界单位 = 多少 CSS 像素」。窄屏/粗指针下用来把元件本体命中矩形
+   * 外扩到手指点得中的尺寸（见 `bodyHitPadFor`）。桌面不传即不外扩。
+   */
+  pxPerWorld?: number;
+  /** 是否允许外扩本体命中矩形（窄屏或触屏）。 */
+  expandBodyHit?: boolean;
 }
 
 function bodyStroke(selected: boolean): string {
@@ -69,6 +76,8 @@ export function CircuitSymbol({
   wireColors,
   onPointerDown,
   onTerminalDown,
+  pxPerWorld = 0,
+  expandBodyHit = false,
 }: CircuitSymbolProps) {
   const half = TERMINAL_HALF_SPAN[el.kind] ?? 22;
   const stroke = bodyStroke(selected || hovered);
@@ -77,6 +86,8 @@ export function CircuitSymbol({
   // 电热丝的环不该往上虚撑到 33 单位的接线柱高度。
   const bodySize = componentBodySize(el.kind);
   const bodyBox = componentInkBox(el.kind);
+  // 窄屏/触屏：本体命中矩形按当前缩放外扩（桌面 expandBodyHit=false，数值分毫不动）。
+  const hitPad = expandBodyHit ? bodyHitPadFor(el.kind, bodySize.w, bodySize.h, pxPerWorld) : 0;
   const burnt = el.kind === 'bulb' && el.state.burnt;
   const strategy = strategyFor(viewMode);
   const Body = strategy.Body;
@@ -146,10 +157,10 @@ export function CircuitSymbol({
             所以柱子热区不会被这层抢走。 */}
         <rect
           data-body-hit={el.kind}
-          x={-bodySize.w / 2}
-          y={-bodySize.h / 2}
-          width={bodySize.w}
-          height={bodySize.h}
+          x={-bodySize.w / 2 - hitPad}
+          y={-bodySize.h / 2 - hitPad}
+          width={bodySize.w + hitPad * 2}
+          height={bodySize.h + hitPad * 2}
           fill="transparent"
         />
         {/* 烧毁标记：电路图的灯泡符号中心就是玻璃泡，画在原点即可；

@@ -45,12 +45,32 @@ const METER_KINDS: ReadonlySet<ElementKind> = new Set<ElementKind>([
 const LIT_FRACTION = 0.01;
 
 /**
+ * 「真的有电流」的门槛（A）。**不能用 `> 1e-9`**。
+ *
+ * 求解器在每个节点对地挂了 `GMIN = 1e-9 S` 的数值接地（见 core 的 `solveDcArrays`），
+ * 断开的开关支路因此仍有 `GMIN · U` 量级的漏电流：6 V 电源下实测 6e-9–2.4e-8 A，
+ * 恰好越过旧的 1e-9 判据。于是「开关一断，电阻仍显示发热、电源仍显示供电中」——
+ * 学生看到 0.00 A 的读数旁边挂着琥珀色「发热」，这是纯数值泄漏被当成了物理状态。
+ *
+ * 1e-5 A = 10 µA：比任何中学实验里可观测的电流都小三个数量级，又比数值泄漏大三个
+ * 数量级，正好落在两者之间的空带里。功率门槛同理（P = I²R，10 µA 过 8 Ω 只有 8e-10 W）。
+ */
+export const LIVE_CURRENT_A = 1e-5;
+export const LIVE_POWER_W = 1e-4;
+/** 电压表没有电流也能有读数：并联在断开的开关两端时它照样量出电源电压。 */
+export const LIVE_VOLTAGE_V = 1e-4;
+
+/**
  * 工作状态关键词，与 InspectorPanel 的「已烧毁 / 已熔断」保持同一套说法。
  *
  * `heating` 与 `lit` 分开：两者都是「正在工作的暖色态」（界面上同为琥珀金），
  * 但文案不同——灯泡说「发光」、电阻/电热丝/变阻器说「发热」，混用会被学生当成写错了。
+ *
+ * `idle` 是「接入但无电流」：开关断开、支路开路、保险丝熔断后的串联电阻都落在这里。
+ * 它必须与 `normal`（通电且正常）分开——否则一块绿色的「正常」会压在 0.00 A 上，
+ * 学生只会读成「电路还通着」。
  */
-export type LoadStatus = 'normal' | 'lit' | 'heating' | 'dark' | 'burnt' | 'blown';
+export type LoadStatus = 'normal' | 'idle' | 'lit' | 'heating' | 'dark' | 'burnt' | 'blown';
 
 export interface LoadRow {
   id: string;
@@ -144,6 +164,7 @@ export function monitorVerdict(model: MonitorModel): MonitorVerdict {
 function statusTextOf(status: LoadStatus, lang: 'zh' | 'en'): string {
   const zh: Record<LoadStatus, string> = {
     normal: '正常',
+    idle: '未通电',
     lit: '发光',
     heating: '发热',
     dark: '熄灭',
@@ -152,6 +173,7 @@ function statusTextOf(status: LoadStatus, lang: 'zh' | 'en'): string {
   };
   const en: Record<LoadStatus, string> = {
     normal: 'Normal',
+    idle: 'Idle',
     lit: 'Lit',
     heating: 'Heating',
     dark: 'Dark',
@@ -171,10 +193,33 @@ function bulbLit(el: CircuitComponent, power: number): boolean {
 function loadStatus(el: CircuitComponent, live: boolean, power: number): LoadStatus {
   if (el.kind === 'bulb' && el.state.burnt) return 'burnt';
   if (el.kind === 'fuse' && el.state.blown) return 'blown';
-  if (!live) return el.kind === 'bulb' ? 'dark' : 'normal';
+  // 无流支路一律中性灰：灯泡说「熄灭」，电阻/变阻器/电热丝说「未通电」。
+  // 这一行必须排在 `bulbLit` 之前，也不能回落到 `normal`——`normal` 是绿色「正常」，
+  // 挂在 0.00 A 上等于告诉学生「电路还通着」。
+  if (!live) return el.kind === 'bulb' ? 'dark' : 'idle';
   if (el.kind === 'bulb') return bulbLit(el, power) ? 'lit' : 'dark';
   // 电阻类元件通电即发热：这是它的正常工作态，不是「故障」，所以走暖色而不是红。
   return 'heating';
+}
+
+/**
+ * 某一支路「真的在通电」吗？
+ *
+ * 同时看电流与功率，而不是只看 `reading.current > 1e-9`：后者会把求解器的
+ * `GMIN` 漏电流（6 V 下 1e-8 A 量级）当成真实电流，断开开关后电阻照样报「发热」。
+ */
+function loadLive(reading: ElementReading | undefined): boolean {
+  if (!reading) return false;
+  const current = Math.abs(reading.current);
+  const power = Math.abs(reading.power);
+  return Number.isFinite(current) && Number.isFinite(power) && current > LIVE_CURRENT_A && power > LIVE_POWER_W;
+}
+
+/** 电表的「有读数」判据按被测量分开：电压表并联开路也能量出电压，没有电流。 */
+function meterLive(kind: ElementKind, reading: ElementReading | undefined): boolean {
+  if (!reading) return false;
+  if (kind === 'voltmeter') return Number.isFinite(reading.voltage) && Math.abs(reading.voltage) > LIVE_VOLTAGE_V;
+  return Number.isFinite(reading.currentAB) && Math.abs(reading.currentAB) > LIVE_CURRENT_A;
 }
 
 /**
@@ -188,10 +233,16 @@ export function buildMonitorModel({
   state,
   readings,
   lang = 'zh',
+  shortCircuit = false,
 }: {
   state: BenchState;
   readings?: Record<string, ElementReading> | null;
   lang?: 'zh' | 'en';
+  /**
+   * 求解器报出的「电源两端被直接短接」。看板据此把电源标成红色 `fault`：
+   * 短路时端电压被拉到接近 0，单看读数与「轻载」分不开，只有求解器的拓扑判定是权威的。
+   */
+  shortCircuit?: boolean;
 }): MonitorModel {
   const loads: LoadRow[] = [];
   const meters: MeterRow[] = [];
@@ -200,7 +251,7 @@ export function buildMonitorModel({
 
   for (const el of state.components) {
     const reading = readings?.[el.id];
-    const live = !!reading && Number.isFinite(reading.current) && Math.abs(reading.current) > 1e-9;
+    const live = loadLive(reading);
     const name = elementName(state, el, lang);
     const faulty = isFaulty(el);
     if (faulty) faultIds.push(el.id);
@@ -238,7 +289,7 @@ export function buildMonitorModel({
         reversed: reading ? readingReversed(el.kind, reading) : false,
         // 与求解器过载告警同一阈值口径：超满量程才算过载。
         over: range > 0 && value > range * 1.000001,
-        live,
+        live: meterLive(el.kind, reading),
       });
       continue;
     }
@@ -247,8 +298,8 @@ export function buildMonitorModel({
       id: el.id,
       kind: el.kind,
       name,
-      text: otherText(el, live, lang),
-      status: otherStatus(el, live),
+      text: otherText(el, live, lang, shortCircuit),
+      status: otherStatus(el, live, shortCircuit),
       voltage: reading ? Math.abs(reading.voltage) : 0,
       current: reading ? Math.abs(reading.currentAB) : 0,
       live,
@@ -270,19 +321,21 @@ export function buildMonitorModel({
  * 电源/开关/保险丝的状态语义。
  *
  * 阈值口径与 `otherText` 完全一致（同一处判断抄两遍也要抄得一样）：
- * 只有「熔断」是故障，闭合的开关与供电中的电源都是**正常工作态**——
+ * 只有「熔断」与「短路」是故障，闭合的开关与供电中的电源都是**正常工作态**——
  * 它们的绿色说明「路是通的」，红色只留给真出事的那一只。
  */
-function otherStatus(el: CircuitComponent, live: boolean): 'ok' | 'idle' | 'fault' {
+function otherStatus(el: CircuitComponent, live: boolean, shortCircuit: boolean): 'ok' | 'idle' | 'fault' {
   if (el.kind === 'fuse') {
     if (el.state.blown) return 'fault';
     return live ? 'ok' : 'idle';
   }
   if (el.kind === 'switch') return el.params.closed === false ? 'idle' : 'ok';
+  // 短路时电源端电压被拉到接近 0：它不是在「正常工作」，是在被自己灌爆。
+  if (el.kind === 'battery' && shortCircuit) return 'fault';
   return live ? 'ok' : 'idle';
 }
 
-function otherText(el: CircuitComponent, live: boolean, lang: 'zh' | 'en'): string {
+function otherText(el: CircuitComponent, live: boolean, lang: 'zh' | 'en', shortCircuit: boolean): string {
   const zh = lang === 'zh';
   if (el.kind === 'fuse') {
     if (el.state.blown) return zh ? '熔断' : 'Blown';
@@ -292,7 +345,10 @@ function otherText(el: CircuitComponent, live: boolean, lang: 'zh' | 'en'): stri
     return el.params.closed === false ? (zh ? '断开' : 'Open') : zh ? '闭合' : 'Closed';
   }
   if (el.kind === 'battery') {
-    return live ? (zh ? '供电中' : 'Supplying') : zh ? '未接入' : 'Idle';
+    if (shortCircuit) return zh ? '短路' : 'Shorted';
+    // 干路无电流时电源仍然挂在那里、端电压仍在，说「未接入」是不对的；
+    // 「开路 / 待机」才描述的是「有电源，但回路没通」。
+    return live ? (zh ? '供电中' : 'Supplying') : zh ? '待机 · 开路' : 'Idle · open';
   }
   return live ? (zh ? '有电流' : 'Carrying current') : zh ? '无电流' : 'No current';
 }

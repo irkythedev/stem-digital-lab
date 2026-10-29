@@ -2,7 +2,15 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 电学工作台 M1 单元测试（由 src/smoke.test.ts 注册）。
+ * 电学工作台 M1 单元测试。
+ *
+ * **本文件是「注册模块」，不是可独立运行的测试入口**：它只导出
+ * `registerCircuitBenchTests(test, skip)`，由同目录的
+ * `circuit-bench.entry.test.ts` 在顶层调用完成登记，并由该入口自己的 `runAll()`
+ * 执行与汇总。直接 `npx tsx src/labs/physics/circuit-bench/circuit-bench.test.ts`
+ * 只会求值模块（含顶层 await 加载 WASM），不注册、不执行、不打印 Results——
+ * 因此 `npm test` 里登记的是 `circuit-bench.entry.test.ts`，不是本文件。
+ *
  * 覆盖：线性解、节点合并、量程/故障、热模型、状态清洗、拟合、C++ 对拍、
  * 以及 1000 组随机网表 Fuzz（绝不 NaN / 绝不抛异常）。
  */
@@ -10,6 +18,7 @@ import { strict as assert } from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
   buildCircuitSystem,
@@ -58,13 +67,15 @@ import {
   setRotation,
   swapPolarity,
   serializeState,
+  setSwitchClosed,
   toggleSwitch,
   updateParams,
 } from './circuit-bench-state';
+import { buildMonitorModel, LIVE_CURRENT_A } from './circuit-bench-monitor';
 import { fitLinear, predict, reconcileProbeKey, toCsv } from './circuit-bench-fit';
 import { buildOptions, readProbe, type ProbeOption } from './circuit-bench-probes';
 import { FLOW_MIN_AMPS, computeWireFlows } from './circuit-bench-flow';
-import { MATERIAL_RHO, isOpen, materialOf, mergesTerminals, resistanceOf } from './circuit-bench-models';
+import { MATERIAL_RHO, T_AMBIENT, isOpen, materialOf, mergesTerminals, resistanceOf } from './circuit-bench-models';
 import {
   HISTORY_LIMIT,
   canRedo,
@@ -112,6 +123,7 @@ import {
   terminalRefOf,
   componentBodySize,
   terminalHitRadiusFor,
+  bodyHitPadFor,
   wirePath,
   wirePoints,
   wireRoutePoints,
@@ -206,7 +218,14 @@ import {
 } from './circuit-bench-menu';
 import { GRID, nearestTerminalRef, WIPER_RAIL_HALF, wiperLocalX, wiperRatioAt } from './circuit-bench-geometry';
 
-type TestFn = (name: string, fn: () => void) => void;
+type TestFn = (name: string, fn: () => unknown) => void;
+type SkipFn = (name: string, reason: string) => void;
+
+/**
+ * 编译器可注入：默认 g++。设 CIRCUIT_BENCH_GXX 指向不存在的路径即可在不卸载
+ * 系统工具链的前提下验证「缺 g++ → 显式跳过」这条分支。
+ */
+const GXX = process.env.CIRCUIT_BENCH_GXX || 'g++';
 
 let cliBin: string | null = null;
 let cliTried = false;
@@ -217,7 +236,7 @@ function ensureCli(): string | null {
   const bin = '/tmp/circuit_bench_cli_smoke';
   try {
     if (existsSync(bin)) unlinkSync(bin);
-    execFileSync('g++', ['-O2', '-std=c++17', '-o', bin, 'cpp/circuit_bench_cli.cpp'], {
+    execFileSync(GXX, ['-O2', '-std=c++17', '-o', bin, 'cpp/circuit_bench_cli.cpp'], {
       stdio: 'pipe',
       timeout: 30000,
     });
@@ -251,9 +270,10 @@ function runCli(text: string): number[] {
 /**
  * C++/WASM 产物（scripts/build-wasm-circuit.sh 生成）。
  *
- * smoke 的 test() 是同步执行器（异步用例 await 之后的断言不会计入结果），
- * 所以这里用顶层 await 先把工厂实例化好，双引擎对拍再以同步用例逐条断言。
- * 产物缺失 / 实例化失败 → null，对应用例跳过（不制造假绿：断言前先 requireWasm）。
+ * 运行器已支持异步用例（runAll 会 await 返回 thenable 的用例），但这里的加载是
+ * **注册期**的一次性准备工作：用顶层 await 先实例化工厂，登记时就能确定 WASM 是否
+ * 可用，双引擎对拍再以同步用例逐条断言。产物缺失 / 实例化失败 → null；该产物入库，
+ * 缺失即判失败（见下方 WASM_TEST），不再走 skip。
  */
 const wasmModule: CircuitBenchWasmModule | null = await (async () => {
   try {
@@ -340,7 +360,7 @@ function lcg(seed: number): () => number {
   };
 }
 
-export function registerCircuitBenchTests(test: TestFn): void {
+export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
   /* ── 路由与入口整合 ── */
 
   test('circuit-bench 路由: 注册表、规范路径与 labHref/labFromPath', async () => {
@@ -1263,7 +1283,15 @@ export function registerCircuitBenchTests(test: TestFn): void {
 
   /* ── C++ 对拍 ── */
 
-  test('circuit-bench: C++ 线性核与 TS 对拍（固定网表）', () => {
+  // 编译器可用性在**注册期**确定：不可用就登记为 skip（带原因），绝不把未执行记成通过。
+  const CPP_UNAVAILABLE = '本机无 g++（或 cpp/circuit_bench_cli.cpp 编译失败）：C++/TS 对拍未执行';
+  const cppAvailable = ensureCli() !== null;
+  const cppTest = (name: string, fn: () => void) => {
+    if (cppAvailable) test(name, fn);
+    else skip(name, CPP_UNAVAILABLE);
+  };
+
+  cppTest('circuit-bench: C++ 线性核与 TS 对拍（固定网表）', () => {
     const sources = [
       { a: 0, b: 1, emf: 6, r: 0.5 },
       { a: 2, b: 0, emf: 3, r: 0.2 },
@@ -1276,10 +1304,6 @@ export function registerCircuitBenchTests(test: TestFn): void {
     ];
     const ts = solveDcArrays(4, 0, sources, conductors);
     const cpp = runCli(netlistText(4, 0, sources, conductors));
-    if (!ensureCli()) {
-      console.log('  （跳过：本机无 g++，C++ 对拍未执行）');
-      return;
-    }
     assert.equal(cpp.length, 4);
     assert.ok(ts);
     for (let i = 0; i < 4; i++) {
@@ -1288,8 +1312,7 @@ export function registerCircuitBenchTests(test: TestFn): void {
     }
   });
 
-  test('circuit-bench: C++ 线性核与 TS 对拍（40 组随机网表）', () => {
-    if (!ensureCli()) return;
+  cppTest('circuit-bench: C++ 线性核与 TS 对拍（40 组随机网表）', () => {
     const rand = lcg(424242);
     for (let k = 0; k < 40; k++) {
       const n = 2 + Math.floor(rand() * 14);
@@ -1323,8 +1346,7 @@ export function registerCircuitBenchTests(test: TestFn): void {
     }
   });
 
-  test('circuit-bench: C++ 对拍真实预设的合并节点网表', () => {
-    if (!ensureCli()) return;
+  cppTest('circuit-bench: C++ 对拍真实预设的合并节点网表', () => {
     const st = instantiatePreset('bridge');
     const sys = buildCircuitSystem(st);
     const ts = solveSystemVoltages(sys).voltages;
@@ -1346,11 +1368,15 @@ export function registerCircuitBenchTests(test: TestFn): void {
 
   /* ── C++/WASM 双引擎严格对拍 ── */
 
-  test('circuit-bench: WASM 门面加载成功，bench_solve 已接线', () => {
-    if (!wasmModule) {
-      console.log('  （跳过：src/wasm/circuitBench.js 不存在，先跑 bash scripts/build-wasm-circuit.sh）');
-      return;
-    }
+  // src/wasm/circuitBench.js 是**入库产物**（git ls-files 可见），因此视为必需：
+  // 缺失就是失败，不跳过。跳过会让「缺产物」和「有产物但对拍失败」两件事混在一起，
+  // 也让 CI 在缺失时保持绿色——这正是我们要消除的假绿。
+  const WASM_TEST = 'circuit-bench: WASM 门面加载成功，bench_solve 已接线';
+  test(WASM_TEST, () => {
+    assert.ok(
+      wasmModule,
+      '未找到 src/wasm/circuitBench.js（本仓库入库的必需产物）：先运行 bash scripts/build-wasm-circuit.sh',
+    );
     assert.equal(loadedEngineKind, 'wasm');
     assert.equal(getCircuitEngineKind(), 'wasm');
     assert.equal(typeof wasmModule.bench_solve, 'function');
@@ -3362,11 +3388,29 @@ export function registerCircuitBenchTests(test: TestFn): void {
       /fill="transparent"/,
       '命中底必须是 transparent 填充：透明仍参与命中测试，而它不该被看见',
     );
+    /*
+     * R6 之后命中底由「本体尺寸 + 窄屏外扩量」推出：桌面 `expandBodyHit=false`
+     * 时 hitPad 恒为 0，矩形与本体等大（原断言要守的就是这件事）；窄屏/触屏才
+     * 按种类外扩，且外扩必须对称居中，否则热区会整体偏移、压到隔壁元件。
+     */
+    const hitRect = symbols.slice(hit, hit + 360);
     assert.match(
-      symbols.slice(hit, hit + 320),
-      /width=\{bodySize\.w\}[\s\S]*?height=\{bodySize\.h\}/,
-      '命中底须与本体等大（bodySize），否则边缘几像素仍会漏给画布',
+      hitRect,
+      /width=\{bodySize\.w \+ hitPad \* 2\}[\s\S]*?height=\{bodySize\.h \+ hitPad \* 2\}/,
+      '命中底须由本体尺寸（bodySize）推出：桌面 hitPad=0 时与本体等大',
     );
+    assert.match(hitRect, /x=\{-bodySize\.w \/ 2 - hitPad\}/, '命中底必须以外扩量对称居中');
+    assert.match(
+      symbols,
+      /const hitPad = expandBodyHit \? bodyHitPadFor\(/,
+      '外扩只能由 expandBodyHit 打开：桌面（非窄屏/触屏）hitPad 恒为 0',
+    );
+    // 外扩数值本身：桌面 k≈1 不扩，V1 k≈0.325 按种类封顶，永不为负
+    assert.equal(bodyHitPadFor('battery', 36, 26, 0), 0, '没有缩放信息时不外扩');
+    assert.equal(bodyHitPadFor('wire', 52, 10, 0.325), 0, '导线不参与本体命中外扩');
+    assert.equal(bodyHitPadFor('battery', 36, 26, 1), 0, '桌面 k=1 时本体已够大，外扩为 0');
+    assert.equal(bodyHitPadFor('battery', 36, 26, 0.325), 8, 'V1 电池外扩封顶 8（再大就抢隔壁点击）');
+    assert.equal(bodyHitPadFor('bulb', 48, 48, 0.325), 6, 'V1 灯泡外扩封顶 6');
     assert.ok(
       symbols.lastIndexOf('componentBodySize', hit) > 0,
       '命中底尺寸须取自 componentBodySize，与选中环/本体同源',
@@ -4173,4 +4217,115 @@ export function registerCircuitBenchTests(test: TestFn): void {
       '预计算的 routes 与现算结果一致',
     );
   });
+
+  test('circuit-bench 状态监控: 断路后无流用电器立即回到 idle（8 预设 × 运行/暂停）', () => {
+    // 回归对象：开关一断，定值电阻/变阻器/电热丝仍挂琥珀色「发热」，电源仍报「供电中」。
+    // 根因是求解器 GMIN=1e-9 S 的数值漏电流（6 V 下 1e-8 A）越过了旧的 1e-9 判据；
+    // 看板因此把「0.00 A」的支路当成通电支路。运行态与暂停态走的是同一份
+    // solveCircuit 读数（暂停只是不推进热模型），所以解一次即可覆盖两种口径。
+    for (const id of PRESET_IDS) {
+      let state = instantiatePreset(id);
+      if (!state.components.length) continue;
+      // 先通电到稳态：让电阻/灯泡/电热丝都处在「工作中」，这才是残留最容易出现的起点。
+      state = settleSimulation(state, 1.2).state;
+      for (const sw of state.components.filter((c) => c.kind === 'switch' && c.params.closed !== false)) {
+        state = setSwitchClosed(state, sw.id, false);
+      }
+      const solved = solveCircuit(state);
+      const model = buildMonitorModel({ state, readings: solved.elements });
+
+      for (const row of model.loads) {
+        assert.ok(
+          Math.abs(row.current) <= LIVE_CURRENT_A,
+          `${id}/${row.name}: 断开后不应有电流，实测 ${row.current} A`,
+        );
+        assert.equal(row.live, false, `${id}/${row.name}: 0 A 的支路不得判为 live`);
+        assert.ok(
+          row.status === 'idle' || row.status === 'dark',
+          `${id}/${row.name}: 断开后须为 idle/dark，实测 ${row.status}（「${row.statusText}」）`,
+        );
+        assert.notEqual(row.status, 'heating', `${id}/${row.name}: 0 A 仍显示发热`);
+        assert.notEqual(row.status, 'normal', `${id}/${row.name}: 0 A 不得显示绿色「正常」`);
+      }
+
+      for (const row of model.others.filter((r) => r.kind === 'battery')) {
+        assert.equal(row.status, 'idle', `${id}/${row.name}: 开路时电源须 idle，实测 ${row.status}`);
+        assert.ok(
+          !row.text.includes('供电') && !row.text.includes('Supplying'),
+          `${id}/${row.name}: 开路时电源仍报「供电中」`,
+        );
+      }
+
+      // 保险丝：无电流时不得滞留过载/导通告警（真熔断的除外，那属于 fault）。
+      for (const row of model.others.filter((r) => r.kind === 'fuse' && !r.faulty)) {
+        assert.equal(row.status, 'idle', `${id}/${row.name}: 无流保险丝须 idle，实测 ${row.status}`);
+      }
+    }
+  });
+
+  test('circuit-bench 状态监控: 电压表并联在断开开关两端仍显示读数', () => {
+    // 电压表的「有读数」不能按电流判：它并联在断开的开关两端时，电流只有 GMIN 漏电流，
+    // 但端电压就是电源电压。看板若跟着电流判 live，会把 2.50 V 显示成「未接入 · —」。
+    let state = createEmptyState();
+    state = addComponent(state, 'battery', 140, 300);
+    state = addComponent(state, 'switch', 360, 300);
+    state = addComponent(state, 'voltmeter', 360, 150);
+    const volt = state.components.find((c) => c.kind === 'voltmeter')!;
+    const sw = state.components.find((c) => c.kind === 'switch')!;
+    const readings: Record<string, import('./circuit-bench-core').ElementReading> = {
+      [volt.id]: {
+        id: volt.id,
+        kind: 'voltmeter',
+        current: 1e-12,
+        currentAB: 1e-12,
+        voltage: 2.5,
+        resistance: Infinity,
+        power: 0,
+      },
+      [sw.id]: {
+        id: sw.id,
+        kind: 'switch',
+        current: 0,
+        currentAB: 0,
+        voltage: -2.5,
+        resistance: 0,
+        power: 0,
+      },
+    };
+    const model = buildMonitorModel({ state, readings });
+    const row = model.meters.find((m) => m.id === volt.id)!;
+    assert.equal(row.live, true, '并联在断开开关上的电压表应判为有读数');
+    assert.ok(Math.abs(row.value - 2.5) < 1e-9, `电压表读数应为 2.5 V，实测 ${row.value}`);
+    assert.equal(row.over, false, '2.5 V 在 3 V 挡内，不得误报过载');
+  });
+
+  test('circuit-bench 热模型: 电热丝断电后温度与累计热衰减回环境', () => {
+    // 旧实现只在通电分支里累加 `heat += I²R·dt`，I=0 时既不加热也不冷却：
+    // 断开开关后检查器里的温度永远停在断电前那一刻。现在按 HEATER_COOL_TAU 指数冷却。
+    let state = settleSimulation(instantiatePreset('joule'), 2).state;
+    const heater = state.components.find((c) => c.kind === 'heater')!;
+    assert.ok(heater.state.temp > T_AMBIENT + 0.5, '夹具须先让电热丝升温');
+    assert.ok(heater.state.heat > 0, '夹具须先积累焦耳热');
+
+    state = setSwitchClosed(state, 'sw', false);
+    for (let i = 0; i < 1200; i++) state = stepSimulation(state, 0.1).state;
+    const cooled = state.components.find((c) => c.id === heater.id)!;
+    assert.ok(cooled.state.temp < T_AMBIENT + 1, `断电 120 s 后应回到环境温度，实测 ${cooled.state.temp} K`);
+    assert.equal(cooled.state.heat, 0, `断电 120 s 后累计热应归零，实测 ${cooled.state.heat} J`);
+  });
+}
+
+/* ── 入口契约守卫 ── */
+
+/**
+ * 本文件只登记用例，不执行。被直接 `tsx` 调用时没有任何人消费这些登记，
+ * 进程会以退出码 0 静默结束——看起来「通过」，实际零用例。这里把这种情况
+ * 变成显式失败，避免假绿。
+ */
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  console.error(
+    'circuit-bench.test.ts 是注册模块，不是测试入口：它只导出 registerCircuitBenchTests()。\n' +
+      '请运行 `npx tsx src/labs/physics/circuit-bench/circuit-bench.entry.test.ts`（或 `npm test`）。',
+  );
+  process.exit(1);
 }

@@ -18,7 +18,7 @@ import { resetTtsStatus } from '../../../lib/tts-status';
 import { TTS_SAMPLE } from '../../../lib/use-tts-preview';
 import ProviderIcon from '../../ui/ProviderIcon';
 import TtsStatusBadge from '../TtsStatusBadge';
-import { ExternalLink, EyeOff, Eye, ShieldCheck, ChevronDown, RefreshCw, Activity, Coins, Loader2, Volume2, Trash2 } from 'lucide-react';
+import { ExternalLink, EyeOff, Eye, ShieldCheck, ChevronDown, RefreshCw, Activity, Coins, LoaderCircle, Volume2, Trash2 } from 'lucide-react';
 
 /** 思考强度三档（顺序即界面顺序）。「标准」不再标注「默认」：它现在会显式下发较低力度值，
  *  与部分服务商的默认（DeepSeek/百炼默认即高强度）并不相同。 */
@@ -599,7 +599,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                         className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
                       >
                         {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          ? <LoaderCircle className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
                           : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
                         {ttsPreview.activeKey === key
                           ? (ttsStatus === 'probing'
@@ -641,7 +641,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                             className={`tap-area inline-flex shrink-0 items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
                           >
                             {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                              ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                              ? <LoaderCircle className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
                               : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
                             {ttsPreview.activeKey === key
                               ? (ttsStatus === 'probing'
@@ -702,7 +702,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                         className={`tap-area inline-flex items-center gap-1.5 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[0.6875rem] mono-font transition-colors ${ttsPreview.activeKey === key ? 'border-[var(--fg)] text-[var(--fg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}
                       >
                         {ttsPreview.activeKey === key && ttsStatus === 'probing'
-                          ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                          ? <LoaderCircle className="w-3.5 h-3.5 shrink-0 animate-spin" aria-hidden="true" />
                           : <Volume2 className={`w-3.5 h-3.5 shrink-0 ${ttsPreview.activeKey === key ? 'update-dot' : ''}`} aria-hidden="true" />}
                         {ttsPreview.activeKey === key
                           ? (ttsStatus === 'probing'

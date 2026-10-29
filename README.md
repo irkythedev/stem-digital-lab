@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/Version-v0.42.0-52525b?style=flat-square&labelColor=18181b" alt="Version v0.42.0">
   <img src="https://img.shields.io/badge/Core-C%2B%2B17%20%2F%20WASM-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=18181b" alt="Core: C++17 / WebAssembly">
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TS-3178C6?style=flat-square&logo=typescript&logoColor=white&labelColor=18181b" alt="Frontend: React 19 + TypeScript">
-  <img src="https://img.shields.io/badge/Tests-627%20passed-16a34a?style=flat-square&labelColor=18181b" alt="627 tests passing">
+  <img src="https://img.shields.io/badge/Tests-657%20passed-16a34a?style=flat-square&labelColor=18181b" alt="657 tests passing">
 </p>
 
 <p>
@@ -42,13 +42,14 @@
 
 | 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
 | :--- | :--- | :--- |
-| **15 个交互实验 + 5 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 627 项单测门禁 |
+| **15 个交互实验 + 5 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 657 项单测门禁 |
 
 无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
 
 <!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
      15 实验 + 5 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 4 个固定路由查表工具，smoke 计数守卫会核对）
-     627 passed     ← npm test 实测（smoke 604 + 三方对拍 23；新增断言须同步徽章 / 中英正文 / 三栏表）
+     657 passed     ← npm test 实测（39 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
+                      新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，scripts/check-readme-stats.mjs 会与实测比对）
      C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
      React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
      GB/T 4728      ← 《电气简图用图形符号》国标族，电路图线稿按国标绘制（render/schematic.tsx）
@@ -123,13 +124,14 @@
 
 ### 运行架构
 
-本项目为**纯前端 SPA**（React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18），**无自建后端与数据库**，发布为静态站点托管（CDN 静态托管）。运行架构如下图所示：
+本项目为**纯前端 SPA**（React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18），**无自建后端与数据库**，数值计算由 **C++17 / WebAssembly 计算核**在端侧完成，发布为静态站点托管（CDN 静态托管）。运行架构如下图所示：
 
 <div align="center">
   <img src="public/architecture-diagram-cn.jpg" alt="运行架构图" title="数理化数字实验室运行架构" width="100%" />
 </div>
 
 - **静态托管平台**：承接 Vite 构建产物并分发到 CDN 边缘节点
+- **C++ 计算核**：公式求值（欧姆定律、凸透镜、二次函数、反比例、酸碱中和、浮力）与电学工作台的直流求解共用同一份 C++17 源码，经 Emscripten 编成 SINGLE_FILE WASM 在浏览器内按需调用，不新增网络请求；未载入时静默回退 JS 真源，结果由 g++ / WASM / TS 三方对拍保证一致
 - **AI 学习助手**（BYOK）：浏览器直连您自己的 AI 服务商（兼容 OpenAI 端点，流式 /chat/completions），Key 仅存本机、本站无记录
 - **TTS 朗读**：LaTeX 口语化格式化 → SCF 云函数代理 edge-tts 合成语音并回放
 - **预览即可用、可安装**：Service Worker 预缓存应用外壳，页面二次打开与断网后仍可运行；也可安装为桌面 / 手机应用
@@ -156,7 +158,7 @@ npm run test       # 运行测试
 npm test           # 运行全部测试（无需任何服务）
 ```
 
-内置测试套件 **627 项全绿**（`src/smoke.test.ts` 604 项 + `src/stem-core-ext.test.ts` 23 项），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
+内置测试套件 **657 项全绿**（39 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 486 项；另有一个独立脚本 `src/latex-speech.golden.test.ts` 钉住 **436 条逐字快照**，单独统计、不计入 657），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
 - **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
@@ -312,13 +314,14 @@ src/
 
 ### Running Architecture
 
-This is a **pure front-end SPA** (React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18) with **no self-hosted backend or database**, published as a static site (CDN static hosting). The runtime architecture is shown below:
+This is a **pure front-end SPA** (React 19 + react-router 7 + Vite 6 + TypeScript 5.9 + Tailwind CSS 4 + KaTeX 0.18) with **no self-hosted backend or database**; numeric evaluation runs on-device in a **C++17 / WebAssembly compute core**, published as a static site (CDN static hosting). The runtime architecture is shown below:
 
 <div align="center">
   <img src="public/architecture-diagram-en.jpg" alt="Running architecture" title="STEM Digital Lab running architecture" width="100%" />
 </div>
 
 - **Static host**: serves the Vite build artifacts from CDN edge nodes
+- **C++ compute core**: formula evaluation (Ohm's law, convex lens, quadratic, inverse proportion, titration, buoyancy) and the circuit workbench's DC solve share one C++17 source, compiled by Emscripten into a SINGLE_FILE WASM module invoked on demand in the browser with no extra network request; if it fails to load the JS sources silently take over, and g++ / WASM / TS are kept identical by a three-way parity gate
 - **AI assistant** (BYOK): the browser talks directly to your own AI provider (OpenAI-compatible endpoint, streaming /chat/completions); key stays on-device, nothing is logged
 - **TTS read-aloud**: LaTeX is formatted for speech → a SCF cloud function proxies edge-tts to synthesize and play back audio
 - **Works on reopen, installable**: the Service Worker precaches the app shell, so a second visit — or a lost connection — still runs; the app can also be installed on desktop or phone
@@ -345,7 +348,7 @@ npm run test       # Run tests
 npm test           # Run the whole suite (no service required)
 ```
 
-The built-in suite runs **627 assertions, all green** (`src/smoke.test.ts` 604 + `src/stem-core-ext.test.ts` 23), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
+The built-in suite runs **657 cases, all green** (39 test commands: 171 in `src/smoke.test.ts` plus 486 across the rest; one further standalone script, `src/latex-speech.golden.test.ts`, pins **436 verbatim snapshots** and is counted separately), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
 - **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;

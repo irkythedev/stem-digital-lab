@@ -1119,6 +1119,57 @@ export function terminalHitRadiusFor(half: number, desired: number): number {
   return Math.max(6, Math.min(desired, Math.max(7, half * 0.9)));
 }
 
+/**
+ * 本体命中矩形的外扩上限（世界单位）。
+ *
+ * 目标是把最小的一批元件（V1 上电池本体只有 ~11.7×8.5px）往 24px 推，
+ * 但外扩**必须保持相邻元件的命中矩形不重叠**——否则就是 `index.css` 里记过的
+ * 「透明热区互相抢点击」。预设里元件最小中心距约 60 世界单位，本体最宽的开关
+ * 54 单位，单侧外扩封顶 8 时两个矩形之间仍留有缝；电池/开关这类本体最窄的给 8，
+ * 电表/保险丝 7，其余 6。
+ *
+ * 注意 24px 是**目标**而不是承诺：V1 的 k≈0.325 下，电池要把本体撑到 24px 需要
+ * 单侧 24 世界单位，那会直接盖住隔壁元件。所以这里按「不重叠」的上限封顶，
+ * 屏幕热区的缺口由 `CircuitCanvas` 的屏幕空间判定（与接线柱同一道保险）补。
+ */
+const BODY_HIT_PAD_CAP: Record<ElementKind, number> = {
+  battery: 8,
+  switch: 8,
+  fuse: 7,
+  ammeter: 7,
+  voltmeter: 7,
+  galvanometer: 7,
+  bulb: 6,
+  resistor: 6,
+  heater: 6,
+  rheostat: 6,
+  wire: 0,
+};
+
+/** 本体命中矩形在触屏上的目标边长（CSS 像素）。 */
+const BODY_HIT_TARGET_PX = 24;
+
+/**
+ * 本体命中矩形外扩量（世界单位）。
+ *
+ * 与接线柱热区（`terminalHitRadiusFor`）同一思路：先把「想要的屏幕像素」反算成
+ * 世界单位，再按元件种类封顶。世界坐标会随缩放变化，所以这里必须吃 `pxPerWorld`，
+ * 不能写成固定常量——V1 的 k≈0.325 与桌面的 k≈1 差三倍。
+ * 桌面（`expandBodyHit=false`）根本不调用它，命中矩形与本体等大，数值分毫不动。
+ */
+export function bodyHitPadFor(
+  kind: ElementKind,
+  bodyW: number,
+  bodyH: number,
+  pxPerWorld: number,
+): number {
+  const cap = BODY_HIT_PAD_CAP[kind] ?? 0;
+  if (!(cap > 0) || !(pxPerWorld > 0)) return 0;
+  const minSide = Math.max(1e-6, Math.min(bodyW, bodyH));
+  const wanted = (BODY_HIT_TARGET_PX / pxPerWorld - minSide) / 2;
+  return Math.max(0, Math.min(cap, wanted));
+}
+
 /* ── 变阻器滑片 ────────────────────────────────────────────────────────────
  * 滑片位置是 `params.ratio` 的函数：0 → 最左（接入电阻最小），1 → 最右。
  * 两种画法的瓷筒长度不同，所以导轨半长按视图取值；本体、选中环、命中区
@@ -1413,9 +1464,31 @@ export function boxClearanceShift(
   box: Bounds,
   clearance = 0,
   routes?: readonly RoutedWire[],
+  /**
+   * 让位方向。`x` = 桌面常态：监控 HUD 停在右上角，内容整体左移。
+   * `y` = 窄屏：HUD 改成底部停靠/底部 Sheet，内容改为上移，不再左移——
+   * 窄屏画布本来就窄，继续左推只会把电路推出左缘（审计实测 3–6px）。
+   */
+  axis: 'x' | 'y' = 'x',
 ): number {
-  const limit = box.x - clearance;
   const half = INK_STROKE / 2;
+  if (axis === 'y') {
+    // 向上推：浮窗占的是画布底部一条横带，判「压没压住」看 y 落在带内、x 落在带内。
+    const limit = box.y - clearance;
+    let worst = -Infinity;
+    let topmost = Infinity;
+    eachInkPoint(state, (p) => {
+      const x = p.x * view.scale + view.tx;
+      const y = p.y * view.scale + view.ty;
+      topmost = Math.min(topmost, y - half);
+      if (x < box.x || x > box.x + box.w) return;
+      worst = Math.max(worst, y + half);
+    }, routes);
+    if (!(worst > limit)) return 0;
+    // 上限同样是「不把内容推出另一侧」：最上墨迹退到画布顶就收手。
+    return Math.max(0, Math.min(worst - limit, topmost));
+  }
+  const limit = box.x - clearance;
   let worst = -Infinity;
   let leftmost = Infinity;
   eachInkPoint(state, (p) => {

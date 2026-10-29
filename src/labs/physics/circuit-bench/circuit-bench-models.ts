@@ -25,6 +25,18 @@ export { T_AMBIENT, T_BULB_BURN, T_BULB_RATED, bulbHeatCapacity, bulbRadK, bulbR
 export const FUSE_TRIP_HEAT = 2.2;
 export const FUSE_TAU = 0.15;
 
+/**
+ * 电热丝断电后的冷却时间常数（s）：无电流时 `temp` 按指数回到环境温度、`heat` 同步归零。
+ *
+ * 没有这一条，电热丝是**只升不降**的：`stepSimulation` 过去只在通电分支里累加
+ * `heat += I²R·dt`，`I=0` 时既不加热也不冷却。于是断开开关后，检查器里的温度仍停在
+ * 断电前的值，看板与画布虽然已经按实时功率切回冷态，两处口径却对不上。取 6 s：
+ * 课堂上「断开开关，看着它慢慢凉下来」正好是一个可观察但不拖沓的过程。
+ */
+export const HEATER_COOL_TAU = 6;
+/** 低于这个电流就当作断电（与看板 `LIVE_CURRENT_A` 同一数量级，避开求解器 GMIN 漏电流）。 */
+export const HEATER_MIN_CURRENT = 1e-5;
+
 export interface ElementModel {
   kind: ElementKind;
   name: { zh: string; en: string };

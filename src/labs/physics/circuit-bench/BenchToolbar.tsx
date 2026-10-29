@@ -16,16 +16,16 @@ import {
   Expand,
   Eye,
   EyeOff,
-  Maximize2,
   MousePointer2,
   Pause,
   Play,
   Redo2,
   Shrink,
   Undo2,
-  Zap,
+  Wrench,
 } from 'lucide-react';
 
+import ActualSizeIcon from '../../../components/ui/ActualSizeIcon';
 import { VIEW_MODES, viewModeLabel, type CircuitViewMode } from './circuit-bench-view';
 import type { CanvasTool } from './CircuitCanvas';
 
@@ -64,7 +64,7 @@ export interface BenchToolbarProps {
 // 基类刻意不含左右内边距：图标按钮要把它收成正方形，若基类自带 px-2.5，
 // 两个内边距类会同时落盘、由生成顺序而非书写顺序决定胜负（见 ICON_BTN）。
 const BTN_BASE =
-  'compact inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md border border-[var(--border)] text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-40 disabled:hover:border-[var(--border)]';
+  'compact tap32 inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md border border-[var(--border)] text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-40 disabled:hover:border-[var(--border)]';
 
 /** 图标 + 文字按钮：h-7 / px-2.5 / text-xs，与全站小工具栏同尺寸。 */
 const BTN = `${BTN_BASE} px-2.5`;
@@ -78,7 +78,7 @@ const BTN = `${BTN_BASE} px-2.5`;
  * flex 压成 6×14 的麻点（撤销/重做/全屏三个按钮同病）。
  * 只在这一个类串里写内边距，才不会两边打架。
  */
-const ICON_BTN = `${BTN_BASE} w-7 p-0`;
+const ICON_BTN = `${BTN_BASE} tap-area w-7 p-0`;
 
 // 基类已带 text-[var(--fg)]，激活态必须用 ! 覆盖，否则亮色主题下文字与底色同为深色。
 const ON = 'border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]!';
@@ -96,7 +96,7 @@ const ICON_MD = 'h-4 w-4 shrink-0';
  * 这正是 ICON_BTN 注释里记着的那口老坑。危险态要的是确定的红色，所以单独一条类串。
  */
 const DANGER_BTN =
-  'compact inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md border border-[var(--danger)] px-2.5 text-xs font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--bg)]';
+  'compact tap32 inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-md border border-[var(--danger)] px-2.5 text-xs font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)] hover:text-[var(--bg)]';
 
 export default function BenchToolbar({
   tool,
@@ -123,7 +123,7 @@ export default function BenchToolbar({
   return (
     // 窄屏换行成两排（隐藏横向滚动），避免「暂停」等末尾按钮被裁掉半截；
     // 桌面仍是 44px 单行横向工具条。
-    <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
+    <div data-bench-toolbar="" className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 max-sm:relative max-sm:z-[60] sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
       {/* 操作模式 */}
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -181,7 +181,8 @@ export default function BenchToolbar({
       </button>
 
       {/* 熔毁告警：只在真有坏元件时出现，位置紧挨运行/暂停——学生开始找「为什么没读数」时
-          第一眼扫的就是这里。宽屏写明完整动作，窄屏收成「一键修复」。 */}
+          第一眼扫的就是这里。宽屏写明完整动作，窄屏收成「一键修复」。
+          扳手而非闪电：同一个动作在右键菜单里叫「更换修复」，全站只画一个符号。 */}
       {faults > 0 && (
         <button
           type="button"
@@ -193,7 +194,7 @@ export default function BenchToolbar({
           }
           className={DANGER_BTN}
         >
-          <Zap className={ICON} />
+          <Wrench className={ICON} />
           <span className="hidden lg:inline">{zh ? '一键修复损坏元件' : 'Repair parts'}</span>
           <span className="lg:hidden">{zh ? '一键修复' : 'Repair'}</span>
           <span className="font-mono tabular-nums">{faults}</span>
@@ -223,12 +224,15 @@ export default function BenchToolbar({
 
       <button type="button" onClick={onClear} title={zh ? '清空工作台' : 'Clear bench'} className={BTN}>
         <Eraser className={ICON} />
-        <span className="hidden sm:inline">{zh ? '清空' : 'Clear'}</span>
+        <span className="hidden sm:inline bench-opt-label">{zh ? '清空' : 'Clear'}</span>
       </button>
 
-      <button type="button" onClick={onFit} title={zh ? '适配画布' : 'Fit to circuit'} className={BTN}>
-        <Maximize2 className={ICON} />
-        <span className="hidden sm:inline">{zh ? '适配' : 'Fit'}</span>
+      {/* 适配画布：方框 + 对齐线的「实际尺寸」字形，不用 Maximize2——四角外扩的箭头
+          与隔壁全屏按钮的 Expand 画的是同一件事，学生分不出这两个动作。
+          右键菜单的「适配画布」用的是同一枚（MenuItemIcon），两处必须长一样。 */}
+      <button type="button" onClick={onFit} title={zh ? '适配画布' : 'Fit to canvas'} className={BTN}>
+        <ActualSizeIcon className={ICON} />
+        <span className="hidden sm:inline bench-opt-label">{zh ? '适配' : 'Fit'}</span>
       </button>
 
       <span aria-hidden className="mx-0.5 h-4 w-px shrink-0 bg-[var(--border)]" />
