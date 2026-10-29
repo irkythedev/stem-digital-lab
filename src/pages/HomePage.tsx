@@ -40,21 +40,19 @@ export function truncateNote(note: string, _maxLen?: number): string {
   return items.slice(0, MAX_ITEMS).join(' · ') + '…';
 }
 
-/** 工具卡：查表工具与注册表专业工具台共用同一外壳；pro 时补「专业工具台」徽标 */
+/** 工具卡：查表工具与注册表工具台共用同一外壳；pro 时补 BETA 徽标 */
 function ToolCard({
   to,
   icon: Icon,
   title,
   desc,
   pro,
-  lang,
 }: {
   to: string;
   icon: ComponentType<{ className?: string }>;
   title: string;
   desc: string;
   pro?: boolean;
-  lang: 'zh' | 'en';
 }) {
   return (
     <Link
@@ -69,7 +67,7 @@ function ToolCard({
           <span className="text-sm font-semibold text-[var(--fg)] serif-font">{title}</span>
           {pro && (
             <span className="border border-[var(--fg)] px-1 py-px text-[0.5625rem] leading-none mono-font text-[var(--fg)]">
-              {lang === 'zh' ? '专业工具台' : 'PRO TOOL'}
+              BETA
             </span>
           )}
         </span>
@@ -306,7 +304,6 @@ export default function HomePage() {
                             title={lab.name[lang]}
                             desc={lab.description[lang]}
                             pro
-                            lang={lang}
                           />
                         </div>
                       ))}
@@ -319,7 +316,6 @@ export default function HomePage() {
                             ? '常用常量与典型数值一表全览，附物理意义与应用'
                             : 'Common constants at a glance, with meaning and usage'
                         }
-                        lang={lang}
                       />
                       <ToolCard
                         to="/physics-formulas"
@@ -330,7 +326,6 @@ export default function HomePage() {
                             ? '核心公式分类速览，相关常量一键跳转'
                             : 'Core formulas at a glance, with related constants linked'
                         }
-                        lang={lang}
                       />
                     </div>
                   )}

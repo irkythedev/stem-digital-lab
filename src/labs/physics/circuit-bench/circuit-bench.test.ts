@@ -409,15 +409,15 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(page.includes('regularLabsForSubject'), '学科页实验网格需排除工具台');
     assert.ok(page.includes('toolsForSubject'), '学科页工具栏需并入注册表工具台');
     assert.ok(!page.includes("badge?.kind === 'tool'"), '实验卡片不应再渲染工具台徽标');
-    assert.ok(page.includes('专业工具台'), '工具卡片保留「专业工具台」徽标');
-    assert.ok(page.includes('自由连线、实时读表') || page.includes('lab.description'), '工具卡片沿用注册表文案');
+    assert.ok(page.includes("'BETA'"), '工具卡片保留 BETA 徽标');
+    assert.ok(page.includes('lab.description'), '工具卡片沿用注册表文案');
 
     const home = readFileSync(resolve('src/pages/HomePage.tsx'), 'utf-8');
     assert.ok(home.includes('regularLabsForSubject'), '首页实验网格需排除工具台');
     assert.ok(home.includes("toolsForSubject('physics')"), '首页物理工具栏需并入注册表工具台');
     assert.ok(!home.includes('labsForSubject'), '首页实验网格不应再取含工具台的全量列表');
     assert.ok(!home.includes("lab.meta?.kind === 'tool'"), '首页实验卡片不应再渲染工具台徽标');
-    assert.ok(home.includes('专业工具台'), '首页工具卡片保留「专业工具台」徽标');
+    assert.ok(home.includes('BETA'), '首页工具卡片保留 BETA 徽标');
   });
 
   test('circuit-bench 路由: 所有入口链接统一走 labHref', () => {

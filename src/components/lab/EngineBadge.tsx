@@ -30,21 +30,43 @@ import { CppIcon, JsIcon } from '../ui/EngineIcons';
 
 const ICON = 'h-3.5 w-3.5 shrink-0';
 
-export default function EngineBadge({ kind, title }: { kind: 'js' | 'wasm'; title: string }) {
+/**
+ * 纯形制层：品牌淡底芯片 + 引擎标 + 引擎名（`C++` / `JS`）。
+ * 状态语义（`role="status"` / 悬停文案）由调用方决定：
+ * 实验页与工作台页头用 `EngineBadge`（活状态），学科页卡片直接用它标「该实验由 C++ 核驱动」
+ * （静态事实，不该念成 status）。
+ */
+export function EngineChip({
+  kind,
+  className = '',
+  title,
+  role,
+  ariaLabel,
+}: {
+  kind: 'js' | 'wasm';
+  className?: string;
+  title?: string;
+  role?: string;
+  ariaLabel?: string;
+}) {
   const live = kind === 'wasm';
   return (
     <span
       title={title}
-      aria-label={title}
-      role="status"
+      aria-label={ariaLabel}
+      role={role}
       className={`inline-flex h-6 shrink-0 items-center gap-1 rounded-md border px-2 mono-font text-xs leading-none ${
         live
           ? 'border-[var(--brand-cpp-chip)] bg-[var(--brand-cpp-chip)] text-[var(--brand-cpp-ink)]'
           : 'border-[var(--brand-js-chip)] bg-[var(--brand-js-chip)] text-[var(--brand-js-ink)]'
-      }`}
+      }${className ? ' ' + className : ''}`}
     >
       {live ? <CppIcon className={ICON} /> : <JsIcon className={ICON} />}
       <span className="font-bold uppercase tracking-wider">{live ? 'C++' : 'JS'}</span>
     </span>
   );
+}
+
+export default function EngineBadge({ kind, title }: { kind: 'js' | 'wasm'; title: string }) {
+  return <EngineChip kind={kind} title={title} role="status" ariaLabel={title} />;
 }

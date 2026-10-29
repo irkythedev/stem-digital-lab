@@ -16,6 +16,8 @@ import { labCategories, regularLabsForSubject, toolsForSubject, labHref } from '
 import StatusTag from '../components/ui/StatusTag';
 import SubjectHeading from '../components/layout/SubjectHeading';
 import { PeriodicTableIcon } from '../components/ui/LabIcon';
+import { EngineChip } from '../components/lab/EngineBadge';
+import { getEngineTooltip } from '../components/lab/engine-copy';
 import { usePageMeta } from '../lib/use-page-meta';
 
 /** 卡片外壳：细描边 + 圆角 + 卡面底色（跟随深浅色令牌）；悬停轻微上浮并点亮边框 */
@@ -38,7 +40,7 @@ interface ToolCard {
   icon: ComponentType<{ className?: string }>;
   name: { zh: string; en: string };
   desc: { zh: string; en: string };
-  /** 专业工具台（如电学工作台）：徽标显示「专业工具台」，其余显示「查表」 */
+  /** 专业工具台（如电学工作台）：徽标显示 BETA，其余显示「查表」 */
   pro?: boolean;
 }
 
@@ -134,13 +136,7 @@ export default function SubjectPage() {
                 <div className="flex items-start justify-between gap-3">
                   <tool.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />
                   <span className={tool.pro ? `${BADGE_CLS} border-[var(--fg)] text-[var(--fg)]` : BADGE_CLS}>
-                    {tool.pro
-                      ? lang === 'zh'
-                        ? '专业工具台'
-                        : 'PRO TOOL'
-                      : lang === 'zh'
-                        ? '查表'
-                        : 'LOOKUP'}
+                    {tool.pro ? 'BETA' : lang === 'zh' ? '查表' : 'LOOKUP'}
                   </span>
                 </div>
                 <h3 className="mt-3 text-base font-semibold tracking-wide text-[var(--fg)] serif-font">
@@ -173,7 +169,9 @@ export default function SubjectPage() {
                   <div className="flex items-start justify-between gap-3">
                     <lab.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />
                     <span className="flex flex-wrap items-center justify-end gap-1.5">
-                      {badge?.core && <span className={BADGE_CLS}>C++</span>}
+                      {badge?.core && (
+                        <EngineChip kind="wasm" title={getEngineTooltip('wasm', 'formulas', lang)} />
+                      )}
                       {badge?.grade && <span className={BADGE_CLS}>{badge.grade[lang]}</span>}
                     </span>
                   </div>

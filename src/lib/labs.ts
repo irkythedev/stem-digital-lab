@@ -200,7 +200,7 @@ export const labs: LabMeta[] = [
     path: '/circuit-bench',
     subjectId: 'physics',
     name: { zh: '电学工作台', en: 'Circuit Workbench' },
-    description: { zh: '专业电学仿真工作台：自由连线、实时读表、记录并拟合数据', en: 'A professional circuit sandbox: wire freely, read live meters and fit recorded data' },
+    description: { zh: '自由连线 · 读表 · 数据拟合', en: 'Wire · meters · curve fit' },
     aiKnowledge: '工具定位：这是一个专业电学仿真工作台，不是按步骤锁定的三幕式实验。八个经典预设（串并联、欧姆定律、小灯泡伏安特性、惠斯通电桥、短路与保险丝、焦耳定律、影响电阻大小的因素、空白沙盒）只是起点，学生可随时加删元件、自由改线。操作要点：点两个接线柱完成连线，双击开关或点检查器切换通断；画布卡顶栏可运行/暂停仿真、撤销/重做、清空与适配画布；选中元件或导线时，画布右上角浮出检查器，实时显示读数与故障并可旋转、换极性、删除，画布下方测量面板手动记录读数、作最小二乘拟合并导出 CSV。关键规律：串联电流处处相等、电压按电阻分配；并联各支路电压相等、干路电流为支路之和；I=U/R；小灯泡灯丝电阻随温度升高而增大；R=ρL/S；Q=I²Rt。考点：电路连接与故障判断、电表量程与接法、伏安法测电阻、电桥平衡条件、保险丝作用。',
     icon: CircuitBenchIcon,
     component: CircuitBench,

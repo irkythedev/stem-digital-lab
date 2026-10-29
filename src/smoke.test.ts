@@ -1128,9 +1128,9 @@ describe('计数口径（注册表真值 ↔ 对外文案）', () => {
   const LOOKUP_TOOLS = 4;
   const TOOL_TOTAL = LOOKUP_TOOLS + toolLabs;
 
-  test('注册表真值：15 个常规实验 + 5 个工具（4 查表 + 1 专业工具台）', () => {
+  test('注册表真值：15 个常规实验 + 5 个工具（4 查表 + 1 工具台）', () => {
     assert.equal(regularLabs, 15, `常规实验数变了就须同步全站文案：实测 ${regularLabs}`);
-    assert.equal(toolLabs, 1, `专业工具台数变了就须同步全站文案：实测 ${toolLabs}`);
+    assert.equal(toolLabs, 1, `工具台数变了就须同步全站文案：实测 ${toolLabs}`);
     assert.equal(regularLabs + TOOL_TOTAL, 20, '可互动页面总数（实验 + 工具）应仍为 20');
   });
 
