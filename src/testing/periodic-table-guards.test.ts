@@ -656,7 +656,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     assert.match(wd, /<path d=\{GITHUB_PATH\} \/>/, '须带 GitHub 品牌图标');
     assert.doesNotMatch(wd, /welcomeFeedbackIssue/, '两个品牌图标之间不得再夹「Issue」文字');
     assert.doesNotMatch(i18n, /welcomeFeedbackIssue:/, 'i18n 不得再保留已被替换的 Issue 文案');
-    assert.match(wd, /import \{ GITHUB_PATH, GITEE_PATH, ISSUE_URLS \} from '\.\.\/\.\.\/lib\/brand-icons'/, '品牌路径须走共享常量');
+    assert.match(wd, /import \{ GITHUB_PATH, GITEE_PATH, REPO_URLS \} from '\.\.\/\.\.\/lib\/brand-icons'/, '品牌路径须走共享常量');
     assert.match(wd, /<Library className="h-3\.5 w-3\.5" aria-hidden="true" \/>/, '其他作品前须有作品集图标');
     // 作品名就紧跟在后，弹窗内不再挂数字角标（角标是页脚折叠入口才需要的计数提示）
     assert.doesNotMatch(wd, /min-w-\[0\.95rem\]/, '弹窗内的其他作品不得再挂数字角标');

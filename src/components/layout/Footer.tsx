@@ -5,7 +5,7 @@
  * 页脚：作者信息 + 免责声明 + Gitee 外链 + 版权。
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
-import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
+import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
 import { useState } from 'react';
 import { Share2, Library, Mail, Network } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
@@ -169,7 +169,7 @@ export default function Footer() {
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-4 sm:gap-x-2.5 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
-          target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
+          target={{ url: REPO_URLS.gitee, name: 'Gitee' }}
           hint={t.externalLinkHint}
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}
@@ -188,7 +188,7 @@ export default function Footer() {
           </svg>
         </ExternalLinkConfirm>
         <ExternalLinkConfirm
-          target={{ url: ISSUE_URLS.github, name: 'GitHub' }}
+          target={{ url: REPO_URLS.github, name: 'GitHub' }}
           hint={t.externalLinkHint}
           openLabel={t.externalLinkOpen}
           cancelLabel={t.externalLinkCancel}

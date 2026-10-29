@@ -113,6 +113,31 @@ export function registerTouchTargetGuardsTests(test: TestFn): void {
     const p15 = (footer.match(/p-1\.5(?! -m)/g) || []).length;
     assert.ok(p15 >= 4, `扩区图标需用 p-1.5 把 14px 视觉盒撑到 26px 命中盒，实际 ${p15} 处`);
     assert.ok(!footer.includes('-m-1\.5'), '扩区图标不得再用 -m-1.5：负外边距会吃掉 flex 间距 12px，中心距掉到 34px 后 42px 扩区必然互压');
+
+    // 页脚品牌图标指向**仓库首页**，不是 issue 模板选择页；欢迎弹窗底部的反馈入口维持 issue 不变。
+    assert.match(footer, /import \{[^}]*REPO_URLS[^}]*\} from '\.\.\/\.\.\/lib\/brand-icons'/, '页脚品牌图标须走 REPO_URLS（仓库首页）');
+    assert.doesNotMatch(footer, /ISSUE_URLS/, '页脚品牌图标不得再指向 issue 入口');
+    const brandUrls = readSrc('src/lib/brand-icons.ts', 'utf8');
+    const repoBlock = (brandUrls.match(/REPO_URLS = \{[\s\S]*?\} as const/) || [''])[0];
+    assert.ok(
+      repoBlock.includes('gitee.com/K4Ricky2Win/stem-digital-lab') &&
+        repoBlock.includes('github.com/irkythedev/stem-digital-lab'),
+      'REPO_URLS 必须指向两个仓库首页',
+    );
+    assert.doesNotMatch(repoBlock, /issues/, 'REPO_URLS 不得带 /issues');
+    const welcomeDlg = readSrc('src/components/ui/WelcomeDialog.tsx', 'utf8');
+    assert.doesNotMatch(welcomeDlg, /ISSUE_URLS/, '欢迎弹窗的品牌图标不得再指向 issue 入口');
+    assert.match(welcomeDlg, /REPO_URLS\.gitee/, '欢迎弹窗的品牌图标指向仓库首页');
+    // issue 入口迁到反馈面板：「发送反馈」后面两枚品牌图标
+    const fbPanel = readSrc('src/components/feedback/FeedbackPanel.tsx', 'utf8');
+    assert.match(fbPanel, /ISSUE_URLS\.gitee/, '反馈面板须保留 Gitee issue 入口');
+    assert.match(fbPanel, /ISSUE_URLS\.github/, '反馈面板须保留 GitHub issue 入口');
+    assert.match(fbPanel, /<path d=\{GITEE_PATH\} \/>/, '反馈面板须用 Gitee 品牌图标');
+    assert.match(fbPanel, /<path d=\{GITHUB_PATH\} \/>/, '反馈面板须用 GitHub 品牌图标');
+    assert.match(fbPanel, /externalIssueHint/, '反馈面板的外链提示须用 Issue 专用文案');
+    const submitAt = fbPanel.indexOf('onClick={submit}');
+    const issueAt = fbPanel.indexOf('<ExternalLinkConfirm');
+    assert.ok(submitAt > 0 && issueAt > submitAt, 'issue 图标须排在「发送反馈」按钮之后');
     assert.ok(/<Share2 className="w-3\.5 h-3\.5"/.test(footer) && /<Network className="w-3\.5 h-3\.5"/.test(footer),
       '扩区只能靠伪元素：图标本身不得放大（视觉仍 14px）');
 

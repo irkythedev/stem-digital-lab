@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { MessageSquare, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
+import ExternalLinkConfirm from '../ui/ExternalLinkConfirm';
 import { makeFeedbackId, submitFeedback, type FeedbackCategory, type FeedbackRating, type FeedbackType } from '../../lib/feedback';
 
 interface FeedbackPanelProps {
@@ -53,7 +55,7 @@ const labels = {
 
 export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelProps) {
   useEscapeKey(onClose);
-  const { lang } = useApp();
+  const { lang, t } = useApp();
   const l = labels[lang];
   const [rating, setRating] = useState<FeedbackRating | undefined>();
   const [selected, setSelected] = useState<FeedbackCategory[]>([]);
@@ -123,7 +125,34 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
                 <label className="block text-xs text-[var(--muted)]">{l.contact}<input type="text" value={contact} onChange={(e) => setContact(e.target.value)} placeholder={l.contactPlaceholder} maxLength={100} className="mt-1.5 w-full rounded-md border border-[var(--border)] bg-transparent px-2 py-1.5 text-sm text-[var(--fg)] outline-none focus:border-[var(--fg)]" /></label>
               </div>
               <p className="text-[0.625rem] text-[var(--muted)] opacity-70">{l.privacyNote}</p>
-              <button type="button" onClick={submit} disabled={sending || !message.trim() || selected.length === 0 || (type === 'experiment' && !rating)} className="rounded-md border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={submit} disabled={sending || !message.trim() || selected.length === 0 || (type === 'experiment' && !rating)} className="rounded-md border border-[var(--fg)] px-4 py-2 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 min-h-[40px] touch-manipulation">{sending ? (lang === 'zh' ? '发送中…' : 'Sending…') : l.submit}</button>
+                {/* 也有同学直接在仓库里提 Issue：只留品牌图标，点开先在站内确认再离开 */}
+                <ExternalLinkConfirm
+                  target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
+                  hint={t.externalIssueHint}
+                  openLabel={t.externalLinkOpen}
+                  cancelLabel={t.externalLinkCancel}
+                  ariaLabel={lang === 'zh' ? '在 Gitee 提交 Issue' : 'Submit an Issue on Gitee'}
+                  className="tap-icon flex items-center text-[var(--muted)] hover:text-[#C71D23] transition-colors p-1.5"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
+                    <path d={GITEE_PATH} />
+                  </svg>
+                </ExternalLinkConfirm>
+                <ExternalLinkConfirm
+                  target={{ url: ISSUE_URLS.github, name: 'GitHub' }}
+                  hint={t.externalIssueHint}
+                  openLabel={t.externalLinkOpen}
+                  cancelLabel={t.externalLinkCancel}
+                  ariaLabel={lang === 'zh' ? '在 GitHub 提交 Issue' : 'Submit an Issue on GitHub'}
+                  className="tap-icon flex items-center text-[var(--muted)] hover:text-[var(--fg)] transition-colors p-1.5"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0" aria-hidden="true">
+                    <path d={GITHUB_PATH} />
+                  </svg>
+                </ExternalLinkConfirm>
+              </div>
             </>
           )}
         </div>

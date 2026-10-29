@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, MonitorSmartphone, Shapes, Sparkles, X } from 'lucide-react';
-import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
+import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import SubjectIcon from './SubjectIcon';
@@ -267,9 +267,9 @@ export default function WelcomeDialog({
                   而视觉与文档流不变；间距取 20px 是同尺寸下**零重叠**的下限
                   （33px 盒 + 25px 中心距 = 两侧各 8px 富余），12px 会产生 8px 重叠带。 */}
               <span className="flex items-center gap-5">
-                {/* Issue 入口：只留品牌图标（不再夹「Issue」文字），图标自带外链确认 */}
+                {/* 项目仓库入口：只留品牌图标，图标自带外链确认 */}
                 <ExternalLinkConfirm
-                  target={{ url: ISSUE_URLS.gitee, name: 'Gitee' }}
+                  target={{ url: REPO_URLS.gitee, name: 'Gitee' }}
                   hint={t.externalLinkHint}
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
@@ -281,7 +281,7 @@ export default function WelcomeDialog({
                   </svg>
                 </ExternalLinkConfirm>
                 <ExternalLinkConfirm
-                  target={{ url: ISSUE_URLS.github, name: 'GitHub' }}
+                  target={{ url: REPO_URLS.github, name: 'GitHub' }}
                   hint={t.externalLinkHint}
                   openLabel={t.externalLinkOpen}
                   cancelLabel={t.externalLinkCancel}
