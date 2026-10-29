@@ -23,7 +23,10 @@ import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
 import ShareInline from '../components/share/ShareInline';
-import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
+import { usePageMeta } from '../lib/use-page-meta';
+import LabAnswerLayer from '../components/lab/LabAnswerLayer';
+import { PERIODIC_TABLE_CONTENT } from '../lib/content/periodic-table';
+import { answerLayerJsonLd } from '../lib/lab-content-core';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 import { ATOM_VIEW, coreRadiusFor, shellLayout } from '../lib/atom-shells';
 import { NEUTRON_COLOR } from '../lib/atom-3d';
@@ -258,12 +261,7 @@ export default function PeriodicTable() {
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '元素周期表' : 'Periodic Table'} - ${t.brandName}`,
     description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',
-    jsonLd: learningResourceLd({
-      name: lang === 'zh' ? '元素周期表' : 'Periodic Table',
-      description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',
-      url: 'https://stem.irky.dev/periodic-table',
-      resourceType: lang === 'zh' ? '速查工具' : 'Reference Tool',
-    }),
+    jsonLd: answerLayerJsonLd(PERIODIC_TABLE_CONTENT, lang),
   }), [lang, t.brandName]);
   usePageMeta(pageMeta);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
@@ -1795,6 +1793,9 @@ export default function PeriodicTable() {
           </div>
         </div>
       )}
+
+      {/* GEO 答案层：工具台之下的纯文本速查与问答（无 JS 也可读） */}
+      <LabAnswerLayer content={PERIODIC_TABLE_CONTENT} lang={lang} />
     </main>
   );
 }

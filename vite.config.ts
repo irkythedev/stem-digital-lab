@@ -67,6 +67,48 @@ function writeOfflineManifest(): Plugin {
   };
 }
 
+/**
+ * `vite preview` 静态路由直出：
+ * 构建期已把每个路由静态化成 dist/<route>/index.html，但 preview 自带的
+ * SPA fallback 会把 /lab/lens 这类「目录路由」吞回根 /index.html。
+ * 这里在内部中间件之前拦截：只要 dist/<pathname>/index.html 真实存在，
+ * 就直接返回该文件，保证预览服与生产静态托管看到同一份首字节 HTML
+ * （含 H1、摘要、数据表与 JSON-LD）。
+ * 不带尾斜杠与带尾斜杠都按同一路径处理；非 GET/HEAD、越界路径一律交回后续中间件。
+ */
+function previewStaticRoutes(): Plugin {
+  return {
+    name: 'preview-static-routes',
+    configurePreviewServer(server) {
+      const dist = path.resolve(__dirname, 'dist');
+      server.middlewares.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+        let pathname: string;
+        try {
+          pathname = decodeURIComponent(
+            new URL(req.url ?? '/', 'http://localhost').pathname,
+          );
+        } catch {
+          // 非法百分号编码：交回 preview 内置中间件，由其返回 400
+          return next();
+        }
+        const clean = pathname.replace(/\/+$/, '');
+        if (!clean || clean === '/') return next();
+
+        const file = path.join(dist, clean, 'index.html');
+        if (!file.startsWith(dist + path.sep)) return next();
+        if (!existsSync(file) || !statSync(file).isFile()) return next();
+
+        const body = readFileSync(file);
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.setHeader('Content-Length', String(body.byteLength));
+        res.end(req.method === 'HEAD' ? undefined : body);
+      });
+    },
+  };
+}
+
 /** 站点域名（GEO 生成文件里的绝对 URL） */
 const SITE_URL = 'https://stem.irky.dev';
 
@@ -140,6 +182,8 @@ function seoAssets(): Plugin {
       lines.push('');
       lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 5 个工具，另有 AI 学习助手（自带 Key）。');
       lines.push('');
+      lines.push('License: AGPL-3.0');
+      lines.push('');
       lines.push('## 实验 · Labs');
       lines.push('');
       for (const lab of labs) {
@@ -193,6 +237,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     versionJson(),
+    previewStaticRoutes(),
     seoAssets(),
     writeOfflineManifest(),
     VitePWA({
@@ -215,10 +260,21 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // 主包在接入 GEO 内容层后越过 Workbox 默认的 2 MiB 上限；
+        // 上限只影响「是否预缓存」，不改变离线策略，故按当前体积放宽到 3 MiB。
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff,woff2,ttf}', 'offline-manifest.json'],
         // architecture.html 是重型查看器（约 735KB）：不预缓存，避免每个访客首装体积翻倍；
         // 改由下方 runtimeCaching 首次访问后按需缓存（离线仍可打开）。
-        globIgnores: ['**/version.json', '**/audio/*.mp3', '**/architecture.html'],
+        // KaTeX 同时产出 woff2 / woff / ttf 三份同字形文件，浏览器优先用 woff2；
+        // 预缓存只留 woff2，省掉约 800KB 的重复字体（离线公式排版仍完整）。
+        globIgnores: [
+          '**/version.json',
+          '**/audio/*.mp3',
+          '**/architecture.html',
+          '**/KaTeX_*.woff',
+          '**/KaTeX_*.ttf',
+        ],
         navigateFallback: '/index.html',
         // 不兜底 /architecture.html：否则导航会被 SPA 首页接管，点进去看到的是首页。
         // （workbox 的 NavigationRoute 用 pathname + search 匹配，故需容忍 ?theme= 查询串）

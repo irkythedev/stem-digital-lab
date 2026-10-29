@@ -250,19 +250,20 @@ export async function flushFeedbackQueue(): Promise<void> {
   // 任一通道已配置即可补传（旧实现只判 Server酱，仅配钉钉时补传会失效）
   if (!isDingtalkProxyConfigured() && !isServerChanConfigured()) return;
   if (flushing) return flushing;
+  // 注意赋值顺序：空队列时任务体会同步跑完并清空 flushing，若先执行任务体
+  // 再赋值，已完成的 Promise 会被留在这里，之后的补传全部复用它而不再读队列。
+  // 因此先启动任务并挂 finally，再把结果赋回 flushing。
   flushing = (async () => {
-    try {
-      for (const record of loadFeedback()) {
-        const outcome = await sendOnce(record);
-        if (outcome === 'sent') {
-          removeFeedback(record.id);
-        } else if (outcome === 'failed') {
-          bumpAttempt(record.id);
-        }
+    for (const record of loadFeedback()) {
+      const outcome = await sendOnce(record);
+      if (outcome === 'sent') {
+        removeFeedback(record.id);
+      } else if (outcome === 'failed') {
+        bumpAttempt(record.id);
       }
-    } finally {
-      flushing = null;
     }
-  })();
+  })().finally(() => {
+    flushing = null;
+  });
   return flushing;
 }

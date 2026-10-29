@@ -1,0 +1,603 @@
+{
+  "id": "lens",
+  "canonical": "https://stem.irky.dev/lab/lens",
+  "name": {
+    "zh": "凸透镜成像",
+    "en": "Convex Lens Imaging"
+  },
+  "aliases": [
+    {
+      "zh": "凸透镜成像规律",
+      "en": "Convex lens imaging rules"
+    },
+    {
+      "zh": "凸透镜成像实验",
+      "en": "Convex lens imaging experiment"
+    },
+    {
+      "zh": "照相机原理",
+      "en": "Camera principle"
+    },
+    {
+      "zh": "投影仪原理",
+      "en": "Projector principle"
+    },
+    {
+      "zh": "放大镜原理",
+      "en": "Magnifier principle"
+    }
+  ],
+  "curriculum": [
+    {
+      "edition": {
+        "zh": "苏科版",
+        "en": "Jiangsu Science Edition"
+      },
+      "grade": {
+        "zh": "八年级上册",
+        "en": "Grade 8, Volume 1"
+      },
+      "chapter": {
+        "zh": "第三章 光的折射 透镜",
+        "en": "Chapter 3: Refraction of Light and Lenses"
+      }
+    },
+    {
+      "edition": {
+        "zh": "人教版",
+        "en": "People's Education Press Edition"
+      },
+      "grade": {
+        "zh": "八年级上册",
+        "en": "Grade 8, Volume 1"
+      },
+      "chapter": {
+        "zh": "第五章 透镜及其应用",
+        "en": "Chapter 5: Lenses and Their Applications"
+      }
+    }
+  ],
+  "summary": {
+    "zh": "凸透镜成像实验通过改变蜡烛到凸透镜的距离，观察光屏上像的虚实、正倒与大小变化，归纳出物距、像距与放大率之间的对应规律，是初中物理光学部分的核心探究内容，也是理解照相机、投影仪与放大镜工作原理的基础。",
+    "en": "The convex lens imaging experiment changes the distance from the candle to the lens, observes whether the image on the screen is real or virtual, upright or inverted, magnified or reduced, and derives the relationship among object distance, image distance and magnification."
+  },
+  "answer": {
+    "what": {
+      "zh": "凸透镜成像研究的是同一个凸透镜在焦距 f 固定时，物距 u 变化如何决定像距 v、像的虚实、正倒和大小。实验用光具座把蜡烛、凸透镜、光屏排成一条直线，移动光屏找到最清晰的像，再记录对应的物距与像距。",
+      "en": "Convex lens imaging studies how, for a fixed focal length f, the object distance u determines the image distance v and whether the image is real or virtual, upright or inverted, magnified or reduced. A candle, the lens and a screen are aligned on an optical bench; the screen is moved until the image is sharpest, then u and v are recorded."
+    },
+    "observe": {
+      "zh": "当 u > 2f 时，光屏上得到倒立、缩小的实像，像距满足 f < v < 2f；当 u = 2f 时，得到倒立、等大的实像，v = 2f；当 f < u < 2f 时，得到倒立、放大的实像，v > 2f；当 u = f 时，折射光平行射出，光屏上得不到清晰的像；当 u < f 时，光屏上接不到像，但从透镜另一侧透过透镜能看到正立、放大的虚像。",
+      "en": "For u > 2f the screen shows an inverted, reduced real image with f < v < 2f. For u = 2f the image is inverted and the same size, with v = 2f. For f < u < 2f the image is inverted and magnified, with v > 2f. For u = f the refracted rays emerge parallel and no sharp image forms on the screen. For u < f no image can be caught on the screen, but looking through the lens from the other side shows an upright, magnified virtual image."
+    },
+    "grade": {
+      "zh": "本实验对应初中八年级光学内容，苏科版八年级上册第三章、人教版八年级上册第五章均要求掌握五类物距对应的成像性质，并能说明照相机、投影仪、放大镜的成像原理。",
+      "en": "This experiment belongs to Grade 8 optics. Both the Jiangsu Science Edition (Grade 8, Volume 1, Chapter 3) and the People's Education Press Edition (Grade 8, Volume 1, Chapter 5) require the five object-distance cases and the principles behind cameras, projectors and magnifiers."
+    }
+  },
+  "facts": [
+    {
+      "key": {
+        "zh": "薄透镜成像公式",
+        "en": "Thin lens equation"
+      },
+      "value": {
+        "zh": "1/f = 1/u + 1/v，其中 f 为焦距、u 为物距、v 为像距",
+        "en": "1/f = 1/u + 1/v, where f is the focal length, u the object distance and v the image distance"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「透镜及其应用」；苏科版八年级上册第三章「光的折射 透镜」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "u > 2f 的成像性质",
+        "en": "Imaging for u > 2f"
+      },
+      "value": {
+        "zh": "倒立、缩小的实像，像距 f < v < 2f，应用为照相机",
+        "en": "Inverted, reduced real image with f < v < 2f, used in cameras"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；苏科版八年级上册第三章",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "u = 2f 的成像性质",
+        "en": "Imaging for u = 2f"
+      },
+      "value": {
+        "zh": "倒立、等大的实像，像距 v = 2f，可用于测量焦距",
+        "en": "Inverted, same-size real image with v = 2f, usable for measuring the focal length"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；苏科版八年级上册第三章",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "f < u < 2f 的成像性质",
+        "en": "Imaging for f < u < 2f"
+      },
+      "value": {
+        "zh": "倒立、放大的实像，像距 v > 2f，应用为投影仪、幻灯机",
+        "en": "Inverted, magnified real image with v > 2f, used in projectors and slide projectors"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；苏科版八年级上册第三章",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "u = f 的成像性质",
+        "en": "Imaging for u = f"
+      },
+      "value": {
+        "zh": "折射光平行射出，光屏上得不到清晰的像",
+        "en": "The refracted rays emerge parallel, so no sharp image forms on the screen"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；苏科版八年级上册第三章",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "u < f 的成像性质",
+        "en": "Imaging for u < f"
+      },
+      "value": {
+        "zh": "正立、放大的虚像，像与物在透镜同侧，应用为放大镜",
+        "en": "Upright, magnified virtual image on the same side as the object, used in magnifiers"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；苏科版八年级上册第三章",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; Jiangsu Science Edition Grade 8 Vol. 1, Chapter 3"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "实像与虚像的承接方式",
+        "en": "Catching real and virtual images"
+      },
+      "value": {
+        "zh": "实像由实际光线会聚而成，能用光屏承接；虚像由折射光线的反向延长线相交而成，不能用光屏承接",
+        "en": "A real image is formed by converging rays and can be caught on a screen; a virtual image is formed by backward extensions of refracted rays and cannot"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「实像和虚像」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5, section on real and virtual images"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "物距变化对像的影响",
+        "en": "Effect of changing object distance"
+      },
+      "value": {
+        "zh": "成实像时，物距变小，像距变大，像也变大；物距变大，像距变小，像也变小",
+        "en": "For real images, decreasing u increases v and the image size; increasing u decreases v and the image size"
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「凸透镜成像的规律」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5, section on the rules of convex lens imaging"
+      },
+      "tier": "A"
+    }
+  ],
+  "dataTable": {
+    "caption": {
+      "zh": "焦距 f = 10.0 cm 时物距与成像性质对照表（由 lens-core 计算生成）",
+      "en": "Object distance and image properties for f = 10.0 cm (generated by lens-core)"
+    },
+    "columns": [
+      {
+        "zh": "物距 u（cm）",
+        "en": "Object distance u (cm)"
+      },
+      {
+        "zh": "像距 v（cm）",
+        "en": "Image distance v (cm)"
+      },
+      {
+        "zh": "放大率 |v/u|",
+        "en": "Magnification |v/u|"
+      },
+      {
+        "zh": "像的性质",
+        "en": "Image properties"
+      },
+      {
+        "zh": "对应应用",
+        "en": "Application"
+      }
+    ],
+    "rows": [
+      [
+        {
+          "zh": "30.0（u > 2f）",
+          "en": "30.0 (u > 2f)"
+        },
+        {
+          "zh": "15.0",
+          "en": "15.0"
+        },
+        {
+          "zh": "0.50",
+          "en": "0.50"
+        },
+        {
+          "zh": "倒立、缩小、实像",
+          "en": "Inverted, reduced, real"
+        },
+        {
+          "zh": "照相机",
+          "en": "Camera"
+        }
+      ],
+      [
+        {
+          "zh": "25.0（u > 2f）",
+          "en": "25.0 (u > 2f)"
+        },
+        {
+          "zh": "16.7",
+          "en": "16.7"
+        },
+        {
+          "zh": "0.67",
+          "en": "0.67"
+        },
+        {
+          "zh": "倒立、缩小、实像",
+          "en": "Inverted, reduced, real"
+        },
+        {
+          "zh": "照相机",
+          "en": "Camera"
+        }
+      ],
+      [
+        {
+          "zh": "20.0（u = 2f）",
+          "en": "20.0 (u = 2f)"
+        },
+        {
+          "zh": "20.0",
+          "en": "20.0"
+        },
+        {
+          "zh": "1.00",
+          "en": "1.00"
+        },
+        {
+          "zh": "倒立、等大、实像",
+          "en": "Inverted, same size, real"
+        },
+        {
+          "zh": "测量焦距",
+          "en": "Focal-length measurement"
+        }
+      ],
+      [
+        {
+          "zh": "15.0（f < u < 2f）",
+          "en": "15.0 (f < u < 2f)"
+        },
+        {
+          "zh": "30.0",
+          "en": "30.0"
+        },
+        {
+          "zh": "2.00",
+          "en": "2.00"
+        },
+        {
+          "zh": "倒立、放大、实像",
+          "en": "Inverted, magnified, real"
+        },
+        {
+          "zh": "投影仪、幻灯机",
+          "en": "Projector, slide projector"
+        }
+      ],
+      [
+        {
+          "zh": "12.0（f < u < 2f）",
+          "en": "12.0 (f < u < 2f)"
+        },
+        {
+          "zh": "60.0",
+          "en": "60.0"
+        },
+        {
+          "zh": "5.00",
+          "en": "5.00"
+        },
+        {
+          "zh": "倒立、放大、实像",
+          "en": "Inverted, magnified, real"
+        },
+        {
+          "zh": "投影仪、幻灯机",
+          "en": "Projector, slide projector"
+        }
+      ],
+      [
+        {
+          "zh": "10.0（u = f）",
+          "en": "10.0 (u = f)"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        },
+        {
+          "zh": "不成清晰像（出射光平行）",
+          "en": "No sharp image (emergent rays are parallel)"
+        },
+        {
+          "zh": "测焦距边界",
+          "en": "Boundary case for focal length"
+        }
+      ],
+      [
+        {
+          "zh": "8.0（u < f）",
+          "en": "8.0 (u < f)"
+        },
+        {
+          "zh": "-40.0",
+          "en": "-40.0"
+        },
+        {
+          "zh": "5.00",
+          "en": "5.00"
+        },
+        {
+          "zh": "正立、放大、虚像",
+          "en": "Upright, magnified, virtual"
+        },
+        {
+          "zh": "放大镜",
+          "en": "Magnifier"
+        }
+      ],
+      [
+        {
+          "zh": "5.0（u < f）",
+          "en": "5.0 (u < f)"
+        },
+        {
+          "zh": "-10.0",
+          "en": "-10.0"
+        },
+        {
+          "zh": "2.00",
+          "en": "2.00"
+        },
+        {
+          "zh": "正立、放大、虚像",
+          "en": "Upright, magnified, virtual"
+        },
+        {
+          "zh": "放大镜",
+          "en": "Magnifier"
+        }
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "zh": "把蜡烛、凸透镜、光屏依次安装在光具座上，调节三者中心大致在同一高度，使像成在光屏中央。",
+      "en": "Mount the candle, convex lens and screen on the optical bench and adjust their centers to the same height so the image falls at the center of the screen."
+    },
+    {
+      "zh": "用平行光（如太阳光）正对凸透镜，在另一侧移动光屏找到最小最亮的光斑，光斑到透镜的距离即为焦距 f。",
+      "en": "Shine parallel light (such as sunlight) through the lens and move the screen on the other side until the smallest, brightest spot appears; its distance from the lens is the focal length f."
+    },
+    {
+      "zh": "先设置 u > 2f，前后移动光屏直到像最清晰，记录物距 u、像距 v 以及像的正倒、大小和虚实。",
+      "en": "Set u > 2f, move the screen back and forth until the image is sharpest, and record u, v, and whether the image is upright or inverted, magnified or reduced, real or virtual."
+    },
+    {
+      "zh": "依次改变物距，完成 u = 2f、f < u < 2f、u = f、u < f 四组观察，其中 u = f 与 u < f 时注意光屏上能否得到像。",
+      "en": "Repeat for u = 2f, f < u < 2f, u = f and u < f; for the last two cases check carefully whether an image can be caught on the screen."
+    },
+    {
+      "zh": "比较五组数据，归纳「一倍焦距分虚实，二倍焦距分大小」以及物距变小、像距变大、像变大的规律。",
+      "en": "Compare the five cases and summarize the rules: the focal length separates real from virtual images, twice the focal length separates magnified from reduced images, and a smaller u gives a larger v and a larger image."
+    }
+  ],
+  "misconceptions": [
+    {
+      "claim": {
+        "zh": "虚像不能用光屏承接，所以虚像不存在、眼睛也看不到。",
+        "en": "A virtual image cannot be caught on a screen, so it does not exist and cannot be seen."
+      },
+      "correction": {
+        "zh": "虚像确实不能用光屏承接，但它由进入眼睛的折射光线反向延长相交而成，眼睛可以清楚地看到。放大镜看到的正立放大像就是虚像。",
+        "en": "A virtual image indeed cannot be caught on a screen, but it is formed by backward extensions of rays entering the eye, so the eye sees it clearly. The upright magnified image in a magnifier is virtual."
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「实像和虚像」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5, real and virtual images"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "u = f 时凸透镜不成像，所以什么现象都没有。",
+        "en": "At u = f the lens forms no image at all, so nothing happens."
+      },
+      "correction": {
+        "zh": "u = f 时物体发出的光经透镜折射后平行射出，不会会聚，因此光屏上得不到清晰的像；但出射光仍然存在，只是不会聚。",
+        "en": "At u = f the refracted rays emerge parallel and never converge, so no sharp image forms on the screen; the rays still exist, they simply do not meet."
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「凸透镜成像的规律」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5, rules of convex lens imaging"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "像距越大，像一定越大。",
+        "en": "A larger image distance always means a larger image."
+      },
+      "correction": {
+        "zh": "像的大小由放大率 |v/u| 决定，要同时看像距和物距。成实像时物距变小会同时使像距变大、放大率变大，但不能只凭像距判断大小。",
+        "en": "Image size is determined by the magnification |v/u|, which depends on both v and u. For real images a smaller u increases both v and the magnification, but v alone does not determine size."
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章；薄透镜成像公式",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5; thin lens equation"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "凸透镜既能成实像也能成虚像，所以实像也可能正立。",
+        "en": "A convex lens forms both real and virtual images, so a real image can also be upright."
+      },
+      "correction": {
+        "zh": "对单个凸透镜，实像总是倒立的，虚像总是正立的。正倒与虚实在这类成像中是一一对应的。",
+        "en": "For a single convex lens, real images are always inverted and virtual images are always upright; orientation and reality correspond one-to-one in this setup."
+      },
+      "evidence": {
+        "zh": "人教版八年级上册第五章「凸透镜成像的规律」",
+        "en": "PEP Grade 8 Vol. 1, Chapter 5, rules of convex lens imaging"
+      },
+      "tier": "A"
+    }
+  ],
+  "faqs": [
+    {
+      "q": {
+        "zh": "凸透镜成像规律有什么好记的口诀？",
+        "en": "Is there a mnemonic for the convex lens imaging rules?"
+      },
+      "a": {
+        "zh": "常用口诀是「一倍焦距分虚实，二倍焦距分大小」：u > f 成实像、u < f 成虚像；u > 2f 成缩小的像、u < 2f 成放大的像（u = 2f 等大）。再记住「物近像远像变大」即可覆盖成实像时的变化趋势。",
+        "en": "A common mnemonic is: the focal length separates real from virtual, twice the focal length separates reduced from magnified. u > f gives a real image and u < f a virtual one; u > 2f is reduced and u < 2f magnified (equal at u = 2f). Add \"closer object, farther and larger image\" for the real-image trend."
+      }
+    },
+    {
+      "q": {
+        "zh": "u = 2f 时像距是多少？",
+        "en": "What is the image distance when u = 2f?"
+      },
+      "a": {
+        "zh": "由 1/f = 1/u + 1/v 代入 u = 2f，可得 v = 2f。此时成倒立、等大的实像，物距和像距相等，因此可以用「物像等大」来测量凸透镜的焦距。",
+        "en": "Substituting u = 2f into 1/f = 1/u + 1/v gives v = 2f. The image is inverted and the same size, with equal object and image distances, so this case can be used to measure the focal length."
+      }
+    },
+    {
+      "q": {
+        "zh": "为什么 u = f 时光屏上没有像？",
+        "en": "Why is there no image on the screen when u = f?"
+      },
+      "a": {
+        "zh": "因为物体位于焦点上时，物体发出的光经凸透镜折射后成为平行光，平行光不会在光屏上会聚，所以无论怎样移动光屏都得不到清晰的像。",
+        "en": "When the object sits at the focal point, the refracted rays leave the lens parallel. Parallel rays do not converge on a screen, so no sharp image can be found no matter where the screen is placed."
+      }
+    },
+    {
+      "q": {
+        "zh": "照相机、投影仪、放大镜分别对应哪一段物距？",
+        "en": "Which object-distance range corresponds to a camera, a projector and a magnifier?"
+      },
+      "a": {
+        "zh": "照相机对应 u > 2f，成倒立缩小实像；投影仪对应 f < u < 2f，成倒立放大实像；放大镜对应 u < f，成正立放大虚像。",
+        "en": "A camera uses u > 2f and forms an inverted reduced real image; a projector uses f < u < 2f and forms an inverted magnified real image; a magnifier uses u < f and forms an upright magnified virtual image."
+      }
+    },
+    {
+      "q": {
+        "zh": "实像和虚像的本质区别是什么？",
+        "en": "What is the essential difference between real and virtual images?"
+      },
+      "a": {
+        "zh": "实像由实际光线会聚而成，能用光屏承接，对单个凸透镜总是倒立的；虚像由折射光线的反向延长线相交而成，不能用光屏承接，只能用眼睛观察，对单个凸透镜总是正立的。",
+        "en": "A real image is formed by actually converging rays, can be caught on a screen, and is always inverted for a single convex lens. A virtual image is formed by backward extensions of refracted rays, cannot be caught on a screen, is viewed with the eye, and is always upright."
+      }
+    },
+    {
+      "q": {
+        "zh": "实验中为什么要调节烛焰、凸透镜、光屏的中心在同一高度？",
+        "en": "Why must the candle flame, lens and screen centers be at the same height?"
+      },
+      "a": {
+        "zh": "因为凸透镜的主光轴通过透镜中心且水平，只有三者中心在同一高度，像才会成在光屏中央。否则像会偏上或偏下，甚至移出光屏，导致找不到清晰的像。",
+        "en": "The principal axis passes horizontally through the lens center. Only when all three centers share the same height does the image fall at the center of the screen; otherwise it shifts up or down and may leave the screen entirely."
+      }
+    },
+    {
+      "q": {
+        "zh": "物距变小时，像距和像的大小怎样变化？",
+        "en": "How do image distance and image size change as the object distance decreases?"
+      },
+      "a": {
+        "zh": "成实像时，物距变小，像距变大，像也变大；这一规律可概括为「物近像远像变大」。当物距小于焦距后，转为正立放大的虚像，光屏上不再有像。",
+        "en": "For real images, decreasing u increases v and the image size: closer object, farther and larger image. Once u falls below the focal length the image becomes upright, magnified and virtual, and no image appears on the screen."
+      }
+    }
+  ],
+  "links": [
+    {
+      "href": "/subject/physics",
+      "label": {
+        "zh": "初中物理全部实验",
+        "en": "All middle-school physics labs"
+      }
+    },
+    {
+      "href": "/physics-formulas",
+      "label": {
+        "zh": "物理公式速查",
+        "en": "Physics formula reference"
+      }
+    },
+    {
+      "href": "/periodic-table",
+      "label": {
+        "zh": "元素周期表",
+        "en": "Periodic table"
+      }
+    }
+  ],
+  "breadcrumb": [
+    {
+      "href": "/",
+      "label": {
+        "zh": "首页",
+        "en": "Home"
+      }
+    },
+    {
+      "href": "/subject/physics",
+      "label": {
+        "zh": "物理",
+        "en": "Physics"
+      }
+    }
+  ],
+  "updatedAt": "2026-10-29",
+  "license": "AGPL-3.0"
+}

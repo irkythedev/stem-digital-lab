@@ -8,7 +8,7 @@
  */
 import { useLocation, useParams } from 'react-router-dom';
 import BackLink from '../components/layout/BackLink';
-import { useEffect, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../lib/app-context';
 import { translations } from '../lib/i18n';
 import { labFromPath, labHref } from '../lib/labs';
@@ -19,6 +19,8 @@ import ShareInline from '../components/share/ShareInline';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
+import { answerLayerJsonLd, type LabContent } from '../lib/lab-content-core';
+import { labContentLoader } from '../lib/lab-content-loaders';
 
 export default function LabPage() {
   const { labId } = useParams<{ labId: string }>();
@@ -29,7 +31,27 @@ export default function LabPage() {
   const lab = labFromPath(location.pathname) ?? (labId ? labFromPath(`/lab/${labId}`) : undefined);
   const canonicalLabId = lab?.id ?? labId;
   const { setAiCtx } = useAiContext();
-  // 路由级 meta：标题/描述 + LearningResource 结构化数据
+  // 已接入 GEO 内容层的实验：JSON-LD 由 content 统一生成，未接入的沿用 LearningResource 兜底。
+  // 内容按 id 动态加载，避免 LabPage 这个共用入口把所有页面的 JSON 一起打进同一 chunk。
+  const [labContent, setLabContent] = useState<LabContent>();
+  const contentLabId = lab?.id;
+  useEffect(() => {
+    setLabContent(undefined);
+    const load = contentLabId ? labContentLoader(contentLabId) : undefined;
+    if (!load) return;
+    let cancelled = false;
+    load()
+      .then((content) => {
+        if (!cancelled) setLabContent(content);
+      })
+      .catch(() => {
+        // 内容缺失只影响 JSON-LD，继续用 LearningResource 兜底即可
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contentLabId]);
+  // 路由级 meta：标题/描述 + 结构化数据
   const pageMeta = useMemo(() => {
     if (!lab) return null;
     const url = `https://stem.irky.dev${labHref(lab)}`;
@@ -38,16 +60,18 @@ export default function LabPage() {
       description: lang === 'zh'
         ? `${lab.name.zh}实验：${lab.description.zh}。在线交互探究，无需登录，免费使用。`
         : `${lab.name.en} lab: ${lab.description.en}. Interactive, no login, free to use.`,
-      jsonLd: learningResourceLd({
-        name: lang === 'zh' ? lab.name.zh : lab.name.en,
-        description: lang === 'zh' ? lab.description.zh : lab.description.en,
-        url,
-        educationalLevel: lang === 'zh'
-          ? `初中 ${subjects[lab.subjectId].gradeZh}`
-          : `Grades ${subjects[lab.subjectId].gradeEn}`,
-      }),
+      jsonLd: labContent
+        ? answerLayerJsonLd(labContent, lang)
+        : learningResourceLd({
+            name: lang === 'zh' ? lab.name.zh : lab.name.en,
+            description: lang === 'zh' ? lab.description.zh : lab.description.en,
+            url,
+            educationalLevel: lang === 'zh'
+              ? `初中 ${subjects[lab.subjectId].gradeZh}`
+              : `Grades ${subjects[lab.subjectId].gradeEn}`,
+          }),
     };
-  }, [lab, lang, t.brandName]);
+  }, [lab, lang, t.brandName, labContent]);
   usePageMeta(pageMeta);
   // AI 上下文：注入当前实验的名称/描述/章节
   useEffect(() => {
@@ -150,7 +174,15 @@ export default function LabPage() {
             ? '建议流程：先预测，再自由探索，最后完成结论。你可以随时返回任意阶段。'
             : 'Suggested flow: predict, explore freely, then conclude. You can revisit any stage at any time.'}
       </p>
-      <Lab />
+      <Suspense
+        fallback={
+          <div className="py-24 text-center text-sm text-[var(--muted)] mono-font" aria-busy="true">
+            …
+          </div>
+        }
+      >
+        <Lab />
+      </Suspense>
     </main>
   );
 }

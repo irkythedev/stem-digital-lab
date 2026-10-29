@@ -17,7 +17,7 @@
 import assert from 'node:assert';
 import type { TestFn } from './harness';
 import {
-  FEEDBACK_LIMIT, loadFeedback, removeFeedback, saveFeedback, type FeedbackRecord,
+  FEEDBACK_LIMIT, flushFeedbackQueue, loadFeedback, removeFeedback, saveFeedback, type FeedbackRecord,
 } from '../lib/feedback';
 
 export function registerFeedbackQueueStorageTests(test: TestFn): void {
@@ -69,6 +69,33 @@ export function registerFeedbackQueueStorageTests(test: TestFn): void {
       // 最新一条保留，最旧的 0~4 被丢弃
       assert.ok(list.some((r) => r.message === `反馈${FEEDBACK_LIMIT + 4}`));
       assert.ok(!list.some((r) => r.message === '反馈0'));
+    } finally {
+      mem.clear();
+      restoreWindow();
+    }
+  });
+
+  test('flush after an empty flush still sends records queued later', async () => {
+    installMockWindow();
+    try {
+      let posts = 0;
+      // 成功响应：只有真正发出请求才会删除队列记录。
+      (globalThis as any).fetch = async () => {
+        posts += 1;
+        return new Response(JSON.stringify({ code: 0 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      };
+      // 空队列补传一次：旧实现会把已完成的 Promise 留在 flushing，
+      // 导致之后联网补传直接复用它，新记录永远发不出去。
+      await flushFeedbackQueue();
+      assert.equal(posts, 0);
+
+      saveFeedback(record(7));
+      await flushFeedbackQueue();
+      assert.equal(posts, 1, '空补传之后的新记录必须仍能补传');
+      assert.equal(loadFeedback().length, 0, '发送成功后应出队');
     } finally {
       mem.clear();
       restoreWindow();

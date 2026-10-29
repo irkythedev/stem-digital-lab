@@ -14,6 +14,8 @@ const copy = {
     title: '使用说明',
     backHome: '返回',
     intro: '这是一个本地运行的初中 STEM 数字探究空间，不需要登录。首页「每日科学」每天展示一位科学家的名言与小故事。',
+    videoHint: '宣传视频约 19 MB，需要联网播放；离线时只显示封面，不影响下方功能。',
+    videoOffline: '当前离线：宣传视频需要联网播放，封面和下方内容仍可查看。',
     flow: '基本流程与课堂建议',
     steps: ['选择学科或工具区，或点首页「随机探索」', '进入实验页或工具页', '实验：预测 → 探索 → 结论', '工具：自由使用，不走三幕式'],
     teaching: '教师演示建议',
@@ -85,6 +87,8 @@ const copy = {
     title: 'How to use',
     backHome: 'Back',
     intro: 'A local middle-school STEM exploration space — no login needed. The homepage Daily Science block shares a scientist quote and story each day.',
+    videoHint: 'The intro video is about 19 MB and needs a connection; offline you will only see the poster, and everything below still works.',
+    videoOffline: 'You are offline: the intro video needs a connection. The poster and everything below remain available.',
     flow: 'Basic flow & classroom tips',
     steps: ['Choose a subject or the tools area, or hit "Random explore"', 'Open a lab page or a tool page', 'Labs: Predict → Explore → Conclude', 'Tools: free to use, no three acts'],
     teaching: 'Teaching suggestion',
@@ -164,7 +168,7 @@ export function splitSentences(text: string): string[] {
 }
 
 export default function GuidePage() {
-  const { lang } = useApp();
+  const { lang, isOffline } = useApp();
   usePageMeta({ title: `${lang === 'zh' ? '使用说明' : 'Guide'} - ${lang === 'zh' ? '数理化数字实验室' : 'STEM Digital Lab'}` });
   const c = copy[lang];
   return (
@@ -192,12 +196,15 @@ export default function GuidePage() {
           controls
           preload="none"
           playsInline
-          poster="/videos/stem-intro-poster.webp?v=1"
+          poster="/videos/stem-intro-poster.webp"
           className="h-full w-full object-cover"
         >
           <source src="/videos/stem-intro.mp4?v=62b8afe7" type="video/mp4" />
         </video>
         </div>
+        <figcaption className="px-1 pt-2 text-xs leading-relaxed text-[var(--muted)]">
+          {isOffline ? c.videoOffline : c.videoHint}
+        </figcaption>
       </figure>
 
       {/* 视频下方三层结构：双栏等高 → 全宽操作分组 → AI 与错题闭环（含紧凑免责）→ 单行页脚。

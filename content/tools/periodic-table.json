@@ -1,0 +1,943 @@
+{
+  "id": "periodic-table",
+  "canonical": "https://stem.irky.dev/periodic-table",
+  "name": {
+    "zh": "元素周期表",
+    "en": "Periodic Table"
+  },
+  "aliases": [
+    {
+      "zh": "化学元素周期表",
+      "en": "Periodic table of the elements"
+    },
+    {
+      "zh": "118 个元素",
+      "en": "All 118 elements"
+    },
+    {
+      "zh": "前20号元素",
+      "en": "First 20 elements"
+    },
+    {
+      "zh": "元素周期律",
+      "en": "Periodic law"
+    }
+  ],
+  "curriculum": [
+    {
+      "edition": {
+        "zh": "人教版",
+        "en": "People's Education Press Edition"
+      },
+      "grade": {
+        "zh": "九年级上册",
+        "en": "Grade 9, Volume 1"
+      },
+      "chapter": {
+        "zh": "第三单元 物质构成的奥秘 课题3 元素",
+        "en": "Unit 3: The Structure of Matter, Lesson 3: Elements"
+      }
+    },
+    {
+      "edition": {
+        "zh": "沪教版（江苏地区使用）",
+        "en": "Shanghai Education Press Edition (used in Jiangsu)"
+      },
+      "grade": {
+        "zh": "九年级上册",
+        "en": "Grade 9, Volume 1"
+      },
+      "chapter": {
+        "zh": "第3章 物质构成的奥秘",
+        "en": "Chapter 3: The Structure of Matter"
+      }
+    }
+  ],
+  "summary": {
+    "zh": "元素周期表把 118 种元素按原子序数递增排列成七个周期、十八个纵列，同一周期电子层数相同，同一主族最外层电子数相同，是初中化学判断元素种类、化合价与金属性的基础工具，也是后续学习化学方程式、化合价与物质分类的起点。",
+    "en": "The periodic table arranges all 118 elements by increasing atomic number into seven periods and eighteen columns. Elements in the same period share the same number of electron shells, and elements in the same main group share the same number of valence electrons, making it a basic tool for element type, valence and metallic character."
+  },
+  "answer": {
+    "what": {
+      "zh": "元素周期表是按原子序数（即核电荷数）从小到大排列的元素总表。每一横行称为一个周期，每一纵列称为一个族；元素在表中的位置由原子的电子层数和最外层电子数决定，因此周期表既是元素清单，也是原子结构的图形化表达。",
+      "en": "The periodic table lists the elements in increasing atomic number (nuclear charge). Each horizontal row is a period and each vertical column is a group. An element's position is determined by its number of electron shells and valence electrons, so the table is both an element list and a graphical representation of atomic structure."
+    },
+    "observe": {
+      "zh": "横看周期：从左到右原子序数递增，电子层数相同，最外层电子数逐渐增加，金属性减弱、非金属性增强。纵看主族：从上到下电子层数增加，最外层电子数相同，原子半径增大，金属性增强。表中还能直接读出元素符号、中文名称、相对原子质量和元素类别。",
+      "en": "Across a period, atomic number increases, the number of shells stays the same, valence electrons increase, and metallic character weakens while non-metallic character strengthens. Down a main group, the number of shells increases, valence electrons stay the same, atomic radius grows, and metallic character strengthens. The table also gives each element's symbol, Chinese name, relative atomic mass and category."
+    },
+    "grade": {
+      "zh": "元素周期表是九年级化学的开篇工具，人教版九年级上册第三单元、沪教版九年级上册第3章都要求记住常见元素符号与名称，理解周期、族的含义，并能根据原子结构推断元素在表中的位置。",
+      "en": "The periodic table is an introductory tool in Grade 9 chemistry. Both the PEP Edition (Grade 9, Volume 1, Unit 3) and the Shanghai Education Press Edition (Grade 9, Volume 1, Chapter 3) require common symbols and names, the meaning of periods and groups, and the ability to locate an element from its atomic structure."
+    }
+  },
+  "facts": [
+    {
+      "key": {
+        "zh": "周期表的排列依据",
+        "en": "Ordering principle"
+      },
+      "value": {
+        "zh": "按原子序数（质子数）由小到大排列，原子序数 = 质子数 = 核电荷数",
+        "en": "Elements are ordered by increasing atomic number (number of protons), which equals the nuclear charge"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "周期与电子层数的关系",
+        "en": "Periods and electron shells"
+      },
+      "value": {
+        "zh": "元素所在的周期数等于该元素原子的电子层数",
+        "en": "The period number equals the number of electron shells in the atom"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "主族与最外层电子数的关系",
+        "en": "Main groups and valence electrons"
+      },
+      "value": {
+        "zh": "主族元素的族序数等于该元素原子的最外层电子数",
+        "en": "For main-group elements, the group number equals the number of valence electrons"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "元素种类的决定因素",
+        "en": "What determines an element"
+      },
+      "value": {
+        "zh": "元素的种类由质子数决定，质子数相同的一类原子总称为同一种元素",
+        "en": "An element is determined by its proton number; atoms with the same number of protons belong to the same element"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "相对原子质量的近似计算",
+        "en": "Approximate relative atomic mass"
+      },
+      "value": {
+        "zh": "相对原子质量 ≈ 质子数 + 中子数，单位为 1，不是原子的实际质量",
+        "en": "Relative atomic mass is approximately protons plus neutrons; it is a dimensionless ratio, not an actual mass"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题2「原子的结构」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 2, Structure of the Atom"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "金属与非金属的分界",
+        "en": "Metals and non-metals"
+      },
+      "value": {
+        "zh": "元素周期表中金属元素位于左下方，非金属元素位于右上方，分界线附近的元素常表现两性",
+        "en": "Metals lie toward the lower left, non-metals toward the upper right, and elements near the dividing line often show intermediate behaviour"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "稀有气体的稳定性",
+        "en": "Stability of noble gases"
+      },
+      "value": {
+        "zh": "稀有气体原子的最外层已达到稳定结构（氦为 2 电子，其余为 8 电子），化学性质很不活泼",
+        "en": "Noble gas atoms have a stable valence shell (2 electrons for helium, 8 for the others), so they are chemically inert"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "周期表的提出者",
+        "en": "Origin of the table"
+      },
+      "value": {
+        "zh": "门捷列夫于 1869 年提出元素周期律并编制元素周期表",
+        "en": "Mendeleev proposed the periodic law and published a periodic table in 1869"
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    }
+  ],
+  "dataTable": {
+    "caption": {
+      "zh": "前 20 号元素速查表（原子序数、符号、名称、相对原子质量、类别、最外层电子数）",
+      "en": "First 20 elements quick reference (atomic number, symbol, name, relative atomic mass, category, valence electrons)"
+    },
+    "columns": [
+      {
+        "zh": "原子序数",
+        "en": "Atomic number"
+      },
+      {
+        "zh": "符号",
+        "en": "Symbol"
+      },
+      {
+        "zh": "中文名",
+        "en": "Chinese name"
+      },
+      {
+        "zh": "相对原子质量",
+        "en": "Relative atomic mass"
+      },
+      {
+        "zh": "类别",
+        "en": "Category"
+      },
+      {
+        "zh": "最外层电子数",
+        "en": "Valence electrons"
+      }
+    ],
+    "rows": [
+      [
+        {
+          "zh": "1",
+          "en": "1"
+        },
+        {
+          "zh": "H",
+          "en": "H"
+        },
+        {
+          "zh": "氢",
+          "en": "Hydrogen"
+        },
+        {
+          "zh": "1",
+          "en": "1"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "1",
+          "en": "1"
+        }
+      ],
+      [
+        {
+          "zh": "2",
+          "en": "2"
+        },
+        {
+          "zh": "He",
+          "en": "He"
+        },
+        {
+          "zh": "氦",
+          "en": "Helium"
+        },
+        {
+          "zh": "4",
+          "en": "4"
+        },
+        {
+          "zh": "稀有气体",
+          "en": "Noble gas"
+        },
+        {
+          "zh": "2",
+          "en": "2"
+        }
+      ],
+      [
+        {
+          "zh": "3",
+          "en": "3"
+        },
+        {
+          "zh": "Li",
+          "en": "Li"
+        },
+        {
+          "zh": "锂",
+          "en": "Lithium"
+        },
+        {
+          "zh": "6.9",
+          "en": "6.9"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "1",
+          "en": "1"
+        }
+      ],
+      [
+        {
+          "zh": "4",
+          "en": "4"
+        },
+        {
+          "zh": "Be",
+          "en": "Be"
+        },
+        {
+          "zh": "铍",
+          "en": "Beryllium"
+        },
+        {
+          "zh": "9",
+          "en": "9"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "2",
+          "en": "2"
+        }
+      ],
+      [
+        {
+          "zh": "5",
+          "en": "5"
+        },
+        {
+          "zh": "B",
+          "en": "B"
+        },
+        {
+          "zh": "硼",
+          "en": "Boron"
+        },
+        {
+          "zh": "10.8",
+          "en": "10.8"
+        },
+        {
+          "zh": "类金属",
+          "en": "Metalloid"
+        },
+        {
+          "zh": "3",
+          "en": "3"
+        }
+      ],
+      [
+        {
+          "zh": "6",
+          "en": "6"
+        },
+        {
+          "zh": "C",
+          "en": "C"
+        },
+        {
+          "zh": "碳",
+          "en": "Carbon"
+        },
+        {
+          "zh": "12",
+          "en": "12"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "4",
+          "en": "4"
+        }
+      ],
+      [
+        {
+          "zh": "7",
+          "en": "7"
+        },
+        {
+          "zh": "N",
+          "en": "N"
+        },
+        {
+          "zh": "氮",
+          "en": "Nitrogen"
+        },
+        {
+          "zh": "14",
+          "en": "14"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "5",
+          "en": "5"
+        }
+      ],
+      [
+        {
+          "zh": "8",
+          "en": "8"
+        },
+        {
+          "zh": "O",
+          "en": "O"
+        },
+        {
+          "zh": "氧",
+          "en": "Oxygen"
+        },
+        {
+          "zh": "16",
+          "en": "16"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "6",
+          "en": "6"
+        }
+      ],
+      [
+        {
+          "zh": "9",
+          "en": "9"
+        },
+        {
+          "zh": "F",
+          "en": "F"
+        },
+        {
+          "zh": "氟",
+          "en": "Fluorine"
+        },
+        {
+          "zh": "19",
+          "en": "19"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "7",
+          "en": "7"
+        }
+      ],
+      [
+        {
+          "zh": "10",
+          "en": "10"
+        },
+        {
+          "zh": "Ne",
+          "en": "Ne"
+        },
+        {
+          "zh": "氖",
+          "en": "Neon"
+        },
+        {
+          "zh": "20.2",
+          "en": "20.2"
+        },
+        {
+          "zh": "稀有气体",
+          "en": "Noble gas"
+        },
+        {
+          "zh": "8",
+          "en": "8"
+        }
+      ],
+      [
+        {
+          "zh": "11",
+          "en": "11"
+        },
+        {
+          "zh": "Na",
+          "en": "Na"
+        },
+        {
+          "zh": "钠",
+          "en": "Sodium"
+        },
+        {
+          "zh": "23",
+          "en": "23"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "1",
+          "en": "1"
+        }
+      ],
+      [
+        {
+          "zh": "12",
+          "en": "12"
+        },
+        {
+          "zh": "Mg",
+          "en": "Mg"
+        },
+        {
+          "zh": "镁",
+          "en": "Magnesium"
+        },
+        {
+          "zh": "24",
+          "en": "24"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "2",
+          "en": "2"
+        }
+      ],
+      [
+        {
+          "zh": "13",
+          "en": "13"
+        },
+        {
+          "zh": "Al",
+          "en": "Al"
+        },
+        {
+          "zh": "铝",
+          "en": "Aluminium"
+        },
+        {
+          "zh": "27",
+          "en": "27"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "3",
+          "en": "3"
+        }
+      ],
+      [
+        {
+          "zh": "14",
+          "en": "14"
+        },
+        {
+          "zh": "Si",
+          "en": "Si"
+        },
+        {
+          "zh": "硅",
+          "en": "Silicon"
+        },
+        {
+          "zh": "28",
+          "en": "28"
+        },
+        {
+          "zh": "类金属",
+          "en": "Metalloid"
+        },
+        {
+          "zh": "4",
+          "en": "4"
+        }
+      ],
+      [
+        {
+          "zh": "15",
+          "en": "15"
+        },
+        {
+          "zh": "P",
+          "en": "P"
+        },
+        {
+          "zh": "磷",
+          "en": "Phosphorus"
+        },
+        {
+          "zh": "31",
+          "en": "31"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "5",
+          "en": "5"
+        }
+      ],
+      [
+        {
+          "zh": "16",
+          "en": "16"
+        },
+        {
+          "zh": "S",
+          "en": "S"
+        },
+        {
+          "zh": "硫",
+          "en": "Sulfur"
+        },
+        {
+          "zh": "32",
+          "en": "32"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "6",
+          "en": "6"
+        }
+      ],
+      [
+        {
+          "zh": "17",
+          "en": "17"
+        },
+        {
+          "zh": "Cl",
+          "en": "Cl"
+        },
+        {
+          "zh": "氯",
+          "en": "Chlorine"
+        },
+        {
+          "zh": "35.5",
+          "en": "35.5"
+        },
+        {
+          "zh": "非金属",
+          "en": "Non-metal"
+        },
+        {
+          "zh": "7",
+          "en": "7"
+        }
+      ],
+      [
+        {
+          "zh": "18",
+          "en": "18"
+        },
+        {
+          "zh": "Ar",
+          "en": "Ar"
+        },
+        {
+          "zh": "氩",
+          "en": "Argon"
+        },
+        {
+          "zh": "39.9",
+          "en": "39.9"
+        },
+        {
+          "zh": "稀有气体",
+          "en": "Noble gas"
+        },
+        {
+          "zh": "8",
+          "en": "8"
+        }
+      ],
+      [
+        {
+          "zh": "19",
+          "en": "19"
+        },
+        {
+          "zh": "K",
+          "en": "K"
+        },
+        {
+          "zh": "钾",
+          "en": "Potassium"
+        },
+        {
+          "zh": "39",
+          "en": "39"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "1",
+          "en": "1"
+        }
+      ],
+      [
+        {
+          "zh": "20",
+          "en": "20"
+        },
+        {
+          "zh": "Ca",
+          "en": "Ca"
+        },
+        {
+          "zh": "钙",
+          "en": "Calcium"
+        },
+        {
+          "zh": "40",
+          "en": "40"
+        },
+        {
+          "zh": "金属",
+          "en": "Metal"
+        },
+        {
+          "zh": "2",
+          "en": "2"
+        }
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "zh": "先看原子序数：每格左上角的小数字就是原子序数，等于该元素的质子数。",
+      "en": "Read the atomic number first: the small number at the top-left of each cell equals the element's proton number."
+    },
+    {
+      "zh": "再读行列：横行是周期，周期数等于电子层数；纵列是族，主族序数等于最外层电子数。",
+      "en": "Then read the row and column: a row is a period whose number equals the number of electron shells; a column is a group whose main-group number equals the valence electron count."
+    },
+    {
+      "zh": "看元素符号与中文名：符号首字母大写、第二个字母小写，中文名多为单字，金属元素常带「钅」旁。",
+      "en": "Check the symbol and Chinese name: the first letter is uppercase and the second lowercase; Chinese names are usually one character, and metals often carry the metal radical."
+    },
+    {
+      "zh": "结合原子结构：由质子数和电子层数定位元素，再由最外层电子数推断常见化合价与金属性、非金属性。",
+      "en": "Combine with atomic structure: locate the element from protons and shells, then infer common valence and metallic or non-metallic character from the valence electrons."
+    }
+  ],
+  "misconceptions": [
+    {
+      "claim": {
+        "zh": "元素的相对原子质量就是该原子的实际质量。",
+        "en": "The relative atomic mass is the actual mass of the atom."
+      },
+      "correction": {
+        "zh": "相对原子质量是以碳-12 原子质量的 1/12 为标准比较得到的比值，单位为一，不是克或千克。原子的实际质量极小，通常在 10⁻²⁷ kg 量级。",
+        "en": "Relative atomic mass is a ratio measured against 1/12 of a carbon-12 atom and is dimensionless. The actual mass of an atom is extremely small, on the order of 10⁻²⁷ kg."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题2「原子的结构」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 2, Structure of the Atom"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "元素在周期表中的周期数等于最外层电子数。",
+        "en": "The period number equals the number of valence electrons."
+      },
+      "correction": {
+        "zh": "周期数等于电子层数，主族序数才等于最外层电子数。例如钠有 3 个电子层、最外层 1 个电子，位于第三周期第ⅠA 族。",
+        "en": "The period number equals the number of electron shells, while the main-group number equals the valence electrons. Sodium has 3 shells and 1 valence electron, so it sits in period 3, group IA."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "原子序数相同的原子，中子数也一定相同。",
+        "en": "Atoms with the same atomic number must have the same number of neutrons."
+      },
+      "correction": {
+        "zh": "原子序数只决定质子数，中子数可以不同，这类原子互为同位素。元素的种类由质子数决定，与中子数无关。",
+        "en": "Atomic number fixes only the proton count; neutron counts can differ, giving isotopes. An element is defined by protons, not neutrons."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题1「分子和原子」、课题2「原子的结构」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lessons 1–2"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "稀有气体化学性质稳定，所以它们绝对不能发生化学反应。",
+        "en": "Noble gases are chemically inert, so they can never react."
+      },
+      "correction": {
+        "zh": "稀有气体最外层已达稳定结构，化学性质很不活泼，在初中范围内通常不参与反应；但在特定条件下，氙、氪等仍可形成化合物。",
+        "en": "Noble gases have a stable valence shell and are very unreactive, and at middle-school level they are treated as non-reacting; under special conditions xenon and krypton can still form compounds."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第三单元课题3「元素」",
+        "en": "PEP Grade 9 Vol. 1, Unit 3, Lesson 3, Elements"
+      },
+      "tier": "A"
+    }
+  ],
+  "faqs": [
+    {
+      "q": {
+        "zh": "元素周期表应该怎么读？",
+        "en": "How should the periodic table be read?"
+      },
+      "a": {
+        "zh": "先读原子序数（左上角），再读元素符号和中文名，然后看相对原子质量（通常标在下方）。定位时先看横行（周期）确定电子层数，再看纵列（族）确定最外层电子数。",
+        "en": "Read the atomic number at the top-left, then the symbol and Chinese name, then the relative atomic mass usually shown below. To locate an element, read the row (period) for the number of shells, then the column (group) for the valence electron count."
+      }
+    },
+    {
+      "q": {
+        "zh": "周期和族分别表示什么？",
+        "en": "What do periods and groups represent?"
+      },
+      "a": {
+        "zh": "周期是周期表中的横行，周期数等于原子核外的电子层数；族是纵列，主族元素的族序数等于最外层电子数。周期反映电子层数，族反映最外层电子数，二者共同决定元素在表中的位置。",
+        "en": "A period is a horizontal row and its number equals the number of electron shells. A group is a vertical column and, for main-group elements, its number equals the valence electron count. Together they fix an element's position."
+      }
+    },
+    {
+      "q": {
+        "zh": "初中需要记住哪些元素？",
+        "en": "Which elements must middle-school students know?"
+      },
+      "a": {
+        "zh": "中考通常要求熟练掌握前 20 号元素的符号与名称，以及铁、铜、锌、银、钡、碘等常见元素。记忆时可按「氢氦锂铍硼，碳氮氧氟氖，钠镁铝硅磷，硫氯氩钾钙」的顺序背诵。",
+        "en": "Middle-school exams usually require the first 20 elements plus common ones such as iron, copper, zinc, silver, barium and iodine. A common Chinese recitation order groups them by period: H He Li Be B, C N O F Ne, Na Mg Al Si P, S Cl Ar K Ca."
+      }
+    },
+    {
+      "q": {
+        "zh": "相对原子质量是怎么来的？",
+        "en": "Where does relative atomic mass come from?"
+      },
+      "a": {
+        "zh": "相对原子质量以一种碳-12 原子质量的 1/12 作为标准，其他原子的质量与它相比所得的比值就是相对原子质量。它约等于质子数与中子数之和，单位为一。",
+        "en": "Relative atomic mass compares an atom's mass with 1/12 of the mass of a carbon-12 atom. It is approximately the sum of protons and neutrons and has no unit."
+      }
+    },
+    {
+      "q": {
+        "zh": "怎样判断一种元素是金属还是非金属？",
+        "en": "How can you tell whether an element is a metal or a non-metal?"
+      },
+      "a": {
+        "zh": "看元素名称的偏旁是初中阶段最直接的方法：带「钅」旁的通常是金属（如钠、镁、铝、铁），带「石」「气」「氵」旁的通常是非金属（如碳、氧、溴）。也可看它在周期表中的位置，金属集中在左下方。",
+        "en": "At middle-school level the Chinese radical is the quickest clue: the metal radical usually marks a metal (sodium, magnesium, aluminium, iron), while the stone, gas or water radicals mark non-metals (carbon, oxygen, bromine). Position in the table also helps: metals cluster toward the lower left."
+      }
+    },
+    {
+      "q": {
+        "zh": "为什么稀有气体的化学性质很稳定？",
+        "en": "Why are noble gases so unreactive?"
+      },
+      "a": {
+        "zh": "因为稀有气体原子的最外层电子已经达到稳定结构：氦最外层有 2 个电子，其余稀有气体最外层有 8 个电子。它们既不容易失去电子，也不容易得到电子，因此化学性质很不活泼。",
+        "en": "Noble gas atoms already have a stable valence shell: helium has 2 valence electrons and the others have 8. They tend neither to lose nor to gain electrons easily, so they are chemically inert."
+      }
+    },
+    {
+      "q": {
+        "zh": "元素周期表是谁提出的？",
+        "en": "Who proposed the periodic table?"
+      },
+      "a": {
+        "zh": "俄国化学家门捷列夫在 1869 年提出元素周期律，并按相对原子质量排列元素，编制了第一张现代意义上的元素周期表，还预言了当时尚未发现的元素及其性质。",
+        "en": "The Russian chemist Dmitri Mendeleev proposed the periodic law in 1869, arranged elements by relative atomic mass, produced the first modern periodic table, and predicted the properties of elements not yet discovered."
+      }
+    }
+  ],
+  "links": [
+    {
+      "href": "/subject/chemistry",
+      "label": {
+        "zh": "初中化学全部实验",
+        "en": "All middle-school chemistry labs"
+      }
+    },
+    {
+      "href": "/lab/metal-activity",
+      "label": {
+        "zh": "金属活动性顺序",
+        "en": "Metal activity series"
+      }
+    },
+    {
+      "href": "/lab/electrolysis",
+      "label": {
+        "zh": "电解水实验",
+        "en": "Electrolysis of water"
+      }
+    }
+  ],
+  "breadcrumb": [
+    {
+      "href": "/",
+      "label": {
+        "zh": "首页",
+        "en": "Home"
+      }
+    },
+    {
+      "href": "/subject/chemistry",
+      "label": {
+        "zh": "化学",
+        "en": "Chemistry"
+      }
+    }
+  ],
+  "updatedAt": "2026-10-29",
+  "license": "AGPL-3.0"
+}

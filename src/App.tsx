@@ -4,8 +4,8 @@
  *
  * 应用外壳：路由 + 全局 Provider。
  */
-import { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/app-context';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -13,19 +13,25 @@ import FeedbackFab from './components/feedback/FeedbackFab';
 import AiAssistant from './components/ai/AiAssistant';
 import WelcomeDialog from './components/ui/WelcomeDialog';
 import WechatShareOverlay from './components/share/WechatShareOverlay';
+import AppErrorBoundary from './components/AppErrorBoundary';
 import { AiProvider } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
-import HomePage from './pages/HomePage';
-import SubjectPage from './pages/SubjectPage';
-import LabPage from './pages/LabPage';
-import NotFoundPage from './pages/NotFoundPage';
-import GuidePage from './pages/GuidePage';
-import PeriodicTable from './pages/PeriodicTable';
-import PhysicalConstants from './pages/PhysicalConstants';
-import MathFormulas from './pages/MathFormulas';
-import PhysicsFormulas from './pages/PhysicsFormulas';
-import LicensePage from './pages/LicensePage';
-import TtsTestPage from './pages/TtsTestPage';
+import { installFeedbackAutoFlush } from './lib/feedback-auto-flush';
+/**
+ * 路由页面一律按需加载：主入口只保留应用外壳（导航、AI 助手、反馈）。
+ * 页面自带的 GEO JSON 与重型组件因此落在各自 chunk，不会撑大首屏主包。
+ */
+const HomePage = lazy(() => import('./pages/HomePage'));
+const SubjectPage = lazy(() => import('./pages/SubjectPage'));
+const LabPage = lazy(() => import('./pages/LabPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const GuidePage = lazy(() => import('./pages/GuidePage'));
+const PeriodicTable = lazy(() => import('./pages/PeriodicTable'));
+const PhysicalConstants = lazy(() => import('./pages/PhysicalConstants'));
+const MathFormulas = lazy(() => import('./pages/MathFormulas'));
+const PhysicsFormulas = lazy(() => import('./pages/PhysicsFormulas'));
+const LicensePage = lazy(() => import('./pages/LicensePage'));
+const TtsTestPage = lazy(() => import('./pages/TtsTestPage'));
 
 /** 无障碍跳转链接：键盘用户 Tab 到第一个焦点即可跳过导航直达内容（仅聚焦时可见） */
 function SkipLink() {
@@ -40,10 +46,29 @@ function SkipLink() {
   );
 }
 
+/** 路由 chunk 加载中的轻量占位：不再留一块无提示空白 */
+function RouteLoading() {
+  const { t } = useApp();
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="flex flex-1 items-center justify-center py-16 text-sm text-[var(--muted)]"
+    >
+      {t.appShell.loading}
+    </div>
+  );
+}
+
 export default function App() {
-  // 页面加载时自动补传本地待发反馈队列（未配置/离线时静默跳过）
+  // 路由变化时重建错误边界：某一页 chunk 失败后，点导航去已缓存的页面仍应能打开，
+  // 而不是被上一次的错误状态永久锁在提示页。
+  const location = useLocation();
+  // 页面加载时补传一次；之后联网或从后台回到前台时继续补传，卸载时移除监听。
   useEffect(() => {
     void flushFeedbackQueue();
+    return installFeedbackAutoFlush(window);
   }, []);
 
   // 首开欢迎弹窗：localStorage 标记 'stem-welcome-seen' 不存在时显示
@@ -94,6 +119,8 @@ export default function App() {
             flex-1 让这一列吃掉页头与页脚之间的全部剩余高度，
             否则 justify-between 会把空白摊在页头下方，形成一条突兀的断层。 */}
         <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 sm:px-6 lg:max-w-5xl lg:px-8 xl:max-w-6xl 2xl:max-w-7xl">
+          <AppErrorBoundary resetKey={location.pathname}>
+          <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/guide" element={<GuidePage />} />
@@ -110,6 +137,8 @@ export default function App() {
             <Route path="/physics/circuit-bench" element={<Navigate to="/circuit-bench" replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          </Suspense>
+          </AppErrorBoundary>
         </div>
         <Footer />
         <WechatShareOverlay />

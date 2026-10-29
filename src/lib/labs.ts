@@ -16,27 +16,34 @@
  * 隐藏实验：从 labs 数组移除即可（文件保留在 src/labs/ 下）。
  * 当前隐藏：pythagorean（勾股定理）——实验流程已转向函数类三幕式探究。
  */
-import type { ComponentType } from 'react';
+import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { SubjectId } from './subjects';
 import type { LabIconProps } from '../components/ui/LabIcon';
 import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, CircuitBenchIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
-import Quadratic from '../labs/math/Quadratic';
-import Inverse from '../labs/math/Inverse';
-import Linear from '../labs/math/Linear';
-import Ohm from '../labs/physics/Ohm';
-import Circuits from '../labs/physics/Circuits';
-import CircuitBench from '../labs/physics/circuit-bench/CircuitBench';
 import CircuitEngineBadge from '../labs/physics/circuit-bench/CircuitEngineBadge';
-import Neutralization from '../labs/chemistry/Neutralization';
-import Lens from '../labs/physics/Lens';
-import Circle from '../labs/math/Circle';
-import MassConservation from '../labs/chemistry/MassConservation';
-import Buoyancy from '../labs/physics/Buoyancy';
-import Lever from '../labs/physics/Lever';
-import Pressure from '../labs/physics/Pressure';
-import Pulley from '../labs/physics/Pulley';
-import Electrolysis from '../labs/chemistry/Electrolysis';
-import MetalActivity from '../labs/chemistry/MetalActivity';
+
+/**
+ * 实验组件一律按路由懒加载：
+ *   - 主入口只保留注册表元信息，不再带上 16 个实验的代码与各页 GEO JSON；
+ *   - 每个实验（含它自己 content/ 下的 JSON）落在独立 chunk，进入实验页才下载。
+ * 注册表只读取元信息（名称/图标/描述），组件字段只有 LabPage 真正渲染时才会求值。
+ */
+const Quadratic = lazy(() => import('../labs/math/Quadratic'));
+const Inverse = lazy(() => import('../labs/math/Inverse'));
+const Linear = lazy(() => import('../labs/math/Linear'));
+const Ohm = lazy(() => import('../labs/physics/Ohm'));
+const Circuits = lazy(() => import('../labs/physics/Circuits'));
+const CircuitBench = lazy(() => import('../labs/physics/circuit-bench/CircuitBench'));
+const Neutralization = lazy(() => import('../labs/chemistry/Neutralization'));
+const Lens = lazy(() => import('../labs/physics/Lens'));
+const Circle = lazy(() => import('../labs/math/Circle'));
+const MassConservation = lazy(() => import('../labs/chemistry/MassConservation'));
+const Buoyancy = lazy(() => import('../labs/physics/Buoyancy'));
+const Lever = lazy(() => import('../labs/physics/Lever'));
+const Pressure = lazy(() => import('../labs/physics/Pressure'));
+const Pulley = lazy(() => import('../labs/physics/Pulley'));
+const Electrolysis = lazy(() => import('../labs/chemistry/Electrolysis'));
+const MetalActivity = lazy(() => import('../labs/chemistry/MetalActivity'));
 
 /**
  * 科目页卡片的徽标元信息（可选字段：缺省则该徽标不渲染）。
@@ -74,7 +81,8 @@ export interface LabMeta {
   aiKnowledge?: string;
   /** 实验级图标（区分于科目图标） */
   icon: ComponentType<LabIconProps>;
-  component: ComponentType;
+  /** 实验组件（懒加载），由 LabPage 在 Suspense 内渲染 */
+  component: LazyExoticComponent<ComponentType>;
   /**
    * 页面页头右侧的状态徽标（可选），如工作台的 C++ / JS 计算核标识。
    * 挂在标准实验页头的动作簇末尾，实验自身不再重复渲染一份。

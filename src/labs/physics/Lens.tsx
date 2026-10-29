@@ -21,6 +21,8 @@ import { isBeyondBench } from '../../components/lab/LensBench';
 import EngineBadge from '../../components/lab/EngineBadge';
 import { getEngineTooltip } from '../../components/lab/engine-copy';
 import Formula from '../../components/ui/Formula';
+import LabAnswerLayer from '../../components/lab/LabAnswerLayer';
+import { LENS_CONTENT } from '../../lib/content/lens';
 import { imageV, loadOhmEngine } from './stem-engine';
 import { Check, X } from 'lucide-react';
 
@@ -696,6 +698,9 @@ export default function Lens() {
           )}
         </div>
       )}
+
+      {/* GEO 答案层：交互区之下的纯文本结构化讲解（无 JS 也可读） */}
+      <LabAnswerLayer content={LENS_CONTENT} lang={lang} />
     </div>
   );
 }

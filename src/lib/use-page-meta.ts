@@ -73,6 +73,9 @@ export function usePageMeta(meta?: PageMeta | null): void {
 
     const id = `page-ld-${++jsonLdSeq}`;
     if (meta?.jsonLd) {
+      // 构建期静态化已经写过一份同样的 @graph（见 scripts/build-static.ts）；
+      // 客户端接管时先移除它，避免同一 FAQPage / LearningResource 出现两份。
+      document.head.querySelectorAll('script[data-page-ld="static"]').forEach((el) => el.remove());
       const script = document.createElement('script');
       script.type = 'application/ld+json';
       script.id = id;
