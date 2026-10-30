@@ -70,6 +70,7 @@ import {
   updateParams,
 } from './circuit-bench-state';
 import { snapDropPoint } from './circuit-bench-palette';
+import { findFreeSpot } from './circuit-bench-geometry';
 import {
   blankMenuItems,
   elementMenuItems,
@@ -86,6 +87,8 @@ import {
   mark,
   redo,
   replace,
+  rollbackLast,
+  settle,
   undo,
   type History,
 } from './circuit-bench-history';
@@ -95,6 +98,34 @@ import { loadCircuitBenchEngine, solveNow, type CircuitEngineKind } from './circ
 import { useNarrow, useShortViewport, useTabletSheet } from './use-bench-media';
 
 const LAB_ID = 'circuit-bench';
+
+/**
+ * 焦点是否落在「会自己消费 Delete / Ctrl+Z」的文本编辑器里。
+ *
+ * 只豁免真正的文本类控件：文本 / 数字 / 搜索框、`textarea`、`select`、
+ * `contenteditable`。`input[type=range]` 必须放行——学生刚拖完滑块，焦点还停在
+ * 滑块上，此时 Ctrl+Z 若无反应，看起来就是「撤销坏了」（审计 P1-4）。
+ * 复选框 / 单选框同理：它们没有原生撤销语义，放行给工作台。
+ */
+function isTextEditable(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName;
+  if (tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  if (tag !== 'INPUT') return false;
+  const type = (el as HTMLInputElement).type;
+  return !(
+    type === 'range' ||
+    type === 'checkbox' ||
+    type === 'radio' ||
+    type === 'button' ||
+    type === 'submit' ||
+    type === 'reset' ||
+    type === 'color' ||
+    type === 'file'
+  );
+}
 
 /** 视口宽度：画布卡高度按版心宽度推导（SSR 默认按桌面版心）。 */
 function useViewportWidth(): number {
@@ -419,7 +450,7 @@ export default function CircuitBench() {
     if (keep !== 'measure') setMeasureOpen(false);
   };
 
-  /* ── 撤销 / 重做快捷键（输入控件内不拦截） ── */
+  /* ── 删除 / 撤销 / 重做快捷键（文本输入控件内不拦截） ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Esc：取消待接的接线柱 / 关闭检查器。检查器浮在右上角，会盖住元件，
@@ -432,9 +463,22 @@ export default function CircuitBench() {
         setMenu(null);
         return;
       }
+      if (isTextEditable(e.target)) return;
+      // 桌面端的主删除路径：选中元件/导线后直接按 Delete 或 Backspace。
+      // 语义与右键菜单的「删除」完全一致（同一套清理：历史 + 选中态 + 面板）。
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedWireId) {
+          e.preventDefault();
+          deleteWireById(selectedWireId);
+          return;
+        }
+        if (selectedId) {
+          e.preventDefault();
+          deleteElement(selectedId);
+        }
+        return;
+      }
       if (!(e.metaKey || e.ctrlKey)) return;
-      const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) return;
       const key = e.key.toLowerCase();
       if (key === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -446,7 +490,7 @@ export default function CircuitBench() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [selectedId, selectedWireId]);
 
   /* ── 加载预设 / 清空：历史与记录都重新开始 ── */
   const pickPreset = (next: CircuitPreset) => {
@@ -506,6 +550,26 @@ export default function CircuitBench() {
 
   const onMove = (id: string, x: number, y: number) => {
     setHistory((h) => replace(h, moveComponent(h.present, id, x, y)));
+  };
+
+  /**
+   * 一次拖动收尾：丢掉「按下了但什么都没改」的那次 mark。
+   * 有真实位移时栈顶是拖动前的状态、present 已经不同，这里不动，
+   * 所以「拖一次 = 撤销一次」不受影响。
+   */
+  const onMoveEnd = () => {
+    setHistory((h) => settle(h));
+  };
+
+  /** 检查器滑块连续拖动：起点 mark、过程 replace、松手 settle —— 一次拖动只留一条历史。 */
+  const onInspectorDragStart = () => {
+    setHistory((h) => mark(h));
+  };
+  const onInspectorDragEnd = () => {
+    setHistory((h) => settle(h));
+  };
+  const onInspectorChangeLive = (next: BenchState) => {
+    setHistory((h) => replace(h, next));
   };
 
   /**
@@ -614,10 +678,17 @@ export default function CircuitBench() {
     setSelectedWireId(null);
   };
 
-  /** 元件坞点击（无落点）：按顺序铺在画布中部偏上，避免叠在一起。 */
+  /**
+   * 元件坞单击添加：
+   * - 落点取**当前视口可见中心**（不是写死的 360,200——平移/缩放之后那个点
+   *   可能早就不在屏幕上，学生点了「加电阻」却看不到新元件）；
+   * - 再交给 `findFreeSpot` 按本体尺寸螺旋找空位，连续添加不会叠在一起。
+   */
   const onAdd = (kind: ElementKind) => {
-    const n = benchRef.current.components.length;
-    onAddAt(kind, 360 + (n % 4) * 80, 200 + Math.floor(n / 4) * 90);
+    const center = canvasApi.current?.visibleCenter() ?? { x: 500, y: 310 };
+    const p = snapDropPoint(center);
+    const spot = findFreeSpot(benchRef.current.components, kind, p);
+    onAddAt(kind, spot.x, spot.y);
   };
 
   /**
@@ -641,6 +712,25 @@ export default function CircuitBench() {
     setHistory((h) => commit(h, toggleSwitch(h.present, id)));
   };
 
+  /**
+   * 删除一只元件：历史、选中态、检查器、菜单一次收干净。
+   * 键盘 Delete、右键 / 长按菜单、检查器垃圾桶都走这里，
+   * 避免三条路径里有一条忘了清选中态（或忘了关面板）。
+   */
+  const deleteElement = (id: string) => {
+    setHistory((h) => commit(h, removeComponent(h.present, id)));
+    setSelectedId((cur) => (cur === id ? null : cur));
+    setInspectorOpen(false);
+    setMenu(null);
+  };
+
+  /** 删除一根导线；与 `deleteElement` 同一口径。 */
+  const deleteWireById = (id: string) => {
+    setHistory((h) => commit(h, removeWire(h.present, id)));
+    setSelectedWireId((cur) => (cur === id ? null : cur));
+    setMenu(null);
+  };
+
   const onInspectorChange = (next: BenchState) => {
     setHistory((h) => commit(h, next));
   };
@@ -656,18 +746,20 @@ export default function CircuitBench() {
   };
 
   /**
-   * 双击元件：开关直接切闭合/断开（这是学生双击开关最想要的），
-   * 其它元件展开详细参数面板——「双击 = 我要看细节」是通用直觉。
+   * 双击元件：展开详细参数面板。
+   *
+   * 开关的「单击即拨动」已经下沉到画布（见 CircuitCanvas 的 pointerup）。
+   * 双击的第一下同样是一次完整的单击，所以画布会在第二击命中时带上
+   * `revertToggle`——这里把那一次拨动连同它的撤销点一起收回，再开面板。
+   * 不用 `undo`：撤销会把「拨反后的状态」留在重做栈里，学生点重做就会
+   * 把刚看过的开关又拨一次；双击从来不是一次编辑，栈里不该留痕。
    */
-  const onElementDoubleTap = (id: string) => {
+  const onElementDoubleTap = (id: string, opts?: { revertToggle?: boolean }) => {
     const el = benchRef.current.components.find((c) => c.id === id);
     if (!el) return;
+    if (opts?.revertToggle) setHistory((h) => rollbackLast(h));
     setMenu(null);
     selectElement(id);
-    if (el.kind === 'switch') {
-      setHistory((h) => commit(h, toggleSwitch(h.present, id)));
-      return;
-    }
     closeOverlaysFor('inspector');
     setInspectorOpen(true);
     // 窄屏检查器是贴底抽屉：先把画布带上去，别让参数表把刚点的那只元件盖住。
@@ -778,12 +870,14 @@ export default function CircuitBench() {
         }
         const base = benchRef.current.components.find((c) => c.id === elId);
         if (!base) return;
-        // 副本往右下挪一格，免得和原件完全重叠看不出来多了一个。
+        // 副本默认落在原件右下方，但先用 findFreeSpot 避让：原件旁边已经站着
+        // 别的元件时（桥式电路、串并联预设），固定 +60/+60 会叠出一个看不出来的副本。
+        const spot = findFreeSpot(benchRef.current.components, base.kind, { x: base.x + 60, y: base.y + 60 }, base.rotation);
         const next = addComponent(
           benchRef.current,
           base.kind,
-          base.x + 60,
-          base.y + 60,
+          spot.x,
+          spot.y,
           base.params,
           base.rotation,
         );
@@ -801,11 +895,7 @@ export default function CircuitBench() {
         revealCanvasAboveSheet();
         return;
       case 'delete':
-        if (elId) {
-          setHistory((h) => commit(h, removeComponent(h.present, elId)));
-          if (selectedId === elId) setSelectedId(null);
-          setInspectorOpen(false);
-        }
+        if (elId) deleteElement(elId);
         return;
       case 'toggle-switch':
         if (elId) setHistory((h) => commit(h, toggleSwitch(h.present, elId)));
@@ -815,10 +905,7 @@ export default function CircuitBench() {
         if (elId) repairOne(elId);
         return;
       case 'delete-wire':
-        if (wireId) {
-          setHistory((h) => commit(h, removeWire(h.present, wireId)));
-          if (selectedWireId === wireId) setSelectedWireId(null);
-        }
+        if (wireId) deleteWireById(wireId);
         return;
       case 'fit':
         setFitSignal((n) => n + 1);
@@ -1206,12 +1293,15 @@ export default function CircuitBench() {
               if (!id) setInspectorOpen(false);
             }}
             onMoveStart={onMoveStart}
+            onMoveEnd={onMoveEnd}
             onMove={onMove}
             onTerminal={onTerminal}
             onToggleSwitch={onToggleSwitch}
             onConnect={connect}
             onReplug={replug}
-            onWiper={(id, ratio) => setHistory((h) => commit(h, updateParams(h.present, id, { ratio })))}
+            // 拖动滑片：起点已由 onMoveStart 打点，过程只覆盖 present，
+            // 松手由 onMoveEnd 收尾——整段拖动只留一次撤销。
+            onWiper={(id, ratio) => setHistory((h) => replace(h, updateParams(h.present, id, { ratio })))}
             onElementDoubleTap={onElementDoubleTap}
             onElementMenu={(id, x, y) => {
               selectElement(id);
@@ -1266,6 +1356,9 @@ export default function CircuitBench() {
                 selectedId={selectedId}
                 selectedWireId={selectedWireId}
                 onChange={onInspectorChange}
+                onChangeLive={onInspectorChangeLive}
+                onAdjustStart={onInspectorDragStart}
+                onAdjustEnd={onInspectorDragEnd}
                 onRepair={repairOne}
                 onSelect={selectElement}
                 onRemoveWire={(id) => {

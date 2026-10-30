@@ -60,6 +60,15 @@ export interface InspectorPanelProps {
   onRepair?: (id: string) => void;
   /** 收起这块面板。单击元件不再自动打开它，所以必须给一条明确的退出路径。 */
   onClose?: () => void;
+  /**
+   * 连续拖动参数滑块（range）的三段式：
+   * `onAdjustStart` 在按下时打一个撤销点，拖动中的每一帧走 `onChangeLive`
+   * （覆盖 present、不压栈），松手时 `onAdjustEnd` 收尾。
+   * 不传 `onChangeLive` 时退回旧行为：每帧都走 `onChange`（逐帧 commit）。
+   */
+  onChangeLive?: (next: BenchState) => void;
+  onAdjustStart?: () => void;
+  onAdjustEnd?: () => void;
 }
 
 /** 有极性接线的元件：调换极性对其才有物理意义。 */
@@ -90,6 +99,9 @@ export default function InspectorPanel({
   onRemoveWire,
   onRepair,
   onClose,
+  onChangeLive,
+  onAdjustStart,
+  onAdjustEnd,
 }: InspectorPanelProps) {
   const { lang } = useApp();
   const zh = lang === 'zh';
@@ -113,7 +125,7 @@ export default function InspectorPanel({
       return `${owner ? elementName(state, owner, lang) : id}.${t}`;
     };
     return (
-      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
+      <div data-drop-blocked="" className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
         <div className="flex items-center justify-between gap-1">
           <span className="text-[11px] font-semibold text-[var(--fg)]">{zh ? '导线' : 'Wire'}</span>
           <span className="flex shrink-0 items-center gap-1">
@@ -141,14 +153,14 @@ export default function InspectorPanel({
   if (!el) {
     if (!warnings.length) return null;
     return (
-      <div className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/85 p-2 shadow-lg backdrop-blur-md max-sm:w-full">
+      <div data-drop-blocked="" className="pointer-events-auto w-[256px] rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/85 p-2 shadow-lg backdrop-blur-md max-sm:w-full">
         <WarningList warnings={warnings} zh={zh} />
       </div>
     );
   }
 
   return (
-    <div className="pointer-events-auto flex max-h-full w-[256px] flex-col overflow-y-auto rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
+    <div data-drop-blocked="" className="pointer-events-auto flex max-h-full w-[256px] flex-col overflow-y-auto rounded-2xl border border-[var(--accent)]/40 bg-[var(--card-bg)]/85 p-2 shadow-xl backdrop-blur-md max-sm:w-full">
       <div className="mb-1.5 flex items-center justify-between gap-1">
         <span className="truncate text-[11px] font-semibold text-[var(--fg)]">
           {elementName(state, el, zh ? 'zh' : 'en')}
@@ -194,7 +206,15 @@ export default function InspectorPanel({
         </button>
       </div>
 
-      <Readout el={el} result={result} zh={zh} />
+      {el.kind === 'wire' ? (
+        <ConnectorNote live={result?.elements[el.id]?.nodeLive === true} zh={zh} />
+      ) : el.kind === 'switch' && el.params?.closed !== false ? (
+        // 闭合开关与导线同属「并点连接件」：四格是模型产物，不展示。
+        // 断开态（closed === false）没有被并点，继续显示真实读数。
+        <ClosedSwitchNote zh={zh} />
+      ) : (
+        <Readout el={el} result={result} zh={zh} />
+      )}
 
       {elementWarnings.length > 0 && (
         <div className="mt-1.5">
@@ -209,7 +229,16 @@ export default function InspectorPanel({
       )}
 
       <div className="mt-1.5">
-        <Params el={el} onChange={(patch) => onChange(updateParams(state, el.id, patch))} zh={zh} />
+        <Params
+          el={el}
+          onChange={(patch) => onChange(updateParams(state, el.id, patch))}
+          onChangeLive={
+            onChangeLive ? (patch) => onChangeLive(updateParams(state, el.id, patch)) : undefined
+          }
+          onAdjustStart={onAdjustStart}
+          onAdjustEnd={onAdjustEnd}
+          zh={zh}
+        />
       </div>
 
       {el.kind === 'switch' && (
@@ -241,6 +270,62 @@ export default function InspectorPanel({
           {el.kind === 'bulb' ? (zh ? '更换灯泡' : 'Replace bulb') : zh ? '更换保险丝' : 'Replace fuse'}
         </button>
       )}
+    </div>
+  );
+}
+
+/**
+ * 导线元件的读数区。
+ *
+ * 它在求解器里两端被并成同一节点（`mergesTerminals`），支路电压与电流**在模型里
+ * 恒为 0**——那个 0 不是测量值，是「这条支路不解电流」。照常画四格
+ * `I 0 A / U 0 V / P 0 W / R 1 mΩ`，等于把理想连接件说成一只「没有电流的电阻」，
+ * 而它在串联干路上扛着整条回路的电流（实测：灯泡 387 mA 时同一帧显示 I 0 A）。
+ *
+ * 这里只报求解器真正知道的事：它所在的节点是否在载流回路里。电阻也不再展示——
+ * `r` 在并点后根本不参与计算，摆一个改不动的 0.001 Ω 只会让学生以为那是它的电阻。
+ */
+function ConnectorNote({ live, zh }: { live: boolean; zh: boolean }) {
+  return (
+    <div className="rounded-md border border-[var(--border)]/60 bg-[var(--accent-light)] px-2 py-1.5">
+      <div className="flex items-center justify-between gap-2 text-[11px]">
+        <span className="text-[var(--muted)]">{zh ? '所在回路' : 'In circuit'}</span>
+        <span className={`mono-font tabular-nums ${live ? 'text-[var(--fg)]' : 'text-[var(--muted)]'}`}>
+          {live ? (zh ? '导通 · 有电流' : 'Conducting') : zh ? '无电流' : 'No current'}
+        </span>
+      </div>
+      <p className="mt-1 text-[0.625rem] leading-snug text-[var(--muted)]">
+        {zh
+          ? '理想导线：两端视为同一点，不分压；支路电流由所在回路决定，不单独计量。'
+          : 'Ideal wire: both ends are one node, so it has no voltage drop of its own; current is set by the loop.'}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * 闭合开关的读数区。
+ *
+ * 它和导线一样在网表里被并成同一节点（`mergesTerminals`），四格
+ * `I 0 A / U 0 V / P 0 W / R 1 mΩ` 全是模型产物：串联干路上灯泡读 258 mA、
+ * 电流表也读 258 mA，同一帧里开关却说自己 0 A —— 学生只会以为开关坏了。
+ *
+ * 断开态则完全相反：开关不被并点，`I 0 A · U = 电源电压 · R ∞` 是**真读数**，
+ * 而且是「断路时开关两端有电压」的教学点。所以这里只替换闭合态，
+ * 断开态继续走 `Readout` 的四格。
+ */
+function ClosedSwitchNote({ zh }: { zh: boolean }) {
+  return (
+    <div className="rounded-md border border-[var(--border)]/60 bg-[var(--accent-light)] px-2 py-1.5">
+      <p className="text-[11px] leading-snug text-[var(--fg)]">
+        <span className="font-medium">{zh ? '闭合 · 导通' : 'Closed · Conducting'}</span>
+        <span className="text-[var(--muted)]">
+          {' — '}
+          {zh
+            ? '理想闭合开关视为无阻连接，两端电压为 0 V，通过的电流由所在回路决定。'
+            : 'An ideal closed switch acts as a zero-resistance path (0 V across it; current is set by the loop).'}
+        </span>
+      </p>
     </div>
   );
 }
@@ -463,7 +548,22 @@ function ResetParamButton({
 
 // patch 的类型就是 state 层的 ParamBag：材料下拉一次要同时写 material(string) 与
 // rho(number)，原先那个「全字符串或全数字」的联合类型根本表达不了一次合法的混合写入。
-function Params({ el, onChange, zh }: { el: CircuitComponent; onChange: (patch: ParamBag) => void; zh: boolean }) {
+function Params({
+  el,
+  onChange,
+  onChangeLive,
+  onAdjustStart,
+  onAdjustEnd,
+  zh,
+}: {
+  el: CircuitComponent;
+  onChange: (patch: ParamBag) => void;
+  /** 拖动滑块的实时帧（不压历史）；不传则滑块的每帧仍走 onChange。 */
+  onChangeLive?: (patch: ParamBag) => void;
+  onAdjustStart?: () => void;
+  onAdjustEnd?: () => void;
+  zh: boolean;
+}) {
   const fields = paramFields(el);
   const num = (key: string, fallback = 0) => {
     const v = Number(el.params[key]);
@@ -519,7 +619,9 @@ function Params({ el, onChange, zh }: { el: CircuitComponent; onChange: (patch: 
                 step={f.step}
                 precision={digits}
                 format={(next) => (f.unit ? formatPhysicalValue(next, f.unit) : fmtNumber(next, 3))}
-                onChange={(next) => onChange({ [f.key]: next })}
+                onChange={(next) => (onChangeLive ?? onChange)({ [f.key]: next })}
+                onAdjustStart={onChangeLive ? onAdjustStart : undefined}
+                onAdjustEnd={onChangeLive ? onAdjustEnd : undefined}
               />
             </div>
             <ResetParamButton el={el} field={f} value={v} onChange={onChange} zh={zh} />

@@ -24,6 +24,8 @@ import {
 import { T_AMBIENT, defaultElementState, defaultParams, ELEMENT_MODELS } from './circuit-bench-models';
 // 只取一个纯判定函数（menu 只依赖 core 的类型），状态层与右键菜单共用同一套「坏没坏」。
 import { isFaulty } from './circuit-bench-menu';
+// 放置夹取：新元件与拖动终点都要落在世界矩形内（不再是 ±5000 的宽松夹取）。
+import { clampElementPos } from './circuit-bench-geometry';
 
 const KIND_SET = new Set<ElementKind>(Object.keys(ELEMENT_MODELS) as ElementKind[]);
 
@@ -244,7 +246,10 @@ export function addComponent(
 ): BenchState {
   if (!KIND_SET.has(kind) || state.components.length >= MAX_COMPONENTS) return state;
   const id = nextId(state, kind);
-  const component = createComponent(id, kind, x, y, params, rotation);
+  // 新元件同样夹进世界：拖放落点若贴着边缘（或来自旧存档的越界坐标），
+  // 也不会有半个身子留在画布外。
+  const pos = clampElementPos(kind, rotation, x, y);
+  const component = createComponent(id, kind, pos.x, pos.y, params, rotation);
   return { ...state, components: [...state.components, component] };
 }
 
@@ -285,19 +290,15 @@ function dropWaypoints(state: BenchState, componentId: string): Wire[] {
 export function moveComponent(state: BenchState, id: string, x: number, y: number): BenchState {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return state;
   const el = state.components.find((c) => c.id === id);
+  if (!el) return state;
+  const next = clampElementPos(el.kind, el.rotation ?? 0, x, y);
   // 原地「移动」到同一个坐标不算姿态变化，别让拖动过程中的零位移把折点洗掉。
-  if (el && el.x === clampPos(x) && el.y === clampPos(y)) return state;
+  if (el.x === next.x && el.y === next.y) return state;
   return {
     ...state,
-    components: state.components.map((c) =>
-      c.id === id ? { ...c, x: clampPos(x), y: clampPos(y) } : c,
-    ),
+    components: state.components.map((c) => (c.id === id ? { ...c, x: next.x, y: next.y } : c)),
     wires: dropWaypoints(state, id),
   };
-}
-
-function clampPos(v: number): number {
-  return Math.min(5000, Math.max(-5000, v));
 }
 
 export function rotateComponent(state: BenchState, id: string, delta = 90): BenchState {

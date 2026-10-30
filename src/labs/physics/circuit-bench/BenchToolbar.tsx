@@ -124,7 +124,7 @@ export default function BenchToolbar({
     // 窄屏保持单行横向滚动（隐藏滚动条），高度锁在 44px：flex-wrap 在 375 下会把
     // 「全屏」挤到第三行，工具栏吃掉 121px，画布可见高度只剩 208px。
     // 桌面仍是 44px 单行横向工具条，一字不改。
-    <div data-bench-toolbar="" className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 max-sm:relative max-sm:z-[60] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
+    <div data-bench-toolbar="" data-drop-blocked="" className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 max-sm:relative max-sm:z-[60] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
       {/* 操作模式 */}
       <div className="flex shrink-0 items-center gap-1">
         <button

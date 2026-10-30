@@ -394,7 +394,7 @@ export const CIRCUIT_PRESETS: CircuitPreset[] = [
     principle: { zh: '先连回路再闭合开关；电压表并联、电流表串联。', en: 'Close the loop before switching on; voltmeters in parallel, ammeters in series.' },
     steps: [
       { zh: '从左侧拖入电源、用电器和开关。', en: 'Place a source, a load and a switch from the palette.' },
-      { zh: '点击「连线」，依次点两个接线柱。', en: 'Choose Wire and click two terminals in order.' },
+      { zh: '点击「接线」，依次点两个接线柱。', en: 'Choose Wire and click two terminals in order.' },
       { zh: '闭合开关，读表并记录数据。', en: 'Close the switch, read the meters and record data.' },
     ],
     probes: [],

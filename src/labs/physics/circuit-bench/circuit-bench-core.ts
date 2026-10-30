@@ -139,6 +139,15 @@ export interface ElementReading {
   resistance: number;
   /** 吸收功率 I²R，W（电源为输出功率的相反数语义，UI 只显示绝对值） */
   power: number;
+  /**
+   * 只对**被并点的理想连接件**（导线、闭合开关）有意义：它所在节点是否在载流回路里。
+   *
+   * 这类元件两端被并成同一节点，`v = Va − Vb` 恒为 0，于是 `current = v / r` 也恒为 0。
+   * 这个 0 **不是「测到 0 A」**，而是「模型里这条支路根本不解电流」——串联在干路上的
+   * 导线元件分明承载着整条回路的电流。UI 不能用 `currentAB` 报数，改用本字段说
+   * 「导通 / 无电流」。未并点的元件没有这个字段。
+   */
+  nodeLive?: boolean;
 }
 
 export interface SolveResult {
@@ -190,6 +199,15 @@ export interface CircuitSystem {
 
 const GMIN = 1e-9;
 const MAX_NODES = 160;
+
+/**
+ * 「这条支路真的有电流」的阈值，A。
+ *
+ * 必须压过 `GMIN` 的数值漏电流（6 V 下约 1e-8 A），否则断开的开关两侧会被当成
+ * 载流回路。看板（`circuit-bench-monitor`）与连接件的 `nodeLive` 判定共用这一个值：
+ * 两处口径一旦分叉，就会出现「看板说导线没电流、检查器说在回路里」。
+ */
+export const LIVE_CURRENT_A = 1e-5;
 
 /* ── 小工具 ── */
 
@@ -622,6 +640,8 @@ export function finalizeSolve(system: CircuitSystem, voltages: Float64Array | nu
         voltage: 0,
         resistance: e.r,
         power: 0,
+        // 解不出来就没有「导通」可言；连接件这里显式给 false，别让 UI 拿到 undefined。
+        nodeLive: e.a === e.b ? false : undefined,
       };
     }
     return { ok: false, nodeVoltages, elements, warnings, totalPower: 0 };
@@ -652,6 +672,24 @@ export function finalizeSolve(system: CircuitSystem, voltages: Float64Array | nu
       resistance: e.r,
       power,
     };
+  }
+
+  // 并点连接件（导线 / 闭合开关）的支路电流在模型里恒为 0，单独标出「它所在的节点
+  // 有没有电流经过」。判据只看**非并点元件**的读数：并点元件自己恒为 0，参与判定
+  // 只会得到「永远没有电流」这个错答案。
+  const liveNodes = new Set<number>();
+  for (const e of system.elements) {
+    if (e.a === e.b) continue;
+    const reading = elements[e.id];
+    if (reading && Math.abs(reading.currentAB) > LIVE_CURRENT_A) {
+      liveNodes.add(e.a);
+      liveNodes.add(e.b);
+    }
+  }
+  for (const e of system.elements) {
+    if (e.a !== e.b) continue;
+    const reading = elements[e.id];
+    if (reading) reading.nodeLive = liveNodes.has(e.a);
   }
 
   // 逐元件保护/量程提示。

@@ -185,6 +185,7 @@ export default function MeasurementPanel({
       // 一档挪成贴底浮层：那边只能用属性选择器命中，`max-sm:` 管不到 844 宽。
       // `data-open` 区分「展开抽屉 / 收起胶囊」两种姿态，与 `max-sm:` 那套一一对应。
       data-measure-card=""
+      data-drop-blocked=""
       data-open={open ? '' : undefined}
       className={
         floating

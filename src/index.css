@@ -1284,10 +1284,29 @@ html.dark .dq-quote--milestone {
   font-weight: 700;
 }
 
+/* 更新环（替掉实心徽章上的箭头）：轨道 + 弧。轨道在暗色下要更亮一档 ——
+   实测暗色轨道像素只有浅色的一半，不提亮的话 25% 时只剩一小段弧在飘。 */
+.update-ring-track { stroke-opacity: 0.28; }
+html.dark .update-ring-track { stroke-opacity: 0.38; }
+@media (prefers-color-scheme: dark) {
+  html:not(.light) .update-ring-track { stroke-opacity: 0.38; }
+}
+/* 有分母时弧长变化要平滑（120ms 采样一次，直接跳会一顿一顿） */
+.update-ring-arc { transition: stroke-dashoffset 240ms linear; }
+/* 没有分母的阶段：整体匀速旋转，弧自身不动 */
+@keyframes update-ring-turn {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.update-ring-spin { animation: update-ring-turn 900ms linear infinite; }
+
 /* 无障碍：系统开启"减少动效"时停用品牌装饰动画（三角旋转/绿点呼吸） */
 @media (prefers-reduced-motion: reduce) {
   .animate-tri-spin, .animate-sq-spin, .animate-ci-spin,
-  .update-dot, .update-dot-halo { animation: none; }
+  .update-dot, .update-dot-halo,
+  .update-ring-spin { animation: none; }
+  /* 减少动效时不转也不插值：弧改成按阶段跳档，读数本身仍然成立 */
+  .update-ring-arc { transition: none; }
 }
 
 /* 大屏（希沃类教学一体机）演示模式：逻辑视口 ≥1800px 时根字号放大，

@@ -31,7 +31,7 @@
  * 免得左上方那两条竖排工具栏把画布让出的空间又占回去（见 CircuitBench 的 paletteCollapsed）。
  * 学生点胶囊展开时会上报 `onCollapsedChange(false)`，工作台据此解除「因导读而收起」。
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Minus, Plus } from 'lucide-react';
 
 import type { ElementKind } from './circuit-bench-core';
@@ -110,6 +110,8 @@ interface DragState {
   start: PointerSample;
   pointerId: number;
   active: boolean;
+  /** 按下的那个按钮：Esc 取消时要先把指针捕获还回去。 */
+  el: HTMLElement | null;
 }
 
 interface Ghost {
@@ -118,6 +120,31 @@ interface Ghost {
   y: number;
   /** 落点是否在画布内：在画布外松手会取消，幽灵也要给出明确反馈。 */
   ok: boolean;
+}
+
+/**
+ * 浮层命中：元件坞自身、检查器、监控看板、工具栏都盖在画布上方。
+ * 指针在这些地方松手时，屏幕坐标仍然落在画布矩形内（`toWorld` 不会返回 null），
+ * 于是会建出一个被面板挡住的「隐形元件」——进了历史栈，学生却看不到。
+ * 统一给这些浮层的根节点打标记，落点判定与拖影反馈共用同一个判断。
+ */
+const DROP_BLOCK_SELECTOR = '[data-palette], [data-drop-blocked]';
+
+function overOverlay(clientX: number, clientY: number): boolean {
+  // 视口之外 `elementFromPoint` 一律返回 null，但 `toWorld` 仍能把那个点换算成
+  // 页面下方的世界坐标——浮层比视口高时（桌面竖排元件坞贴着画布底边），指针
+  // 捕获允许在视口外松手，就会建出一只被裁掉一半、学生看不见的元件。
+  // 因此「没有可命中的元素」也算浮层：落点必须先落在真的看得见的画面上。
+  if (
+    clientX < 0 ||
+    clientY < 0 ||
+    clientX >= window.innerWidth ||
+    clientY >= window.innerHeight
+  ) {
+    return true;
+  }
+  const el = document.elementFromPoint(clientX, clientY) as Element | null;
+  return !el || !!el.closest?.(DROP_BLOCK_SELECTOR);
 }
 
 export default function ElementPalette({
@@ -177,9 +204,12 @@ export default function ElementPalette({
     handledAt.current = e.timeStamp;
     if (cancelled) return;
     if (d.active) {
-      // 拖拽落位：只有在画布内松手才建元件；拖到画布外松手 = 取消本次添加。
+      // 拖拽落位：只有「画布内 && 不在任何浮层上」才建元件；
+      // 拖到画布外或元件库/检查器/看板上松手 = 取消本次添加。
       const world = projection?.toWorld(e.clientX, e.clientY) ?? null;
-      if (world) finishAdd(() => onDropAt?.(d.kind, e.clientX, e.clientY));
+      if (world && !overOverlay(e.clientX, e.clientY)) {
+        finishAdd(() => onDropAt?.(d.kind, e.clientX, e.clientY));
+      }
       return;
     }
     // 没越过阈值 —— 是一次点击，沿用「自动铺到空位」的老逻辑。
@@ -197,6 +227,7 @@ export default function ElementPalette({
       start: { t: e.timeStamp, x: e.clientX, y: e.clientY },
       pointerId: e.pointerId,
       active: false,
+      el: e.currentTarget,
     };
   };
 
@@ -208,7 +239,7 @@ export default function ElementPalette({
     }
     d.active = true;
     const world = projection?.toWorld(e.clientX, e.clientY) ?? null;
-    if (!world) {
+    if (!world || overOverlay(e.clientX, e.clientY)) {
       setGhost({ kind: d.kind, x: e.clientX, y: e.clientY, ok: false });
       return;
     }
@@ -222,6 +253,28 @@ export default function ElementPalette({
       ok: true,
     });
   };
+
+  /**
+   * 拖拽中按 Esc = 取消本次添加。
+   *
+   * 只在拖拽真的开始时接管：不拖拽时 Esc 仍归工作台（收检查器 / 取消待接端子）。
+   * 取消要三件事一起做——清 dragRef（松手时 endDrag 直接返回）、清幽灵、
+   * 归还指针捕获——少一件都会在松手后又悄悄建出一个元件。
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const d = dragRef.current;
+      if (!d) return;
+      e.preventDefault();
+      dragRef.current = null;
+      d.el?.releasePointerCapture?.(d.pointerId);
+      setGhost(null);
+      handledAt.current = performance.now();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   /**
    * 一格元件按钮。桌面的分组竖排与窄屏的横向长条共用这一份——两处各写一遍
@@ -243,11 +296,19 @@ export default function ElementPalette({
       onPointerMove={onItemMove}
       onPointerUp={(e) => endDrag(e, e.currentTarget)}
       onPointerCancel={(e) => endDrag(e, e.currentTarget, true)}
+      // 导线元件的 title 多说一句：坞里只显示名字，学生没有任何地方能知道
+      // 「导线元件」与工具栏的「接线」是什么关系。这句是拿起它之前唯一能看到的说明。
       title={
         full
           ? limitTitle
           : `${paletteItemLabel(item.kind, zh)} · ${
-              zh ? '点击或拖入画布' : 'click or drag onto the canvas'
+              item.kind === 'wire'
+                ? zh
+                  ? '等同直接接线：两端并成一个节点，本身不产生读数。点击或拖入画布'
+                  : 'Same as a direct connection: both terminals become one node, no readings of its own. Click or drag onto the canvas'
+                : zh
+                  ? '点击或拖入画布'
+                  : 'click or drag onto the canvas'
             }`
       }
       aria-label={zh ? `添加${item.zh}` : `Add ${item.en}`}
@@ -269,6 +330,7 @@ export default function ElementPalette({
       {collapsed ? (
         <button
           type="button"
+          data-palette
           onClick={() => setCollapsed(false)}
           aria-expanded={false}
           title={zh ? '展开元件库' : 'Open parts library'}
@@ -279,6 +341,7 @@ export default function ElementPalette({
         </button>
       ) : (
         <div
+          data-palette
           data-view-mode={viewMode}
           /* 窄屏换形态：贴画布底边的横向长条坞（fixed 到视口底），而不是 124px 宽的
              竖板——375px 的屏上竖板会吃掉三分之一画布宽度，而横向长条只吃掉约

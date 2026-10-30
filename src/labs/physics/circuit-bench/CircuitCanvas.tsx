@@ -57,6 +57,7 @@ import {
   isDoubleTap,
   longPressDrifted,
   pxToWorld,
+  shouldRevertToggle,
   terminalHitRadiusWorld,
   type PointerSample,
 } from './circuit-bench-touch';
@@ -73,6 +74,11 @@ export type CanvasTool = 'select' | 'wire';
 export interface CircuitCanvasHandle {
   clientToWorld(clientX: number, clientY: number): Pt | null;
   worldToClient(p: Pt): Pt | null;
+  /**
+   * 当前画布可见区域的世界中心。单击元件库时新元件落在这里附近，
+   * 而不是落在一个固定公式算出的、可能早被平移出视野的坐标上。
+   */
+  visibleCenter(): Pt;
   /** 内容适配到画布（工具条与右键菜单的「适配画布」同一个入口）。 */
   fit(): void;
 }
@@ -94,6 +100,12 @@ export interface CircuitCanvasProps {
   onSelectWire?: (id: string | null) => void;
   /** 真正越过防误触阈值、开始进入拖动时触发一次，用于打撤销点。 */
   onMoveStart?: () => void;
+  /**
+   * 一次拖动结束（pointerup）。上层据此收尾撤销点：拖动中若没有产生任何变化
+   * （比如只是点了一下元件），`mark` 留下的空快照要在这时丢掉，否则第一次
+   * Ctrl+Z 看起来「没反应」。
+   */
+  onMoveEnd?: () => void;
   onMove: (id: string, x: number, y: number) => void;
   onTerminal: (ref: string) => void;
   onToggleSwitch: (id: string) => void;
@@ -103,8 +115,14 @@ export interface CircuitCanvasProps {
   onReplug?: (wireId: string, end: 'from' | 'to', target: string) => void;
   /** 拨动变阻器滑片（只有选中变阻器时才吃这个手势）。 */
   onWiper?: (id: string, ratio: number) => void;
-  /** 指针双击元件（希沃红外屏也认）：开关直接换挡，其余打开详细参数面板。 */
-  onElementDoubleTap?: (id: string) => void;
+  /**
+   * 指针双击元件（希沃红外屏也认）：打开详细参数面板。
+   *
+   * `revertToggle` = 第一击刚刚把开关拨动过，上层要把这次拨动连同撤销点一起收回：
+   * 单击开关就是拨动，而双击的第一下也是一次完整的单击——不收回的话，
+   * 「双击看参数」会先把电路断一次。
+   */
+  onElementDoubleTap?: (id: string, opts?: { revertToggle?: boolean }) => void;
   /** 右键 / 长按 450ms 菜单；空白、元件、导线三套内容由上层按目标挑选。 */
   onElementMenu?: (id: string, clientX: number, clientY: number) => void;
   onWireMenu?: (id: string, clientX: number, clientY: number) => void;
@@ -215,6 +233,7 @@ export default function CircuitCanvas({
   onSelect,
   onSelectWire,
   onMoveStart,
+  onMoveEnd,
   onMove,
   onTerminal,
   onToggleSwitch,
@@ -278,8 +297,11 @@ export default function CircuitCanvas({
   }, []);
 
   /* ── 触控手势（希沃红外屏不认原生 dblclick，全部自己判） ── */
-  /** 上一次 pointerdown 落在哪个元件上，用来识别双击。 */
-  const lastTap = useRef<{ id: string; sample: PointerSample } | null>(null);
+  /**
+   * 上一次 pointerdown 落在哪个元件上，用来识别双击。
+   * `toggled` 记「那一下真的拨过开关」：第二击命中时据此把拨动收回（见 pointerup）。
+   */
+  const lastTap = useRef<{ id: string; sample: PointerSample; toggled?: boolean } | null>(null);
   /** 长按定时器：按住 450ms 且漂移 <8px 就弹菜单。`start` 与 pointermove 同一时间轴。 */
   const longPress = useRef<{ timer: number; target: MenuTarget; start: PointerSample } | null>(null);
   /** 从接线柱拉出的连线手势（虚线皮筋 + 20px 磁吸）。 */
@@ -536,6 +558,18 @@ export default function CircuitCanvas({
       // 拖到画布外松手 = 取消本次添加，所以不在矩形内就返回 null。
       clientToWorld: (clientX, clientY) => (insideCanvas(clientX, clientY) ? userPoint(clientX, clientY) : null),
       worldToClient: toScreen,
+      visibleCenter: () => {
+        const wrap = wrapRef.current;
+        if (!wrap) return { x: WORLD_W / 2, y: WORLD_H / 2 };
+        const r = wrap.getBoundingClientRect();
+        const box = boxRef.current;
+        return (
+          userPoint(r.left + box.x + box.w / 2, r.top + box.y + box.h / 2) ?? {
+            x: WORLD_W / 2,
+            y: WORLD_H / 2,
+          }
+        );
+      },
       fit: () => fitContent(),
     }),
     [fitContent, insideCanvas, toScreen, userPoint],
@@ -805,6 +839,7 @@ export default function CircuitCanvas({
 
   const onSvgPointerUp = (e: ReactPointerEvent<SVGSVGElement>) => {
     cancelLongPress();
+    const endedDrag = drag.current;
     const wasTap = !drag.current && (!pan.current || !pan.current.moved) && pointers.current.size === 1;
     pointers.current.delete(e.pointerId);
     if (svgRef.current?.hasPointerCapture?.(e.pointerId)) {
@@ -813,6 +848,21 @@ export default function CircuitCanvas({
     if (pointers.current.size < 2) pinch.current = null;
     if (drag.current) drag.current = null;
     if (pan.current) pan.current = null;
+
+    // 元件上的轻点（按下后没越过拖动阈值）：开关这类二元元件就地拨动，
+    // 不必先选中、再双击、再找参数面板——PhET 里单击开关就是拨开关。
+    // 双击的第二次 pointerdown 已经在 onComponentDown 提前 return（没登记 drag），
+    // 所以这里不会把一次双击拨成两下；但第一下确实已经拨过了，
+    // 所以要把「这次轻点拨过开关」记下来，等第二击命中时连同撤销点一起收回。
+    if (endedDrag && !endedDrag.moved && !endedDrag.wiper && tool === 'select') {
+      const el = stateRef.current.components.find((c) => c.id === endedDrag.id);
+      if (el?.kind === 'switch') {
+        onToggleSwitch(endedDrag.id);
+        if (lastTap.current?.id === endedDrag.id) lastTap.current.toggled = true;
+      }
+    }
+    // 一次拖动收尾：上层把「拖动中 mark 下的空快照」丢掉（见 CircuitBench 的 settle）。
+    if (endedDrag) onMoveEnd?.();
 
     // 从接线柱拉出的连线：吸到目标接线柱就成线（一次手势接完一根）；
     // 只是轻点没拉动，则按老逻辑走「点第一个 → 点第二个」的待接状态。
@@ -860,12 +910,14 @@ export default function CircuitCanvas({
     // 所以这里用「两次 pointerdown 间隔 <350ms 且落点 <24px」自己判。
     const prev = lastTap.current;
     const doubleTap = prev?.id === id && isDoubleTap(prev.sample, sample);
+    // 第二击是「看参数」：第一击如果已经替学生拨过开关，就得把那次拨动收回去。
+    const revertToggle = doubleTap && !!prev && shouldRevertToggle(el.kind, prev.toggled);
     lastTap.current = doubleTap ? null : { id, sample };
 
     onSelect(id);
     if (doubleTap) {
       cancelLongPress();
-      onElementDoubleTap?.(id);
+      onElementDoubleTap?.(id, revertToggle ? { revertToggle: true } : undefined);
       return;
     }
     if (tool === 'wire') {
@@ -891,6 +943,10 @@ export default function CircuitCanvas({
       const head = localToWorldPoint(el, { x: wiperLocalX(el.params.ratio, viewMode), y: -16 });
       const grab = Math.max(14, pxToWorld(20, pxPerWorld));
       if (Math.hypot(head.x - p.x, head.y - p.y) <= grab) {
+        // 这条手势同样要登记指针：`onSvgPointerMove` 第一道闸就是
+        // `pointers.current.has(pointerId)`，不登记的话所有 move 都在到达
+        // wiper 分支之前被吞掉——滑片看起来「完全拖不动」。
+        pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
         onMoveStart?.();
         drag.current = { id, startPointer: p, startX: el.x, startY: el.y, moved: true, wiper: true };
         svgRef.current?.setPointerCapture?.(e.pointerId);

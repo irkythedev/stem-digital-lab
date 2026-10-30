@@ -25,11 +25,90 @@ import {
 import { loadAiConfig } from '../../lib/ai-config';
 import { APP_VERSION } from '../../lib/changelog';
 import { useAppUpdate } from '../../lib/use-app-update';
+import { ringStateFor, type RingState } from '../../lib/update-progress';
 import VersionDialog from '../feedback/VersionDialog';
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import type { ThemeMode } from '../../lib/app-context';
 import type { AiStatus } from '../../lib/ai-status';
+
+/**
+ * 更新环几何（viewBox 18 单位，随徽章 14 / 18px 等比缩放）：
+ * stroke 2.2 在 18px 下渲染 2.2px、在 14px 下渲染 1.71px —— 与候选实测的 0.12 比例一致。
+ * 弧长按周长算：determinate 用 dashoffset 表达进度，indeterminate 只画 30% 并整体旋转。
+ */
+const UPDATE_RING_R = 7.7;
+const UPDATE_RING_STROKE = 2.2;
+const UPDATE_RING_C = 2 * Math.PI * UPDATE_RING_R;
+
+/**
+ * 更新徽章的可视部分。两个入口共用一份：
+ *   - 顶栏版本号右侧的徽章（≥sm 可见）
+ *   - logo 右上角的角标（<sm 可见；以前那块只有静态圆盘，现在同样跟着变进度环）
+ * 之所以共用：形态映射只该有一处，否则两处迟早走偏（一个画弧、一个还在转箭头）。
+ *
+ * idle = 实心圆盘 + 白色上箭头；忙时圆盘让位给空心环，弧长＝已落实的预缓存条目比例；
+ * 没有分母的阶段（checking / activating）只走一段扫动弧，绝不按时长插值。
+ */
+function UpdateBadgeVisual({
+  ring,
+  haloClass,
+  arrowClass,
+  arrowStroke,
+}: {
+  ring: RingState;
+  haloClass: string;
+  arrowClass: string;
+  arrowStroke: number;
+}) {
+  if (ring.mode === 'hidden') {
+    return (
+      <>
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 m-auto rounded-full bg-emerald-500/35 update-dot-halo ${haloClass}`}
+        />
+        <span className="relative flex h-full w-full items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+          <svg viewBox="0 0 16 16" className={arrowClass} fill="none" stroke="currentColor" strokeWidth={arrowStroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M8 12V4M8 4L4.5 7.5M8 4L11.5 7.5" />
+          </svg>
+        </span>
+      </>
+    );
+  }
+  /* 忙时不再叠光晕：光晕会在环心填出一块底色，把 1/4 的那段弧吃掉 */
+  return (
+    <svg
+      viewBox="0 0 18 18"
+      className={`h-full w-full text-emerald-500 ${ring.mode === 'indeterminate' ? 'update-ring-spin' : ''}`}
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="update-ring-track"
+        cx="9"
+        cy="9"
+        r={UPDATE_RING_R}
+        stroke="currentColor"
+        strokeWidth={UPDATE_RING_STROKE}
+      />
+      <circle
+        className="update-ring-arc"
+        cx="9"
+        cy="9"
+        r={UPDATE_RING_R}
+        stroke="currentColor"
+        strokeWidth={UPDATE_RING_STROKE}
+        strokeLinecap="round"
+        transform="rotate(-90 9 9)"
+        strokeDasharray={
+          ring.mode === 'indeterminate' ? `${UPDATE_RING_C * 0.3} ${UPDATE_RING_C}` : UPDATE_RING_C
+        }
+        strokeDashoffset={ring.mode === 'determinate' ? UPDATE_RING_C * (1 - ring.ratio) : 0}
+      />
+    </svg>
+  );
+}
 
 /**
  * 健康卡片的标题：刻意不复用 AI_STATUS_LABEL——那是图标的悬浮提示（带「AI 助手（…）」外壳），
@@ -93,7 +172,9 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const { status: packStatus, progress: packProgress, running: packRunning } = useOfflinePack();
 
   // 更新状态机：检测（挂载 / 回前台 / 恢复联网）+ 显式阶段 + 硬兜底
-  const { hasUpdate, phase, applyUpdate, busy } = useAppUpdate();
+  const { hasUpdate, phase, progress, applyUpdate, busy } = useAppUpdate();
+  /** 徽章形态：idle 静态箭头 / 有分母时 determinate 弧 / 其余扫动弧 / reloading 满环 */
+  const ring = ringStateFor(phase, progress);
   const phaseText =
     phase === 'checking' ? (lang === 'zh' ? '正在检查新版本…' : 'Checking for updates…')
       : phase === 'downloading' ? (lang === 'zh' ? '正在下载新版本…' : 'Downloading the new version…')
@@ -159,15 +240,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               className="sm:hidden absolute -top-1.5 -right-1.5 z-10 flex h-10 w-10 items-start justify-end rounded-full disabled:cursor-progress"
             >
               <span className="relative block h-3.5 w-3.5">
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute inset-0 m-auto h-4 w-4 rounded-full bg-emerald-500/35 ${busy ? 'animate-pulse' : 'update-dot-halo'}`}
-                />
-                <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-                  <svg viewBox="0 0 16 16" className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M8 12V4M8 4L4.5 7.5M8 4L11.5 7.5" />
-                  </svg>
-                </span>
+                <UpdateBadgeVisual ring={ring} haloClass="h-4 w-4" arrowClass="h-2 w-2" arrowStroke={2.4} />
               </span>
             </button>
           )}
@@ -199,7 +272,10 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               视觉本体在 lg 以下再收一档（14px 圆盘 / 16px 光晕 / 8px 箭头）：
               手机横屏与平板走的是 sm 分支（实测 780px 视口），18px 圆盘配 24px 光晕
               比同排 10px 的 v0.43.2 大一倍，像个按钮压着文字；命中盒仍留 28×28，
-              所以相邻元素的位置与桌面完全一致。lg 起回到 18px，桌面不受影响。 */}
+              所以相邻元素的位置与桌面完全一致。lg 起回到 18px，桌面不受影响。
+
+              点击后不再另开浮层：徽章自己变成进度环（盘边即弧），阶段文案改由
+              sr-only 的 live region 播报。形态映射见 update-progress.ts 的 ringStateFor。 */}
           {hasUpdate && (
             <button
               type="button"
@@ -209,41 +285,30 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                 void applyUpdate();
               }}
               disabled={busy}
-              title={busy ? phaseText : t.updateAvailable}
-              aria-label={busy ? phaseText : t.updateAvailable}
+              title={phase === 'idle' ? t.updateAvailable : phaseText}
+              aria-label={phase === 'idle' ? t.updateAvailable : phaseText}
               className="relative flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-progress"
             >
               <span className="relative block h-3.5 w-3.5 lg:h-[18px] lg:w-[18px]">
-                <span
-                  aria-hidden="true"
-                  className={`pointer-events-none absolute inset-0 m-auto h-4 w-4 lg:h-6 lg:w-6 rounded-full bg-emerald-500/35 ${busy ? 'animate-pulse' : 'update-dot-halo'}`}
+                <UpdateBadgeVisual
+                  ring={ring}
+                  haloClass="h-4 w-4 lg:h-6 lg:w-6"
+                  arrowClass="h-2 w-2 lg:h-2.5 lg:w-2.5"
+                  arrowStroke={2.2}
                 />
-                <span className="relative flex h-3.5 w-3.5 lg:h-[18px] lg:w-[18px] items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
-                  <svg viewBox="0 0 16 16" className="h-2 w-2 lg:h-2.5 lg:w-2.5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M8 12V4M8 4L4.5 7.5M8 4L11.5 7.5" />
-                  </svg>
-                </span>
               </span>
             </button>
           )}
         </span>
       </Link>
 
-      {/* 更新阶段条：常驻到流程结束（不再 2 秒自动消失），role=status 让读屏也能跟上阶段。
-          phase 回到 idle 才隐藏；clearing/reloading 阶段页面即将硬跳转。 */}
+      {/* 阶段播报：右上角的浮层已取消（进度显示在徽章本身上），但**播报不能跟着删** ——
+          看得见的进度环替代不了看不见的 live region，读屏用户只有这一条线索。
+          data-update-phase 留在这一层，供量测与断言读取，不再是浮层。 */}
       {phase !== 'idle' && (
-        <div
-          role="status"
-          aria-live="polite"
-          data-update-phase={phase}
-          className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)]/80 bg-[var(--card-bg)] px-3.5 py-2 rounded-xl text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-md)]"
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${phase === 'reloading' ? '' : 'update-dot'}`}
-            aria-hidden="true"
-          />
+        <span role="status" aria-live="polite" data-update-phase={phase} className="sr-only">
           {phaseText}
-        </div>
+        </span>
       )}
 
       {/* 右侧操作簇：统一用 flex gap 排布，不插「|」竖线分隔。

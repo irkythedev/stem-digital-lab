@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.44.0';
+export const APP_VERSION = '0.45.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.45.0',
+    date: '2026-10',
+    zh: [
+      '[优化] 有新版本时，进度直接显示在按钮上，不再弹出提示条',
+      '[修复] 电学工作台更顺手：拖动、撤销、删除与落点都更贴合直觉',
+      '[修复] 导线与闭合开关的读数不再自相矛盾，检查器说明与画面一致',
+      '[优化] 周期表里的原子视角切换换成图标，一眼看出是哪一种视角',
+    ],
+    en: [
+      '[Improved] When a new version is available, its progress shows on the button itself instead of a floating notice',
+      '[Fixed] The circuit workbench feels surer: dragging, undo, deleting and drop placement follow what you expect',
+      '[Fixed] Wires and closed switches no longer report contradictory numbers, and the inspector agrees with the canvas',
+      '[Improved] The atom view switch in the periodic table uses icons, so you can tell the two views apart at a glance',
+    ],
+  },
   {
     version: '0.44.0',
     date: '2026-10',

@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import BackLink from '../components/layout/BackLink';
-import { LoaderCircle, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
+import { LoaderCircle, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight, Box } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
 import OfflinePackPanel from '../components/feedback/OfflinePackPanel';
 import { useOfflinePack } from '../lib/use-offline-pack';
@@ -1374,8 +1374,10 @@ export default function PeriodicTable() {
                       // {isZh ? '原子结构示意图' : 'Bohr model'}
                     </div>
                     {/* 图区右上角幽灵按钮（Ghost Button）：不占布局行，悬浮在外框内部右上角。
-                        文案只描述「点下去会发生什么」，不再用「2D + 状态词」这类既像状态标识又像按钮的措辞：
-                        2D 态 →「3D 模型」（点击进入 3D 探索）；3D 态 →「课本平面」（点击切回课本规范图）。 */}
+                        图标只描述「点下去会发生什么」，不再用「2D + 状态词」这类既像状态标识又像按钮的措辞：
+                        2D 态 → 立方体（点击进入 3D 探索）；3D 态 → 同心圆（点击切回课本规范图）。
+                        两态共用同一套幽灵样式（无描边、无底色），状态差异完全交给图标本身；
+                        16px 下「立方体 / 双层同心圆」轮廓互不相似，浅色暗色均实测可辨。 */}
                     <button
                       type="button"
                       data-atom-mode={atomMode}
@@ -1385,15 +1387,21 @@ export default function PeriodicTable() {
                         ? (isZh ? '切回课本平面规范图' : 'Back to the flat textbook diagram')
                         : (isZh ? '查看 3D 立体模型' : 'Open the 3D model')}
                       onClick={() => setAtomMode(atomMode === '2d' ? '3d' : '2d')}
-                      /* 轻盈徽章：按 .dialog-tabs 先例豁免全局 main button 的 40px 底线 */
+                      /* 轻盈徽章：按 .dialog-tabs 先例豁免全局 main button 的 40px 底线；p-1 + 16px 图标＝24px 命中区 */
                       style={{ minHeight: 0 }}
-                      className={`absolute top-1 right-1 z-10 px-1.5 py-0.5 text-[0.625rem] mono-font rounded-xs border transition-colors touch-manipulation ${
-                        atomMode === '3d'
-                          ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]'
-                          : 'border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:text-[var(--fg)]'
-                      }`}
+                      className="absolute top-1 right-1 z-10 inline-flex items-center justify-center p-1 rounded-xs border border-transparent text-[var(--muted)] hover:border-[var(--border)] hover:text-[var(--fg)] transition-colors touch-manipulation"
                     >
-                      {atomMode === '3d' ? (isZh ? '课本平面' : 'Flat view') : (isZh ? '3D 模型' : '3D model')}
+                      {atomMode === '3d' ? (
+                        /* 同心圆＝课本平面规范图（核 + 电子层），即点下去会回到的那张图。
+                           lucide 没有「核 + 两层」的三层同心圆，按 SVG 纪律内联绘制。 */
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <circle cx="12" cy="12" r="9.5" />
+                          <circle cx="12" cy="12" r="5" />
+                          <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+                        </svg>
+                      ) : (
+                        <Box size={16} strokeWidth={2} aria-hidden="true" />
+                      )}
                     </button>
                     {atomMode === '2d' ? (
                     <svg viewBox="0 0 180 150" className="w-full max-h-[160px]" aria-label={`${selected.zh} 原子结构`}>

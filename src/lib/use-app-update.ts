@@ -19,19 +19,21 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_VERSION } from './changelog';
+import {
+  countCachedEntries,
+  parsePrecacheManifest,
+  type UpdatePhase,
+  type UpdateProgress,
+} from './update-progress';
 
-export type UpdatePhase =
-  | 'idle'
-  | 'checking'
-  | 'downloading'
-  | 'activating'
-  | 'clearing'
-  | 'reloading';
+export type { UpdatePhase, UpdateProgress };
 
 const CHECK_MS = 8000;        // reg.update() 检查的最长等待
 const INSTALL_MS = 8000;      // 新 worker 安装完成的最长等待
 const ACTIVATE_MS = 4000;     // 发出 SKIP_WAITING 后等 controllerchange 的硬上限
 const HARD_DEADLINE_MS = 20000; // 整个流程的绝对上限
+/** 预缓存条目计数的采样间隔：安装期计数单调增长，120ms 足以让弧看起来连续 */
+const PROGRESS_POLL_MS = 120;
 
 /** 硬重置的「已执行版本」标记：同一会话同一远端版本只允许一次 */
 const HARD_RESET_KEY = 'stem_hard_reset_ver';
@@ -48,18 +50,38 @@ function claimHardReset(remoteVersion: string): boolean {
   }
 }
 
-/** 清缓存 + 注销 SW + 带版本号硬跳转；三步都不依赖旧 SW 配合 */
-export async function hardResetAndReload(): Promise<void> {
+/** 清缓存 + 注销 SW + 带版本号硬跳转；三步都不依赖旧 SW 配合。
+ *
+ *  `onProgress` 给出这一步的真值（单位同样是**条目**：一个注册 + 一个缓存各算一条）。
+ *  逐个删而不是 Promise.all：并发的删除只会让弧一次性跳到满，等于没有进度。 */
+export async function hardResetAndReload(
+  onProgress?: (done: number, total: number) => void,
+): Promise<void> {
+  let regs: readonly ServiceWorkerRegistration[] = [];
   try {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map((r) => r.unregister().catch(() => false)));
+    regs = await navigator.serviceWorker.getRegistrations();
   } catch { /* 无 SW / 隐私模式：继续清缓存 */ }
+  let keys: string[] = [];
   try {
-    if (typeof caches !== 'undefined') {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k).catch(() => false)));
-    }
+    if (typeof caches !== 'undefined') keys = await caches.keys();
   } catch { /* ignore */ }
+
+  const total = regs.length + keys.length;
+  let done = 0;
+  if (total > 0) onProgress?.(0, total);
+
+  for (const reg of regs) {
+    await reg.unregister().catch(() => false);
+    done += 1;
+    onProgress?.(done, total);
+  }
+  for (const key of keys) {
+    if (typeof caches === 'undefined') break;
+    await caches.delete(key).catch(() => false);
+    done += 1;
+    onProgress?.(done, total);
+  }
+
   const url = new URL(window.location.href);
   url.searchParams.set('_v', String(Date.now()));
   window.location.replace(url.toString());
@@ -68,9 +90,58 @@ export async function hardResetAndReload(): Promise<void> {
 export function useAppUpdate() {
   const [hasUpdate, setHasUpdate] = useState(false);
   const [phase, setPhase] = useState<UpdatePhase>('idle');
+  /** 只有 downloading / clearing 两段会赋值；其余阶段为 null，环退化成扫动弧 */
+  const [progress, setProgress] = useState<UpdateProgress | null>(null);
   const runningRef = useRef(false);
   const remoteVersionRef = useRef('');
   const ccBoundRef = useRef(false);
+  const pollRef = useRef(0);
+  /** trackPrecache 幂等守卫：一次点击只开一表（checking 阶段先开，downloading 复用） */
+  const trackingRef = useRef(false);
+
+  /** 停表：阶段切换与流程结束都必须调，否则页面加载完还在每 120ms 开一次 cache */
+  const stopPoll = useCallback(() => {
+    if (pollRef.current) {
+      window.clearInterval(pollRef.current);
+      pollRef.current = 0;
+    }
+  }, []);
+
+  /**
+   * 预缓存条目进度。真值边界见 update-progress.ts 抬头：
+   * 分母取 sw.js 里的**新清单**，逐条按 URL + revision 对齐已写入的缓存条目。
+   * 拿不到清单或没有 caches（隐私模式）就什么都不做 —— 环会保持扫动弧，不编造进度。
+   */
+  const trackPrecache = useCallback(async () => {
+    if (typeof caches === 'undefined') return;
+    if (trackingRef.current) return; // 幂等：点一次只开一表
+    trackingRef.current = true;
+    try {
+      const res = await fetch('/sw.js', { cache: 'no-store' });
+      if (!res.ok) return;
+      const entries = parsePrecacheManifest(await res.text());
+      if (entries.length === 0) return;
+      setProgress({ done: 0, total: entries.length });
+      /** 第一次采样同时充当基准：弧只画「本次更新还要做的量」的进度 */
+      let base: number | undefined;
+      const sample = async () => {
+        try {
+          const names = (await caches.keys()).filter((n) => n.startsWith('workbox-precache'));
+          const hrefs: string[] = [];
+          for (const name of names) {
+            const cache = await caches.open(name);
+            for (const request of await cache.keys()) hrefs.push(request.url);
+          }
+          const done = countCachedEntries(entries, hrefs);
+          if (base === undefined) base = done;
+          setProgress({ done, total: entries.length, base });
+        } catch { /* 读缓存失败：保留上一次读数，不倒退到 0 */ }
+      };
+      void sample();
+      stopPoll();
+      pollRef.current = window.setInterval(() => { void sample(); }, PROGRESS_POLL_MS);
+    } catch { /* 清单拿不到：保持 null，走扫动弧 */ }
+  }, [stopPoll]);
 
   // 检测：挂载 + 回到前台 + 恢复联网时各查一次（旧 hook 只查一次，
   // 标签页长期挂着时永远看不到之后发布的版本）
@@ -101,6 +172,11 @@ export function useAppUpdate() {
     if (runningRef.current) return; // 防连点
     runningRef.current = true;
     setPhase('checking');
+    setProgress(null);
+    /* 采样必须在 reg.update() 之前开表：update() 返回时新 worker 往往已经在装，
+       晚开表会让基准吃掉前半段进度，弧一起手就接近满（实测 160ms 内 0→87%）。 */
+    trackingRef.current = false;
+    void trackPrecache();
 
     let settled = false;
     let resetting = false;
@@ -110,6 +186,7 @@ export function useAppUpdate() {
     const settle = () => {
       if (settled) return;
       settled = true;
+      stopPoll();
       window.clearTimeout(deadline);
       window.clearTimeout(activationTimer);
     };
@@ -126,7 +203,7 @@ export function useAppUpdate() {
         return;
       }
       setPhase('clearing');
-      await hardResetAndReload();
+      await hardResetAndReload((done, total) => setProgress({ done, total }));
     };
 
     deadline = window.setTimeout(() => { void hardReset(); }, HARD_DEADLINE_MS);
@@ -182,6 +259,8 @@ export function useAppUpdate() {
       // 4) 等安装完成（8s 上限）
       if (worker.state !== 'installed' && worker.state !== 'activated') {
         setPhase('downloading');
+        // 采样在 checking 阶段就开好了（基准必须是安装前状态），这里只是确保在跑
+        void trackPrecache();
         const installed = await new Promise<boolean>((resolve) => {
           let timer = 0;
           const onChange = () => {
@@ -203,6 +282,8 @@ export function useAppUpdate() {
           onChange();
         });
         if (!installed) { await hardReset(); return; }
+        // 安装结束即停表：接下来是 activating（无分母，走扫动弧），不再需要采样
+        stopPoll();
       }
 
       // 5) 请求接管（生成的 SW 自带 skipWaiting；对 waiting 型 SW 同样有效）
@@ -219,6 +300,7 @@ export function useAppUpdate() {
   return {
     hasUpdate,
     phase,
+    progress,
     applyUpdate,
     busy: phase === 'checking' || phase === 'downloading' || phase === 'activating' || phase === 'clearing',
   };

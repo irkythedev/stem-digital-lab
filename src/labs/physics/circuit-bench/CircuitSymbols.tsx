@@ -163,6 +163,24 @@ export function CircuitSymbol({
           height={bodySize.h + hitPad * 2}
           fill="transparent"
         />
+        {/* 导线元件的屏幕空间命中带。
+            本体只有 52×10 世界单位、线身 2 单位粗，fit 缩放下可视线宽约 1.3px，
+            世界单位的命中底跟着缩成 33×6.5px（实测纵向容差 ±3.2px，再挪 1px 就点空）；
+            触屏侧 `BODY_HIT_PAD_CAP.wire` 是 0，外扩也救不回来。这里叠一条
+            `non-scaling-stroke` 的透明描边，和路线导线的 14px 命中带同一口径：
+            无论画布缩到多小，横向一整条都有 14px 的手指余量。 */}
+        {el.kind === 'wire' && (
+          <line
+            x1={-bodySize.w / 2}
+            y1={0}
+            x2={bodySize.w / 2}
+            y2={0}
+            stroke="transparent"
+            strokeWidth={14}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
         {/* 烧毁标记：电路图的灯泡符号中心就是玻璃泡，画在原点即可；
             仿真图的玻璃泡竖直长在灯座上方（泡心 y≈−23），由本体自己画在泡上，
             所以这里不能重复打叉。 */}

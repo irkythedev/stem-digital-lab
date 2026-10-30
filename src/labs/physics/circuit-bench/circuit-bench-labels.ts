@@ -11,6 +11,7 @@
 import type { BenchState, CircuitComponent, ElementKind, ElementReading } from './circuit-bench-core';
 import { formatPhysicalValue } from './circuit-bench-core';
 import { isFaulty } from './circuit-bench-menu';
+import { meterRange } from './circuit-bench-models';
 import { elementCanvasLabel } from './circuit-bench-naming';
 import { buildWireRoutes, type WireRoute } from './circuit-bench-render';
 import {
@@ -37,6 +38,8 @@ export interface PlacedLabel extends ScreenRect {
   selected: boolean;
   /** 电表表笔接反：胶囊改用警示色，文字已带 ⚠ 前缀。 */
   reversed?: boolean;
+  /** 电表读数越过满量程：胶囊改用危险色，文字同样带 ⚠ 前缀。 */
+  over?: boolean;
   /**
    * 熔毁元件（灯泡烧毁 / 保险丝熔断）：这一枚不是读数胶囊，而是就近可点的告警徽章
    * 「⚠️ 已断路」。组件据此换成告警配色并把指针事件收回来（见 CircuitLabels）。
@@ -82,6 +85,8 @@ interface LabelSpec {
   vertical: boolean;
   selected: boolean;
   reversed?: boolean;
+  /** 超量程：读数胶囊改用危险色（优先级高于接反的警示色）。 */
+  over?: boolean;
   /** 熔毁元件：这枚标签是告警徽章而不是读数。 */
   fault?: boolean;
   /** 垂直分层：名称恒定居上、读数恒定居下（见 LAYER_ANCHOR_WU）。 */
@@ -174,6 +179,18 @@ export function signedCurrent(reading: ElementReading): number {
 
 /** 只有电表才有「表笔接反」这回事：电池接反是合法接法，不该报接反。 */
 const REVERSIBLE_KINDS = new Set<ElementKind>(['ammeter', 'voltmeter', 'galvanometer']);
+
+/**
+ * 读数是否越过满量程。判据与求解器 `over-range` 告警、监控看板 `MeterRow.over`
+ * 完全相同（量程取自 `meterRange`，阈值 1.000001），三处不会各说各话。
+ */
+export function readingOverRange(el: CircuitComponent, reading: ElementReading): boolean {
+  if (!REVERSIBLE_KINDS.has(el.kind)) return false;
+  const range = meterRange(el);
+  if (!(range > 0)) return false;
+  const raw = el.kind === 'voltmeter' ? reading.voltage : signedCurrent(reading);
+  return Number.isFinite(raw) && Math.abs(raw) > range * 1.000001;
+}
 
 /**
  * 表针方向：带符号读数相对参考方向为负，说明表笔接反了（针左偏）。
@@ -495,6 +512,10 @@ function makeSpecs(input: LabelLayoutInput): LabelSpec[] {
       // 表笔接反：读数带负号，再补一个 ⚠ 前缀把「负号」和「电路真的反向」区分开。
       // 前缀计入同一次宽度估算，所以加字不会撑破胶囊、不会被裁。
       const reversed = readingReversed(el.kind, reading);
+      // 超量程同样要在画布上「看得见」：只看表盘/看板会漏掉正盯着电路读数的那一眼。
+      // 两者并存时以超量程（更严重）为准，颜色在 CircuitLabels 里按同一优先级取。
+      const over = readingOverRange(el, reading);
+      const warned = reversed || over;
       const valueText = formatPhysicalValue(value, unit);
       specs.push({
         id: `${el.id}:value`,
@@ -502,8 +523,9 @@ function makeSpecs(input: LabelLayoutInput): LabelSpec[] {
         variant: 'value',
         // 画布读数与检查器共用同一套工程单位排版（258 mA / 2.96 V），
         // 绝不在画布上印出 e-6、e+6 这类裸指数。
-        text: reversed ? `⚠ ${valueText}` : valueText,
+        text: warned ? `⚠ ${valueText}` : valueText,
         reversed,
+        over,
         fontPx: VALUE_FONT,
         height: VALUE_HEIGHT,
         padX: 7,
@@ -664,6 +686,7 @@ export function layoutCircuitLabels(input: LabelLayoutInput): PlacedLabel[] {
         text: spec.text,
         selected: spec.selected,
         reversed: spec.reversed,
+        over: spec.over,
         fault: spec.fault,
         ...box,
         leader,

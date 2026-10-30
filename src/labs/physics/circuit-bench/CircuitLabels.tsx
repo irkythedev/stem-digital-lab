@@ -91,7 +91,9 @@ export default function CircuitLabels({
   /** 标签底样式：读数胶囊实底、名称标签半透明；告警徽章在下面单独覆盖配色。 */
   const boxStyle = (l: (typeof labels)[number]): CSSProperties => {
     const value = l.variant === 'value';
-    const accent = l.reversed ? 'var(--danger)' : null;
+    // 告警配色按严重程度取一档：超量程（危险，红）> 表笔接反（警示，琥珀）。
+    // 两者同时成立时学生最该先处理的是「表已经打到底了」，所以红色优先。
+    const accent = l.over ? 'var(--danger)' : l.reversed ? 'var(--warn)' : null;
     return {
       position: 'absolute',
       left: l.x,

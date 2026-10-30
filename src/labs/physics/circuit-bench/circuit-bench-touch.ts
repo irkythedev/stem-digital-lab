@@ -11,6 +11,7 @@
  *
  * 这里只有纯判定逻辑，没有 React、没有 DOM：阈值可以被单测逐条钉死。
  */
+import type { ElementKind } from './circuit-bench-core';
 
 /** 两次 pointerdown 间隔小于它，且落点足够近，就当成双击。 */
 export const DOUBLE_TAP_MS = 350;
@@ -56,6 +57,18 @@ export function isDoubleTap(prev: PointerSample | null, next: PointerSample): bo
 /** 长按判定：按住超过 `LONG_PRESS_MS`，且整段漂移没超过 `LONG_PRESS_SLOP_PX`。 */
 export function isLongPress(start: PointerSample, now: PointerSample): boolean {
   return now.t - start.t >= LONG_PRESS_MS && within(start, now, LONG_PRESS_SLOP_PX);
+}
+
+/**
+ * 双击开关时要不要收回第一击的拨动。
+ *
+ * 单击开关就是拨动（PhET 口径），而双击的第一下也是一次完整的单击；
+ * 双击的语义是「看参数」，所以第二击命中时要把那一次拨动撤回去。
+ * 只认「第一击真的拨过」的标记（`toggled`）：拖着开关挪位置、
+ * 或者在开关上快速点了两下但第一下越过了拖动阈值，都不该动撤销栈。
+ */
+export function shouldRevertToggle(kind: ElementKind, toggled: boolean | undefined): boolean {
+  return kind === 'switch' && toggled === true;
 }
 
 /**

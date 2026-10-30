@@ -5,6 +5,7 @@
  * 通用参数滑块：label + 数值范围 + 步长 + 实时读数。
  * 与语言无关，文案由父级按当前语言解析后传入。
  */
+import { useEffect, useRef } from 'react';
 import { Minus, Plus } from 'lucide-react';
 
 interface ParamSliderProps {
@@ -21,6 +22,13 @@ interface ParamSliderProps {
    * 极小步长（如横截面积 1e-7 m²）的实验须显式传入，否则会被取整成 0。
    */
   precision?: number;
+  /**
+   * 连续拖动滑块的起止。`onChange` 在拖动中每帧都会触发，调用方据此把
+   * 「一次拖动」记成一次撤销（起点 mark、过程覆盖 present、终点收尾），
+   * 而不是几十条历史。不传则完全不影响既有行为。
+   */
+  onAdjustStart?: () => void;
+  onAdjustEnd?: () => void;
 }
 
 export default function ParamSlider({
@@ -33,12 +41,36 @@ export default function ParamSlider({
   format,
   disabled = false,
   precision,
+  onAdjustStart,
+  onAdjustEnd,
 }: ParamSliderProps) {
   // 修复浮点精度：根据 step（或显式 precision）取整
   const decimals = precision ?? (step >= 1 ? 0 : step >= 0.1 ? 1 : 2);
   const quantize = (v: number) => Number(v.toFixed(decimals));
 
   const value = quantize(rawValue);
+
+  /**
+   * 滑块拖动的起止：range 的拖动可能把指针甩到控件外再松手，
+   * 所以结束不能只监听 input 自己的 pointerup——挂一次 window 级别更稳。
+   * 回调走 ref，避免父级每次渲染换一个新函数就重挂监听。
+   */
+  const dragging = useRef(false);
+  const endRef = useRef(onAdjustEnd);
+  endRef.current = onAdjustEnd;
+  useEffect(() => {
+    const end = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      endRef.current?.();
+    };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    return () => {
+      window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
+    };
+  }, []);
 
   const handleStep = (delta: number) => {
     if (disabled) return;
@@ -72,6 +104,11 @@ export default function ParamSlider({
           step={step}
           value={value}
           disabled={disabled}
+          onPointerDown={() => {
+            if (dragging.current) return;
+            dragging.current = true;
+            onAdjustStart?.();
+          }}
           onChange={(e) => onChange(quantize(Number(e.target.value)))}
           className="h-11 min-h-[44px] flex-1 cursor-pointer accent-[var(--fg)] touch-manipulation"
         />

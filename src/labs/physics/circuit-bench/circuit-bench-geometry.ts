@@ -976,27 +976,109 @@ export function elementInkBounds(el: CircuitComponent): Bounds {
 }
 
 function boxToBounds(el: CircuitComponent, box: BodyBox): Bounds {
+  return boxToBoundsAt(el.x, el.y, el.rotation ?? 0, box);
+}
+
+/**
+ * 同上，但位置/旋转由参数给：找空位、贴边界时需要对「还不在状态里的候选坐标」
+ * 反复求包围盒，没必要为每个候选伪造一个 CircuitComponent。
+ */
+function boxToBoundsAt(x: number, y: number, rotation: number, box: BodyBox): Bounds {
   // 本体包络可以不居中了（玻璃泡长在灯座之上、电热丝底板压在下沿），
   // 再用「换个 w/h」的写法就会把不对称量丢掉。改成把本地框四角真的转过去，
   // 取旋转后的轴对齐外接矩形：任意角度都成立，也不再需要 % 180 的特判。
-  const rad = ((el.rotation ?? 0) * Math.PI) / 180;
+  const rad = (rotation * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
-  for (const x of [box.x0, box.x1]) {
-    for (const y of [box.y0, box.y1]) {
-      const px = x * cos - y * sin;
-      const py = x * sin + y * cos;
+  for (const px0 of [box.x0, box.x1]) {
+    for (const py0 of [box.y0, box.y1]) {
+      const px = px0 * cos - py0 * sin;
+      const py = px0 * sin + py0 * cos;
       if (px < minX) minX = px;
       if (px > maxX) maxX = px;
       if (py < minY) minY = py;
       if (py > maxY) maxY = py;
     }
   }
-  return { x: el.x + minX, y: el.y + minY, w: maxX - minX, h: maxY - minY };
+  return { x: x + minX, y: y + minY, w: maxX - minX, h: maxY - minY };
+}
+
+/** 元件本体与世界边缘之间的净空。 */
+const WORLD_MARGIN = 6;
+
+/**
+ * 把元件位置夹回世界内——按**旋转后的本体外接框**算，而不是按中心点。
+ *
+ * 旧状态层的 `clampPos` 是 ±5000：元件能被拖到元件库 / 检查器浮层底下，
+ * 主图里再也找不到它，只能靠「适配画布」碰运气。夹取口径改成世界矩形后，
+ * 拖动终点与新元件落点都不会越界。
+ */
+export function clampElementPos(kind: ElementKind, rotation: number, x: number, y: number): Pt {
+  const b = boxToBoundsAt(x, y, rotation, componentBodyBox(kind));
+  /** 在 [lo, hi] 里取最靠近 0 的位移；元件比世界还宽时优先贴右/下边。 */
+  const shift = (pos: number, size: number, total: number): number => {
+    const lo = WORLD_MARGIN - pos;
+    const hi = total - WORLD_MARGIN - (pos + size);
+    return Math.min(hi, Math.max(lo, 0));
+  };
+  return { x: x + shift(b.x, b.w, WORLD_W), y: y + shift(b.y, b.h, WORLD_H) };
+}
+
+/** 添加 / 复制元件时，两个本体之间至少留出的世界单位。 */
+const PLACE_GAP = 14;
+/** 找空位最多向外搜几圈（8 圈足够在 1000×620 里绕开一小片元件群）。 */
+const FREE_SPOT_RINGS = 8;
+
+/**
+ * 为一个新元件找一个不与现有元件重叠的落点。
+ *
+ * 从 `preferred`（单击添加时是当前视口中心，复制时是原件右下方）出发，
+ * 按「本体尺寸 + 净空」为步长做逐圈螺旋搜索，返回第一个空的网格点。
+ * 旧实现是 `360 + n*80` 的固定公式：步长比元件本体还窄，
+ * 连续加两个电阻就会重叠 20 多个世界单位（审计 P2-2）。
+ *
+ * 搜不到时退回夹取后的首选点——宁可重叠，也不能让元件落到世界外。
+ */
+export function findFreeSpot(
+  components: readonly CircuitComponent[],
+  kind: ElementKind,
+  preferred: Pt,
+  rotation = 0,
+): Pt {
+  const box = componentBodyBox(kind);
+  const occupied = components.map((c) => elementBounds(c));
+  const spotBounds = (p: Pt) => boxToBoundsAt(p.x, p.y, rotation, box);
+  const free = (p: Pt) => {
+    const b = spotBounds(p);
+    return !occupied.some(
+      (o) =>
+        b.x - PLACE_GAP < o.x + o.w &&
+        b.x + b.w + PLACE_GAP > o.x &&
+        b.y - PLACE_GAP < o.y + o.h &&
+        b.y + b.h + PLACE_GAP > o.y,
+    );
+  };
+  const base = clampElementPos(kind, rotation, preferred.x, preferred.y);
+  const own = spotBounds({ x: 0, y: 0 });
+  const stepX = Math.max(GRID, Math.ceil((own.w + PLACE_GAP) / GRID) * GRID);
+  const stepY = Math.max(GRID, Math.ceil((own.h + PLACE_GAP) / GRID) * GRID);
+  const at = (dx: number, dy: number) =>
+    clampElementPos(kind, rotation, base.x + dx * stepX, base.y + dy * stepY);
+  if (free(base)) return base;
+  for (let r = 1; r <= FREE_SPOT_RINGS; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const p = at(dx, dy);
+        if (free(p)) return p;
+      }
+    }
+  }
+  return base;
 }
 
 /** 本地坐标下的本体包络：`x0/y0` 是左上角，`x1/y1` 是右下角。 */

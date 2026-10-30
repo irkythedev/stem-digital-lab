@@ -17,7 +17,7 @@
  * 前者管「会不会烧」，后者管「该不该带电动手」，两套判据各自独立。
  */
 import type { BenchState, CircuitComponent, ElementKind, ElementReading, SolveResult } from './circuit-bench-core';
-import { finite, formatPhysicalValue, resetElementState, solveCircuit } from './circuit-bench-core';
+import { finite, formatPhysicalValue, LIVE_CURRENT_A, resetElementState, solveCircuit } from './circuit-bench-core';
 import { elementCanvasLabel, elementName } from './circuit-bench-naming';
 import { isFaulty } from './circuit-bench-menu';
 import { bulbRadK, bulbResistance, FUSE_TRIP_HEAT, meterRange, T_AMBIENT, T_BULB_BURN } from './circuit-bench-models';
@@ -54,8 +54,11 @@ const LIT_FRACTION = 0.01;
  *
  * 1e-5 A = 10 µA：比任何中学实验里可观测的电流都小三个数量级，又比数值泄漏大三个
  * 数量级，正好落在两者之间的空带里。功率门槛同理（P = I²R，10 µA 过 8 Ω 只有 8e-10 W）。
+ *
+ * 定义在 core 里（求解器标连接件的 `nodeLive` 也要用同一个阈值），这里转出给看板
+ * 与既有引用；两处各写一份就会出现「看板说没电流、检查器说在回路里」。
  */
-export const LIVE_CURRENT_A = 1e-5;
+export { LIVE_CURRENT_A };
 export const LIVE_POWER_W = 1e-4;
 /** 电压表没有电流也能有读数：并联在断开的开关两端时它照样量出电源电压。 */
 export const LIVE_VOLTAGE_V = 1e-4;
@@ -143,22 +146,29 @@ export interface MonitorModel {
 }
 
 /**
- * 看板的一句话结论，三种语义互斥：空台面 / 有东西坏了 / 都正常。
+ * 看板的一句话结论，四档语义互斥：空台面 / 有东西坏了 / 电表告警 / 都正常。
+ *
+ * `meter` 单列一档：电表超量程或表笔接反时，电路本身没坏（没有熔毁元件），
+ * 但「N 元件正常」这句话会把学生的注意力从「表针已经打到底」上引开。
  */
-export type MonitorVerdict = 'empty' | 'fault' | 'ok';
+export type MonitorVerdict = 'empty' | 'fault' | 'meter' | 'ok';
 
 /**
- * 判定顺序：**空 → 故障 → 正常**。
+ * 判定顺序：**空 → 故障 → 电表告警 → 正常**。
  *
  * 空必须排在故障之前，否则会掉进「0 元件正常」这种机械结论：空画布的
  * `faultIds` 天然为空，只看故障有无就会顺理成章地打出一个绿勾——可那不是一个
  * 结论，只是一个没有任何测量支撑的空真（「没有损坏的元件」和「没有元件」在布尔
  * 上等价，在认知上正好相反）。学生看到绿勾会以为「检查过了，没问题」，
  * 而台面上其实什么都还没有。
+ *
+ * 电表告警排在正常之前，同理：熔毁是「坏了」，超量程/接反是「读不出来」，
+ * 两者都不是绿勾能概括的状态。
  */
 export function monitorVerdict(model: MonitorModel): MonitorVerdict {
   if (model.empty) return 'empty';
-  return model.faultIds.length > 0 ? 'fault' : 'ok';
+  if (model.faultIds.length > 0) return 'fault';
+  return model.meterAlerts > 0 ? 'meter' : 'ok';
 }
 
 function statusTextOf(status: LoadStatus, lang: 'zh' | 'en'): string {
@@ -294,15 +304,21 @@ export function buildMonitorModel({
       continue;
     }
 
+    /*
+     * 导线元件两端在求解器里被并成同一节点，支路电压恒为 0，`loadLive` 因此恒 false。
+     * 若直接拿它建行，串联在干路上的导线永远显示「无电流」——它明明扛着整条回路的
+     * 电流。通断改问求解器标在读数上的 `nodeLive`（所在节点是否在载流回路里）。
+     */
+    const connectorLive = el.kind === 'wire' ? (reading?.nodeLive ?? false) : live;
     others.push({
       id: el.id,
       kind: el.kind,
       name,
-      text: otherText(el, live, lang, shortCircuit),
-      status: otherStatus(el, live, shortCircuit),
+      text: otherText(el, connectorLive, lang, shortCircuit),
+      status: otherStatus(el, connectorLive, shortCircuit),
       voltage: reading ? Math.abs(reading.voltage) : 0,
       current: reading ? Math.abs(reading.currentAB) : 0,
-      live,
+      live: connectorLive,
       faulty,
     });
   }
@@ -343,6 +359,11 @@ function otherText(el: CircuitComponent, live: boolean, lang: 'zh' | 'en', short
   }
   if (el.kind === 'switch') {
     return el.params.closed === false ? (zh ? '断开' : 'Open') : zh ? '闭合' : 'Closed';
+  }
+  if (el.kind === 'wire') {
+    // 连接件只有「在回路里 / 不在回路里」两态，没有电流读数可报：
+    // 「无电流」在开路时是实话，在串联干路上就是假话，所以通断要按 nodeLive 说。
+    return live ? (zh ? '导通' : 'Conducting') : zh ? '无电流' : 'No current';
   }
   if (el.kind === 'battery') {
     if (shortCircuit) return zh ? '短路' : 'Shorted';

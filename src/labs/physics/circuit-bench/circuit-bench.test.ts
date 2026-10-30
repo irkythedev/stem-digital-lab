@@ -71,7 +71,7 @@ import {
   toggleSwitch,
   updateParams,
 } from './circuit-bench-state';
-import { buildMonitorModel, LIVE_CURRENT_A } from './circuit-bench-monitor';
+import { buildMonitorModel, LIVE_CURRENT_A, monitorVerdict } from './circuit-bench-monitor';
 import { fitLinear, predict, reconcileProbeKey, toCsv } from './circuit-bench-fit';
 import { buildOptions, readProbe, type ProbeOption } from './circuit-bench-probes';
 import { FLOW_MIN_AMPS, computeWireFlows } from './circuit-bench-flow';
@@ -85,6 +85,8 @@ import {
   mark,
   redo,
   replace,
+  rollbackLast,
+  settle,
   undo,
 } from './circuit-bench-history';
 import {
@@ -134,6 +136,8 @@ import {
   createPlacedSegments,
   routeMiddleBends,
   routeOverlaps,
+  clampElementPos,
+  findFreeSpot,
 } from './circuit-bench-geometry';
 import {
   buildWireJunctions,
@@ -146,6 +150,7 @@ import {
   hasCanvasReadout,
   layoutCircuitLabels,
   readingForKind,
+  readingOverRange,
   readingReversed,
   sanitizeReadout,
 } from './circuit-bench-labels';
@@ -184,6 +189,7 @@ import {
   isLongPress,
   longPressDrifted,
   pxToWorld,
+  shouldRevertToggle,
   terminalHitRadiusWorld,
   worldToPx,
   type PointerSample,
@@ -792,6 +798,24 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(sw && sw.a === sw.b, '闭合开关两端应在同一节点');
   });
 
+  test('circuit-bench: 闭合开关两端并点（读数 0 A 是模型产物），断开后电压回到真实值', () => {
+    // 并点后开关不参与求解，它的 0 A 不是测量结果。检查器因此只对闭合态
+    // 换说明卡；断开态没有被并点，U 就是电源电压，必须照常给四格。
+    const closed = solveCircuit(simpleLoop({ loadKind: 'bulb' }));
+    assert.ok(Math.abs(closed.elements.load.current) > 0.05, '回路本身应有电流');
+    assert.ok(Math.abs(closed.elements.sw.current) < 1e-9, '并点开关的读数恒为 0 A（模型产物）');
+
+    const open = solveCircuit(toggleSwitch(simpleLoop({ loadKind: 'bulb' }), 'sw'));
+    assert.ok(Math.abs(open.elements.sw.current) < 1e-9, '断开时无电流');
+    assert.ok(Math.abs(open.elements.sw.voltage) > 1, '断开时开关两端须有真实电压差');
+  });
+
+  test('circuit-bench 触控: 只有第一击真的拨过开关才收回', () => {
+    assert.equal(shouldRevertToggle('switch', true), true);
+    assert.equal(shouldRevertToggle('switch', undefined), false, '拖着开关挪位置不算拨动');
+    assert.equal(shouldRevertToggle('bulb', true), false, '非开关元件没有可收回的拨动');
+  });
+
   test('circuit-bench: 电压表内阻远大于电流表', () => {
     const v = createComponent('v', 'voltmeter', 0, 0);
     const a = createComponent('a', 'ammeter', 0, 0);
@@ -1076,14 +1100,129 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.equal(st.components.find((c) => c.id === 'bat')?.params.emf, before.components.find((c) => c.id === 'bat')?.params.emf);
   });
 
-  test('circuit-bench: moveComponent 拒绝 NaN 并夹取超大坐标', () => {
-    let st = addComponent(createEmptyState(), 'resistor', 0, 0);
-    const id = st.components[0].id;
-    st = moveComponent(st, id, Number.NaN, 10);
-    assert.equal(st.components[0].x, 0);
-    st = moveComponent(st, id, 99999, -99999);
-    assert.equal(st.components[0].x, 5000);
-    assert.equal(st.components[0].y, -5000);
+  test('circuit-bench: moveComponent 拒绝 NaN 并把超大坐标夹回世界', () => {
+    const st0 = addComponent(createEmptyState(), 'resistor', 0, 0);
+    const id = st0.components[0].id;
+    // 新增时同样按旋转后的本体框夹取：左上角不会留半个身子在画布外。
+    const born = elementBounds(st0.components[0]);
+    assert.ok(born.x >= 0 && born.y >= 0, '新元件必须完整落在世界内');
+    // NaN 不改位置（引用也不变，上层 useMemo 可以照常短路）。
+    const same = moveComponent(st0, id, Number.NaN, 10);
+    assert.equal(same.components[0].x, st0.components[0].x);
+    assert.equal(same.components[0].y, st0.components[0].y);
+    const st = moveComponent(st0, id, 99999, -99999);
+    const b = elementBounds(st.components[0]);
+    // 旧实现夹到 ±5000（画布外），现在必须贴住世界边距。
+    assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= WORLD_W && b.y + b.h <= WORLD_H, '被夹回世界内');
+    assert.ok(b.x + b.w > WORLD_W - 40, '右上方向确实贴到了右边界');
+    assert.ok(b.y < 40, '右上方向确实贴到了上边界');
+  });
+
+  test('circuit-bench history: 一次拖动只留一个撤销点，空标记在松手时被收回', () => {
+    // 带真实变化：mark 压入起点，拖动中 replace 覆盖现值，松手 settle 不动栈顶。
+    let h = createHistory({ n: 0 });
+    h = mark(h);
+    h = replace(h, { n: 1 });
+    const dragged = settle(h);
+    assert.equal(dragged.past.length, 1, '一次拖动只能留下一个撤销点');
+    assert.deepEqual(undo(dragged).present, { n: 0 }, '撤销回到拖动前');
+
+    // 按下去没拖又松手（或点了空白）：mark 的基线与现值同引用，settle 把它收回。
+    const tapped = settle(mark(createHistory({ n: 0 })));
+    assert.equal(tapped.past.length, 0);
+    assert.equal(canUndo(tapped), false, '没有变化的点击不得污染撤销栈');
+  });
+
+  test('circuit-bench history: 双击开关的收回只撤一步，且不留重做项', () => {
+    // 双击的第一下就是一次完整的单击，而单击开关就是拨动。第二击命中时
+    // 要把那次拨动连同它的撤销点一起收回——这里钉住「收回到拨动前」和
+    // 「不留重做项」两件事：用 undo 会把拨反后的状态塞进 future，
+    // 学生再点重做就会把刚看过的开关又拨一次。
+    const before = simpleLoop({ loadKind: 'bulb' });
+    const toggled = commit(createHistory(before), toggleSwitch(before, 'sw'));
+    assert.equal(toggled.past.length, 1, '单击开关须留下一个撤销点');
+    assert.equal(
+      toggled.present.components.find((c) => c.id === 'sw')?.params?.closed,
+      false,
+      '单击后开关应是断开态',
+    );
+
+    const rolled = rollbackLast(toggled);
+    assert.deepEqual(rolled.present, before, '收回后必须回到双击前的闭合态');
+    assert.equal(rolled.past.length, 0, '双击不是编辑，不得在撤销栈留痕');
+    assert.equal(canRedo(rolled), false, '收回不得把「拨反后的状态」塞进重做栈');
+
+    // 空栈调用是安全的：没有可收的步骤就原样返回。
+    const empty = rollbackLast(createHistory(before));
+    assert.equal(empty.past.length, 0);
+    assert.equal(canRedo(empty), false);
+  });
+
+  test('circuit-bench placement: 连点四次电阻自动找空位、互不重叠且完整落在世界内', () => {
+    let st = createEmptyState();
+    const boxes: { x: number; y: number; w: number; h: number }[] = [];
+    for (let i = 0; i < 4; i++) {
+      // 每次都从同一个「视口中心」点添加：正是审计里会叠成一摞的那条路径。
+      const spot = findFreeSpot(st.components, 'resistor', { x: 500, y: 310 });
+      st = addComponent(st, 'resistor', spot.x, spot.y);
+      const b = elementBounds(st.components[st.components.length - 1]);
+      assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= WORLD_W && b.y + b.h <= WORLD_H, `第 ${i + 1} 只越界`);
+      boxes.push(b);
+    }
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i];
+        const c = boxes[j];
+        const overlap = a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h;
+        assert.ok(!overlap, `第 ${i + 1} 与第 ${j + 1} 只电阻重叠`);
+      }
+    }
+  });
+
+  test('circuit-bench placement: clampElementPos 按旋转后的本体框夹回世界', () => {
+    for (const rotation of [0, 90, 180, 270]) {
+      const el = { ...createComponent('r', 'resistor', 0, 0, {}, rotation), rotation };
+      const p = clampElementPos('resistor', rotation, -9999, 99999);
+      const b = elementBounds({ ...el, x: p.x, y: p.y });
+      assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= WORLD_W && b.y + b.h <= WORLD_H, `${rotation}° 越界`);
+    }
+  });
+
+  test('circuit-bench meter: 超量程在画布胶囊、看板与折叠药丸上口径一致', () => {
+    // 3 V 挡电压表去量 24 V 电源：读数、胶囊、看板、药丸四面必须都说「超量程」。
+    const st = stateOf(
+      [
+        createComponent('bat', 'battery', 120, 300, { emf: 24, r: 0.5 }, 0, 'E'),
+        createComponent('v', 'voltmeter', 420, 300, { range: 3 }, 0, 'V'),
+      ],
+      [['bat:a', 'v:a'], ['v:b', 'bat:b']],
+    );
+    const solved = solveCircuit(st);
+    assert.ok(solved.warnings.some((w) => w.code === 'over-range' && w.elementIds?.includes('v')));
+
+    const el = st.components.find((c) => c.id === 'v')!;
+    const reading = solved.elements.v;
+    assert.ok(readingOverRange(el, reading), '24 V 必须判为超量程');
+    assert.ok(!readingReversed('voltmeter', reading), '正接不得同时判成接反');
+
+    const labels = layoutCircuitLabels({
+      state: st,
+      readings: solved.elements,
+      view: { tx: 0, ty: 0, scale: 1 },
+      size: { w: WORLD_W, h: WORLD_H },
+      showValues: true,
+      showNames: false,
+      selectedId: null,
+    });
+    const capsule = labels.find((l) => l.id === 'v:value');
+    assert.ok(capsule, '超量程时读数胶囊必须仍然显示');
+    assert.equal(capsule!.over, true, '胶囊必须带上超量程标记（用于红色配色）');
+    assert.ok(capsule!.text.startsWith('⚠ '), `超量程胶囊应带 ⚠ 前缀，实得「${capsule!.text}」`);
+
+    const model = buildMonitorModel({ state: st, readings: solved.elements });
+    assert.equal(model.meterAlerts, 1);
+    assert.equal(model.faultIds.length, 0, '超量程不是熔毁，不该混进故障');
+    assert.equal(monitorVerdict(model), 'meter', '折叠药丸必须显示电表告警，而不是「N 元件正常」');
   });
 
   test('circuit-bench: rotateComponent 在 0/90/180/270 循环', () => {
@@ -3485,6 +3624,84 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     }
   });
 
+  test('circuit-bench 文案: 按钮叫「接线」，预设步骤不得自称「连线」，元件坞说明导线含义', () => {
+    // 学生按步骤找按钮，界面上没有叫「连线」的东西时只能猜。
+    for (const p of CIRCUIT_PRESETS) {
+      assert.ok(
+        !JSON.stringify(p.steps).includes('「连线」'),
+        `${p.id}: 步骤里的按钮名须与工具栏一致（「接线」）`,
+      );
+    }
+    assert.ok(
+      readSrc('BenchToolbar.tsx').includes("zh ? '接线' : 'Wire'"),
+      '工具栏按钮名须是「接线」',
+    );
+    assert.ok(
+      readSrc('ElementPalette.tsx').includes('等同直接接线'),
+      '元件坞须说明：导线元件等同直接接线，本身不产生读数',
+    );
+  });
+
+  test('circuit-bench 触控: 导线元件的命中带按屏幕像素给，不随画布缩放变细', () => {
+    /*
+     * 本体 52×10 世界单位、线身 2 单位粗：桌面 fit（k≈0.645）下可视线宽约 1.3px，
+     * 命中矩形 33×6.5px，实测纵向容差 ±3.2px；触屏侧 `BODY_HIT_PAD_CAP.wire` 是 0，
+     * 世界单位的外扩也救不回来（52×10 原样缩）。这里补一条 14px 的透明描边命中带，
+     * 与路线导线的命中带同口径——缩到多小都还有一整条手指宽。
+     */
+    const symbols = readSrc('CircuitSymbols.tsx');
+    const band = symbols.indexOf("el.kind === 'wire' && (");
+    assert.ok(band > 0, '导线元件缺少屏幕空间命中带');
+    const src = symbols.slice(band, band + 420);
+    assert.match(src, /stroke="transparent"/, '命中带不得被看见');
+    assert.match(src, /strokeWidth=\{14\}/, '命中带宽度须与路线导线一致（14px 屏幕像素）');
+    assert.match(src, /vectorEffect="non-scaling-stroke"/, '命中带必须不随缩放变细，否则 fit 下又回到 2px');
+    assert.match(src, /strokeLinecap="round"/, '两端要给手指留圆角余量');
+  });
+
+  test('circuit-bench 检查器: 导线元件不显示 I/U/P/R 四格', () => {
+    // 那个 0 A 是「模型里不解这条支路」，不是测量值：照常画四格等于把理想连接件
+    // 说成一只「没有电流的电阻」，而它在串联干路上扛着整条回路的电流。
+    const panel = readSrc('InspectorPanel.tsx');
+    assert.match(
+      panel,
+      /el\.kind === 'wire' \? \(\s*<ConnectorNote/,
+      '导线元件须走连接件读数（ConnectorNote），不得落进 Readout 的四格',
+    );
+    assert.ok(panel.includes('理想导线'), '连接件读数须说明「两端视为同一点、不分压」');
+  });
+
+  test('circuit-bench 检查器: 闭合开关不显示失真的 I/U/P/R 四格，断开态仍是真实读数', () => {
+    // 闭合开关与导线一样在网表里被并成同一节点，四格全是模型产物：
+    // 串联干路上灯泡读 258 mA、电流表也读 258 mA，同一帧里开关却说自己
+    // 0 A —— 学生只会以为开关坏了。断开态则相反，是真读数且是教学点。
+    const panel = readSrc('InspectorPanel.tsx');
+    assert.match(
+      panel,
+      /el\.kind === 'switch' && el\.params\?\.closed !== false \? \([\s\S]{0,200}?<ClosedSwitchNote/,
+      '闭合开关须走导通说明卡，不得落进 Readout 的四格',
+    );
+    assert.ok(panel.includes('闭合 · 导通'), '缺少闭合态中文标题');
+    assert.ok(
+      panel.includes('理想闭合开关视为无阻连接，两端电压为 0 V，通过的电流由所在回路决定。'),
+      '闭合态说明须交代「无阻连接、电流由回路决定」',
+    );
+    assert.ok(panel.includes('Closed · Conducting'), '缺少闭合态英文标题');
+    assert.ok(
+      panel.includes(
+        'An ideal closed switch acts as a zero-resistance path (0 V across it; current is set by the loop).',
+      ),
+      '闭合态英文说明须与中文同义',
+    );
+    // 断开态没有被并点：U = 电源电压、R = ∞ 是「断路时开关两端有电压」的
+    // 教学观察点，必须照常落到 Readout，不能被上面的分支一并吞掉。
+    assert.match(
+      panel,
+      /\) : \(\s*<Readout el=\{el\} result=\{result\} zh=\{zh\} \/>/,
+      '断开态开关仍须落到 Readout',
+    );
+  });
+
   test('circuit-bench 触控: 防误触守卫禁掉浏览器手势与文本选择', () => {
     assert.ok(TOUCH_GUARD.includes('touch-none'), '须关掉浏览器自带手势');
     assert.ok(TOUCH_GUARD.includes('select-none'), '须关掉长按文本选择');
@@ -3627,6 +3844,32 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     }
   });
 
+  test('circuit-bench 元件坞: 只在看得见的画面上落子——视口外与浮层上松手一律取消', () => {
+    const palette = readSrc('ElementPalette.tsx');
+    assert.ok(
+      palette.includes("const DROP_BLOCK_SELECTOR = '[data-palette], [data-drop-blocked]'"),
+      '浮层命中口径必须是元件坞 + 所有浮动面板的同一组标记',
+    );
+    // 浮层比视口高时（桌面竖排元件坞贴着画布底边），指针捕获允许在视口外松手：
+    // elementFromPoint 返回 null，toWorld 却仍能换算出一个页面下方的世界坐标。
+    assert.match(palette, /clientX >= window\.innerWidth/, '视口外落点必须判为无效');
+    assert.match(palette, /clientY >= window\.innerHeight/, '视口外落点必须判为无效');
+    assert.match(
+      palette,
+      /return !el \|\| !!el\.closest\?\.\(DROP_BLOCK_SELECTOR\)/,
+      '命不中任何元素时同样按浮层处理，否则会建出被裁掉半截、学生看不见的元件',
+    );
+    // 四块浮层的根节点都要挂标记，缺一块就会漏掉一条「隐形元件」路径。
+    for (const name of [
+      'CircuitMonitor.tsx',
+      'InspectorPanel.tsx',
+      'MeasurementPanel.tsx',
+      'BenchToolbar.tsx',
+    ]) {
+      assert.ok(readSrc(name).includes('data-drop-blocked'), `${name} 缺少落点守卫标记`);
+    }
+  });
+
   test('circuit-bench 元件坞: 缩略图视口随「电路图/仿真图」切换——电路图裁掉引线，仿真图留住接线柱', () => {
     const kinds = PALETTE_GROUPS.flatMap((g) => g.kinds);
     assert.equal(kinds.length, 11, '视口表须覆盖全部 11 种元件');
@@ -3719,18 +3962,30 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
 
   /* ── §3.2 双击展开详细参数面板 ── */
 
-  test('circuit-bench 双击: 开关就地切换，其它元件展开右侧详细面板', () => {
+  test('circuit-bench 双击: 单击就地点动开关，双击任何元件都展开右侧详细面板', () => {
     const bench = readSrc('CircuitBench.tsx');
-    assert.match(bench, /const onElementDoubleTap = \(id: string\)/, '缺少双击入口');
+    assert.match(bench, /const onElementDoubleTap = \(id: string[^)]*\)/, '缺少双击入口');
+    // P2-1：操作与参数分家——单击是「用这只元件」（开关就地通断由画布负责），
+    // 双击才是「看/改它的参数」，两者不再抢同一个手势。
     assert.match(
       bench,
-      /if \(el\.kind === 'switch'\)[\s\S]{0,400}?toggleSwitch\(h\.present, id\)/,
-      '双击开关须直接切换闭合状态',
+      /onToggleSwitch=\{onToggleSwitch\}/,
+      '画布的单击切换必须接到 onToggleSwitch',
+    );
+    assert.ok(
+      !/if \(el\.kind === 'switch'\)[\s\S]{0,400}?toggleSwitch\(h\.present, id\)/.test(bench),
+      '双击不得再兼职切换开关——那会让学生想改参数时先把电路断一次',
     );
     assert.match(
       bench,
-      /const onElementDoubleTap = \(id: string\)[\s\S]{0,900}?setInspectorOpen\(true\)/,
-      '双击非开关元件须展开详细参数面板',
+      /const onElementDoubleTap = \(id: string[^)]*\)[\s\S]{0,900}?setInspectorOpen\(true\)/,
+      '双击任何元件（含开关）都须展开详细参数面板',
+    );
+    const canvas = readSrc('CircuitCanvas.tsx');
+    assert.match(
+      canvas,
+      /el\?\.kind === 'switch'\) \{[\s\S]{0,260}?onToggleSwitch\(endedDrag\.id\)/,
+      '画布必须在单击（未拖动）时切换开关',
     );
 
     // 单击只做选中/拖动：面板的开合由 inspectorOpen 决定
@@ -3751,6 +4006,36 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(panel.includes('CloseButton'), '缺少收起按钮组件');
     assert.ok(panel.includes('onClose={onClose}'), '收起按钮未接上回调');
     assert.ok(bench.includes('onClose={() => setInspectorOpen(false)}'), '检查器的 ✕ 未接上');
+  });
+
+  test('circuit-bench 双击: 打开参数面板时收回第一击对开关的拨动', () => {
+    // 单击开关保持即时拨动（不引入 250ms 延迟），所以双击的第一下已经
+    // 真的断开过一次。第二击命中时必须把那次拨动连同撤销点收回，
+    // 否则「双击看参数」会先把电路断一次，撤销栈还平白多一条。
+    const canvas = readSrc('CircuitCanvas.tsx');
+    assert.match(canvas, /lastTap\.current\.toggled = true/, '画布须记录第一击真的拨过开关');
+    assert.match(
+      canvas,
+      /shouldRevertToggle\(el\.kind, prev\.toggled\)/,
+      '第二击须按「开关 + 真的拨过」判定收回',
+    );
+    assert.match(
+      canvas,
+      /onElementDoubleTap\?\.\(id, revertToggle \? \{ revertToggle: true \} : undefined\)/,
+      '收回标记须随着双击一起传给上层',
+    );
+
+    const bench = readSrc('CircuitBench.tsx');
+    assert.match(
+      bench,
+      /if \(opts\?\.revertToggle\) setHistory\(\(h\) => rollbackLast\(h\)\)/,
+      '上层须用 rollbackLast 收回拨动（undo 会污染重做栈）',
+    );
+    assert.match(
+      bench,
+      /rollbackLast\(h\)[\s\S]{0,300}?setInspectorOpen\(true\)/,
+      '收回必须先于打开面板，否则面板会先闪一次断开态',
+    );
   });
 
   /* ── §3.3 右键 / 长按菜单 ── */
@@ -4315,6 +4600,45 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.equal(row.live, true, '并联在断开开关上的电压表应判为有读数');
     assert.ok(Math.abs(row.value - 2.5) < 1e-9, `电压表读数应为 2.5 V，实测 ${row.value}`);
     assert.equal(row.over, false, '2.5 V 在 3 V 挡内，不得误报过载');
+  });
+
+  test('circuit-bench 状态监控: 串联在干路上的导线元件报「导通」，不报「无电流」', () => {
+    /*
+     * 回归对象：导线元件在求解器里两端被并成同一节点，`currentAB` 恒为 0。
+     * 看板原先只看支路电流，于是「电池 → 导线 → 灯泡」这种最普通的串联回路里，
+     * 灯泡 387 mA、导线同一帧显示「无电流」——它分明扛着整条回路的电流。
+     * 0 是「这条支路不解电流」，不是测量值；通断要看求解器标的 `nodeLive`。
+     */
+    let state = createEmptyState();
+    state = addComponent(state, 'battery', 200, 300);
+    state = addComponent(state, 'wire', 350, 300);
+    state = addComponent(state, 'bulb', 500, 300);
+    const bat = state.components.find((c) => c.kind === 'battery')!;
+    const wire = state.components.find((c) => c.kind === 'wire')!;
+    const bulb = state.components.find((c) => c.kind === 'bulb')!;
+    state = addWire(state, `${bat.id}:a`, `${wire.id}:a`).state;
+    state = addWire(state, `${wire.id}:b`, `${bulb.id}:a`).state;
+    state = addWire(state, `${bulb.id}:b`, `${bat.id}:b`).state;
+
+    const solved = solveCircuit(state);
+    assert.equal(solved.elements[wire.id].currentAB, 0, '并点后支路电流恒 0，这正是不能拿来报数的原因');
+    assert.ok(Math.abs(solved.elements[bulb.id].currentAB) > LIVE_CURRENT_A, '夹具须让回路真的通电流');
+    assert.equal(solved.elements[wire.id].nodeLive, true, '串联干路上的导线须标为在载流回路里');
+
+    const row = buildMonitorModel({ state, readings: solved.elements }).others.find((r) => r.kind === 'wire')!;
+    assert.equal(row.live, true, '导线行须判为通电');
+    assert.equal(row.status, 'ok', '导通是正常工作态，不是 idle');
+    assert.ok(row.text.includes('导通'), `看板应报「导通」，实测「${row.text}」`);
+
+    // 拔掉一端：同一个元件必须立刻回到「无电流」。nodeLive 跟的是回路，不是元件类型。
+    const open = { ...state, wires: state.wires.slice(0, 1) };
+    const openSolved = solveCircuit(open);
+    assert.equal(openSolved.elements[wire.id].nodeLive, false, '开路后导线不得再报导通');
+    const openRow = buildMonitorModel({ state: open, readings: openSolved.elements }).others.find(
+      (r) => r.kind === 'wire',
+    )!;
+    assert.equal(openRow.live, false);
+    assert.equal(openRow.status, 'idle');
   });
 
   test('circuit-bench 热模型: 电热丝断电后温度与累计热衰减回环境', () => {

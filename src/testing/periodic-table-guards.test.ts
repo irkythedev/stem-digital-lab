@@ -106,11 +106,28 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     // 控件形态（2026-10 改版）：由「左上整行双段控件」收敛为「图区外框右上角单个幽灵按钮」
     assert.match(pt, /data-atom-mode=\{atomMode\}/, '切换按钮须带 data-atom-mode（供渲染量测）');
     assert.match(pt, /absolute top-1 right-1 z-10/, '切换按钮须绝对定位于图区内部右上角，不占布局行');
-    // 文案只描述「点下去会发生什么」，消除「2D 规范」既像状态标识又像操作按钮的歧义
+    // 图标只描述「点下去会发生什么」，消除「2D 规范」既像状态标识又像操作按钮的歧义
     assert.ok(
-      pt.includes("atomMode === '3d' ? (isZh ? '课本平面' : 'Flat view') : (isZh ? '3D 模型' : '3D model')"),
-      '按钮文案须用动作语义（2D 态「3D 模型」/ 3D 态「课本平面」）',
+      pt.includes("atomMode === '3d' ? ("),
+      '按钮内容须按 atomMode 分支渲染（不再是纯文字）',
     );
+    assert.match(pt, /<Box size=\{16\} strokeWidth=\{2\}/, '2D 态须渲染立方体图标（Box），语义为「进入 3D」');
+    assert.match(
+      pt,
+      /<circle cx="12" cy="12" r="9\.5" \/>\s*<circle cx="12" cy="12" r="5" \/>\s*<circle cx="12" cy="12" r="1\.2" fill="currentColor" stroke="none" \/>/,
+      '3D 态须渲染「核 + 两层」双环同心圆（语义为「切回课本平面图」）',
+    );
+    // 两态共用同一套幽灵样式：选中态不得再有描边或底色方块（用户 2026-10 明确要求去掉图标外围的方形）
+    const atomBtn = pt.slice(pt.indexOf('data-atom-mode={atomMode}'), pt.indexOf("atomMode === '2d' ? (", pt.indexOf('data-atom-mode={atomMode}')));
+    assert.ok(!atomBtn.includes('border-[var(--fg)]'), '选中态不得用 fg 描边（会在图标外围画出一个方形）');
+    assert.ok(!atomBtn.includes('bg-[var(--accent-light)]'), '选中态不得用强调色底块（同样会露出方形）');
+    assert.ok(
+      atomBtn.includes('inline-flex items-center justify-center p-1'),
+      '按钮须为 16px 图标加 p-1 内边距的方形命中区（24px）',
+    );
+    for (const stale of ["'3D 模型'", "'课本平面'", "'Flat view'", "'3D model'"]) {
+      assert.ok(!pt.includes(stale), `旧文字标签 ${stale} 须已由图标取代`);
+    }
     for (const stale of ['3D 空间', '2D 规范', "'2D textbook'", "'3D space'"]) {
       assert.ok(!pt.includes(stale), `旧歧义文案「${stale}」须已清除`);
     }

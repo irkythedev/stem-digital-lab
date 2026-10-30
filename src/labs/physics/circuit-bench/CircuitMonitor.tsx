@@ -274,7 +274,19 @@ export default function CircuitMonitor({
         name: row.name,
         badge: row.text,
         tone: (row.status === 'fault' ? 'fault' : row.status === 'ok' ? 'ok' : 'idle') as Tone,
-        detail: row.live ? `${num(row.voltage, 'V')} · ${num(row.current, 'A')}` : '—',
+        // 导线元件两端同节点，U/I 恒为 0，那不是它的读数（支路电流由回路决定、
+        // 连接件本身不单独计量）。这里不能照抄 `0.000 V · 0.000 A`，那会读成
+        // 「测到了零电流」，恰恰和紧挨着的「导通」自相矛盾。
+        detail:
+          row.kind === 'wire'
+            ? row.live
+              ? zh
+                ? '两端同电位'
+                : 'Same node'
+              : '—'
+            : row.live
+              ? `${num(row.voltage, 'V')} · ${num(row.current, 'A')}`
+              : '—',
         hint: `${row.name} · ${row.text}`,
       })),
     ],
@@ -296,21 +308,29 @@ export default function CircuitMonitor({
   const pillText = zh
     ? verdict === 'fault'
       ? `${faultCount} 元件损坏`
-      : empty
-        ? '空白画布 · 从这里开始'
-        : `${rows} 元件正常`
+      : verdict === 'meter'
+        ? `${model.meterAlerts} 只电表异常`
+        : empty
+          ? '空白画布 · 从这里开始'
+          : `${rows} 元件正常`
     : verdict === 'fault'
       ? `${faultCount} faulty`
-      : empty
-        ? 'Blank canvas — start here'
-        : `${rows} OK`;
+      : verdict === 'meter'
+        ? `${model.meterAlerts} meter alert${model.meterAlerts === 1 ? '' : 's'}`
+        : empty
+          ? 'Blank canvas — start here'
+          : `${rows} OK`;
   const pillTitle = zh
     ? empty
       ? '展开：从这里开始搭电路'
-      : '展开元件状态监控'
+      : verdict === 'meter'
+        ? '展开：查看超量程 / 接反的电表'
+        : '展开元件状态监控'
     : empty
       ? 'Open: get started'
-      : 'Open live monitor';
+      : verdict === 'meter'
+        ? 'Open: check over-range / reversed meters'
+        : 'Open live monitor';
   const pill = (
     <button
       type="button"
@@ -320,7 +340,9 @@ export default function CircuitMonitor({
       className={`compact tap32 flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[11px] leading-none shadow-lg backdrop-blur-md ${
         faultCount > 0
           ? 'border-[var(--danger)] bg-[var(--danger)]/12 text-[var(--danger)]'
-          : 'border-[var(--border)] bg-[var(--card-bg)]/75 text-[var(--muted)]'
+          : verdict === 'meter'
+            ? 'border-[var(--warn)] bg-[var(--warn)]/12 text-[var(--warn)]'
+            : 'border-[var(--border)] bg-[var(--card-bg)]/75 text-[var(--muted)]'
       }`}
     >
       <span
@@ -328,7 +350,14 @@ export default function CircuitMonitor({
           empty ? 'border border-[var(--muted)]' : ''
         }`}
         style={{
-          background: faultCount > 0 ? 'var(--danger)' : empty ? 'transparent' : 'var(--success)',
+          background:
+            faultCount > 0
+              ? 'var(--danger)'
+              : verdict === 'meter'
+                ? 'var(--warn)'
+                : empty
+                  ? 'transparent'
+                  : 'var(--success)',
         }}
       />
       <span className="whitespace-nowrap font-medium">{pillText}</span>
@@ -338,7 +367,7 @@ export default function CircuitMonitor({
 
   if (!open) {
     return (
-      <div className={`${anchor} flex items-center gap-1.5`}>
+      <div data-drop-blocked="" className={`${anchor} flex items-center gap-1.5`}>
         {pill}
         {/* 收成药丸也留着修复入口：故障本身就在药丸上亮着，不必先摊开面板。 */}
         {faultCount > 0 && (
@@ -358,6 +387,7 @@ export default function CircuitMonitor({
 
   return (
     <div
+      data-drop-blocked=""
       className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-40 max-sm:max-h-[45dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
     >
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-2">
