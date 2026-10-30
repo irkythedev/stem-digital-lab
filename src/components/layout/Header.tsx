@@ -24,7 +24,7 @@ import {
 } from '../../lib/ai-status';
 import { loadAiConfig } from '../../lib/ai-config';
 import { APP_VERSION } from '../../lib/changelog';
-import { useVersionCheck } from '../../lib/use-version-check';
+import { useAppUpdate } from '../../lib/use-app-update';
 import VersionDialog from '../feedback/VersionDialog';
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
@@ -91,46 +91,16 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   }, [showHealth]);
   // 离线教学包状态：只在「下载中 / 已就绪」时于顶栏露出徽标，平时不占位置
   const { status: packStatus, progress: packProgress, running: packRunning } = useOfflinePack();
-  const [toast, setToast] = useState(false);
 
-  // 显示"正在刷新"toast 2 秒
-  const showToast = () => {
-    setToast(true);
-    setTimeout(() => setToast(false), 2000);
-  };
-
-  // 有新版本：等新 SW 真正接管（controllerchange）→ 只刷新一次
-  // 刷新时机的唯一正确判据是「控制器换人了」：安装中静候、不设短兜底打断，
-  // 无待接管的新 SW 时说明当前控制者就是服务端最新版，此时刷新必定拿到新版。
-  const handleRefresh = () => {
-    showToast();
-    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-      window.location.reload();
-      return;
-    }
-    let done = false;
-    const reload = () => {
-      if (done) return;
-      done = true;
-      window.location.reload();
-    };
-    navigator.serviceWorker.addEventListener('controllerchange', reload, { once: true });
-    navigator.serviceWorker
-      .getRegistration()
-      .then(async (reg) => {
-        if (!reg) { reload(); return; }
-        // 新 SW 正在安装 / 待接管：静候接管事件，不用定时器抢刷
-        if (reg.installing || reg.waiting) return;
-        await reg.update().catch(() => { /* 检查失败：下面按无待更新处理 */ });
-        if (!reg.installing && !reg.waiting) reload();
-      })
-      .catch(reload);
-    // 仅极端慢网兜底（实测预缓存约 2.74MB，正常几秒内接管）
-    setTimeout(reload, 90000);
-  };
-
-  // 检测是否有新版本：对比远端 version.json 与本版本号（hook 内 fetch 失败则静默忽略）
-  const { hasUpdate } = useVersionCheck();
+  // 更新状态机：检测（挂载 / 回前台 / 恢复联网）+ 显式阶段 + 硬兜底
+  const { hasUpdate, phase, applyUpdate, busy } = useAppUpdate();
+  const phaseText =
+    phase === 'checking' ? (lang === 'zh' ? '正在检查新版本…' : 'Checking for updates…')
+      : phase === 'downloading' ? (lang === 'zh' ? '正在下载新版本…' : 'Downloading the new version…')
+        : phase === 'activating' ? (lang === 'zh' ? '正在激活新版本…' : 'Activating the new version…')
+          : phase === 'clearing' ? (lang === 'zh' ? '正在清理旧缓存…' : 'Clearing the old cache…')
+            : phase === 'reloading' ? (lang === 'zh' ? '正在刷新…' : 'Reloading…')
+              : '';
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];
@@ -171,21 +141,34 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           >
             <circle cx="12" cy="12" r="8" />
           </svg>
-          {/* 移动端更新绿点：有新版时显示在 logo 右上角（桌面用版本号旁的绿点） */}
+          {/* 移动端更新徽章：圆形向上箭头 + 呼吸光晕，落在 logo 右上角。
+              外层 40×40 透明命中盒（视觉只占 14px），解决旧版 6×6 圆点点不中的问题。
+              视觉本体在窄屏再收一档（14px 圆盘 / 16px 光晕 / 8px 箭头）：logo 只有 20px，
+              16px 圆盘配 24px 光晕会盖住三角，看着比品牌还重。 */}
           {hasUpdate && (
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleRefresh();
+                void applyUpdate();
               }}
-              title={t.updateAvailable}
-              aria-label={t.updateAvailable}
-              className="sm:hidden absolute -top-1 -right-1 group/dot"
+              disabled={busy}
+              title={busy ? phaseText : t.updateAvailable}
+              aria-label={busy ? phaseText : t.updateAvailable}
+              className="sm:hidden absolute -top-1.5 -right-1.5 z-10 flex h-10 w-10 items-start justify-end rounded-full disabled:cursor-progress"
             >
-              <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />
-              <span className="absolute inset-0 rounded-full bg-green-500/50 update-dot-halo" />
+              <span className="relative block h-3.5 w-3.5">
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-0 m-auto h-4 w-4 rounded-full bg-emerald-500/35 ${busy ? 'animate-pulse' : 'update-dot-halo'}`}
+                />
+                <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                  <svg viewBox="0 0 16 16" className="h-2 w-2" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 12V4M8 4L4.5 7.5M8 4L11.5 7.5" />
+                  </svg>
+                </span>
+              </span>
             </button>
           )}
         </span>
@@ -197,44 +180,69 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         {/* 版本号（桌面与平板显示；移动端隐藏——移动端仅在有新版时于 logo 右上角显示绿点）
             与品牌同轴：不再 self-end（触屏下会把版本号压到 40px 行的底部、下沉 6.5px）。
             tap-pad-10 只补透明热区，视觉仍是 10px 小字（15px 高 → 35px 命中）。 */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setShowVersion((v) => !v);
-          }}
-          title={t.versionTitle.replace('{version}', APP_VERSION)}
-          aria-label={t.versionAria}
-          className="hidden sm:flex items-center gap-1.5 whitespace-nowrap tap-pad-10 rounded text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
-        >
-          <span className="relative">
+        <span className="relative hidden items-center gap-1 sm:inline-flex">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowVersion((v) => !v);
+            }}
+            title={t.versionTitle.replace('{version}', APP_VERSION)}
+            aria-label={t.versionAria}
+            className="flex items-center whitespace-nowrap tap-pad-10 rounded text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+          >
             v{APP_VERSION}
-            {hasUpdate && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleRefresh();
-                }}
-                title={t.updateAvailable}
-                aria-label={t.updateAvailable}
-                className="absolute -right-2.5 top-1/2 -translate-y-1/2 group/dot"
-              >
-                <span className="block w-1.5 h-1.5 rounded-full bg-green-500 update-dot" />
-                <span className="absolute inset-0 rounded-full bg-green-500/50 update-dot-halo" />
-              </button>
-            )}
-          </span>
-        </button>
+          </button>
+          {/* 更新徽章：版本号按钮的**兄弟**（旧版嵌在版本号按钮里，既是非法嵌套，
+              也飘到右边界之外 4px）。28×28 透明命中盒 + 圆形箭头 + 光晕。
+              视觉本体在 lg 以下再收一档（14px 圆盘 / 16px 光晕 / 8px 箭头）：
+              手机横屏与平板走的是 sm 分支（实测 780px 视口），18px 圆盘配 24px 光晕
+              比同排 10px 的 v0.43.2 大一倍，像个按钮压着文字；命中盒仍留 28×28，
+              所以相邻元素的位置与桌面完全一致。lg 起回到 18px，桌面不受影响。 */}
+          {hasUpdate && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void applyUpdate();
+              }}
+              disabled={busy}
+              title={busy ? phaseText : t.updateAvailable}
+              aria-label={busy ? phaseText : t.updateAvailable}
+              className="relative flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-progress"
+            >
+              <span className="relative block h-3.5 w-3.5 lg:h-[18px] lg:w-[18px]">
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute inset-0 m-auto h-4 w-4 lg:h-6 lg:w-6 rounded-full bg-emerald-500/35 ${busy ? 'animate-pulse' : 'update-dot-halo'}`}
+                />
+                <span className="relative flex h-3.5 w-3.5 lg:h-[18px] lg:w-[18px] items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
+                  <svg viewBox="0 0 16 16" className="h-2 w-2 lg:h-2.5 lg:w-2.5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 12V4M8 4L4.5 7.5M8 4L11.5 7.5" />
+                  </svg>
+                </span>
+              </span>
+            </button>
+          )}
+        </span>
       </Link>
 
-      {/* 刷新状态 toast：右上角 */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)]/80 bg-[var(--card-bg)] px-3.5 py-2 rounded-xl text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_20px_rgba(0,0,0,0.1)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
-          {lang === 'zh' ? '正在刷新到最新版本…' : 'Refreshing to latest version…'}
+      {/* 更新阶段条：常驻到流程结束（不再 2 秒自动消失），role=status 让读屏也能跟上阶段。
+          phase 回到 idle 才隐藏；clearing/reloading 阶段页面即将硬跳转。 */}
+      {phase !== 'idle' && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-update-phase={phase}
+          className="fixed top-4 right-4 z-50 flex items-center gap-2 border border-[var(--border)]/80 bg-[var(--card-bg)] px-3.5 py-2 rounded-xl text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-md)]"
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${phase === 'reloading' ? '' : 'update-dot'}`}
+            aria-hidden="true"
+          />
+          {phaseText}
         </div>
       )}
 
@@ -255,7 +263,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
             className="relative flex items-center justify-center p-2 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
           >
             {packRunning ? (
-              <span className="text-[0.5rem] mono-font font-bold text-[var(--fg)]">
+              <span className="text-[0.625rem] mono-font font-bold text-[var(--fg)]">
                 {Math.round(((packProgress?.bytes ?? 0) / Math.max(1, packProgress?.totalBytes ?? 1)) * 100)}%
               </span>
             ) : (
@@ -333,7 +341,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                 role="dialog"
                 aria-label={lang === 'zh' ? 'AI 连通状态' : 'AI connection status'}
                 data-ai-health-card
-                className="fixed z-[71] inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[0_10px_28px_rgba(0,0,0,0.16)] sm:w-[19rem]"
+                className="fixed z-[71] inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[var(--elev-md)] sm:w-[19rem]"
               >
                 <div className="flex items-center gap-2">
                   {isHollowStatus(shownStatus) ? (

@@ -18,7 +18,7 @@ interface ReadoutProps {
 
 export default function Readout({ title, metrics }: ReadoutProps) {
   return (
-    <div className="border border-[var(--border)]/80 bg-[var(--card-bg)] p-4 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+    <div className="border border-[var(--border)]/80 bg-[var(--card-bg)] p-4 rounded-xl shadow-[var(--elev-sm)]">
       {title && (
         <h3 className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-3">
           // {title}

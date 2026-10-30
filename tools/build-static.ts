@@ -6,11 +6,11 @@
  * 构建期静态化（GEO 方略 C）。
  *
  * 在 `vite build` 之后运行：
- *   1. 读取 sitemap.xml 的 26 个 URL（homepage 除外），为每个路由写 dist/<route>/index.html；
- *   2. 已接入 content/ 的路由（/lab/lens、/periodic-table）把答案层
- *      用 renderToStaticMarkup 原样渲染进首字节 HTML，并注入
- *      LearningResource / FAQPage / HowTo / BreadcrumbList 的 @graph；
- *   3. 其余路由生成基础 title / description / canonical / WebPage 外壳。
+ *   1. 读取 sitemap.xml 的全部 URL（homepage 除外），为每个路由写 dist/<route>/index.html；
+ *   2. 阅读页 /learn/<id> 把答案层用 renderToStaticMarkup 原样渲染进首字节 HTML，
+ *      并注入 LearningResource / FAQPage / HowTo / BreadcrumbList 的 @graph；
+ *   3. 其余路由生成基础 title / description / canonical / WebPage 外壳；
+ *      工具页外壳额外给出指向对应阅读页的入口。
  *
  * 设计约束：
  *   - 复用 React 组件而不是手抄 HTML，静态快照与客户端渲染同源；
@@ -27,8 +27,11 @@ import LabAnswerLayer from '../src/components/lab/LabAnswerLayer.tsx';
 import {
   answerLayerJsonLd,
   parseLabContent,
+  type Bi,
   type LabContent,
 } from '../src/lib/lab-content-core.ts';
+import { CHEMISTRY_FORMULAS_TABLE_NOTE } from '../src/lib/content/chemistry-formulas.ts';
+import { PERIODIC_TABLE_TABLE_NOTE } from '../src/lib/content/periodic-table.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
@@ -42,10 +45,43 @@ function readContent(rel: string): LabContent {
   return parseLabContent(JSON.parse(readFileSync(join(ROOT, rel), 'utf8')), rel);
 }
 
-const CONTENTS = new Map<string, LabContent>([
-  ['/lab/lens', readContent('content/labs/lens.json')],
-  ['/periodic-table', readContent('content/tools/periodic-table.json')],
-]);
+interface LearnPageSpec {
+  /** 正文 JSON（与客户端阅读页共用同一份来源）。 */
+  file: string;
+  /** 阅读页路由：静态化与 canonical 的目标。 */
+  path: string;
+  /** 对应交互页：阅读页底部回链。 */
+  toolPath: string;
+  /** 数据表口径说明：默认文案是凸透镜专用的，其他内容必须显式覆盖。 */
+  tableNote?: Bi;
+}
+
+const LEARN_PAGES: LearnPageSpec[] = [
+  {
+    file: 'content/labs/lens.json',
+    path: '/learn/lens',
+    toolPath: '/lab/lens',
+  },
+  {
+    file: 'content/tools/periodic-table.json',
+    path: '/learn/periodic-table',
+    toolPath: '/periodic-table',
+    tableNote: PERIODIC_TABLE_TABLE_NOTE,
+  },
+  {
+    file: 'content/tools/chemistry-formulas.json',
+    path: '/learn/chemistry-formulas',
+    toolPath: '/chemistry-formulas',
+    tableNote: CHEMISTRY_FORMULAS_TABLE_NOTE,
+  },
+];
+
+const LEARN_SPECS = new Map(LEARN_PAGES.map((p) => [p.path, p]));
+const CONTENTS = new Map<string, LabContent>(
+  LEARN_PAGES.map((p) => [p.path, readContent(p.file)]),
+);
+/** 交互页 → 阅读页：工具页静态外壳据此给出入口。 */
+const LEARN_BY_TOOL = new Map(LEARN_PAGES.map((p) => [p.toolPath, p.path]));
 
 interface RouteCopy {
   zh: string;
@@ -71,26 +107,37 @@ function readLlms(): Map<string, RouteCopy> {
   return out;
 }
 
-function contentBody(content: LabContent): string {
+function contentBody(content: LabContent, spec: LearnPageSpec): string {
+  const pageUrl = `${SITE}${spec.path}`;
   const answer = renderToStaticMarkup(
-    createElement(LabAnswerLayer, { content, lang: 'zh' }),
+    createElement(LabAnswerLayer, {
+      content,
+      lang: 'zh',
+      tableNote: spec.tableNote,
+      pageUrl,
+    }),
   );
   const curriculum = content.curriculum
     .map((c) => `${c.edition.zh} ${c.grade.zh} ${c.chapter.zh}`)
     .join(' · ');
   return `<main class="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
-  <p class="mono-font text-[0.625rem] uppercase tracking-widest text-[var(--muted)]">${esc(content.canonical.replace(SITE, ''))}</p>
+  <p class="mono-font text-[0.625rem] uppercase tracking-widest text-[var(--muted)]">${esc(spec.path)}</p>
   <h1 class="t-h1 serif-font font-medium text-[var(--fg)] mt-2">${esc(content.name.zh)}</h1>
   <p class="serif-font text-sm text-[var(--muted)] mt-2">${esc(curriculum)}</p>
+  <p class="mt-3"><a class="serif-font text-sm text-[var(--fg)] underline underline-offset-4" href="${esc(spec.toolPath)}">返回交互页</a></p>
   ${answer}
 </main>`;
 }
 
-function shellBody(copy: RouteCopy, path: string): string {
+function shellBody(copy: RouteCopy, path: string, learnPath?: string): string {
+  const learn = learnPath
+    ? `<p class="mt-8 border-t border-[var(--border)] pt-6"><a class="serif-font text-sm text-[var(--fg)] underline underline-offset-4" href="${esc(learnPath)}">结构化讲解与数据表 →</a></p>`
+    : '';
   return `<main class="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
   <p class="mono-font text-[0.625rem] uppercase tracking-widest text-[var(--muted)]">${esc(path)}</p>
   <h1 class="t-h1 serif-font font-medium text-[var(--fg)] mt-2">${esc(copy.zh)}</h1>
   <p class="serif-font text-sm leading-relaxed text-[var(--muted)] mt-3">${esc(copy.desc || `${copy.zh}：${SITE_NAME}的交互实验与工具。`)}</p>
+  ${learn}
 </main>`;
 }
 
@@ -195,6 +242,7 @@ function main(): void {
     if (path === homePath) continue;
 
     const content = CONTENTS.get(path);
+    const spec = LEARN_SPECS.get(path);
     const copy: RouteCopy =
       llms.get(url) ??
       (content
@@ -202,10 +250,11 @@ function main(): void {
         : { zh: path, en: path, desc: '' });
 
     const head: HeadCopy = {
-      title: `${copy.zh} - ${SITE_NAME}`,
+      // 阅读页标题与客户端一致：同名工具页与阅读页因此不会撞出两条完全相同的 <title>。
+      title: spec ? `${copy.zh} · 结构化讲解 - ${SITE_NAME}` : `${copy.zh} - ${SITE_NAME}`,
       description: content ? content.summary.zh : copy.desc || `${copy.zh}：${SITE_NAME}的交互实验与工具。`,
       canonical: url,
-      jsonLd: content ? answerLayerJsonLd(content, 'zh') : webPageJsonLd({
+      jsonLd: content ? answerLayerJsonLd(content, 'zh', url) : webPageJsonLd({
         title: `${copy.zh} - ${SITE_NAME}`,
         description: copy.desc || `${copy.zh}：${SITE_NAME}的交互实验与工具。`,
         canonical: url,
@@ -213,7 +262,9 @@ function main(): void {
       }),
     };
 
-    const body = content ? contentBody(content) : shellBody(copy, path);
+    const body = content && spec
+      ? contentBody(content, spec)
+      : shellBody(copy, path, LEARN_BY_TOOL.get(path));
     const html = applyHead(
       `${headPart}\n${body}\n    </div>\n  ${tailPart}`,
       head,

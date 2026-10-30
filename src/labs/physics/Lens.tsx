@@ -20,11 +20,10 @@ import LensBench from '../../components/lab/LensBench';
 import { isBeyondBench } from '../../components/lab/LensBench';
 import EngineBadge from '../../components/lab/EngineBadge';
 import { getEngineTooltip } from '../../components/lab/engine-copy';
+import { Link } from 'react-router-dom';
 import Formula from '../../components/ui/Formula';
-import LabAnswerLayer from '../../components/lab/LabAnswerLayer';
-import { LENS_CONTENT } from '../../lib/content/lens';
 import { imageV, loadOhmEngine } from './stem-engine';
-import { Check, X } from 'lucide-react';
+import { ArrowRight, Check, X } from 'lucide-react';
 
 /* 判分标记：Lucide 图标（项目禁用「对勾/叉」文本字形充当 UI，见 chemistry 先例） */
 const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
@@ -699,8 +698,21 @@ export default function Lens() {
         </div>
       )}
 
-      {/* GEO 答案层：交互区之下的纯文本结构化讲解（无 JS 也可读） */}
-      <LabAnswerLayer content={LENS_CONTENT} lang={lang} />
+      {/* 结构化讲解独立成页：实验页底部只留一行入口，正文与数据表不在这里展开 */}
+      <div className="mt-10 border-t border-[var(--border)] pt-6">
+        <Link
+          to="/learn/lens"
+          className="inline-flex items-center gap-2 text-sm serif-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
+        >
+          {lang === 'zh' ? '结构化讲解与数据表' : 'Structured explanation and data table'}
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+        </Link>
+        <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
+          {lang === 'zh'
+            ? '成像规律、可复现数据表、操作步骤、常见误区与常见问题。'
+            : 'Imaging rules, a reproducible data table, procedure, common misconceptions and FAQs.'}
+        </p>
+      </div>
     </div>
   );
 }

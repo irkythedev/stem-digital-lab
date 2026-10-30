@@ -8,7 +8,7 @@
  * 背景：README 里的测试数原本只能靠"三处彼此一致"来保护，于是三处一起写错也无从发现
  * （实测发生过：写 627、真实 604）。`src/smoke.test.ts` 里的同名守卫仍负责"五处互相一致"
  * ——它必须能在单文件内快速失败；而"与实测一致"只能在整条链跑完之后判断，
- * 所以放在这里，读 `scripts/run-tests.mjs` 落盘的 `test-stats.json`。
+ * 所以放在这里，读 `tools/run-tests.mjs` 落盘的 `test-stats.json`。
  *
  * 三个概念分开校验，互不冒充：
  *   - **测试命令数**：39 条（`scripts["test:chain"]` 的长度）
@@ -27,7 +27,7 @@ try {
   stats = JSON.parse(readFileSync(STATS_FILE, 'utf8'));
 } catch {
   console.error(`✗ 读不到测试统计：${STATS_FILE}`);
-  console.error('  请先跑 scripts/run-tests.mjs（npm test 的第一段），它会落盘统计。');
+  console.error('  请先跑 tools/run-tests.mjs（npm test 的第一段），它会落盘统计。');
   process.exit(2);
 }
 

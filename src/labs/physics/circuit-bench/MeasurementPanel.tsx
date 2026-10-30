@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
-import BenchSelect from './BenchSelect';
+import BenchSelect from '../../../components/ui/BenchSelect';
 import { downloadText, fitLinear, reconcileProbeKey, toCsv, type FitPoint } from './circuit-bench-fit';
 import { fmt } from './circuit-bench-core';
 import type { BenchState, SolveResult } from './circuit-bench-core';
@@ -276,7 +276,7 @@ export default function MeasurementPanel({
               <div className="mt-1.5 text-[10px] text-[var(--muted)]">
                 {zh
                   ? '未接入测量电表 · 当前记录的是元件计算值'
-                  : 'No meter connected · recording computed element values'}
+                  : 'No meter connected — recording computed element values'}
               </div>
             )}
 
@@ -295,8 +295,8 @@ export default function MeasurementPanel({
                     {rows.map((r, i) => (
                       <tr key={r.id} className="border-t border-[var(--border)]">
                         <td className="px-2 py-1 text-[var(--muted)]">{i + 1}</td>
-                        <td className="px-2 py-1 text-right font-mono text-[var(--fg)]">{fmt(r.x, 4)}</td>
-                        <td className="px-2 py-1 text-right font-mono text-[var(--fg)]">{fmt(r.y, 4)}</td>
+                        <td className="px-2 py-1 text-right mono-font text-[var(--fg)]">{fmt(r.x, 4)}</td>
+                        <td className="px-2 py-1 text-right mono-font text-[var(--fg)]">{fmt(r.y, 4)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -316,7 +316,7 @@ export default function MeasurementPanel({
                 />
                 {zh ? '过原点拟合' : 'Through origin'}
               </label>
-              <span className="font-mono text-[var(--fg)]">
+              <span className="mono-font text-[var(--fg)]">
                 {fit.ok ? `y = ${fmt(fit.slope, 3)}x + ${fmt(fit.intercept, 3)} · R²=${fmt(fit.r2, 4)}` : '—'}
               </span>
             </div>

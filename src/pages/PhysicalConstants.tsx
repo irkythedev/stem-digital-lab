@@ -169,7 +169,7 @@ export default function PhysicalConstants() {
             type="button"
             onClick={() => setSelected(c)}
             aria-label={`${c.symbol} ${c.value} ${c.unit} ${lang === 'zh' ? c.name.zh : c.name.en}`}
-            className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1 transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)]"
+            className="border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1 transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)]"
           >
             <span className="text-lg font-bold mono-font text-[var(--fg)] leading-none">{c.symbol}</span>
             <span className="text-xs mono-font text-[var(--muted)] leading-none">{c.value} {c.unit}</span>
@@ -190,7 +190,7 @@ export default function PhysicalConstants() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-sm max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-sm max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.symbol} ${selected.value}`}

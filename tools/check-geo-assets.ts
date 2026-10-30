@@ -7,8 +7,9 @@
  *
  * 分两层：
  *   1. 内容层：content/ JSON 的字段、字数、表格、FAQ 与证据等级；
- *   2. 构建产物：dist/<route>/index.html 在剥离 <script> 后仍含
- *      H1、摘要、数据表、全部 FAQ；JSON-LD 的 FAQ/HowTo 与正文逐字一致。
+ *   2. 构建产物：dist/learn/<id>/index.html 在剥离 <script> 后仍含
+ *      H1、摘要、数据表、全部 FAQ；JSON-LD 的 FAQ/HowTo 与正文逐字一致；
+ *      对应交互页的静态外壳不得再展开答案层，且必须给出阅读页入口。
  *
  * 凸透镜表用与生成时相同的 lens-core 函数重算并逐字比对，
  * 手改 JSON 数字会直接失败。
@@ -57,16 +58,31 @@ const escapeHtml = (s: string): string =>
 
 interface Entry {
   file: string;
-  route: string;
+  /** 答案层正文所在页面。 */
+  learnRoute: string;
+  /** 对应的交互页：静态外壳只留一行入口。 */
+  toolRoute: string;
   content: LabContent;
 }
 
 const ENTRIES: Entry[] = [
-  { file: 'content/labs/lens.json', route: '/lab/lens', content: load('content/labs/lens.json') },
+  {
+    file: 'content/labs/lens.json',
+    learnRoute: '/learn/lens',
+    toolRoute: '/lab/lens',
+    content: load('content/labs/lens.json'),
+  },
   {
     file: 'content/tools/periodic-table.json',
-    route: '/periodic-table',
+    learnRoute: '/learn/periodic-table',
+    toolRoute: '/periodic-table',
     content: load('content/tools/periodic-table.json'),
+  },
+  {
+    file: 'content/tools/chemistry-formulas.json',
+    learnRoute: '/learn/chemistry-formulas',
+    toolRoute: '/chemistry-formulas',
+    content: load('content/tools/chemistry-formulas.json'),
   },
 ];
 
@@ -113,7 +129,7 @@ function checkContent(entry: Entry): void {
   const expected = expectedTables().get(file);
   if (!expected) fail(`${tag} 没有对应的生成器`);
   else if (JSON.stringify(expected) !== JSON.stringify(content.dataTable)) {
-    fail(`${tag} dataTable 与计算核重算结果不一致（请跑 npx tsx scripts/gen-geo-tables.ts --write）`);
+    fail(`${tag} dataTable 与计算核重算结果不一致（请跑 npx tsx tools/gen-geo-tables.ts --write）`);
   }
 
   notes.push(`${tag} 中文 ${bodyChars} 字 / 表格 ${content.dataTable.rows.length} 行 / FAQ ${content.faqs.length} 条`);
@@ -139,7 +155,8 @@ const hasType = (node: LdNode, t: string): boolean =>
   Array.isArray(node['@type']) ? node['@type'].includes(t) : node['@type'] === t;
 
 function checkDist(entry: Entry): void {
-  const rel = `${entry.route.replace(/^\//, '')}/index.html`;
+  const pageUrl = `${SITE}${entry.learnRoute}`;
+  const rel = `${entry.learnRoute.replace(/^\//, '')}/index.html`;
   const path = join(DIST, rel);
   const tag = `[dist/${rel}]`;
   if (!existsSync(path)) {
@@ -183,12 +200,12 @@ function checkDist(entry: Entry): void {
     if (!visible.includes(escapeHtml(step.zh))) fail(`${tag} 步骤[${i}] 缺失`);
   }
   if (!/AGPL-3\.0/.test(visible)) fail(`${tag} 缺少 AGPL-3.0 许可声明`);
-  if (!visible.includes(escapeHtml(entry.content.canonical))) {
-    fail(`${tag} 缺少标准引用中的 canonical URL`);
+  if (!visible.includes(escapeHtml(pageUrl))) {
+    fail(`${tag} 缺少标准引用中的页面 URL`);
   }
 
   const canonicalRe = new RegExp(
-    `<link rel="canonical" href="${entry.content.canonical.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`,
+    `<link rel="canonical" href="${pageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`,
   );
   if (!canonicalRe.test(html)) fail(`${tag} <link rel="canonical"> 不匹配`);
   if (!new RegExp(`<title>[^<]*${entry.content.name.zh}[^<]*</title>`).test(html)) {
@@ -228,10 +245,35 @@ function checkDist(entry: Entry): void {
   if (!resNode) fail(`${tag} 缺少 LearningResource JSON-LD`);
   else {
     if (!String(resNode.license ?? '').includes('agpl-3.0')) fail(`${tag} LearningResource.license 不是 AGPL-3.0`);
-    if (resNode.url !== entry.content.canonical) fail(`${tag} LearningResource.url 与 canonical 不一致`);
+    if (resNode.url !== pageUrl) fail(`${tag} LearningResource.url 与页面 canonical 不一致`);
   }
 
   if (!nodes.some((n) => hasType(n, 'BreadcrumbList'))) fail(`${tag} 缺少 BreadcrumbList JSON-LD`);
+}
+
+function checkToolShell(entry: Entry): void {
+  const rel = `${entry.toolRoute.replace(/^\//, '')}/index.html`;
+  const path = join(DIST, rel);
+  const tag = `[dist/${rel}]`;
+  if (!existsSync(path)) {
+    fail(`${tag} 缺失（先跑 npm run build）`);
+    return;
+  }
+
+  const html = readFileSync(path, 'utf8');
+  const visible = html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '');
+
+  if (visible.includes('data-geo="answer-layer"')) {
+    fail(`${tag} 仍在首屏展开答案层；正文应只在 ${entry.learnRoute}`);
+  }
+  if (!visible.includes(`href="${entry.learnRoute}"`)) {
+    fail(`${tag} 缺少指向 ${entry.learnRoute} 的结构化讲解入口`);
+  }
+  if (!html.includes(`rel="canonical" href="${SITE}${entry.toolRoute}"`)) {
+    fail(`${tag} canonical 缺失或不符`);
+  }
 }
 
 function checkOtherRoutes(): void {
@@ -264,6 +306,7 @@ if (!existsSync(DIST)) {
   notes.push('未发现 dist/，跳过构建产物校验（需要时先跑 npm run build）');
 } else {
   for (const entry of ENTRIES) checkDist(entry);
+  for (const entry of ENTRIES) checkToolShell(entry);
   checkOtherRoutes();
 }
 

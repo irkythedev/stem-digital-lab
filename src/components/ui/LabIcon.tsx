@@ -9,7 +9,9 @@
  * 为什么描边是 1.2、而不是别处的 2：这一层全是**器材图示**（天平、弹簧测力计、杠杆、
  * 滑轮、量筒、酒精灯…），要的是「看图认得出这是什么仪器」的线稿感；操作类 UI 图标
  * 才用 2。首页与科目页的「工具」网格里它和 lucide 的 Gauge / Calculator 并排，
- * 落墨轻一档是有意为之，不是漏改。全 18 枚一律 1.2，本层内部不再分档。
+ * 落墨轻一档是有意为之，不是漏改。19 枚里 18 枚一律 1.2，本层内部不再分档。
+ * 唯一例外是 FormulaIcon：那是字形组合（H + 下标 2 + O），1.2 在 28px 下
+ * 「2」的弯钩会糊成一团，按定稿样张用 1.4。
  * （旧注释写「1px」，与代码里的 1.2 对不上，已按实际值订正。）
  */
 export interface LabIconProps {
@@ -443,6 +445,31 @@ export function PeriodicTableIcon({ className = '' }: LabIconProps) {
       <line x1="8" y1="4" x2="8" y2="21" />
       <line x1="13" y1="4" x2="13" y2="21" />
       <line x1="18" y1="4" x2="18" y2="21" />
+    </svg>
+  );
+}
+
+/** 化学式与化合价：H₂O 的字形组合——H（两竖 + 横杠）+ 下标 2（斜画收笔）+ O */
+export function FormulaIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* H：左竖 / 右竖 / 横杠 */}
+      <path d="M1.8 5 V19" />
+      <path d="M7 5 V19" />
+      <path d="M1.8 12 H7" />
+      {/* 下标 2：上半弧 + 斜画收到底边（小一号，压在基线以下） */}
+      <path d="M8.6 13.6 C 8.6 12.2, 9.7 11.6, 10.8 11.6 C 12 11.6, 12.6 12.4, 12.6 13.6 L 8.6 19 H 12.6" />
+      {/* O：与 H 同高的圆 */}
+      <circle cx="18.4" cy="12" r="4.3" />
     </svg>
   );
 }

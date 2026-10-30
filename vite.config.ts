@@ -146,13 +146,36 @@ function parseLabs(): LabSeo[] {
   return out;
 }
 
-/** 4 个查表工具（固定路由） */
+/** 5 个查表工具（固定路由） */
 const TOOLS: { path: string; zhName: string; enName: string; zhDesc: string; enDesc: string }[] = [
+  { path: '/chemistry-formulas', zhName: '化学式与化合价', enName: 'Chemical Formulas', zhDesc: '化合价速查 · 十字交叉生成 · 由式反推 · 六类练习', enDesc: 'Valence reference, cross-rule builder, solver and six practice types' },
   { path: '/periodic-table', zhName: '元素周期表', enName: 'Periodic Table', zhDesc: '118 元素 · 实物照片 · 读音（男 / 女声）· 中考跟读', enDesc: '118 elements, photos, pronunciation (male/female voice), recite mode' },
   { path: '/physics-constants', zhName: '物理常量速查', enName: 'Physics Constants', zhDesc: '常用物理常量一览', enDesc: 'Common physics constants at a glance' },
   { path: '/physics-formulas', zhName: '物理公式速查', enName: 'Physics Formulas', zhDesc: '电学 / 力学 / 光学公式整理', enDesc: 'Electricity, mechanics and optics formulas' },
   { path: '/math-formulas', zhName: '数学公式速查', enName: 'Math Formulas', zhDesc: '代数 / 几何 / 函数 / 统计公式整理', enDesc: 'Algebra, geometry, functions and statistics formulas' },
 ];
+
+/**
+ * 结构化讲解阅读页（/learn/<id>）：名称与摘要直接读 content/ JSON。
+ * 与客户端阅读页、构建期静态化共用同一份内容来源，避免三处手抄后漂移。
+ */
+function readLearnPages(): { path: string; zhName: string; enName: string; zhDesc: string; enDesc: string }[] {
+  const files = [
+    'content/labs/lens.json',
+    'content/tools/periodic-table.json',
+    'content/tools/chemistry-formulas.json',
+  ];
+  return files.map((file) => {
+    const c = JSON.parse(readFileSync(path.resolve(__dirname, file), 'utf-8'));
+    return {
+      path: `/learn/${c.id}`,
+      zhName: c.name.zh,
+      enName: c.name.en,
+      zhDesc: c.summary.zh,
+      enDesc: c.summary.en,
+    };
+  });
+}
 
 const SUBJECT_PAGES = [
   { path: '/subject/math', zh: '数学', en: 'Math' },
@@ -174,13 +197,14 @@ function seoAssets(): Plugin {
     name: 'write-seo-assets',
     closeBundle() {
       const labs = parseLabs();
+      const learn = readLearnPages();
       const now = new Date().toISOString().slice(0, 10);
 
       // ---------- llms.txt ----------
       const lines: string[] = [];
       lines.push('# 数理化数字实验室 · STEM Digital Lab');
       lines.push('');
-      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 5 个工具，另有 AI 学习助手（自带 Key）。');
+      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 6 个工具，另有 AI 学习助手（自带 Key）。');
       lines.push('');
       lines.push('License: AGPL-3.0');
       lines.push('');
@@ -190,6 +214,12 @@ function seoAssets(): Plugin {
         const u = `${SITE_URL}${lab.path ?? `/lab/${lab.id}`}`;
         const zh = `- [${lab.zhName}（${lab.enName}）](${u})：${lab.zhDesc || '交互探究实验'}`;
         lines.push(zh);
+      }
+      lines.push('');
+      lines.push('## 结构化讲解 · Study Guides');
+      lines.push('');
+      for (const l of learn) {
+        lines.push(`- [${l.zhName}（${l.enName}）](${SITE_URL}${l.path})：${l.zhDesc}`);
       }
       lines.push('');
       lines.push('## 查表工具 · Lookup Tools');
@@ -217,6 +247,7 @@ function seoAssets(): Plugin {
         { path: '/guide', priority: '0.5', freq: 'monthly' },
         ...SUBJECT_PAGES.map((s) => ({ path: s.path, priority: '0.7', freq: 'weekly' })),
         ...labs.map((lab) => ({ path: lab.path ?? `/lab/${lab.id}`, priority: '0.8', freq: 'weekly' })),
+        ...learn.map((l) => ({ path: l.path, priority: '0.7', freq: 'weekly' })),
         ...TOOLS.map((t) => ({ path: t.path, priority: '0.8', freq: 'weekly' })),
         { path: '/license', priority: '0.3', freq: 'yearly' },
       ];

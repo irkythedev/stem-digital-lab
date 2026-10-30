@@ -81,7 +81,7 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
             onClick={dock.open}
             aria-label={title}
             aria-expanded={false}
-            className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 right-[4.5rem] z-40 flex h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[0_4px_20px_rgba(0,0,0,0.08),0_1px_4px_rgba(0,0,0,0.04)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]"
+            className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 right-[4.5rem] z-40 flex h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[var(--elev-md)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]"
           >
             <span className="inline-flex items-center gap-2 min-w-0">
               <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -124,7 +124,7 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
       <div
         role="dialog"
         aria-label={title}
-        className="param-sheet fixed inset-x-0 bottom-0 z-50 flex max-h-[50dvh] flex-col rounded-t-xl border-t border-[var(--border)] bg-[var(--bg)] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] pb-[env(safe-area-inset-bottom,0px)]"
+        className="param-sheet fixed inset-x-0 bottom-0 z-50 flex max-h-[50dvh] flex-col rounded-t-xl border-t border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-up)] pb-[env(safe-area-inset-bottom,0px)]"
         style={{ transform: dragDy ? `translateY(${dragDy}px)` : undefined, transition: dragDy ? 'none' : undefined }}
       >
         <button

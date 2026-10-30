@@ -1,0 +1,1115 @@
+{
+  "id": "chemistry-formulas",
+  "canonical": "https://stem.irky.dev/chemistry-formulas",
+  "name": {
+    "zh": "化学式与化合价",
+    "en": "Chemical Formulas and Valence"
+  },
+  "aliases": [
+    {
+      "zh": "化合价速查",
+      "en": "Valence reference"
+    },
+    {
+      "zh": "十字交叉法写化学式",
+      "en": "Cross-rule formula writing"
+    },
+    {
+      "zh": "由化学式求化合价",
+      "en": "Valence from a formula"
+    },
+    {
+      "zh": "相对分子质量计算",
+      "en": "Relative molecular mass"
+    }
+  ],
+  "curriculum": [
+    {
+      "edition": {
+        "zh": "人教版",
+        "en": "People's Education Press Edition"
+      },
+      "grade": {
+        "zh": "九年级上册",
+        "en": "Grade 9, Volume 1"
+      },
+      "chapter": {
+        "zh": "第四单元 自然界的水 课题4 化学式与化合价",
+        "en": "Unit 4: Water in Nature, Lesson 4: Chemical Formulas and Valence"
+      }
+    },
+    {
+      "edition": {
+        "zh": "沪教版（江苏地区使用）",
+        "en": "Shanghai Education Press Edition (used in Jiangsu)"
+      },
+      "grade": {
+        "zh": "九年级上册",
+        "en": "Grade 9, Volume 1"
+      },
+      "chapter": {
+        "zh": "第3章 物质构成的奥秘 第3节 化学式与化合价",
+        "en": "Chapter 3: The Structure of Matter, Section 3: Chemical Formulas and Valence"
+      }
+    }
+  ],
+  "summary": {
+    "zh": "化学式与化合价工具把初中常见元素价态、七个原子团与十字交叉法放在同一页：选阳离子和阴离子即可生成化学式，输入化学式可反推化合价，再用六类确定性练习检查标价、写式、命名与相对分子质量计算。",
+    "en": "This tool puts common element valences, seven polyatomic ions and the cross rule on one page: choose a cation and an anion to build a formula, enter a formula to solve for valence, then practise valence labelling, formula writing, naming and relative molecular mass with six deterministic question types."
+  },
+  "answer": {
+    "what": {
+      "zh": "化合价是元素在形成化合物时表现出来的一种性质，用来表示原子之间相互结合的数目。化学式则用元素符号和数字表示物质的组成：元素符号右下角的数字表示一个分子中该原子的个数，原子团个数大于 1 时要用括号把原子团括起来，再在括号右下角写个数。化合物中各元素正负化合价的代数和为零，这一条是写式和反推的共同依据。",
+      "en": "Valence describes the combining capacity of an element in a compound. A chemical formula uses element symbols and numbers to show composition: a subscript after a symbol gives the number of that atom in one formula unit, and a polyatomic ion repeated more than once is enclosed in brackets with the count written outside. The algebraic sum of positive and negative valences in a compound is zero, which underlies both formula writing and valence solving."
+    },
+    "observe": {
+      "zh": "先看价态：氢、钾、钠、银通常为 +1，氧通常为 −2，钙、镁、钡、锌通常为 +2，铝为 +3。再看原子团：氢氧根、硝酸根、碳酸氢根为 −1，硫酸根、碳酸根为 −2，磷酸根为 −3，铵根是唯一常见的带正电原子团，为 +1。写式时把正价元素或原子团写在左边，负价写在右边，交叉价数后约成最简整数比。检验时把所有元素与原子团的化合价按个数相加，结果必须为 0。",
+      "en": "Start from valences: H, K, Na and Ag are usually +1; O is usually −2; Ca, Mg, Ba and Zn are +2; Al is +3. Then the ions: hydroxide, nitrate and hydrogen carbonate are −1; sulfate and carbonate are −2; phosphate is −3; ammonium is the common positively charged group at +1. Put the positive species on the left and the negative on the right, cross the charges, and reduce to the simplest integer ratio. Check by multiplying each valence by its count and summing to zero."
+    },
+    "grade": {
+      "zh": "化学式与化合价是九年级化学的核心工具，人教版九年级上册第四单元课题4、沪教版九年级上册第3章第3节都要求能根据化合价正确书写常见物质的化学式，能由化学式反推某元素的化合价，并能计算相对分子质量和元素质量分数。中考常见题型包括标价、写式、判断正误、物质命名和根据标签计算。",
+      "en": "Chemical formulas and valence are core Grade 9 tools. The PEP Edition (Grade 9, Volume 1, Unit 4, Lesson 4) and the Shanghai Education Press Edition (Grade 9, Volume 1, Chapter 3, Section 3) require writing formulas from valences, solving a valence from a formula, and computing relative molecular mass and mass fraction. Typical exam tasks include labelling valences, writing formulas, judging correctness, naming compounds and reading labels."
+    }
+  },
+  "facts": [
+    {
+      "key": {
+        "zh": "化合价代数和为零",
+        "en": "Valences sum to zero"
+      },
+      "value": {
+        "zh": "在化合物中，各元素正负化合价的代数和为零；单质中元素的化合价为零。",
+        "en": "In a compound the algebraic sum of positive and negative valences is zero; in an element the valence is zero."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "氧和氢的常见价态",
+        "en": "Common valences of oxygen and hydrogen"
+      },
+      "value": {
+        "zh": "氧通常显 −2 价，氢通常显 +1 价；过氧化氢 H₂O₂ 中氧为 −1 价，是教材明确指出的特例。",
+        "en": "Oxygen is normally −2 and hydrogen normally +1; in hydrogen peroxide, H₂O₂, oxygen is −1, a textbook exception."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "变价金属的读法",
+        "en": "Naming variable-valence metals"
+      },
+      "value": {
+        "zh": "铁有 +2、+3 两种常见价态：Fe²⁺ 读「亚铁」，Fe³⁺ 读「铁」；铜有 +1、+2 两种，Cu⁺ 读「亚铜」，Cu²⁺ 读「铜」。低价加「亚」是教材的统一口径。",
+        "en": "Iron has common +2 and +3 states: Fe²⁺ is iron(II), Fe³⁺ is iron(III). Copper has +1 and +2: Cu⁺ is copper(I), Cu²⁺ is copper(II). The lower valence takes the Chinese 亚 prefix."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "原子团要加括号",
+        "en": "Bracket repeated polyatomic ions"
+      },
+      "value": {
+        "zh": "原子团个数大于 1 时必须先加括号再写个数，如 Ca(OH)₂、(NH₄)₂SO₄、Al₂(SO₄)₃；只有一个原子团时不加括号。",
+        "en": "When a polyatomic ion appears more than once, bracket it before writing the count, as in Ca(OH)₂, (NH₄)₂SO₄ and Al₂(SO₄)₃; a single group needs no brackets."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "相对分子质量",
+        "en": "Relative molecular mass"
+      },
+      "value": {
+        "zh": "相对分子质量等于化学式中各原子的相对原子质量之和，单位为一；初中计算采用教材取整值，氯取 35.5。",
+        "en": "Relative molecular mass is the sum of the relative atomic masses in the formula and has no unit; junior-high calculations use the textbook rounded values, with Cl = 35.5."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "key": {
+        "zh": "四氧化三铁是特例",
+        "en": "Fe₃O₄ is a special case"
+      },
+      "value": {
+        "zh": "四氧化三铁可视为 FeO·Fe₂O₃，初中阶段不要求反推出单一整数化合价；铁在其中有 +2 和 +3 两种价态。",
+        "en": "Fe₃O₄ can be viewed as FeO·Fe₂O₃; junior high does not ask for a single integer valence. Iron is present as both +2 and +3."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    }
+  ],
+  "dataTable": {
+    "caption": {
+      "zh": "初中常见物质速查表（化学式、名称、类别、相对分子质量与要点；由 formula-core 计算生成）",
+      "en": "Common junior-high compounds (formula, name, category, relative molecular mass and key note; generated by formula-core)"
+    },
+    "columns": [
+      {
+        "zh": "化学式",
+        "en": "Formula"
+      },
+      {
+        "zh": "名称",
+        "en": "Name"
+      },
+      {
+        "zh": "类别",
+        "en": "Category"
+      },
+      {
+        "zh": "相对分子质量",
+        "en": "Relative molecular mass"
+      },
+      {
+        "zh": "要点",
+        "en": "Key note"
+      }
+    ],
+    "rows": [
+      [
+        {
+          "zh": "H2O",
+          "en": "H2O"
+        },
+        {
+          "zh": "水",
+          "en": "Water"
+        },
+        {
+          "zh": "氧化物",
+          "en": "Oxide"
+        },
+        {
+          "zh": "18",
+          "en": "18"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "CO2",
+          "en": "CO2"
+        },
+        {
+          "zh": "二氧化碳",
+          "en": "Carbon dioxide"
+        },
+        {
+          "zh": "氧化物",
+          "en": "Oxide"
+        },
+        {
+          "zh": "44",
+          "en": "44"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "CO",
+          "en": "CO"
+        },
+        {
+          "zh": "一氧化碳",
+          "en": "Carbon monoxide"
+        },
+        {
+          "zh": "氧化物",
+          "en": "Oxide"
+        },
+        {
+          "zh": "28",
+          "en": "28"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "CaO",
+          "en": "CaO"
+        },
+        {
+          "zh": "氧化钙",
+          "en": "Calcium oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "56",
+          "en": "56"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "MgO",
+          "en": "MgO"
+        },
+        {
+          "zh": "氧化镁",
+          "en": "Magnesium oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "40",
+          "en": "40"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Al2O3",
+          "en": "Al2O3"
+        },
+        {
+          "zh": "氧化铝",
+          "en": "Aluminium oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "102",
+          "en": "102"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Fe2O3",
+          "en": "Fe2O3"
+        },
+        {
+          "zh": "氧化铁",
+          "en": "Iron(III) oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "160",
+          "en": "160"
+        },
+        {
+          "zh": "铁显 +3 价，读「氧化铁」。",
+          "en": "Iron is +3 here, hence iron(III) oxide."
+        }
+      ],
+      [
+        {
+          "zh": "FeO",
+          "en": "FeO"
+        },
+        {
+          "zh": "氧化亚铁",
+          "en": "Iron(II) oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "72",
+          "en": "72"
+        },
+        {
+          "zh": "铁显 +2 价，读「氧化亚铁」。",
+          "en": "Iron is +2 here, hence iron(II) oxide."
+        }
+      ],
+      [
+        {
+          "zh": "Fe3O4",
+          "en": "Fe3O4"
+        },
+        {
+          "zh": "四氧化三铁",
+          "en": "Iron(II,III) oxide"
+        },
+        {
+          "zh": "特殊氧化物",
+          "en": "Mixed oxide"
+        },
+        {
+          "zh": "232",
+          "en": "232"
+        },
+        {
+          "zh": "四氧化三铁可视为 FeO·Fe₂O₃，初中阶段不作单一整数化合价反推。",
+          "en": "Fe₃O₄ can be viewed as FeO·Fe₂O₃; junior high does not solve it as one integer valence."
+        }
+      ],
+      [
+        {
+          "zh": "CuO",
+          "en": "CuO"
+        },
+        {
+          "zh": "氧化铜",
+          "en": "Copper(II) oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "80",
+          "en": "80"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Cu2O",
+          "en": "Cu2O"
+        },
+        {
+          "zh": "氧化亚铜",
+          "en": "Copper(I) oxide"
+        },
+        {
+          "zh": "金属氧化物",
+          "en": "Metal oxide"
+        },
+        {
+          "zh": "144",
+          "en": "144"
+        },
+        {
+          "zh": "铜显 +1 价，读「氧化亚铜」。",
+          "en": "Copper is +1 here, hence copper(I) oxide."
+        }
+      ],
+      [
+        {
+          "zh": "SO2",
+          "en": "SO2"
+        },
+        {
+          "zh": "二氧化硫",
+          "en": "Sulfur dioxide"
+        },
+        {
+          "zh": "非金属氧化物",
+          "en": "Non-metal oxide"
+        },
+        {
+          "zh": "64",
+          "en": "64"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "SO3",
+          "en": "SO3"
+        },
+        {
+          "zh": "三氧化硫",
+          "en": "Sulfur trioxide"
+        },
+        {
+          "zh": "非金属氧化物",
+          "en": "Non-metal oxide"
+        },
+        {
+          "zh": "80",
+          "en": "80"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "P2O5",
+          "en": "P2O5"
+        },
+        {
+          "zh": "五氧化二磷",
+          "en": "Phosphorus pentoxide"
+        },
+        {
+          "zh": "非金属氧化物",
+          "en": "Non-metal oxide"
+        },
+        {
+          "zh": "142",
+          "en": "142"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "NaCl",
+          "en": "NaCl"
+        },
+        {
+          "zh": "氯化钠",
+          "en": "Sodium chloride"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "58.5",
+          "en": "58.5"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "KCl",
+          "en": "KCl"
+        },
+        {
+          "zh": "氯化钾",
+          "en": "Potassium chloride"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "74.5",
+          "en": "74.5"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "FeCl2",
+          "en": "FeCl2"
+        },
+        {
+          "zh": "氯化亚铁",
+          "en": "Iron(II) chloride"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "127",
+          "en": "127"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "FeCl3",
+          "en": "FeCl3"
+        },
+        {
+          "zh": "氯化铁",
+          "en": "Iron(III) chloride"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "162.5",
+          "en": "162.5"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "CaCO3",
+          "en": "CaCO3"
+        },
+        {
+          "zh": "碳酸钙",
+          "en": "Calcium carbonate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "100",
+          "en": "100"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Na2CO3",
+          "en": "Na2CO3"
+        },
+        {
+          "zh": "碳酸钠",
+          "en": "Sodium carbonate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "106",
+          "en": "106"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "NaHCO3",
+          "en": "NaHCO3"
+        },
+        {
+          "zh": "碳酸氢钠",
+          "en": "Sodium hydrogen carbonate"
+        },
+        {
+          "zh": "酸式盐",
+          "en": "Acid salt"
+        },
+        {
+          "zh": "84",
+          "en": "84"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "NaOH",
+          "en": "NaOH"
+        },
+        {
+          "zh": "氢氧化钠",
+          "en": "Sodium hydroxide"
+        },
+        {
+          "zh": "碱",
+          "en": "Base"
+        },
+        {
+          "zh": "40",
+          "en": "40"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Ca(OH)2",
+          "en": "Ca(OH)2"
+        },
+        {
+          "zh": "氢氧化钙",
+          "en": "Calcium hydroxide"
+        },
+        {
+          "zh": "碱",
+          "en": "Base"
+        },
+        {
+          "zh": "74",
+          "en": "74"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "Fe(OH)3",
+          "en": "Fe(OH)3"
+        },
+        {
+          "zh": "氢氧化铁",
+          "en": "Iron(III) hydroxide"
+        },
+        {
+          "zh": "碱",
+          "en": "Base"
+        },
+        {
+          "zh": "107",
+          "en": "107"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "H2SO4",
+          "en": "H2SO4"
+        },
+        {
+          "zh": "硫酸",
+          "en": "Sulfuric acid"
+        },
+        {
+          "zh": "酸",
+          "en": "Acid"
+        },
+        {
+          "zh": "98",
+          "en": "98"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "HNO3",
+          "en": "HNO3"
+        },
+        {
+          "zh": "硝酸",
+          "en": "Nitric acid"
+        },
+        {
+          "zh": "酸",
+          "en": "Acid"
+        },
+        {
+          "zh": "63",
+          "en": "63"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "H2CO3",
+          "en": "H2CO3"
+        },
+        {
+          "zh": "碳酸",
+          "en": "Carbonic acid"
+        },
+        {
+          "zh": "酸",
+          "en": "Acid"
+        },
+        {
+          "zh": "62",
+          "en": "62"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "NH4Cl",
+          "en": "NH4Cl"
+        },
+        {
+          "zh": "氯化铵",
+          "en": "Ammonium chloride"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "53.5",
+          "en": "53.5"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "(NH4)2SO4",
+          "en": "(NH4)2SO4"
+        },
+        {
+          "zh": "硫酸铵",
+          "en": "Ammonium sulfate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "132",
+          "en": "132"
+        },
+        {
+          "zh": "—",
+          "en": "—"
+        }
+      ],
+      [
+        {
+          "zh": "KMnO4",
+          "en": "KMnO4"
+        },
+        {
+          "zh": "高锰酸钾",
+          "en": "Potassium permanganate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "158",
+          "en": "158"
+        },
+        {
+          "zh": "Mn 显 +7 价。",
+          "en": "Mn is +7 here."
+        }
+      ],
+      [
+        {
+          "zh": "K2MnO4",
+          "en": "K2MnO4"
+        },
+        {
+          "zh": "锰酸钾",
+          "en": "Potassium manganate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "197",
+          "en": "197"
+        },
+        {
+          "zh": "Mn 显 +6 价。",
+          "en": "Mn is +6 here."
+        }
+      ],
+      [
+        {
+          "zh": "KClO3",
+          "en": "KClO3"
+        },
+        {
+          "zh": "氯酸钾",
+          "en": "Potassium chlorate"
+        },
+        {
+          "zh": "盐",
+          "en": "Salt"
+        },
+        {
+          "zh": "122.5",
+          "en": "122.5"
+        },
+        {
+          "zh": "Cl 显 +5 价。",
+          "en": "Cl is +5 here."
+        }
+      ],
+      [
+        {
+          "zh": "H2O2",
+          "en": "H2O2"
+        },
+        {
+          "zh": "过氧化氢",
+          "en": "Hydrogen peroxide"
+        },
+        {
+          "zh": "特殊氧化物",
+          "en": "Special oxide"
+        },
+        {
+          "zh": "34",
+          "en": "34"
+        },
+        {
+          "zh": "H₂O₂ 中氧显 −1 价，是化合价反推的经典特例。",
+          "en": "Oxygen is −1 in H₂O₂ — a classic exception."
+        }
+      ]
+    ]
+  },
+  "steps": [
+    {
+      "zh": "第一步，标价：在元素符号或原子团正上方写出已知化合价，正负号写在数字前面。",
+      "en": "Step 1, label valences: write the known valence above each symbol or polyatomic ion, with the sign before the number."
+    },
+    {
+      "zh": "第二步，交叉：把正价数写到负价元素右下角，把负价数写到正价元素右下角，先不管正负号。",
+      "en": "Step 2, cross: write the positive charge as the subscript of the negative species and the negative charge as the subscript of the positive species, ignoring signs."
+    },
+    {
+      "zh": "第三步，约简：把交叉得到的两个数字同时除以最大公约数，化成最简整数比；结果为 1 时省略不写。",
+      "en": "Step 3, reduce: divide both crossed numbers by their greatest common divisor to reach the simplest integer ratio; omit the subscript when it is 1."
+    },
+    {
+      "zh": "第四步，加括号与检验：原子团个数大于 1 时加括号；最后用「正价总数 + 负价总数 = 0」逐项检验。",
+      "en": "Step 4, bracket and check: bracket a repeated polyatomic ion, then verify that the total positive valence plus the total negative valence equals zero."
+    }
+  ],
+  "misconceptions": [
+    {
+      "claim": {
+        "zh": "交叉后得到 2 和 4，就直接写成 Fe₂O₄。",
+        "en": "After crossing you get 2 and 4, so write Fe₂O₄."
+      },
+      "correction": {
+        "zh": "交叉后必须约成最简整数比。Fe 为 +3、O 为 −2 时交叉得 2 和 3，直接得到 Fe₂O₃；若得到 2 和 4，应同时除以 2。",
+        "en": "Always reduce to the simplest ratio. With Fe +3 and O −2 the cross gives 2 and 3, hence Fe₂O₃; if you get 2 and 4, divide both by 2."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "氢氧化钙写成 CaOH₂，因为钙是 +2、氢氧根是 −1。",
+        "en": "Calcium hydroxide is CaOH₂ because calcium is +2 and hydroxide is −1."
+      },
+      "correction": {
+        "zh": "原子团个数大于 1 时必须加括号：正确写法是 Ca(OH)₂。括号表示两个完整的氢氧根，而不是两个氢原子。",
+        "en": "A repeated polyatomic ion must be bracketed: Ca(OH)₂ is correct. The brackets mean two complete hydroxide groups, not two hydrogen atoms."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "FeO 和 Fe₂O₃ 都读「氧化铁」。",
+        "en": "Both FeO and Fe₂O₃ are called iron oxide."
+      },
+      "correction": {
+        "zh": "铁是变价元素，低价要加「亚」：FeO 中铁为 +2，读「氧化亚铁」；Fe₂O₃ 中铁为 +3，读「氧化铁」。",
+        "en": "Iron has variable valence, and the lower one takes the Chinese 亚 prefix: FeO has Fe²⁺ and reads iron(II) oxide; Fe₂O₃ has Fe³⁺ and reads iron(III) oxide."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    },
+    {
+      "claim": {
+        "zh": "四氧化三铁中氧为 −2，所以铁一定整体显 +8/3 价。",
+        "en": "Oxygen is −2 in Fe₃O₄, so iron must have an overall +8/3 valence."
+      },
+      "correction": {
+        "zh": "初中阶段不把 Fe₃O₄ 反推为单一整数化合价。四氧化三铁可视为 FeO·Fe₂O₃，铁同时有 +2 和 +3 两种价态。",
+        "en": "Junior high does not reduce Fe₃O₄ to one integer valence. It can be viewed as FeO·Fe₂O₃, with iron present as both +2 and +3."
+      },
+      "evidence": {
+        "zh": "人教版九年级上册第四单元课题4「化学式与化合价」",
+        "en": "PEP Grade 9 Vol. 1, Unit 4, Lesson 4, Chemical Formulas and Valence"
+      },
+      "tier": "A"
+    }
+  ],
+  "faqs": [
+    {
+      "q": {
+        "zh": "十字交叉法怎么写化学式？",
+        "en": "How does the cross rule write a formula?"
+      },
+      "a": {
+        "zh": "先把正价元素或原子团写在左边、负价写在右边并标出价数；再把正价数写到右边物质的右下角，把负价数写到左边物质的右下角；最后同时除以最大公约数化成最简整数比。例如 Al 为 +3、O 为 −2，交叉得 Al₂O₃。原子团个数大于 1 时要加括号。",
+        "en": "Put the positive species on the left and the negative on the right, label their valences, then write the positive number as the subscript on the right species and the negative number as the subscript on the left species. Finally divide both by their greatest common divisor. For Al +3 and O −2 the result is Al₂O₃. Bracket a polyatomic ion that repeats."
+      }
+    },
+    {
+      "q": {
+        "zh": "为什么 Ca(OH)₂ 的括号不能省？",
+        "en": "Why can't the brackets in Ca(OH)₂ be omitted?"
+      },
+      "a": {
+        "zh": "括号表示括号内的整个原子团被重复了几次。Ca(OH)₂ 表示每个化学式单位中有两个完整的氢氧根；若写成 CaOH₂，就变成两个氢原子和一个氧原子，组成完全改变。同理，(NH₄)₂SO₄ 中两个铵根也需要括号。",
+        "en": "Brackets mean the whole group inside is repeated. Ca(OH)₂ contains two complete hydroxide groups per formula unit; CaOH₂ would mean two hydrogen atoms and one oxygen atom, a different substance. Likewise (NH₄)₂SO₄ needs brackets around the two ammonium groups."
+      }
+    },
+    {
+      "q": {
+        "zh": "怎样由化学式反推化合价？",
+        "en": "How do you solve for valence from a formula?"
+      },
+      "a": {
+        "zh": "设未知元素的化合价为 x，按「各元素化合价 × 原子个数」求和并令其等于零，解一元一次方程即可。例如 Fe₂O₃ 中氧为 −2：2x + 3×(−2) = 0，解得 x = +3。若化学式含原子团，先把原子团整体当作一个单位计算。",
+        "en": "Let the unknown valence be x, multiply each valence by its atom count, set the sum to zero and solve the linear equation. In Fe₂O₃ with oxygen −2: 2x + 3×(−2) = 0, so x = +3. Treat a polyatomic ion as one unit first."
+      }
+    },
+    {
+      "q": {
+        "zh": "NH₄NO₃ 中氮的化合价是多少？",
+        "en": "What is the valence of nitrogen in NH₄NO₃?"
+      },
+      "a": {
+        "zh": "NH₄NO₃ 由铵根 NH₄⁺ 和硝酸根 NO₃⁻ 构成，两个氮原子所处的环境不同：铵根中氮为 −3，硝酸根中氮为 +5。因此不能把化学式里的两个 N 合并成一个答案，要分别说明。",
+        "en": "NH₄NO₃ consists of NH₄⁺ and NO₃⁻, so the two nitrogen atoms are in different environments: nitrogen is −3 in ammonium and +5 in nitrate. Do not merge the two N atoms into one answer; report them separately."
+      }
+    },
+    {
+      "q": {
+        "zh": "相对分子质量怎么算？",
+        "en": "How is relative molecular mass calculated?"
+      },
+      "a": {
+        "zh": "把化学式中每种元素的相对原子质量乘以其原子个数，再全部相加。例如 Fe₂O₃：56×2 + 16×3 = 160。初中计算使用教材取整值，氯取 35.5，所以 KClO₃ 的相对分子质量为 39 + 35.5 + 16×3 = 122.5。",
+        "en": "Multiply each element's relative atomic mass by its atom count and add the results. For Fe₂O₃: 56×2 + 16×3 = 160. Junior-high work uses textbook rounded values, with Cl = 35.5, so KClO₃ is 39 + 35.5 + 16×3 = 122.5."
+      }
+    },
+    {
+      "q": {
+        "zh": "Fe₃O₄ 中铁的化合价怎么处理？",
+        "en": "How should the valence of iron in Fe₃O₄ be handled?"
+      },
+      "a": {
+        "zh": "初中教材把四氧化三铁视为 FeO·Fe₂O₃ 的混合氧化物，不要求反推单一整数化合价。若按代数式硬算会得到 +8/3，这不符合初中「化合价为整数」的口径，也不是教材要求。答题时说明它是特例即可。",
+        "en": "The textbook treats Fe₃O₄ as the mixed oxide FeO·Fe₂O₃ and does not require a single integer valence. A blind algebraic solve gives +8/3, which conflicts with the junior-high integer-valence convention and is not required. State that it is a special case."
+      }
+    },
+    {
+      "q": {
+        "zh": "原子团有哪些必须记住？",
+        "en": "Which polyatomic ions must be memorised?"
+      },
+      "a": {
+        "zh": "初中阶段要求掌握七个常见原子团：氢氧根 OH⁻、硝酸根 NO₃⁻、硫酸根 SO₄²⁻、碳酸根 CO₃²⁻、碳酸氢根 HCO₃⁻、铵根 NH₄⁺、磷酸根 PO₄³⁻。其中铵根是唯一常见的带正电原子团，其余都带负电。",
+        "en": "Junior high requires seven common polyatomic ions: hydroxide OH⁻, nitrate NO₃⁻, sulfate SO₄²⁻, carbonate CO₃²⁻, hydrogen carbonate HCO₃⁻, ammonium NH₄⁺ and phosphate PO₄³⁻. Ammonium is the only common positively charged group; the rest are negative."
+      }
+    }
+  ],
+  "links": [
+    {
+      "href": "/periodic-table",
+      "label": {
+        "zh": "元素周期表",
+        "en": "Periodic table"
+      }
+    },
+    {
+      "href": "/subject/chemistry",
+      "label": {
+        "zh": "初中化学全部实验",
+        "en": "All middle-school chemistry labs"
+      }
+    },
+    {
+      "href": "/lab/electrolysis",
+      "label": {
+        "zh": "电解水实验",
+        "en": "Electrolysis of water"
+      }
+    }
+  ],
+  "breadcrumb": [
+    {
+      "href": "/",
+      "label": {
+        "zh": "首页",
+        "en": "Home"
+      }
+    },
+    {
+      "href": "/subject/chemistry",
+      "label": {
+        "zh": "化学",
+        "en": "Chemistry"
+      }
+    }
+  ],
+  "updatedAt": "2026-10-30",
+  "license": "AGPL-3.0"
+}

@@ -1124,21 +1124,21 @@ describe('触屏命中区（hover:none + pointer:coarse）', () => {
 describe('计数口径（注册表真值 ↔ 对外文案）', () => {
   const regularLabs = labs.filter((lab) => !isToolLab(lab)).length;
   const toolLabs = labs.filter((lab) => isToolLab(lab)).length;
-  // 固定路由查表工具：元素周期表 / 物理常量 / 物理公式 / 数学公式（见 vite.config.ts 的固定路由表）
-  const LOOKUP_TOOLS = 4;
+  // 固定路由查表工具：化学式与化合价 / 元素周期表 / 物理常量 / 物理公式 / 数学公式（见 vite.config.ts 的固定路由表）
+  const LOOKUP_TOOLS = 5;
   const TOOL_TOTAL = LOOKUP_TOOLS + toolLabs;
 
-  test('注册表真值：15 个常规实验 + 5 个工具（4 查表 + 1 工具台）', () => {
+  test('注册表真值：15 个常规实验 + 6 个工具（5 查表 + 1 工具台）', () => {
     assert.equal(regularLabs, 15, `常规实验数变了就须同步全站文案：实测 ${regularLabs}`);
     assert.equal(toolLabs, 1, `工具台数变了就须同步全站文案：实测 ${toolLabs}`);
-    assert.equal(regularLabs + TOOL_TOTAL, 20, '可互动页面总数（实验 + 工具）应仍为 20');
+    assert.equal(regularLabs + TOOL_TOTAL, 21, '可互动页面总数（实验 + 工具）应仍为 21');
   });
 
   const SURFACES: [string, string[]][] = [
-    ['index.html', ['15 个交互实验', '5 个工具']],
-    ['README.md', ['15 个交互实验 + 5 个工具', '15 interactive labs + 5 tools', 'All 15 labs and all 5 tool pages']],
-    ['src/lib/use-page-meta.ts', ['15 个交互实验 + 5 个工具']],
-    ['vite.config.ts', ['15 个交互实验 + 5 个工具']],
+    ['index.html', ['15 个交互实验', '6 个工具']],
+    ['README.md', ['15 个交互实验 + 6 个工具', '15 interactive labs + 6 tools', 'All 15 labs and all 6 tool pages']],
+    ['src/lib/use-page-meta.ts', ['15 个交互实验 + 6 个工具']],
+    ['vite.config.ts', ['15 个交互实验 + 6 个工具']],
     ['src/lib/i18n.ts', ['15 个实验都按', 'All 15 labs run']],
   ];
 
@@ -1150,6 +1150,9 @@ describe('计数口径（注册表真值 ↔ 对外文案）', () => {
     '4 lookup tools',
     '4 tool pages',
     '4 个工具页',
+    '5 个工具',
+    '5 tools',
+    '5 tool pages',
     '405 项',
     '405 assertions',
   ];
@@ -1204,7 +1207,7 @@ describe('README（工业风纪律与硬指标）', () => {
 
   test('首屏硬指标须与注册表/实测一致（徽章与三栏表同源）', () => {
     const regular = labs.filter((lab) => !isToolLab(lab)).length;
-    const tools = labs.filter((lab) => isToolLab(lab)).length + 4; // +4 固定路由查表工具
+    const tools = labs.filter((lab) => isToolLab(lab)).length + 5; // +5 固定路由查表工具
     assert.ok(
       hero.includes(`${regular} 个交互实验 + ${tools} 个工具`),
       `首屏须写明注册表真值「${regular} 个交互实验 + ${tools} 个工具」`,
@@ -1240,7 +1243,7 @@ describe('README（工业风纪律与硬指标）', () => {
   test('首屏与正文的测试数必须同源（防只改一处）', () => {
     // 五处口径：徽章 / 三栏表 / 口径注释 / 中文正文 / 英文正文。
     // 本守卫只能保证「五处彼此一致」——它们可以一起错。真正的「与实测一致」由
-    // scripts/check-readme-stats.mjs 在整条测试链跑完后比对（那里才有全量统计），
+    // tools/check-readme-stats.mjs 在整条测试链跑完后比对（那里才有全量统计），
     // 所以这里改完数字后仍必须跑完整 npm test，不能只看本守卫是否为绿。
     const badge = /Tests-(\d+)%20passed/.exec(hero)?.[1];
     const table = /(\d+) 项单测门禁/.exec(readme)?.[1];

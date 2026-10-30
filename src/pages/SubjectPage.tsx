@@ -15,7 +15,7 @@ import { subjects, type SubjectId } from '../lib/subjects';
 import { labCategories, regularLabsForSubject, toolsForSubject, labHref } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
 import SubjectHeading from '../components/layout/SubjectHeading';
-import { PeriodicTableIcon } from '../components/ui/LabIcon';
+import { FormulaIcon, PeriodicTableIcon } from '../components/ui/LabIcon';
 import { EngineChip } from '../components/lab/EngineBadge';
 import { getEngineTooltip } from '../components/lab/engine-copy';
 import { usePageMeta } from '../lib/use-page-meta';
@@ -69,6 +69,13 @@ const TOOLS: Record<string, ToolCard[]> = {
     },
   ],
   chemistry: [
+    {
+      to: '/chemistry-formulas',
+      icon: FormulaIcon,
+      name: { zh: '化学式与化合价', en: 'Chemical Formulas' },
+      desc: { zh: '价态速查 · 十字交叉生成 · 由式反推 · 6 类练习', en: 'Valence reference, cross-rule builder, solver and practice' },
+      pro: true,
+    },
     {
       to: '/periodic-table',
       icon: PeriodicTableIcon,

@@ -183,7 +183,7 @@ export default function MathFormulas() {
             type="button"
             onClick={() => setSelected(f)}
             aria-label={`${f.name.zh} ${f.name.en}`}
-            className="relative border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1.5 transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)]"
+            className="relative border border-[var(--border)] bg-[var(--card-bg)] px-3 py-3 flex flex-col items-center gap-1.5 transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)]"
           >
             {/* 含配图的公式：右上角提示 */}
             {f.diagram && (
@@ -212,7 +212,7 @@ export default function MathFormulas() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.name.zh} ${selected.name.en}`}

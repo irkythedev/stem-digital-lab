@@ -328,12 +328,13 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
       ELEMENTS.filter((e) => e.shells.length >= 5).length > 0,
       '须存在 5 层及以上的元素（否则本守卫覆盖不到第 5 层）',
     );
-    // 字形反碰撞：Space Grotesk（--f-mono）的 O 与 0 逐像素同形（40px 下宽高同为 20×30、
-    // 墨量 376 vs 375、仅 2.1% 抗锯齿噪声，且不支持 zero/ss01 斜杠零特性），
-    // 故层名字母的两处渲染点都必须显式走 --f-serif（同尺寸 O/0 墨量比 1.58×）。
+    // 字形反碰撞（2026-10 重测，旧归因错了）：等宽字体天生所有字形同宽，「O 与 0 同宽」
+    // 是定义不是证据；真实原因是字号——层名在 11px 下斜杠零与内部点都只剩 1–4 个像素，
+    // 「O 层」紧挨计数器时会被读成「0 层」。故两处渲染点都必须显式走 --f-serif（同尺寸 O/0
+    // 墨量比 1.58×）。自托管斜杠零在 ≥14px 才真分得开，换字体不足以撤掉这条。
     const serifSpans = pt.match(/<span className="serif-font">\{SHELL_NAMES\[[a-z]+\]\}<\/span>/g) ?? [];
     assert.equal(serifSpans.length, 2, `层名字母须在两处渲染点都走 --f-serif（实测 ${serifSpans.length} 处）`);
-    assert.match(pt, /O 与 0 逐像素同形/, '须保留字形碰撞成因注释（防后人「顺手」改回 mono）');
+    assert.match(pt, /11px 下等宽的 O\/0 只差几个像素/, '须保留字形碰撞成因注释（防后人「顺手」改回 mono）');
   });
 
   test('⑪ 118 元素族标签只用标准预组合罗马数字（U+2160–U+2167）', () => {
@@ -350,7 +351,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     assert.equal(groupLabel(9), 'Ⅷ');
     assert.equal(groupLabel(10), 'Ⅷ', '8/9/10 三列同属 Ⅷ 族');
     assert.equal(groupLabel(18), '0', '第 18 列须兼容人教版「0 族」');
-    // 字形覆盖：Space Grotesk 不含 U+2165 → 会回退到不同源字体；族标签须走含该字形的 --f-serif
+    // 字形覆盖：罗马数字 Ⅰ~Ⅷ 不在等宽子集的字符集内 → 会回退到不同源字体；族标签须走 --f-serif
     assert.match(pt, /font-bold serif-font text-\[var\(--fg\)\] leading-tight">\{selGroup\?\.main/, '族标签须走 --f-serif（mono 缺罗马数字字形）');
     assert.match(pt, /font-semibold serif-font">\{heroData\.gd\.main\}/, '展台族标签同样须走 --f-serif');
   });
@@ -509,7 +510,13 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
       '语言按钮须为「中 / 中文」双断点，英文恒 EN',
     );
     // ④ 互斥规则保留且只针对反馈气泡（书签那条 display:none 已随组件移除）
-    assert.match(css, /html\.param-dock-open \.feedback-fab,\s*html\.ai-sheet-open \.feedback-fab \{[^}]*opacity: 0;[^}]*pointer-events: none/, '两种展开态须对反馈气泡用同一套淡出规则');
+    //    第三条 `html[data-bench-sheet]` 是电学工作台窄屏贴底面板的标记，同样走这一条共用淡出规则；
+    //    标记只由窄屏判定挂上（见 CircuitBench 的 sheetOpen），桌面不会命中。
+    assert.match(
+      css,
+      /html\.param-dock-open \.feedback-fab,\s*html\.ai-sheet-open \.feedback-fab(?:,\s*html\[data-bench-sheet\] \.feedback-fab)? \{[^}]*opacity: 0;[^}]*pointer-events: none/,
+      '各展开态须对反馈气泡用同一套淡出规则',
+    );
     const ai = readAiPanel();
     assert.match(ai, /cls\.add\('ai-sheet-open'\)/, 'AI 面板须继续把展开状态镜像到 <html>');
     // ⑤ 右簇仍是 gap-2 / sm:gap-4：5 个控件在 390 下单行

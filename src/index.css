@@ -108,7 +108,41 @@
      Georgia 退居拉丁兜底位（它无 CJK 字形，此前排在首位会先吃掉所有拉丁与标点）。 */
   --f-serif: 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', 'Source Han Serif CN', 'Songti SC', 'STSong', 'SimSun', '宋体', 'Georgia', serif;
   --f-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', sans-serif;
-  --f-mono: 'Space Grotesk', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  /* 等宽栈：自托管 JetBrains Mono 子集（离线 PWA，不走任何 CDN）。
+     为什么自托管而不是列一串系统字体名：'JetBrains Mono' / 'SF Mono' / 'Fira Code' /
+     'Cascadia Mono' 这类名字在 Windows、Android 与多数 Linux 上一个都不存在，写进
+     font-family 只是装饰——真正渲染的永远是 ui-monospace 后面的回退项。
+     此处原先写的是 'Space Grotesk'（一个几何无衬线体，并非等宽），它既不随站点下发、
+     设备上也几乎没有，所以**一个字形都没渲染过**；全站 706 处 mono-font 实际一直落在
+     DejaVu Sans Mono 上。这解释了旧注释里「Space Grotesk 的 O 与 0 逐像素同形」的归因
+     为什么对不上：那次测量量到的本来就是回退字体。
+     换成真等宽子集后同时拿到三件事：
+       1) 斜杠零 —— zero / zero.zero 两个轮廓在字体里直接对调（见下方 @font-face 注释），
+          不靠 font-variant-numeric: slashed-zero（那条特性在没有 zero 特性的字体上是空转）；
+       2) 100–800 全字重轴 —— 199 处 font-bold 的 mono 文本走真粗体，不再依赖合成加粗；
+       3) cap 高 0.730 对 DejaVu 的 0.729 —— 换字体不会让 9–11px 的小字整体缩水
+          （Source Code Pro 的斜杠零更醒目，但 cap 只有 0.660，会把全站小字缩掉 9%）。
+     回退链保留系统等宽：首帧字体未到时仍能排出一致的字符网格，advance 都在 0.6em 附近，
+     换字体只引起亚像素级横向位移。 */
+  --f-mono: 'STEM Lab Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  /* ── 海拔（阴影）令牌 ────────────────────────────────────────────────
+     收敛前：37 处 `shadow-[...]` 散落成 16 个手写值（0.03 / 0.08 / 0.1 / 0.12 /
+     0.15 / 0.16 / 0.18 / 0.2 / 0.25 各来一遍，模糊半径 2/3/8/10/16/20/24/28/32/36/40
+     排列组合），各组件各写一套没人收敛过。现在只留三档语义海拔：
+       · sm —— 贴地：读数卡、页脚气泡、工具提示（几乎看不出，只负责「不是平的」）
+       · md —— 离地：下拉弹层、页头菜单、悬浮按钮、Toast
+       · lg —— 腾空：模态框、底部抽屉、每日科学铭牌
+     另有两个不属海拔、因此不成档的特例，保留具名变量：
+       · --elev-up —— 底部元件坞向**上**投影，方向相反，塞不进任何一档
+       · 焦点脉冲环 / inset 高光 / 科技蓝辉光仍是各自组件里的字面量（它们表达
+         「状态」而不是「高度」，混进海拔令牌只会让语义变糊）
+
+     两套主题取同一组值：暗色当前本来就用同一批 rgba，改值属于未经视觉验收的
+     观感改动，不夹带在这次收敛里。要调暗色，改 html.dark 下面那三行即可。 */
+  --elev-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --elev-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --elev-lg: 0 16px 40px rgba(0, 0, 0, 0.18);
+  --elev-up: 0 -8px 24px rgba(0, 0, 0, 0.12);
   /* 品牌主标题专用字体（真字重宋体微子集），仅首页 h1.t-hero 使用 */
   --f-brand: 'STEM Lab Serif';
 }
@@ -127,6 +161,28 @@
 }
 h1.t-hero {
   font-family: var(--f-brand), var(--f-serif);
+}
+
+/* ── 科学等宽子集（JetBrains Mono，OFL-1.1）────────────────────────────
+   722 字形 / 51KB：ASCII + 拉丁补充 + 希腊（Ω ρ Δ θ λ μ π σ φ…）+ 数学符号 +
+   箭头 + 上下标 + 圈码 + 罗马数字；CJK 与全角标点不在其中，按字符回退到系统 CJK 字体。
+
+   **斜杠零是改字形做的，不是 CSS 特性做的。** 常规做法是写
+   font-variant-numeric: slashed-zero，但那要求字体自带 zero 特性、且浏览器逐字形查表；
+   本项目其余字体（DejaVu Sans Mono、Liberation Mono）经 fontTools 查 GSUB 都没有 zero
+   特性，那条声明写上去是空转（实测：四种栈加不加，渲染宽度一个小数点都不动）。
+   所以这里把 zero.zero（斜杠版）的轮廓直接换到 zero 上，连 gvar 增量一起换，
+   任何浏览器、任何字重都生效，不依赖特性支持。
+   font-variant-ligatures: none 见 .mono-font —— JetBrains 的 calt 会把 ->、<= 连成
+   箭头 / 不等号，读数与公式里那会被当成另一个字符。
+
+   许可见 public/fonts/OFL-JetBrainsMono.txt。 */
+@font-face {
+  font-family: 'STEM Lab Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/stem-lab-mono.woff2') format('woff2');
 }
 
 html.dark {
@@ -181,6 +237,12 @@ html.dark {
      （暗底上 #d97706 只有 3.5:1，压不住深色绝缘皮，读不出方向）。 */
   --cb-wire: var(--fg);
   --cb-flow: #ffd166;
+  /* 海拔令牌：明暗同值（理由见 :root 那段注释）。要单独给暗色调一档，改这四行即可，
+     组件侧一个字都不用动。 */
+  --elev-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+  --elev-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --elev-lg: 0 16px 40px rgba(0, 0, 0, 0.18);
+  --elev-up: 0 -8px 24px rgba(0, 0, 0, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -223,6 +285,11 @@ html.dark {
     --chart-6: #e39bc0;
     --cb-wire: var(--fg);
     --cb-flow: #ffd166;
+    /* 海拔令牌：与 html.dark 逐值相同（暗色两处必须同步改，见 :root 注释） */
+    --elev-sm: 0 2px 8px rgba(0, 0, 0, 0.12);
+    --elev-md: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --elev-lg: 0 16px 40px rgba(0, 0, 0, 0.18);
+    --elev-up: 0 -8px 24px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -363,10 +430,13 @@ html.dark {
    两条都作用于同一个「底部/右缘被面板接管」的时刻：
    · param-dock-open：参数抽屉展开（参数字段需要整条下半屏）
    · ai-sheet-open  ：AI 面板展开（面板占 62% 视口，气泡整个落在它下面）
+   · data-bench-sheet：电学工作台窄屏贴底面板展开（监控抽屉实测压住气泡 2304px²，
+     元件库横坞压住「电热丝」38×36.5px）；标记只由窄屏判定挂上，桌面不受影响。
    反馈气泡是淡出而非卸载——保留焦点顺序与 aria-expanded 状态。
    （右侧 AiSideTab 已废弃：AI 入口只在顶栏一处，页面右缘不再挂任何悬浮物。） */
 html.param-dock-open .feedback-fab,
-html.ai-sheet-open .feedback-fab {
+html.ai-sheet-open .feedback-fab,
+html[data-bench-sheet] .feedback-fab {
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--dur-fast) var(--ease-out);
@@ -716,7 +786,7 @@ input[type="range"]::-webkit-slider-thumb {
   border-radius: 9999px;
   background-color: var(--card-bg);
   border: 2px solid var(--fg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--elev-sm);
   cursor: grab;
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
@@ -724,7 +794,7 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-webkit-slider-thumb:active {
   cursor: grabbing;
   transform: scale(1.12);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--elev-sm);
 }
 
 /* Firefox 滑块轨道与拇指 */
@@ -742,7 +812,7 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 9999px;
   background-color: var(--card-bg);
   border: 2px solid var(--fg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--elev-sm);
   cursor: grab;
   transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
@@ -750,7 +820,7 @@ input[type="range"]::-moz-range-thumb {
 input[type="range"]::-moz-range-thumb:active {
   cursor: grabbing;
   transform: scale(1.12);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--elev-sm);
 }
 
 .serif-font {
@@ -764,6 +834,9 @@ input[type="range"]::-moz-range-thumb:active {
 .mono-font {
   font-family: var(--f-mono);
   font-variant-numeric: tabular-nums;
+  /* JetBrains 的 calt 会把 ->、<=、!= 连成单个箭头 / 符号字形。读书读数时那是歧义源：
+     学生看到的是一根箭头，复制出来却还是两个字符。整条关掉连字，等宽网格不受影响。 */
+  font-variant-ligatures: none;
 }
 
 /* 等宽表格数字特性（消除数值跳动引起的布局位移） */
@@ -807,7 +880,7 @@ input[type="range"]::-moz-range-thumb:active {
 .stage-segmented-pill.active {
   color: var(--fg);
   background-color: var(--card-bg);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--elev-sm);
   font-weight: 600;
 }
 
@@ -1114,6 +1187,102 @@ input[type="range"]::-moz-range-thumb:active {
   to { transform: rotate(360deg); }
 }
 .animate-daily-flip { animation: daily-flip 0.4s ease-in-out; }
+
+/* ── 每日科学：纪念日 / 科学里程碑「工业铭牌」边框 ──────────────────────
+   克制的琥珀铜金：亮色取 #b47828 系，暗色取 #ebb45a 系；双层 1px 细线
+   + 四角 6px 工业刻度 + 左脊加强，不使用跑马灯或整站反色。 */
+.dq-quote {
+  position: relative;
+}
+
+.dq-quote--memorial,
+.dq-quote--milestone {
+  --dq-plate-line: rgba(180, 120, 40, 0.55);
+  --dq-plate-line-soft: rgba(180, 120, 40, 0.26);
+  --dq-plate-tick: rgba(180, 120, 40, 0.78);
+  --dq-plate-glow: rgba(180, 120, 40, 0.07);
+  --dq-plate-text: #8a5a1c;
+  border-color: var(--dq-plate-line);
+  background-image: linear-gradient(180deg, var(--dq-plate-glow), transparent 58%);
+  box-shadow:
+    inset 0 0 0 1px var(--dq-plate-line-soft),
+    0 0 18px -10px var(--dq-plate-line);
+}
+
+/* 里程碑比缅怀再克制一档，避免两类彩蛋抢同一种视觉重量 */
+.dq-quote--milestone {
+  --dq-plate-line: rgba(154, 106, 42, 0.48);
+  --dq-plate-line-soft: rgba(154, 106, 42, 0.22);
+  --dq-plate-tick: rgba(154, 106, 42, 0.70);
+  --dq-plate-glow: rgba(154, 106, 42, 0.055);
+}
+
+html.dark .dq-quote--memorial,
+html.dark .dq-quote--milestone {
+  --dq-plate-line: rgba(235, 180, 90, 0.42);
+  --dq-plate-line-soft: rgba(235, 180, 90, 0.20);
+  --dq-plate-tick: rgba(235, 180, 90, 0.68);
+  --dq-plate-glow: rgba(235, 180, 90, 0.085);
+  --dq-plate-text: #f0c27a;
+}
+
+html.dark .dq-quote--milestone {
+  --dq-plate-line: rgba(216, 169, 92, 0.36);
+  --dq-plate-line-soft: rgba(216, 169, 92, 0.17);
+  --dq-plate-tick: rgba(216, 169, 92, 0.60);
+  --dq-plate-glow: rgba(216, 169, 92, 0.07);
+}
+
+/* 四角 6px 工业微刻度：纯线性渐变，不新增 DOM */
+.dq-quote--memorial::before,
+.dq-quote--milestone::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) left top / 6px 1px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) left top / 1px 6px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) right top / 6px 1px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) right top / 1px 6px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) left bottom / 6px 1px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) left bottom / 1px 6px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) right bottom / 6px 1px no-repeat,
+    linear-gradient(var(--dq-plate-tick), var(--dq-plate-tick)) right bottom / 1px 6px no-repeat;
+}
+
+/* 左脊加强：2px 渐变竖线，纪念态的「铭牌立柱」 */
+.dq-quote--memorial::after,
+.dq-quote--milestone::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, var(--dq-plate-tick), transparent);
+  opacity: 0.55;
+}
+
+/* 顶部纪念铭牌胶囊 */
+.dq-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.625rem;
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--dq-plate-line);
+  background: var(--dq-plate-glow);
+  color: var(--dq-plate-text);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+}
+
+.dq-badge-date {
+  font-weight: 700;
+}
 
 /* 无障碍：系统开启"减少动效"时停用品牌装饰动画（三角旋转/绿点呼吸） */
 @media (prefers-reduced-motion: reduce) {
@@ -1454,7 +1623,7 @@ input[type="range"]::-moz-range-thumb:active {
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     background: var(--bg);
     border-top: 1px solid var(--border);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--elev-up);
   }
 }
 

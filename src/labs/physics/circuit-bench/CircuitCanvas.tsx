@@ -171,10 +171,13 @@ const HUD_BOX_CSS = { width: 256, right: 16, top: 56, height: 200 };
  *
  * 窄屏把 HUD 改成底部停靠/底部 Sheet 之后，避让方向必须跟着从「左推」改成「上推」，
  * 否则预留量会把本来就窄的画布内容推出左缘（审计实测 3–6px）。
- * 这里只描述**常态药丸/展开体所在的那条底带**；Sheet 展开到 45dvh 时仍由
- * `max-h` 自己收口，取景按 200px 的保守带预留即可。
+ * 这里只描述**常态药丸所在的那条底带**（30px 药丸 + 16px 停靠间距 ≈ 46px）。
+ * 上一版按展开态预留 200px，把整幅电路向上推了 35px（审计 §2.4：dy −34.8，
+ * 上方留白 47.7 / 下方 117.2）——而展开态是 45dvh 的贴底 Sheet，本来就盖在
+ * 画布上、取景再让也看不见，按药丸高度预留即可。药丸锚在槽位底边（处于
+ * 等比内切的留白带里），常态下电路墨迹根本碰不到它。
  */
-const HUD_BOTTOM_BOX_CSS = { width: 256, right: 16, bottom: 16, height: 200 };
+const HUD_BOTTOM_BOX_CSS = { width: 256, right: 16, bottom: 16, height: 46 };
 
 /** 浮窗左缘与电路墨迹之间至少留出的空隙（CSS 像素）。 */
 const HUD_CLEARANCE_CSS = 32;
@@ -250,6 +253,29 @@ export default function CircuitCanvas({
   /** canvasBox 的最新值：指针回调里要判「落点是否落在画布矩形内」。 */
   const boxRef = useRef(canvasBox);
   boxRef.current = canvasBox;
+
+  /**
+   * 触摸的 click 比 pointerup 晚一步才派发。空点收起贴底抽屉时，原本被抽屉
+   * 顶走的浮层控件会滑回手指下方，于是这一下「空白轻点」变成点中监控胶囊
+   * （390×844 实测把刚关上的抽屉又点开了）。记下空点落点，吞掉紧随其后、
+   * 落在画布之外的同位置 click；画布内的点照旧。
+   */
+  const swallowClick = useRef<{ x: number; y: number; until: number } | null>(null);
+  useEffect(() => {
+    const onClickCapture = (ev: MouseEvent) => {
+      const g = swallowClick.current;
+      if (!g) return;
+      swallowClick.current = null;
+      if (performance.now() > g.until) return;
+      if (Math.hypot(ev.clientX - g.x, ev.clientY - g.y) > 12) return;
+      const t = ev.target as Element | null;
+      if (!t || t.closest('svg')) return;
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    window.addEventListener('click', onClickCapture, true);
+    return () => window.removeEventListener('click', onClickCapture, true);
+  }, []);
 
   /* ── 触控手势（希沃红外屏不认原生 dblclick，全部自己判） ── */
   /** 上一次 pointerdown 落在哪个元件上，用来识别双击。 */
@@ -332,10 +358,14 @@ export default function CircuitCanvas({
   const fitContent = useCallback(() => {
     const fill = viewMode === 'physical' ? 0.8 : 0;
     const current = stateRef.current;
+    // 窄屏把留白从 110 收到 76：375×667 下世界只有 325×201.5，110 的四周留白
+    // 让内容只占世界高的 67%、槽高的 45%（审计 §2.4）。缩到 76 后内容占世界高
+    // ≈75%，配合底带按药丸高度预留，上下留白差从 +69.5px 收到 0。桌面不变。
+    const pad = narrow ? 76 : 110;
     const next = fitViewToContent(
       contentBounds(current, routesRef.current),
       { w: WORLD_W, h: WORLD_H },
-      110,
+      pad,
       fill,
       // 窄屏 HUD 停底部：横向不再预留，否则 140 世界单位（V1 上 ≈45px）会把
       // 电路整体推出画布左缘。纵向的净空由下面 boxClearanceShift 的 'y' 分支量。
@@ -385,14 +415,23 @@ export default function CircuitCanvas({
       w: boxCss.width / k,
       h: boxCss.height / k,
     };
-    const shift = boxClearanceShift(
-      current,
-      next,
-      hud,
-      HUD_CLEARANCE_CSS / k,
-      routesRef.current,
-      narrow ? 'y' : 'x',
-    );
+    /*
+     * 窄屏不做几何避让：底部药丸停在槽位的信箱留白里（375 下槽高 300、世界只画
+     * 201.5，留白 49.25），而 `pad = 76` 已经把内容下缘锁在世界 y ≤ 544，
+     * 即 CSS y ≈ 226，永远够不到药丸顶边 238。这里再按 `HUD_CLEARANCE_CSS / k`
+     * 推一遍反而把 32px 的净空放大成 98.5 个世界单位（≈32px 视觉），
+     * 量出来上下留白 50.6 / 91.3、内容整体上浮 20px，正是审计 §2.4 的残余偏差。
+     */
+    const shift = narrow
+      ? 0
+      : boxClearanceShift(
+          current,
+          next,
+          hud,
+          HUD_CLEARANCE_CSS / k,
+          routesRef.current,
+          'x',
+        );
     setView(shift > 0 ? { ...next, tx: next.tx - (narrow ? 0 : shift), ty: next.ty - (narrow ? shift : 0) } : next);
   }, [viewMode, narrow]);
 
@@ -801,6 +840,8 @@ export default function CircuitCanvas({
     }
 
     if (wasTap && tool === 'select') {
+      // 窄屏这一下多半同时要收起贴底抽屉，画面会重排；见 swallowClick。
+      if (narrow) swallowClick.current = { x: e.clientX, y: e.clientY, until: performance.now() + 350 };
       onSelect(null);
       onSelectWire?.(null);
     }
@@ -827,7 +868,22 @@ export default function CircuitCanvas({
       onElementDoubleTap?.(id);
       return;
     }
-    if (tool === 'wire') return;
+    if (tool === 'wire') {
+      /**
+       * 接线模式下点在元件身上：只要离某个接线柱 ≤22 屏幕像素，就从那根柱子
+       * 起线。柱圈本身的命中半径被「同一元件两端不能连成一片」封顶
+       * （k=0.325 时实测 13.9–17.3px），而元件体量足够大、总是先吃到 pointerdown，
+       * 空白处那套 22px 吸附根本轮不到——审计 §2.9 的「点不准」就是这条缝。
+       * 与 onSvgPointerDown 的空白吸附共用 TERMINAL_TAP_PX，语义一致。
+       */
+      const near = nearestTerminalRef(state.components, p, pxToWorld(TERMINAL_TAP_PX, pxPerWorld));
+      if (near) {
+        cancelLongPress();
+        startWireDrag(near.ref, e);
+        svgRef.current?.setPointerCapture?.(e.pointerId);
+      }
+      return;
+    }
     if (e.pointerType !== 'mouse') armLongPress({ kind: 'element', id }, sample);
 
     // 变阻器滑片：只有元件已选中时才吃这个手势，否则靠近导轨按住拖动仍是移动整只元件。
@@ -1375,10 +1431,10 @@ export default function CircuitCanvas({
           : touchOnly
             ? zh
               ? '拖拽元件 · 从接线柱拖出导线 · 双指缩放 · 长按元件出菜单'
-              : 'Drag parts · drag a terminal to wire · pinch to zoom · long-press for menu'
+              : 'Drag parts, drag a terminal to wire, pinch to zoom, long-press for menu'
             : zh
               ? '拖拽元件 · 从接线柱拖出导线 · 滚轮/双指缩放'
-              : 'Drag parts · drag from a terminal to wire · wheel/pinch to zoom'}
+              : 'Drag parts, drag from a terminal to wire, wheel/pinch to zoom'}
       </div>
 
     </div>

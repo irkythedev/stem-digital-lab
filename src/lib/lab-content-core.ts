@@ -86,7 +86,7 @@ const isBi = (v: unknown): v is Bi =>
 
 /**
  * 运行时最小校验。字段缺失时直接抛错，避免组件渲染出半张答案层；
- * 更严格的字数/证据/表格门禁在 scripts/check-geo-assets.ts。
+ * 更严格的字数/证据/表格门禁在 tools/check-geo-assets.ts。
  */
 export function parseLabContent(raw: unknown, source: string): LabContent {
   const fail = (path: string): never => {
@@ -137,9 +137,14 @@ export const LICENSE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
  * LearningResource + FAQPage + HowTo + BreadcrumbList。
  * 构建期与客户端共用同一函数，避免静态 HTML 与运行时 JSON-LD 口径漂移。
  */
-export function answerLayerJsonLd(content: LabContent, lang: 'zh' | 'en'): Record<string, unknown> {
+export function answerLayerJsonLd(
+  content: LabContent,
+  lang: 'zh' | 'en',
+  /** 页面自身地址：正文迁到 /learn/<id> 后，结构化数据与引用必须指向阅读页而不是工具页。 */
+  pageUrl: string = content.canonical,
+): Record<string, unknown> {
   const name = content.name[lang];
-  const url = content.canonical;
+  const url = pageUrl;
   const grade = content.curriculum.map((c) => c.grade[lang]).join(' / ');
 
   const nodes: Record<string, unknown>[] = [
@@ -207,6 +212,10 @@ export function answerLayerJsonLd(content: LabContent, lang: 'zh' | 'en'): Recor
 }
 
 /** 标准引用格式（页脚与 llms.txt 共用口径）。 */
-export function citationText(content: LabContent, lang: 'zh' | 'en'): string {
-  return `数理化数字实验室（stem.irky.dev） — ${content.name[lang]} (${content.canonical})`;
+export function citationText(
+  content: LabContent,
+  lang: 'zh' | 'en',
+  pageUrl: string = content.canonical,
+): string {
+  return `数理化数字实验室（stem.irky.dev） — ${content.name[lang]} (${pageUrl})`;
 }

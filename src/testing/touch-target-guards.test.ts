@@ -201,11 +201,19 @@ export function registerTouchTargetGuardsTests(test: TestFn): void {
     // ③ 版本号禁止 self-end / mb-0.5 —— coarse 下 .tap-area 把品牌行撑到 40px（桌面 28px），
     //    self-end 会把版本号钉到行底：实测下沉 6.5px，10px 小字看上去就像「掉到了下一行」。
     //    只校验按钮自身的 className——注释里会解释这段历史，全局扫词会把说明文字也算进去。
-    const ver = header.match(/className="hidden sm:flex items-center gap-1\.5[^"]*"/)?.[0] ?? '';
+    // 版本号现在与更新徽章是**兄弟**（旧版把徽章嵌在版本号按钮里：非法嵌套，且飘出右边界 4px）。
+    // 行容器负责整行显隐与间距，版本号按钮自己只负责排版与热区。
+    const verRow = header.match(/className="relative hidden items-center gap-1 sm:inline-flex"/)?.[0] ?? '';
+    assert.ok(verRow.length > 0, '未找到版本号行容器（hidden sm:inline-flex）');
+    //    只校验按钮自身的 className——注释里会解释这段历史，全局扫词会把说明文字也算进去。
+    const ver = header.match(/className="flex items-center whitespace-nowrap tap-pad-10[^"]*"/)?.[0] ?? '';
     assert.ok(ver.length > 0, '未找到版本号按钮的 className');
     assert.ok(!/self-end|mb-0\.5/.test(ver), `版本号不得再用 self-end / mb-0.5：触屏下会相对品牌标题下沉（实测 6.5px）——当前 ${ver}`);
     assert.ok(ver.includes('whitespace-nowrap'), '版本号须 whitespace-nowrap，彻底禁止折行');
     assert.ok(ver.includes('tap-pad-10'), '版本号须挂 tap-pad-10：它是顶栏唯一没走 .tap-area 的控件，命中盒只有 42×15');
+    // 更新徽章必须是独立按钮：<button> 嵌套 <button> 是非法结构，且内层按钮的点击区会被外层吞掉
+    const verRowBlock = header.match(/<span className="relative hidden items-center gap-1 sm:inline-flex">[\s\S]*?<\/span>\s*<\/Link>/)?.[0] ?? '';
+    assert.equal((verRowBlock.match(/<button/g) || []).length >= 2, true, '更新徽章须与版本号按钮同级（两个独立按钮），不得嵌套');
     // ④ 热区只在触屏块里扩，桌面视觉零变化
     const touchBlock = css.slice(css.indexOf('@media (hover: none) and (pointer: coarse)'));
     assert.match(touchBlock, /\.tap-pad-10::after \{[\s\S]*?inset: -10px -2px;/, '.tap-pad-10 须在触屏块内、横向只扩 2px（左邻品牌文字，横扩会劫持「点标题回首页」）');

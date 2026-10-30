@@ -187,7 +187,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                       <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${topicMenuOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {topicMenuOpen && (
-                      <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                      <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]">
                         <button
                           type="button"
                           onClick={() => { setTopicFilter(null); setTopicMenuOpen(false); }}
@@ -375,7 +375,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                   aria-label={lang === 'zh' ? '导出错题卷' : 'Export paper'}
                 >
                   <div className="absolute inset-0 bg-black/45" onClick={() => setPaperOpen(false)} aria-hidden="true" />
-                  <div className="relative z-10 flex flex-col w-full max-w-sm max-h-[85dvh] bg-[var(--bg)] border border-[var(--border)] shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
+                  <div className="relative z-10 flex flex-col w-full max-w-sm max-h-[85dvh] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--elev-md)]">
                     <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                       <h2 className="text-xs font-bold mono-font tracking-widest">
                         {lang === 'zh' ? '导出错题卷' : 'EXPORT PAPER'}
@@ -717,7 +717,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                         <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${quizTopicMenuOpen ? 'rotate-180' : ''}`} />
                       </button>
                       {quizTopicMenuOpen && (
-                        <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                        <div className="absolute left-0 top-full mt-1 z-20 w-40 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]">
                           <button
                             type="button"
                             onClick={() => { setQuizTopicFilter(null); setQuizTopicMenuOpen(false); }}

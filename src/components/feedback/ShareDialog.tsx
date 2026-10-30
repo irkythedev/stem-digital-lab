@@ -122,7 +122,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
       <>
         <div className="fixed inset-0 z-50" onClick={onClose} aria-hidden="true" />
         <div
-          className="absolute bottom-full mb-2.5 left-0 sm:left-1/2 sm:-translate-x-1/2 z-[51] w-[min(18rem,calc(100vw-2rem))] max-h-[70dvh] overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-lg"
+          className="absolute bottom-full mb-2.5 left-0 sm:left-1/2 sm:-translate-x-1/2 z-[51] w-[min(18rem,calc(100vw-2rem))] max-h-[70dvh] overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[var(--elev-lg)] rounded-lg"
           onClick={(e) => e.stopPropagation()}
           role="dialog" aria-modal="true"
           aria-label={t.share}
@@ -144,7 +144,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative w-full sm:max-w-xs border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-t-xl sm:rounded-xl pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true"
         aria-label={t.share}

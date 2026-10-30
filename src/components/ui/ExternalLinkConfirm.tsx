@@ -72,7 +72,7 @@ export default function ExternalLinkConfirm({
         <div
           ref={confirmRef}
           role="status"
-          className="absolute right-0 top-full mt-1.5 z-30 w-56 max-w-[85vw] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] px-2.5 py-2 flex flex-col gap-1.5"
+          className="absolute right-0 top-full mt-1.5 z-30 w-56 max-w-[85vw] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)] px-2.5 py-2 flex flex-col gap-1.5"
         >
           <p className="text-[0.6875rem] leading-snug text-[var(--fg)]">{hint}</p>
           <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all">{target.url}</p>

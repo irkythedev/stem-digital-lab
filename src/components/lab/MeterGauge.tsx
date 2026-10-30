@@ -132,13 +132,13 @@ export default function MeterGauge({ value, max, unit, label, onCycleRange }: Me
         ) : (
           <>
             {value.toFixed(unit === 'A' ? 2 : 1)}
-            <span className="ml-1 text-[0.5625rem] leading-tight text-[var(--muted)]">{unit}</span>
+            <span className="ml-1 text-[0.625rem] leading-tight text-[var(--muted)]">{unit}</span>
           </>
         )}
       </p>
       <p className="text-[0.625rem] mono-font leading-tight text-[var(--muted)]">{label}</p>
       {over && (
-        <p className="text-[0.5625rem] mono-font leading-tight text-[var(--error)]" role="status">
+        <p className="text-xs mono-font leading-tight text-[var(--error)]" role="status">
           {zh ? `超量程（${max}${unit}）` : `Over range (${max}${unit})`}
         </p>
       )}

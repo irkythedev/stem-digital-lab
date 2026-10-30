@@ -15,7 +15,7 @@ import { ArrowLeftRight, RotateCcw, RotateCw, Trash2, X } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
 import ParamSlider from '../../../components/lab/ParamSlider';
-import BenchSelect from './BenchSelect';
+import BenchSelect from '../../../components/ui/BenchSelect';
 import {
   removeComponent,
   removeWire,
@@ -131,7 +131,7 @@ export default function InspectorPanel({
             {onClose && <CloseButton zh={zh} onClose={onClose} />}
           </span>
         </div>
-        <p className="mt-1 font-mono text-[10px] text-[var(--muted)]">
+        <p className="mt-1 mono-font text-[10px] text-[var(--muted)]">
           {endpoint(wire.from)} → {endpoint(wire.to)}
         </p>
       </div>
@@ -153,7 +153,7 @@ export default function InspectorPanel({
         <span className="truncate text-[11px] font-semibold text-[var(--fg)]">
           {elementName(state, el, zh ? 'zh' : 'en')}
         </span>
-        <span className="shrink-0 font-mono text-[9px] text-[var(--muted)]">
+        <span className="shrink-0 mono-font text-[0.625rem] text-[var(--muted)]">
           {KIND_LABEL[el.kind][zh ? 'zh' : 'en']} · {el.rotation}°
         </span>
         {onClose && <CloseButton zh={zh} onClose={onClose} />}
@@ -276,15 +276,15 @@ function Readout({ el, result, zh }: { el: CircuitComponent; result: SolveResult
   return (
     <div className="space-y-1.5">
       {reversed && (
-        <div className="rounded-md border border-[var(--danger)]/45 bg-[var(--danger)]/8 px-1.5 py-1 text-[9px] leading-snug text-[var(--danger)]">
+        <div className="rounded-md border border-[var(--danger)]/45 bg-[var(--danger)]/8 px-1.5 py-1 text-xs leading-snug text-[var(--danger)]">
           {zh ? '⚠ 表笔接反：红柱应接高电位侧（电流由「+」流入）' : '⚠ Probes reversed: red post must take current in'}
         </div>
       )}
       <div className="grid grid-cols-2 gap-1.5">
         {items.map((it) => (
           <div key={it.k} className="rounded-lg border border-[var(--border)]/60 bg-[var(--accent-light)] px-2 py-1.5">
-            <div className="text-[9px] leading-none text-[var(--muted)]">{it.k}</div>
-            <div className="mt-1.5 font-mono text-[11px] leading-none tabular-nums text-[var(--fg)]">{it.v}</div>
+            <div className="text-[0.625rem] leading-none text-[var(--muted)]">{it.k}</div>
+            <div className="mt-1.5 mono-font text-[11px] leading-none tabular-nums text-[var(--fg)]">{it.v}</div>
           </div>
         ))}
       </div>
@@ -298,7 +298,7 @@ function WarningList({ warnings, zh }: { warnings: SolveResult['warnings']; zh: 
       {warnings.map((w, i) => (
         <div
           key={`${w.code}-${i}`}
-          className="rounded-md border border-[var(--danger)]/35 bg-[var(--danger)]/8 px-1.5 py-1 text-[9px] leading-snug text-[var(--danger)]"
+          className="rounded-md border border-[var(--danger)]/35 bg-[var(--danger)]/8 px-1.5 py-1 text-xs leading-snug text-[var(--danger)]"
         >
           {zh ? w.zh : w.en}
         </div>
@@ -396,7 +396,7 @@ function MeterGears({
   const label = zh ? '量程挡位' : 'Range gear';
   return (
     <div>
-      <div className="mb-0.5 text-[9px] text-[var(--muted)]">{label}</div>
+      <div className="mb-0.5 text-[0.625rem] text-[var(--muted)]">{label}</div>
       <div role="group" aria-label={label} className="flex gap-1">
         {gears.map((g) => {
           const on = g === active;
@@ -406,7 +406,7 @@ function MeterGears({
               type="button"
               aria-pressed={on}
               onClick={() => onChange({ range: g })}
-              className={`compact tap32 h-7 flex-1 rounded-md border px-2 font-mono text-[11px] tabular-nums transition-colors ${
+              className={`compact tap32 h-7 flex-1 rounded-md border px-2 mono-font text-[11px] tabular-nums transition-colors ${
                 on
                   ? 'border-[var(--accent)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]'
@@ -487,11 +487,11 @@ function Params({ el, onChange, zh }: { el: CircuitComponent; onChange: (patch: 
       )}
 
       {el.kind === 'resistor' && el.params.mode === 'specimen' && (
-        <div className="text-[9px] text-[var(--muted)]">
+        <div className="text-[0.625rem] text-[var(--muted)]">
           <div className="mb-0.5">{zh ? '材料电阻率 ρ' : 'Material rho'}</div>
           {/* 材料与 ρ 必须一起写：引擎只认 params.rho，只改字符串等于换了个标签、读数不动。 */}
           <BenchSelect
-            dense
+            size="dense"
             className="w-full"
             ariaLabel={zh ? '材料电阻率 ρ' : 'Material rho'}
             value={String(el.params.material ?? 'copper')}
@@ -528,24 +528,24 @@ function Params({ el, onChange, zh }: { el: CircuitComponent; onChange: (patch: 
       })}
 
       {el.kind === 'bulb' && (
-        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[9px] text-[var(--muted)]">
-          {zh ? '灯丝' : 'Filament'} <span className="font-mono text-[var(--fg)]">{fmt(el.state.temp, 0)} K</span>
+        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[0.625rem] text-[var(--muted)]">
+          {zh ? '灯丝' : 'Filament'} <span className="mono-font text-[var(--fg)]">{fmt(el.state.temp, 0)} K</span>
           {' · '}
           <span className="text-[var(--fg)]">{el.state.burnt ? (zh ? '已烧毁' : 'burnt') : zh ? '正常' : 'ok'}</span>
         </div>
       )}
 
       {el.kind === 'fuse' && (
-        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[9px] text-[var(--muted)]">
-          {zh ? '热积累' : 'Heat'} <span className="font-mono text-[var(--fg)]">{fmt(el.state.heat, 2)}</span>
+        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[0.625rem] text-[var(--muted)]">
+          {zh ? '热积累' : 'Heat'} <span className="mono-font text-[var(--fg)]">{fmt(el.state.heat, 2)}</span>
           {' · '}
           <span className="text-[var(--fg)]">{el.state.blown ? (zh ? '已熔断' : 'blown') : zh ? '正常' : 'ok'}</span>
         </div>
       )}
 
       {el.kind === 'heater' && (
-        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[9px] text-[var(--muted)]">
-          {zh ? '累计热量' : 'Heat'} <span className="font-mono text-[var(--fg)]">{fmt(el.state.heat, 1)} J</span>
+        <div className="rounded-md bg-[var(--accent-light)] px-1.5 py-1 text-[0.625rem] text-[var(--muted)]">
+          {zh ? '累计热量' : 'Heat'} <span className="mono-font text-[var(--fg)]">{fmt(el.state.heat, 1)} J</span>
         </div>
       )}
     </div>

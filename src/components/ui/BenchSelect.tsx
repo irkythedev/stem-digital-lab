@@ -2,9 +2,12 @@
  * @license
  * SPDX-License-Identifier: AGPL-3.0
  *
- * 电学实验台 · 应用内下拉（替代浏览器原生 `<select>`）
+ * 应用内下拉（替代浏览器原生 `<select>`）——全站共享基础组件
  *
- * 为什么不用原生：见 `circuit-bench-select.ts` 抬头——系统弹层带不进全站令牌、
+ * 源自电学实验台：那里面板里的探针选择最先踩到原生下拉的三条硬伤，
+ * 后来化学式页与 AI 设置面板也需要下拉，于是提到 ui/ 作共享件。
+ *
+ * 为什么不用原生：见 `src/lib/select-model.ts` 抬头——系统弹层带不进全站令牌、
  * 行高在红外屏上点不准、触屏上还会飘到屏幕中央盖住学生正在看的图。
  *
  * 为什么弹层要走 createPortal：面板可能停在「数据记录」的磨砂抽屉里
@@ -25,8 +28,18 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 
-import { dropdownPosition, nextActiveIndex, optionIndexOf, type SelectOption } from './circuit-bench-select';
-import { TOUCH_GUARD } from './circuit-bench-touch';
+import { dropdownPosition, nextActiveIndex, optionIndexOf, type SelectOption } from '../../lib/select-model';
+
+/**
+ * 触控层守卫（禁浏览器手势与文本选择）。
+ *
+ * 这一行与 `labs/physics/circuit-bench/circuit-bench-touch.ts` 的 `TOUCH_GUARD` 同值。
+ * 不直接 import 那一份：本文件是全站共享件，反向依赖某个实验目录会把分层倒过来。
+ * 两边漂移由 `circuit-bench.test.ts` 的断言兜住（比对两个字符串）。
+ */
+const TOUCH_GUARD = 'touch-none select-none';
+
+export type SelectSize = 'bench' | 'dense' | 'field' | 'setting';
 
 export interface BenchSelectProps {
   value: string;
@@ -38,10 +51,22 @@ export interface BenchSelectProps {
   label?: string;
   title?: string;
   disabled?: boolean;
-  /** 紧凑档：详细参数面板里夹在若干数字输入之间的一行（h-7 / 10px）。 */
-  dense?: boolean;
+  /**
+   * 触发器形制档位。
+   *
+   * - `bench`（默认）：电学实验台的面板工具条，与「记录当前读数 / CSV」一排按钮同高 h-8；
+   * - `dense`：夹在详细参数面板数字输入之间的一行，h-7 / 10px；
+   * - `field`：独立表单控件（化学式页的「目标元素」），h-10 对齐 40px 触控地板；
+   * - `setting`：设置面板里贴在 80px 标签列右侧的那种，h-9。
+   */
+  size?: SelectSize;
   /** 触发器附加类：给宽度上限（max-w-[150px]）或撑满（w-full）。 */
   className?: string;
+  /**
+   * 弹层附加类。弹层走 createPortal 挂到 body，**不继承**触发器的字体与字号，
+   * 所以要在弹层里也是等宽（化学式的元素符号就是这么用的），必须单独传进来。
+   */
+  listClassName?: string;
   /** 空列表时的占位，默认「—」。 */
   placeholder?: string;
   /**
@@ -55,11 +80,27 @@ export interface BenchSelectProps {
 }
 
 /** 常规档：与「记录当前读数 / CSV / 清空」一排按钮同为 h-8。 */
-const TRIGGER =
+const TRIGGER_BENCH =
   'compact flex h-8 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--accent-light)] px-1.5 text-xs text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-45';
 /** 紧凑档：h-7 / 10px，贴在详细参数面板的小字标签下。 */
 const TRIGGER_DENSE =
   'compact flex h-7 items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--accent-light)] px-1.5 text-[10px] text-[var(--fg)] transition-colors hover:border-[var(--accent)] disabled:opacity-45';
+/**
+ * 表单档：独立控件，40px 高与全局 `main button` 的触控地板同值，不与地板打架。
+ * 底色走 transparent、边框走 border-strong —— 与同页的文本输入框并排时两只要一模一样。
+ */
+const TRIGGER_FIELD =
+  'compact flex h-10 w-full items-center gap-1 rounded-lg border border-[var(--border-strong)] bg-transparent px-3 text-sm text-[var(--fg)] transition-colors hover:border-[var(--accent)] focus-visible:border-[var(--accent)] disabled:opacity-45';
+/** 设置档：h-9，贴在 80px 宽的标签列右侧，比表单档收一档。 */
+const TRIGGER_SETTING =
+  'compact flex h-9 w-full items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 text-xs text-[var(--fg)] transition-colors hover:border-[var(--fg)] focus-visible:border-[var(--fg)] disabled:opacity-45';
+
+const TRIGGERS: Record<SelectSize, string> = {
+  bench: TRIGGER_BENCH,
+  dense: TRIGGER_DENSE,
+  field: TRIGGER_FIELD,
+  setting: TRIGGER_SETTING,
+};
 
 export default function BenchSelect({
   value,
@@ -69,8 +110,9 @@ export default function BenchSelect({
   label,
   title,
   disabled = false,
-  dense = false,
+  size = 'bench',
   className = '',
+  listClassName = '',
   placeholder = '—',
   onOptionHover,
 }: BenchSelectProps) {
@@ -236,7 +278,7 @@ export default function BenchSelect({
           openAt();
         }
       }}
-      className={`${dense ? TRIGGER_DENSE : TRIGGER} ${className}`}
+      className={`${TRIGGERS[size]} ${className}`}
     >
       <span className="min-w-0 flex-1 truncate text-left">{text}</span>
       <ChevronDown
@@ -259,7 +301,7 @@ export default function BenchSelect({
         // 量尺寸那一帧先藏起来：否则弹层会闪现在左上角再跳到位。
         visibility: pos ? 'visible' : 'hidden',
       }}
-      className={`fixed z-[80] max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD}`}
+      className={`fixed z-[80] max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD} ${listClassName}`}
       // 指针离开整个弹层就撤高亮（在两项之间移动时这里不触发，只有真的走开才算）。
       onPointerLeave={() => hover.current?.(null)}
     >
@@ -286,7 +328,7 @@ export default function BenchSelect({
             onClick={() => commit(o.value)}
           >
             <span className="min-w-0 flex-1 truncate">{o.label}</span>
-            {o.hint && <span className="shrink-0 font-mono text-[10px] text-[var(--muted)]">{o.hint}</span>}
+            {o.hint && <span className="shrink-0 mono-font text-[10px] text-[var(--muted)]">{o.hint}</span>}
             {/* 选中记号常驻占位（opacity 切换），列表左右边距才不会因选中而抖。 */}
             <Check
               aria-hidden="true"
@@ -298,11 +340,24 @@ export default function BenchSelect({
     </div>
   ) : null;
 
+  const portalList = list ? createPortal(list, document.body) : null;
+
+  // 没有行内标签时不要把触发器裹进 flex 外壳：外壳上的 `shrink-0` 会让调用方传进来的
+  // `w-full` 失效（化学式页与设置面板都要它撑满所在的列）。有标签时才需要并排。
+  if (!label) {
+    return (
+      <>
+        {trigger}
+        {portalList}
+      </>
+    );
+  }
+
   return (
     <span className="flex min-w-0 shrink-0 items-center gap-1 text-[10px] text-[var(--muted)]">
-      {label && <span>{label}</span>}
+      <span>{label}</span>
       {trigger}
-      {list && createPortal(list, document.body)}
+      {portalList}
     </span>
   );
 }

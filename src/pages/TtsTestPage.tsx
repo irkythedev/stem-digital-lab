@@ -246,7 +246,7 @@ export default function TtsTestPage() {
                     {isPlaying && playState === 'loading' ? (
                       <span className="animate-spin inline-block w-2.5 h-2.5 border-2 border-[var(--fg)] border-t-transparent rounded-full" />
                     ) : isPlaying && playState === 'playing' ? (
-                      <span className="text-[0.5625rem]">●</span>
+                      <span className="text-[0.625rem]">●</span>
                     ) : (
                       <span className="text-xs">▶</span>
                     )}

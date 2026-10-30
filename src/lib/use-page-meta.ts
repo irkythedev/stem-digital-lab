@@ -22,7 +22,7 @@ export interface PageMeta {
 export const SITE_TITLE = '数理化数字实验室 | STEM Digital Lab';
 
 export const SITE_DESC =
-  '基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台：15 个交互实验 + 5 个工具，无需登录、中英双语、深浅主题，可安装为 PWA 离线使用。';
+  '基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台：15 个交互实验 + 6 个工具，无需登录、中英双语、深浅主题，可安装为 PWA 离线使用。';
 
 let jsonLdSeq = 0;
 
@@ -73,7 +73,7 @@ export function usePageMeta(meta?: PageMeta | null): void {
 
     const id = `page-ld-${++jsonLdSeq}`;
     if (meta?.jsonLd) {
-      // 构建期静态化已经写过一份同样的 @graph（见 scripts/build-static.ts）；
+      // 构建期静态化已经写过一份同样的 @graph（见 tools/build-static.ts）；
       // 客户端接管时先移除它，避免同一 FAQPage / LearningResource 出现两份。
       document.head.querySelectorAll('script[data-page-ld="static"]').forEach((el) => el.remove());
       const script = document.createElement('script');

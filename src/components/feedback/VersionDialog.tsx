@@ -27,7 +27,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
   const title = t.changelogTitle;
   return (
     <div
-      className="fixed top-16 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+      className="fixed top-16 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[var(--elev-md)]"
       role="dialog" aria-modal="true"
       aria-label="version"
     >

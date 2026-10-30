@@ -92,7 +92,7 @@ export default function WelcomeDialog({
       />
       {/* 卡片：定高弹性约束（手机 85dvh / 桌面封顶 620px）——两页同高、居中不跳位，内容区独立滚动 */}
       <div
-        className="relative w-full max-w-lg h-[85dvh] sm:h-[620px] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]"
+        className="relative w-full max-w-lg h-[85dvh] sm:h-[620px] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]"
         style={reduceMotion ? undefined : { animation: 'welcome-rise-in 0.35s ease' }}
       >
         {/* 顶部条：flex-shrink-0 常驻 */}

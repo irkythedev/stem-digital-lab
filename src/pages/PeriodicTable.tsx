@@ -13,6 +13,7 @@
  * 用不同颜色区分，标出相对原子质量；元素周期表是学习和研究化学的重要工具。
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import BackLink from '../components/layout/BackLink';
 import { LoaderCircle, Pause, Play, Square, Volume2, X, HardDrive, CircleCheck, Search, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLockBodyScroll } from '../lib/use-lock-body-scroll';
@@ -23,14 +24,14 @@ import { useAiContext } from '../lib/ai-context';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
 import ShareInline from '../components/share/ShareInline';
-import { usePageMeta } from '../lib/use-page-meta';
-import LabAnswerLayer from '../components/lab/LabAnswerLayer';
-import { PERIODIC_TABLE_CONTENT } from '../lib/content/periodic-table';
-import { answerLayerJsonLd } from '../lib/lab-content-core';
+import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
 import { ELEMENTS, type ElementInfo } from '../lib/elements';
 import { ATOM_VIEW, coreRadiusFor, shellLayout } from '../lib/atom-shells';
 import { NEUTRON_COLOR } from '../lib/atom-3d';
 import Atom3D from '../components/lab/Atom3D';
+import { ValenceBadge } from '../components/chemistry/ChemFormula';
+import { parsePeriodicElementQuery } from '../lib/chemistry/formula-core';
+import { valenceElementBySymbol } from '../lib/chemistry/valency';
 
 /** 类别 → 配色（教科书三色区分；类金属用中间色）——浅色背景填充 + 同色系边框 */
 const CAT_COLOR: Record<ElementInfo['cat'], { border: string; text: string; bg: string }> = {
@@ -261,10 +262,31 @@ export default function PeriodicTable() {
   const pageMeta = useMemo(() => ({
     title: `${lang === 'zh' ? '元素周期表' : 'Periodic Table'} - ${t.brandName}`,
     description: lang === 'zh' ? '118 个化学元素的交互周期表：检索、实物照片、中英文读音（男/女声）、中考跟读模式。' : 'Interactive periodic table of 118 elements: search, real photos, Chinese pronunciation (male/female voice), recite mode.',
-    jsonLd: answerLayerJsonLd(PERIODIC_TABLE_CONTENT, lang),
+    // 工具页只声明自己的交互工具身份；完整讲解的 FAQ/HowTo 在 /learn/periodic-table
+    jsonLd: learningResourceLd({
+      name: lang === 'zh' ? '元素周期表' : 'Periodic Table',
+      description: lang === 'zh'
+        ? '118 个化学元素的交互周期表：检索、实物照片、中英读音与中考跟读。'
+        : 'Interactive periodic table of 118 elements with search, real photos, pronunciation and recite mode.',
+      url: 'https://stem.irky.dev/periodic-table',
+      resourceType: lang === 'zh' ? '交互工具' : 'Interactive Tool',
+    }),
   }), [lang, t.brandName]);
   usePageMeta(pageMeta);
   const [selected, setSelected] = useState<ElementInfo | null>(null);
+  // 周期表深链：/periodic-table?element=Fe 或 ?symbol=Fe 自动选中并打开详情。
+  const [searchParams] = useSearchParams();
+  const initialSymbol = useMemo(() => parsePeriodicElementQuery(searchParams), []); // 只读首屏参数
+  useEffect(() => {
+    if (!initialSymbol) return;
+    const el = ELEMENTS.find((e) => e.symbol.toLowerCase() === initialSymbol.toLowerCase());
+    if (el) {
+      setSelected(el);
+      setTab('props');
+    }
+  }, [initialSymbol]);
+  /** 该元素在初中化合价库中的条目；没有条目时详情卡不显示价态区。 */
+  const valenceInfo = selected ? valenceElementBySymbol.get(selected.symbol) : undefined;
   /** 原子模型视图：默认恒为 2D 课本规范（中考必考画法）；换元素时强制回到 2D */
   const [atomMode, setAtomMode] = useState<'2d' | '3d'>('2d');
   useLockBodyScroll(!!selected);
@@ -694,7 +716,7 @@ export default function PeriodicTable() {
         onBlur={previewOff}
         title={`${el.zh} ${el.symbol}`}
         aria-label={`${el.zh} ${el.symbol}`}
-        className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] hover:border-[var(--fg)] ${
+        className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)] ${
           matched ? 'ring-2 ring-[var(--fg)]' : ''
         } ${reciting ? 'recite-active' : ''}`}
         style={{ borderColor: color.border, backgroundColor: color.bg }}
@@ -1089,7 +1111,7 @@ export default function PeriodicTable() {
                           <span className="text-lg font-bold mono-font leading-none" style={{ color: CAT_COLOR[heroFocus.cat].border }}>
                             {heroFocus.symbol}
                           </span>
-                          <span className="text-[0.5625rem] mono-font text-[var(--muted)]">{isZh ? '无实物图' : 'no photo'}</span>
+                          <span className="text-[0.625rem] mono-font text-[var(--muted)]">{isZh ? '无实物图' : 'no photo'}</span>
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
@@ -1215,7 +1237,7 @@ export default function PeriodicTable() {
                绝不再因「垂直居中重算」整体上下跳（改前实测：1280×1100 下切 Tab 面板 top
                66 → 172 → 66，跳幅 106px = 高度差 212px 的一半）。max-h 与 padding 对齐，
                保证底边仍留出同样边距；overlay 自身 overflow-y-auto 兜底极矮视口。 */
-            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[0_16px_40px_rgba(0,0,0,0.18)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.zh} ${selected.symbol}`}
@@ -1463,10 +1485,12 @@ export default function PeriodicTable() {
                       if (cnt == null) return null;
                       return (
                         <div className="absolute bottom-1 left-2 text-[0.6875rem] mono-font text-[var(--fg)] pointer-events-none">
-                          {/* 层名字母固定走 --f-serif：Space Grotesk（--f-mono）的 O 与 0 逐像素同形
-                              ——40px 下宽高同为 20×30、墨量 376 vs 375、仅 2.1% 抗锯齿噪声，且不支持
-                              zero/ss01 斜杠零特性——第 5 层「O 层」会被读成「0 层」。serif 同尺寸下
-                              O/0 墨量比 1.58×，一眼可辨；计数仍留 mono 以保持等宽对齐。 */}
+                          {/* 层名字母固定走 --f-serif。理由（2026-10 重测，旧注释的归因是错的）：
+                              等宽字体天生所有字形同宽，「O 与 0 同宽」是定义不是证据。真实原因是字号——
+                              本区块 text-[0.6875rem] = 11px，此尺寸下斜杠零与内部点都只剩 1–4 个像素，
+                              第 5 层「O 层」紧挨着计数时仍会被读成「0 层」。serif 同尺寸下 O/0 墨量比 1.58×，
+                              一眼可辨；计数仍留 mono 保持等宽对齐。自托管斜杠零在 ≥14px 才真分得开，
+                              所以这里的 serif 不是临时补丁，是 11px 下的必要选择。 */}
                           <span className="serif-font">{SHELL_NAMES[li]}</span>
                           {lang === 'zh'
                             ? ` 层（第 ${li + 1} 层）：${cnt} 个电子`
@@ -1502,7 +1526,8 @@ export default function PeriodicTable() {
                               : 'border-transparent bg-[var(--accent-light)] text-[var(--muted)] hover:text-[var(--fg)]'
                           }`}
                         >
-                          {/* 层名字母走 --f-serif（与图区提示条同源）：Space Grotesk 的 O/0 同形会误读为数字 */}
+                          {/* 层名字母走 --f-serif（与图区提示条同源）：11px 下等宽的 O/0 只差几个像素，
+                              会被误读成数字（理由详见图区提示条那段注释） */}
                           <span className="serif-font">{SHELL_NAMES[i]}</span>
                           <span className="tabular-nums">{cnt}</span>
                         </button>
@@ -1575,7 +1600,7 @@ export default function PeriodicTable() {
                           ? String(selected.mass)
                           : (selected.massExact != null ? String(selected.massExact) : String(selected.mass ?? '—'))}
                       </div>
-                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] leading-tight">
                         {selected.radioactive
                           ? (lang === 'zh' ? '质量数 · 无稳定同位素' : 'mass no. · no stable isotope')
                           : selected.massUnc ? `±${selected.massUnc}` : ''}
@@ -1586,7 +1611,7 @@ export default function PeriodicTable() {
                         {lang === 'zh' ? '周期' : 'Period'}
                       </div>
                       <div className="text-lg sm:text-xl font-bold mono-font text-[var(--fg)] leading-tight tabular-nums">{selected.period}</div>
-                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] leading-tight">
                         {lang === 'zh' ? '第几横行' : 'row'}
                       </div>
                     </div>
@@ -1594,15 +1619,16 @@ export default function PeriodicTable() {
                       <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
                         {lang === 'zh' ? '族' : 'Group'}
                       </div>
-                      {/* 族标签走 --f-serif：罗马数字 Ⅰ~Ⅷ（U+2160–U+2167 预组合字符）在 Space Grotesk
-                          中缺字形，会回退到同形备用字体（与相邻 mono 数字不同源、观感割裂）；serif 栈
-                          （Noto Serif CJK SC / Georgia）含该字形，才是「人教版标准罗马数字」的等效排印。 */}
+                      {/* 族标签走 --f-serif：罗马数字 Ⅰ~Ⅷ（U+2160–U+2167 预组合字符）不在等宽子集的字符集内，
+                          会回退到某个含该字形的备用字体（与相邻 mono 数字不同源、观感割裂）；serif 栈
+                          （Noto Serif CJK SC / Georgia）含该字形，才是「人教版标准罗马数字」的等效排印。
+                          这一条与上面的 O/0 无关，换字体也换不掉。 */}
                       <div className="text-lg sm:text-xl font-bold serif-font text-[var(--fg)] leading-tight">{selGroup?.main ?? '—'}</div>
-                      <div className="text-[0.5625rem] mono-font text-[var(--muted)] leading-tight">
+                      <div className="text-[0.625rem] mono-font text-[var(--muted)] leading-tight">
                         {selGroup?.sub ?? ''}
                       </div>
                       {selGroup?.series && (
-                        <div className="mt-0.5 inline-block px-1 py-0.5 text-[0.5625rem] mono-font rounded-xs bg-[var(--accent-light)] text-[var(--fg)]">
+                        <div className="mt-0.5 inline-block px-1 py-0.5 text-[0.625rem] mono-font rounded-xs bg-[var(--accent-light)] text-[var(--fg)]">
                           {selGroup.series}
                         </div>
                       )}
@@ -1669,6 +1695,39 @@ export default function PeriodicTable() {
                           {selValenceNote}
                         </p>
                       )}
+                    </div>
+                  )}
+                  {/* 初中化合价库交叉链接：价态徽章 + 一键生成 / 速查 */}
+                  {valenceInfo && (
+                    <div className="space-y-1.5 px-1 border-t border-[var(--border)] pt-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wide">
+                          {lang === 'zh' ? '初中常见化合价' : 'Common valences (junior high)'}
+                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {valenceInfo.valences.map((v) => (
+                            <span key={v}>
+                              <ValenceBadge valence={v} size="sm" />
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        <Link
+                          to={`/chemistry-formulas?mode=builder&symbol=${selected.symbol}`}
+                          className="inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
+                        >
+                          {lang === 'zh' ? '组化学式' : 'Build formula'}
+                          <ArrowRight className="w-3 h-3" aria-hidden="true" />
+                        </Link>
+                        <Link
+                          to={`/chemistry-formulas?mode=reference&symbol=${selected.symbol}`}
+                          className="inline-flex items-center gap-1 text-[0.6875rem] mono-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
+                        >
+                          {lang === 'zh' ? '查化合价详情' : 'Valence details'}
+                          <ArrowRight className="w-3 h-3" aria-hidden="true" />
+                        </Link>
+                      </div>
                     </div>
                   )}
                   <p className="px-1 text-[0.625rem] serif-font text-[var(--muted)] leading-relaxed">
@@ -1794,8 +1853,21 @@ export default function PeriodicTable() {
         </div>
       )}
 
-      {/* GEO 答案层：工具台之下的纯文本速查与问答（无 JS 也可读） */}
-      <LabAnswerLayer content={PERIODIC_TABLE_CONTENT} lang={lang} />
+      {/* 结构化讲解独立成页：工具页底部只留一行入口，正文与数据表不在这里展开 */}
+      <div className="mt-10 border-t border-[var(--border)] pt-6">
+        <Link
+          to="/learn/periodic-table"
+          className="inline-flex items-center gap-2 text-sm serif-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
+        >
+          {lang === 'zh' ? '结构化讲解与数据表' : 'Structured explanation and data table'}
+          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+        </Link>
+        <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
+          {lang === 'zh'
+            ? '周期表规律、前 20 号元素速查表、常见误区与常见问题。'
+            : 'Periodic trends, a first-20-elements quick table, common misconceptions and FAQs.'}
+        </p>
+      </div>
     </main>
   );
 }

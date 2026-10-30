@@ -51,6 +51,7 @@ import {
   exceededDragThreshold,
   type PointerSample,
 } from './circuit-bench-touch';
+import { useNarrow } from './use-bench-media';
 
 /** 屏幕点 ↔ 画布世界点的换算入口；由 CircuitBench 从画布句柄转发过来。 */
 export interface PaletteProjection {
@@ -139,6 +140,16 @@ export default function ElementPalette({
     setCollapsedState(v);
     onCollapsedChange?.(v);
   };
+  const narrow = useNarrow();
+  /**
+   * 窄屏添加即收起：坞是贴视口底的 121px 横条，加完元件还摊着就把新元件与
+   * 画布下半截继续压住（审计 §2.7：添加灯泡后坞仍占住底部）。桌面竖排坞常开，
+   * 连续摆元件是桌面最常用的动作，不能在宽屏上改掉。
+   */
+  const finishAdd = (run: () => void) => {
+    run();
+    if (narrow) setCollapsed(true);
+  };
   const [ghost, setGhost] = useState<Ghost | null>(null);
   const dragRef = useRef<DragState | null>(null);
   /** 指针路径处理过的时刻：用来吃掉紧随其后的合成 click，避免一次点击加两个元件。 */
@@ -168,11 +179,11 @@ export default function ElementPalette({
     if (d.active) {
       // 拖拽落位：只有在画布内松手才建元件；拖到画布外松手 = 取消本次添加。
       const world = projection?.toWorld(e.clientX, e.clientY) ?? null;
-      if (world) onDropAt?.(d.kind, e.clientX, e.clientY);
+      if (world) finishAdd(() => onDropAt?.(d.kind, e.clientX, e.clientY));
       return;
     }
     // 没越过阈值 —— 是一次点击，沿用「自动铺到空位」的老逻辑。
-    onAdd(d.kind);
+    finishAdd(() => onAdd(d.kind));
   };
 
   const onItemDown = (e: React.PointerEvent<HTMLButtonElement>, kind: ElementKind) => {
@@ -226,7 +237,7 @@ export default function ElementPalette({
         // 指针路径（pointerdown→up）已经处理过这次交互；这里只接
         // 键盘 Enter/Space 合成的点击，以及 pointer 事件缺失的兜底。
         if (e.timeStamp - handledAt.current < 500) return;
-        onAdd(item.kind);
+        finishAdd(() => onAdd(item.kind));
       }}
       onPointerDown={(e) => onItemDown(e, item.kind)}
       onPointerMove={onItemMove}
@@ -291,7 +302,7 @@ export default function ElementPalette({
                     : 'Collapse all'
               }
               /* 窄屏横向长条没有分组标题，「全部展开/收起」无从下手，收起来。 */
-              className="compact flex h-5 items-center rounded px-1 text-[9px] text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] max-sm:hidden"
+              className="compact flex h-5 items-center rounded px-1 text-[0.625rem] text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] max-sm:hidden"
             >
               {allClosed ? (zh ? '全部展开' : 'Expand all') : zh ? '全部收起' : 'Collapse all'}
             </button>
@@ -319,7 +330,7 @@ export default function ElementPalette({
                     onClick={() => setOpen((s) => toggleGroup(s, group.id))}
                     aria-expanded={expanded}
                     title={label}
-                    className="compact tap32 flex h-5 w-full items-center gap-0.5 rounded px-0.5 text-[9px] font-medium text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                    className="compact tap32 flex h-5 w-full items-center gap-0.5 rounded px-0.5 text-[0.625rem] font-medium text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
                   >
                     <Chevron className="h-3 w-3 shrink-0" />
                     <span className="min-w-0 flex-1 truncate text-left">{label}</span>
@@ -344,7 +355,7 @@ export default function ElementPalette({
 
           {max > 0 && (
             <div
-              className={`shrink-0 border-t border-[var(--border)]/70 px-1.5 py-0.5 text-center font-mono text-[9px] tabular-nums ${
+              className={`shrink-0 border-t border-[var(--border)]/70 px-1.5 py-0.5 text-center mono-font text-[0.625rem] tabular-nums ${
                 full ? 'text-[var(--danger)]' : 'text-[var(--muted)] opacity-70'
               }`}
               title={full ? limitTitle : undefined}

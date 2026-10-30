@@ -14,7 +14,7 @@
  *   2. 按原顺序逐条执行，**任一条非零退出立刻停止并原样传递退出码**（保持 `&&` 语义）；
  *   3. 把每段 harness 已经打印的 `Results: N passed, M failed, K skipped` 汇总，
  *      写入 `node_modules/.cache/test-stats.json`（构建产物，不入库）；
- *   4. 结尾打印一行汇总，供 `scripts/check-readme-stats.mjs` 与人工核对。
+ *   4. 结尾打印一行汇总，供 `tools/check-readme-stats.mjs` 与人工核对。
  *
  * 不引入任何第三方依赖，也不改写既有测试的输入输出——只是把 `&&` 换成"能记账的 `&&`"。
  */
@@ -107,4 +107,4 @@ console.log(
     `通过 ${passed} ｜ 失败 ${failed} ｜ 跳过 ${skipped} ===`,
 );
 console.log(`统计已写入 ${STATS_FILE}`);
-console.log('README 数字与实测的比对由 scripts/check-readme-stats.mjs 完成。');
+console.log('README 数字与实测的比对由 tools/check-readme-stats.mjs 完成。');

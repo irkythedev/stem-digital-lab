@@ -5,7 +5,7 @@
  * 电学实验台 · C++/WASM 导出层（Emscripten Embind，无 main）。
  * 只导出 solveDc；灯泡热模型、保险丝与 UI 全部留在 TypeScript。
  *
- * 编译：bash scripts/build-wasm-circuit.sh
+ * 编译：bash tools/build-wasm-circuit.sh
  */
 #include <emscripten/bind.h>
 #include <emscripten/val.h>

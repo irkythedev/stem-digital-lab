@@ -1676,7 +1676,7 @@ export default function AiAssistant() {
         ref={panelRef}
         className={`fixed z-50 flex flex-col overflow-hidden ${
           isMobile
-            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.15)]'
+            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]'
             : collapsed
               ? `w-auto ${SHELL_SKIN}`
               // 62dvh 保底只服务「对话视图」（防空会话塌到 221px）；用户拖过高度时同样让位。
@@ -1744,7 +1744,7 @@ export default function AiAssistant() {
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
           <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
           {lang === 'zh' ? '已保存' : 'Saved'}
           <Mark ok className="ml-1" />
@@ -1752,7 +1752,7 @@ export default function AiAssistant() {
       )}
       {/* 动作结果轻量 Toast（获取模型 / 测试连接）：放第二行，避免与「已保存」重叠 */}
       {actToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[0_4px_16px_rgba(0,0,0,0.12)] whitespace-nowrap">
+        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
           <span className={`w-1.5 h-1.5 rounded-full ${actToast.ok ? 'bg-green-500' : 'bg-[var(--error)]'}`} aria-hidden="true" />
           {actToast.msg}
         </div>
@@ -1947,7 +1947,7 @@ export default function AiAssistant() {
                   }}
                   title={lang === 'zh' ? '回到最新内容' : 'Jump to latest'}
                   aria-label={lang === 'zh' ? '回到最新内容' : 'Jump to latest'}
-                  className="pointer-events-auto mb-1 mr-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-[0_2px_10px_rgba(0,0,0,0.12)] transition-colors hover:bg-[var(--accent-light)] tap-area"
+                  className="pointer-events-auto mb-1 mr-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-[var(--elev-sm)] transition-colors hover:bg-[var(--accent-light)] tap-area"
                 >
                   <ArrowDown className="h-3.5 w-3.5" />
                 </button>

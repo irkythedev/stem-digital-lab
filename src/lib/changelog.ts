@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.43.2';
+export const APP_VERSION = '0.44.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.44.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 化学式与化合价工具：价态速查、十字交叉生成、由式反推与六类练习',
+      '[新增] 首页每日科学：每天一位科学家或一条科学史上的今天',
+      '[优化] 实验与工具页更清爽：结构化讲解独立成页，列表页只留一行入口',
+      '[优化] 数字与公式更好辨认：等宽字体升级，0 与 O、1 与 l 不再混淆；下拉框改为站内样式',
+    ],
+    en: [
+      '[New] Chemical formulas and valence: a valence reference, the cross rule, formula-to-elements solving and six kinds of practice',
+      '[New] Daily science on the home page: a scientist or a moment in the history of science for each day',
+      '[Improved] Lab and tool pages read cleaner: the long-form explanation now has its own page and the list keeps a single entry link',
+      '[Improved] Digits and formulas are easier to tell apart: the monospaced face separates 0 from O and 1 from l, and dropdowns use the site style',
+    ],
+  },
   {
     version: '0.43.2',
     date: '2026-10',

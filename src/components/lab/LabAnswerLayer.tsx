@@ -7,7 +7,7 @@
  * 设计要求（2026-10-29 拍板）：
  *   - 视觉上克制收纳，位于三幕式交互区下方，不抢首屏焦点；
  *   - DOM 必须是完整语义结构：article / dl / table / ol / details；
- *   - 纯展示组件（无 hook、无副作用），以便 scripts/build-static.ts
+ *   - 纯展示组件（无 hook、无副作用），以便 tools/build-static.ts
  *     用 renderToStaticMarkup 生成与客户端完全一致的无 JS 快照。
  */
 import type { LabContent, Bi } from '../../lib/lab-content-core';
@@ -16,6 +16,10 @@ import { citationText } from '../../lib/lab-content-core';
 interface Props {
   content: LabContent;
   lang: 'zh' | 'en';
+  /** 数据表口径说明；缺省沿用凸透镜的通用文案，其他工具应显式传入。 */
+  tableNote?: Bi;
+  /** 正文所在页面地址（/learn/<id>）；引用信息据此生成，缺省用 content.canonical。 */
+  pageUrl?: string;
 }
 
 const COPY = {
@@ -61,7 +65,7 @@ const COPY = {
 
 const pick = (b: Bi, lang: 'zh' | 'en') => b[lang];
 
-export default function LabAnswerLayer({ content, lang }: Props) {
+export default function LabAnswerLayer({ content, lang, tableNote, pageUrl }: Props) {
   const c = COPY[lang];
   const id = content.id;
   const headings = {
@@ -184,7 +188,7 @@ export default function LabAnswerLayer({ content, lang }: Props) {
           </table>
         </div>
         <p className="mt-2 text-[0.6875rem] leading-relaxed text-[var(--muted)] serif-font italic">
-          {c.tableNote}
+          {tableNote ? tableNote[lang] : c.tableNote}
         </p>
       </section>
 
@@ -259,7 +263,7 @@ export default function LabAnswerLayer({ content, lang }: Props) {
       <footer className="mt-8 border-t border-[var(--border)] pt-4 text-[0.6875rem] leading-relaxed text-[var(--muted)]">
         <p className="font-bold tracking-widest uppercase mono-font mb-1">{c.citation}</p>
         <p data-geo="citation" className="serif-font">
-          {citationText(content, lang)}
+          {citationText(content, lang, pageUrl)}
         </p>
         <p className="mt-1 mono-font">
           {c.license}: {content.license} · {c.updated} {content.updatedAt}

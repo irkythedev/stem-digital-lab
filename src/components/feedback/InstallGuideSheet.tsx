@@ -77,7 +77,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.18)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true"
         aria-label={title}

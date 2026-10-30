@@ -4,7 +4,7 @@
  *
  * src/wasm/circuitBench.js 的类型声明（仅类型，不假装有 glue）。
  *
- * 产物由 scripts/build-wasm-circuit.sh 用 em++ 编译（-O3 -s SINGLE_FILE
+ * 产物由 tools/build-wasm-circuit.sh 用 em++ 编译（-O3 -s SINGLE_FILE
  * -s MODULARIZE=1 -s EXPORT_NAME=createCircuitBenchModule -s EXPORT_ES6）生成：
  * 单文件 ESM，默认导出 factory，调用后返回 Embind 导出的 bench_solve。
  * 本机无 em++ / 未生成产物时，circuit-bench-engine.ts 的动态 import 会失败并

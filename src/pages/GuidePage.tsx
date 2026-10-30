@@ -190,7 +190,7 @@ export default function GuidePage() {
           封面（poster）同时给出视觉锚点，离线/未点播时不再是一块黑方块。 */}
       {/* figure 展台：外层留白 8px + 双层阴影 + 圆角外框，让视频像放在台面上的仪器，
           与下方卡片同宽（max-w-5xl），消除「上半屏窄、下半屏宽」的流线跳跃。 */}
-      <figure className="mb-10 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-2 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_18px_40px_-22px_rgba(0,0,0,0.28)]">
+      <figure className="mb-10 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-2 shadow-[var(--elev-lg)]">
         <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-[var(--bg)]">
         <video
           controls

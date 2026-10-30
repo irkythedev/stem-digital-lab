@@ -13,7 +13,7 @@ if ! command -v em++ >/dev/null 2>&1; then
   echo "  cd ~/emsdk && ./emsdk install latest && ./emsdk activate latest"
   echo "  echo 'source ~/emsdk/emsdk_env.sh' >> ~/.bashrc"
   echo "  source ~/emsdk/emsdk_env.sh   # 当前 shell 立即生效"
-  echo "然后重新运行：bash scripts/build-wasm-circuit.sh"
+  echo "然后重新运行：bash tools/build-wasm-circuit.sh"
   exit 1
 fi
 

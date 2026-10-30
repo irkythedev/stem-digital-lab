@@ -8,10 +8,10 @@
 
 <p>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-2e90fa?style=flat-square&labelColor=18181b" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/Version-v0.43.2-52525b?style=flat-square&labelColor=18181b" alt="Version v0.43.2">
+  <img src="https://img.shields.io/badge/Version-v0.44.0-52525b?style=flat-square&labelColor=18181b" alt="Version v0.44.0">
   <img src="https://img.shields.io/badge/Core-C%2B%2B17%20%2F%20WASM-00599C?style=flat-square&logo=cplusplus&logoColor=white&labelColor=18181b" alt="Core: C++17 / WebAssembly">
   <img src="https://img.shields.io/badge/Frontend-React%2019%20%2B%20TS-3178C6?style=flat-square&logo=typescript&logoColor=white&labelColor=18181b" alt="Frontend: React 19 + TypeScript">
-  <img src="https://img.shields.io/badge/Tests-666%20passed-16a34a?style=flat-square&labelColor=18181b" alt="666 tests passing">
+  <img src="https://img.shields.io/badge/Tests-688%20passed-16a34a?style=flat-square&labelColor=18181b" alt="688 tests passing">
 </p>
 
 <p>
@@ -42,14 +42,14 @@
 
 | 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
 | :--- | :--- | :--- |
-| **15 个交互实验 + 5 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 666 项单测门禁 |
+| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 688 项单测门禁 |
 
 无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
 
 <!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
-     15 实验 + 5 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 4 个固定路由查表工具，smoke 计数守卫会核对）
-     666 passed     ← npm test 实测（40 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
-                      新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，scripts/check-readme-stats.mjs 会与实测比对）
+     15 实验 + 6 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 5 个固定路由查表工具，smoke 计数守卫会核对）
+     688 passed     ← npm test 实测（42 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
+                      新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，tools/check-readme-stats.mjs 会与实测比对）
      C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
      React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
      GB/T 4728      ← 《电气简图用图形符号》国标族，电路图线稿按国标绘制（render/schematic.tsx）
@@ -84,7 +84,7 @@
 - **深浅主题**：默认浅色，适合希沃 / 投影大屏
 - **多端响应式**：手机 / 平板 / PC / 希沃大屏
 - **随机探索**：首页一键随机进入实验或工具
-- **15 个交互实验 + 5 个工具**：电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图 · 读表与元件状态监控）、元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
+- **15 个交互实验 + 6 个工具**：电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图 · 读表与元件状态监控）、化学式与化合价（化合价速查 · 十字交叉生成 · 由式反推 · 六类练习）、元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
 - **AI 学习助手**（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - **可离线安装**：安装为应用后离线使用（PWA）
 - **每日科学**：首页每天一位科学家的名言、考点速记与小故事
@@ -98,9 +98,9 @@
 
 **化学** `9`　质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性
 
-**工具**　电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图）· 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
+**工具**　电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图）· 化学式与化合价（价态速查 · 十字交叉生成 · 由式反推 · 六类练习）· 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
 
-> 15 个实验与 5 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
+> 15 个实验与 6 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
 
 ### 路线图（探索中）
 
@@ -134,7 +134,7 @@
 - **C++ 计算核**：公式求值（欧姆定律、凸透镜、二次函数、反比例、酸碱中和、浮力）与电学工作台的直流求解共用同一份 C++17 源码，经 Emscripten 编成 SINGLE_FILE WASM 在浏览器内按需调用，不新增网络请求；未载入时静默回退 JS 真源，结果由 g++ / WASM / TS 三方对拍保证一致
 - **AI 学习助手**（BYOK）：浏览器直连您自己的 AI 服务商（兼容 OpenAI 端点，流式 /chat/completions），Key 仅存本机、本站无记录
 - **TTS 朗读**：LaTeX 口语化格式化 → SCF 云函数代理 edge-tts 合成语音并回放
-- **预览即可用、可安装**：Service Worker 预缓存应用外壳，页面二次打开与断网后仍可运行；也可安装为桌面 / 手机应用
+- **预览即可用、可安装**：Service Worker 预缓存应用外壳（含界面等宽字体子集），页面二次打开与断网后仍可运行；也可安装为桌面 / 手机应用
 - **离线教学包（可选下载）**：把元素实物照片、读音音频与结构示意图存到本机，无网也能照常上课；断网时本地实验、公式手册与错题复习卷照常可用，AI 助手需联网（若使用本机 / 局域网推理服务则不受影响）
 - **反馈收集**：按钮触发 → 本地队列（localStorage）暂存 →（可选）异步上报，无自建后端、离线可存
 - **SEO**：构建期生成 sitemap 供搜索引擎抓取
@@ -158,7 +158,7 @@ npm run test       # 运行测试
 npm test           # 运行全部测试（无需任何服务）
 ```
 
-内置测试套件 **666 项全绿**（40 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 495 项；另有一个独立脚本 `src/latex-speech.golden.test.ts` 钉住 **436 条逐字快照**，单独统计、不计入 666），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
+内置测试套件 **688 项全绿**（42 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 517 项；另有一个独立脚本 `src/latex-speech.golden.test.ts` 钉住 **436 条逐字快照**，单独统计、不计入 688），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
 - **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
@@ -202,7 +202,7 @@ npm test           # 运行全部测试（无需任何服务）
 ### 计算引擎
 
 - 交互层仍是 React：欧姆定律、凸透镜成像、二次函数、反比例函数、酸碱中和、浮力的数值核共用一份 C++ 实现（`cpp/stem_core.cpp` + 各公式 hpp：`ohm_formula` / `lens_formula` / `math_fn` / `bulb_formula` / `chem_formula` / `mechanics_formula`），经 Emscripten 编译为同一份 WebAssembly（SINGLE_FILE），在浏览器中按需调用，共 10 个标量导出
-- 电学工作台另有一份独立的直流求解核（`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`）：按节点法求解网表，元件热模型与保险丝判定留在前端；编译 `bash scripts/build-wasm-circuit.sh`，产物为 `src/wasm/circuitBench.js`，未载入时自动回退前端求解。工作台的灯泡热积分与弹簧测力计读数也走上面那份公式核（`bulb_temp_step` / `bulb_resistance` / `spring_reading`）
+- 电学工作台另有一份独立的直流求解核（`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`）：按节点法求解网表，元件热模型与保险丝判定留在前端；编译 `bash tools/build-wasm-circuit.sh`，产物为 `src/wasm/circuitBench.js`，未载入时自动回退前端求解。工作台的灯泡热积分与弹簧测力计读数也走上面那份公式核（`bulb_temp_step` / `bulb_resistance` / `spring_reading`）
 - 已接入实验：欧姆定律（/lab/ohm）、凸透镜成像（/lab/lens）、二次函数（/lab/quadratic）、反比例函数（/lab/inverse）、酸碱中和（/lab/neutralization）、浮力（/lab/buoyancy），公式与页面模型一致——定值电阻 I = U/(R+Rp)，灯泡 I = U/(R + 0.4U + Rp)（γ = 0.4）；像距 v = uf/(u−f)；y = ax² + bx + c；y = k/x（x = 0 为定义域外的 NaN 哨兵）；灯泡 R(T) 与灯丝温度单步积分；滴定 pH（等当点恰好 7）；F示 = max(0, G − ρ液·g·V排)
 - 编译：`npm run build:wasm`（需 emsdk / em++），产物为 SINGLE_FILE 的 `src/wasm/stemCore.js`；未配置 em++、编译失败、运行时加载失败或**任一导出缺失**时，自动整颗回退各 JS 真源（`src/labs/physics/ohm-core.ts`、`lens-core.ts`、`bulb-core.ts`、`mechanics-core.ts`、`src/labs/math/quadratic-core.ts`、`inverse-core.ts`、`src/labs/chemistry/titration-core.ts`），实验照常可用
 - 六个实验的参数卡与电学工作台的页头徽标会显示当前引擎：「计算引擎：C++ WebAssembly」或「计算引擎：JS 回退」
@@ -212,7 +212,7 @@ npm test           # 运行全部测试（无需任何服务）
 ### 项目结构
 
 ```
-cpp/                   # C++ 计算核（公式核 / 电学求解器 / 对拍 CLI），编译脚本在 scripts/
+cpp/                   # C++ 计算核（公式核 / 电学求解器 / 对拍 CLI），编译脚本在 tools/
 src/
 ├── labs/              # 实验组件（math / physics / chemistry）
 │   └── physics/circuit-bench/   # 电学工作台（画布 / 渲染 / 求解器 / 状态监控）
@@ -226,8 +226,8 @@ src/
 │   │   └── hooks/     # 设置域与刷题域 Hook
 │   ├── feedback/      # 反馈气泡与面板 / 分享对话框 / 离线教学包
 │   ├── share/         # 标题内嵌分享按钮
-│   └── ui/            # 通用 UI（科目/实验图标、公式、占位页）
-├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 元素数据 / 全局状态
+│   └── ui/            # 通用 UI（科目/实验图标、公式、占位页、应用内下拉）
+├── lib/               # 注册表 / 科目 / i18n / 反馈存储 / 元素数据 / 全局状态 / 下拉定位模型
 └── pages/             # 首页 / 科目 / 实验 / 周期表 / 常量与公式速查 / 使用说明 / 许可
 ```
 
@@ -240,6 +240,8 @@ src/
 ### 许可
 
 本项目基于 **GNU Affero General Public License v3 (AGPL-3.0)** 开源（见 `LICENSE` 文件，站内也可直接查看全文：`/license`）。你可以自由使用、修改与分发，**但任何衍生作品都必须以 AGPL-3.0 开源**（含通过网络提供的服务），并**保留原作者版权声明**，不允许闭源拿走。
+
+界面字体为自托管子集（品牌标题宋体、等宽 JetBrains Mono），均以 **SIL OFL-1.1** 授权，许可全文见 `public/fonts/`；AGPL-3.0 只覆盖本项目自身代码。
 
 ### 免责条款
 
@@ -274,7 +276,7 @@ src/
 - **Light & dark themes** — light by default for classroom projection
 - **Responsive layout** — mobile / tablet / PC / Seewo interactive screen
 - **Random explore** — a homepage button jumps into a random lab or tool
-- **15 interactive labs + 5 tools** — Circuit Workbench (free canvas · circuit and simulation views · live meters and component status), Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
+- **15 interactive labs + 6 tools** — Circuit Workbench (free canvas · circuit and simulation views · live meters and component status), Chemical Formulas (valence reference, cross-rule builder, solver, six practice types), Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
 - **AI assistant** (header entry) — renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - **Offline install** — installable as an app and usable offline (PWA)
 - **Daily Science** — a scientist quote, key-point tip and short story each day on the homepage
@@ -288,9 +290,9 @@ src/
 
 **Chemistry** `9`　Conservation of Mass · Titration · Electrolysis · Metal Activity
 
-**Tools**　Circuit Workbench (free canvas · circuit and simulation views) · Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
+**Tools**　Circuit Workbench (free canvas · circuit and simulation views) · Chemical Formulas (valence reference · cross-rule builder · solver · six practice types) · Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
 
-> All 15 labs and all 5 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
+> All 15 labs and all 6 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
 
 ### Roadmap (experimental)
 
@@ -324,7 +326,7 @@ This is a **pure front-end SPA** (React 19 + react-router 7 + Vite 6 + TypeScrip
 - **C++ compute core**: formula evaluation (Ohm's law, convex lens, quadratic, inverse proportion, titration, buoyancy) and the circuit workbench's DC solve share one C++17 source, compiled by Emscripten into a SINGLE_FILE WASM module invoked on demand in the browser with no extra network request; if it fails to load the JS sources silently take over, and g++ / WASM / TS are kept identical by a three-way parity gate
 - **AI assistant** (BYOK): the browser talks directly to your own AI provider (OpenAI-compatible endpoint, streaming /chat/completions); key stays on-device, nothing is logged
 - **TTS read-aloud**: LaTeX is formatted for speech → a SCF cloud function proxies edge-tts to synthesize and play back audio
-- **Works on reopen, installable**: the Service Worker precaches the app shell, so a second visit — or a lost connection — still runs; the app can also be installed on desktop or phone
+- **Works on reopen, installable**: the Service Worker precaches the app shell (including the monospace UI subset), so a second visit — or a lost connection — still runs; the app can also be installed on desktop or phone
 - **Offline teaching pack (opt-in download)**: stores element photos, pronunciation audio and structure diagrams on the device for a fully offline lesson; offline, local labs, formula sheets and the mistake book keep working, while the AI assistant needs a network (a local / LAN inference service still works)
 - **Feedback**: button click → local queue (localStorage) → (optional) async report; no self-hosted backend, works offline
 - **SEO**: sitemap generated at build time for search engines
@@ -348,7 +350,7 @@ npm run test       # Run tests
 npm test           # Run the whole suite (no service required)
 ```
 
-The built-in suite runs **666 cases, all green** (40 test commands: 171 in `src/smoke.test.ts` plus 495 across the rest; one further standalone script, `src/latex-speech.golden.test.ts`, pins **436 verbatim snapshots** and is counted separately), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
+The built-in suite runs **688 cases, all green** (42 test commands: 171 in `src/smoke.test.ts` plus 517 across the rest; one further standalone script, `src/latex-speech.golden.test.ts`, pins **436 verbatim snapshots** and is counted separately), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
 - **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;
@@ -392,7 +394,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 ### Computation engine
 
 - The interaction layer stays in React: the Ohm's law, convex-lens, quadratic-function, inverse-variation, acid-base titration and buoyancy labs share one C++ numeric core (`cpp/stem_core.cpp` + per-formula headers: `ohm_formula` / `lens_formula` / `math_fn` / `bulb_formula` / `chem_formula` / `mechanics_formula`), compiled to a single WebAssembly binary (SINGLE_FILE) and invoked on demand in the browser — 10 scalar exports in total
-- The circuit workbench has a separate DC solver core (`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`): nodal analysis over the netlist, while component heat and fuse behaviour stay in the frontend; build with `bash scripts/build-wasm-circuit.sh` into `src/wasm/circuitBench.js`, falling back to the frontend solver when it cannot load. The workbench's bulb heat integration and spring-scale readings also go through the formula core above (`bulb_temp_step` / `bulb_resistance` / `spring_reading`)
+- The circuit workbench has a separate DC solver core (`cpp/circuit_bench_solver.hpp` + `cpp/circuit_bench_core.cpp`): nodal analysis over the netlist, while component heat and fuse behaviour stay in the frontend; build with `bash tools/build-wasm-circuit.sh` into `src/wasm/circuitBench.js`, falling back to the frontend solver when it cannot load. The workbench's bulb heat integration and spring-scale readings also go through the formula core above (`bulb_temp_step` / `bulb_resistance` / `spring_reading`)
 - Wired up labs: Ohm's law (/lab/ohm), lens (/lab/lens), quadratic (/lab/quadratic), inverse variation (/lab/inverse), acid-base titration (/lab/neutralization), buoyancy (/lab/buoyancy), with formulas identical to the on-page models: fixed resistor I = U/(R+Rp); bulb I = U/(R + 0.4U + Rp) (γ = 0.4); image distance v = uf/(u−f); y = ax² + bx + c; y = k/x (x = 0 carries a NaN sentinel as an out-of-domain marker); bulb R(T) plus the filament temperature step; titration pH (exactly 7 at equivalence); spring reading = max(0, G − ρ·g·V_displaced)
 - Build with `npm run build:wasm` (requires emsdk / em++); the output is a single-file `src/wasm/stemCore.js`. If em++ is absent, the build fails, the runtime load fails, or **any export is missing**, every lab falls back to its JS core (`src/labs/physics/ohm-core.ts`, `lens-core.ts`, `bulb-core.ts`, `mechanics-core.ts`, `src/labs/math/quadratic-core.ts`, `inverse-core.ts`, `src/labs/chemistry/titration-core.ts`) and keeps working as usual
 - The six labs show the active engine in their parameter card, and the circuit workbench shows it in its page-header badge: "Engine: C++ WebAssembly" or "Engine: JS fallback"
@@ -402,7 +404,7 @@ Each lab is built from **Predict → Explore → Conclude** with **no hard step-
 ### Project Structure
 
 ```
-cpp/                   # C++ cores (formula core / circuit solver / parity CLI); build scripts live in scripts/
+cpp/                   # C++ cores (formula core / circuit solver / parity CLI); build scripts live in tools/
 src/
 ├── labs/              # Lab components (math / physics / chemistry)
 │   └── physics/circuit-bench/   # Circuit workbench (canvas / render / solver / status monitor)
@@ -416,8 +418,8 @@ src/
 │   │   └── hooks/     # Settings and quiz domain hooks
 │   ├── feedback/      # Feedback FAB & panel / share dialog / offline pack
 │   ├── share/         # Inline share button
-│   └── ui/            # Generic UI (subject/lab icons, formula, placeholders)
-├── lib/               # Registry / subjects / i18n / feedback storage / elements / global state
+│   └── ui/            # Generic UI (subject/lab icons, formula, placeholders, in-app select)
+├── lib/               # Registry / subjects / i18n / feedback storage / elements / global state / dropdown model
 └── pages/             # Home / subject / lab / periodic table / constants & formulas / guide / license
 ```
 
@@ -430,6 +432,8 @@ When filing an issue on GitHub / Gitee, include the **page, browser and device, 
 ### License
 
 This project is open-sourced under the **GNU Affero General Public License v3 (AGPL-3.0)** (see `LICENSE`; the full text is also available in-app at `/license`). You are free to use, modify, and distribute it, **but any derivative work must be open-sourced under AGPL-3.0** (including services offered over a network) and **must retain the original author's copyright notice** — no closed-source forks are allowed.
+
+UI fonts are self-hosted subsets (brand serif and JetBrains Mono for monospace), both under **SIL OFL-1.1** with full texts in `public/fonts/`; AGPL-3.0 covers this project's own code only.
 
 ### Disclaimer
 

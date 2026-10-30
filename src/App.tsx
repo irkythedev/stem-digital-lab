@@ -30,8 +30,10 @@ const PeriodicTable = lazy(() => import('./pages/PeriodicTable'));
 const PhysicalConstants = lazy(() => import('./pages/PhysicalConstants'));
 const MathFormulas = lazy(() => import('./pages/MathFormulas'));
 const PhysicsFormulas = lazy(() => import('./pages/PhysicsFormulas'));
+const ChemistryFormulas = lazy(() => import('./pages/ChemistryFormulas'));
 const LicensePage = lazy(() => import('./pages/LicensePage'));
 const TtsTestPage = lazy(() => import('./pages/TtsTestPage'));
+const LearnPage = lazy(() => import('./pages/LearnPage'));
 
 /** 无障碍跳转链接：键盘用户 Tab 到第一个焦点即可跳过导航直达内容（仅聚焦时可见） */
 function SkipLink() {
@@ -129,6 +131,9 @@ export default function App() {
             <Route path="/physics-constants" element={<PhysicalConstants />} />
             <Route path="/math-formulas" element={<MathFormulas />} />
             <Route path="/physics-formulas" element={<PhysicsFormulas />} />
+            <Route path="/chemistry-formulas" element={<ChemistryFormulas />} />
+            {/* 结构化讲解独立成页：工具页/实验页只留一行入口，正文与数据表在这里 */}
+            <Route path="/learn/:contentId" element={<LearnPage />} />
             <Route path="/license" element={<LicensePage />} />
             <Route path="/tts-test" element={<TtsTestPage />} />
             <Route path="/lab/:labId" element={<LabPage />} />

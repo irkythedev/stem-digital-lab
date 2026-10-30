@@ -41,8 +41,9 @@ export default function PresetPicker({
         <div
           role="listbox"
           aria-label={zh ? '教材预设' : 'Textbook presets'}
-          /* `scroll-padding-inline`：窄屏横向滚动时，滚到头的胶囊不会紧贴边框被切掉半个字。 */
-          className="flex min-w-0 items-center gap-1.5 overflow-x-auto pb-0.5 [scroll-padding-inline:0.75rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          /* `scroll-padding-inline`：窄屏横向滚动时，滚到头的胶囊不会紧贴边框被切掉半个字。
+             窄屏吸附：一次滑动停在整颗胶囊上（snap-start），不会停在「半个惠斯通电桥」。 */
+          className="flex min-w-0 items-center gap-1.5 overflow-x-auto pb-0.5 [scroll-padding-inline:0.75rem] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-sm:snap-x max-sm:snap-mandatory"
         >
           {CIRCUIT_PRESETS.map((preset) => {
             const isActive = preset.id === activeId;
@@ -54,7 +55,7 @@ export default function PresetPicker({
                 aria-selected={isActive}
                 onClick={() => onPick(preset.id)}
                 title={zh ? preset.subtitle.zh : preset.subtitle.en}
-                className={`${PILL} whitespace-nowrap ${
+                className={`${PILL} whitespace-nowrap max-sm:snap-start ${
                   isActive
                     ? 'border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)]'
                     : 'border-[var(--border)] bg-[var(--card-bg)] text-[var(--muted)] hover:text-[var(--fg)]'
@@ -70,7 +71,7 @@ export default function PresetPicker({
             只在窄屏出现（`max-sm:block`），桌面胶囊本来就排得下。 */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 hidden w-6 bg-gradient-to-l from-[var(--bg)] to-transparent max-sm:block"
+          className="pointer-events-none absolute inset-y-0 right-0 hidden w-8 bg-gradient-to-l from-[var(--bg)] to-transparent max-sm:block"
         />
       </div>
 

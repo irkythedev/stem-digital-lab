@@ -32,8 +32,15 @@ export default function Footer() {
   return (
     <footer className="w-full border-t border-[var(--border)] py-6 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* 顶线满幅通栏：border 落在满宽 footer 上；内容由内层容器收回正文列（同 Header 算法） */}
-      <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-col sm:flex-row justify-between items-center gap-4 px-6 sm:px-12 lg:px-14">
-      <div className="flex flex-col sm:flex-row items-center gap-y-1 sm:gap-x-3 text-center sm:text-left">
+      {/* 竖屏节奏：作者行（含角色）→ 协议行 → 版权行，三层统一 8px（`max-sm:gap-y-2`）。
+          旧的 16px 行距还要叠在 26px 的图标热区盒上，字形净空实测 32.5 / 31px，
+          而作者名与角色只隔 18px——一疏一密；收成同一档后三段落到 24 / 24.5 / 23px。 */}
+      {/* 360px 起把「作者 / 角色」并回一行（桌面端本来就是 sm:flex-row 的一行排法）：
+          合并后整行 300.7px，可用宽度 360→312 / 375→327 / 390→342，都放得下；
+          320px 只有 272px，硬并会让 `/` 折到行尾变成孤悬分隔符，所以断点卡在 360，
+          更窄仍是两行堆叠、分隔符继续 hidden。 */}
+      <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-col sm:flex-row justify-between items-center gap-4 max-sm:gap-y-2 px-6 sm:px-12 lg:px-14">
+      <div className="flex flex-col min-[360px]:flex-row items-center gap-y-1 max-sm:gap-y-2 min-[360px]:gap-x-2.5 sm:gap-x-3 text-center sm:text-left">
         {/* 作者名 + 邮箱 icon：同行（移动端也保持同行，不换行）。
             leading-none 是这一行的关键：页脚继承了 tracking-wider + 10px 字号，
             默认行高会让「作者 / 分隔符 / 角色」三段的文字基线各差 1~2px；
@@ -65,7 +72,7 @@ export default function Footer() {
             <Mail className="w-3.5 h-3.5" />
           </a>
         </span>
-        <span className="hidden sm:inline-flex items-center self-center leading-none text-[var(--border)]" aria-hidden="true">
+        <span className="hidden min-[360px]:inline-flex items-center self-center leading-none text-[var(--border)]" aria-hidden="true">
           /
         </span>
         <span className="inline-flex items-center gap-2 leading-none">
@@ -84,7 +91,7 @@ export default function Footer() {
               {/* 角标锚定到图标（相对 16px 图标 -6px 贴角），避免相对按钮时随 p-1.5 悬空 */}
               <span className="footer-works-glyph relative inline-flex">
                 <Library className="w-4 h-4" />
-                <span className="footer-works-badge absolute -top-2.5 -right-1.5 flex h-[0.95rem] min-w-[1rem] items-center justify-center rounded-[0.25rem] px-1 text-[0.5rem] leading-none text-white mono-font">
+                <span className="footer-works-badge absolute -top-2.5 -right-1.5 flex h-[0.95rem] min-w-[1rem] items-center justify-center rounded-[0.25rem] px-1 text-[0.625rem] leading-none text-white mono-font">
                   {t.works.length}
                 </span>
               </span>
@@ -94,7 +101,7 @@ export default function Footer() {
               <span className="footer-works-tip" aria-hidden="true">{t.moreWorksHint}</span>
             )}
             {showWorks && (
-              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[0_4px_16px_rgba(0,0,0,0.1)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
+              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
                 {t.works.map((w) => (
                   <a
                     key={w.url}
@@ -116,13 +123,16 @@ export default function Footer() {
 
       <div className="flex flex-col items-center gap-1.5 text-center">
         {/* 顺序：文本项在前、图标项在后（纯文字 → 小图标，视觉过渡平滑）。
-            安装引导按钮渲染为文字按钮，故并入文本组（在 AGPL-3.0 之后）。 */}
-        <div className="flex items-center gap-5 sm:gap-4">
+            安装引导按钮渲染为文字按钮，故并入文本组（在 AGPL-3.0 之后）。
+            窄屏把 20px 收到 16px：这正是两个 26px 图标盒 ±8px 扩区后**相切**的下限
+            （中心距 42px），图标不互抢；文字按钮同步把 px-1.5 收到 px-1，
+            字与字之间从 32px 落到 24px。 */}
+        <div className="flex items-center gap-5 max-sm:gap-x-4 sm:gap-4">
           <button
             type="button"
             onClick={() => setShowDisclaimer((v) => !v)}
             aria-expanded={showDisclaimer}
-            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
+            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 max-sm:px-1 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.disclaimerLabel}
           </button>
@@ -131,7 +141,7 @@ export default function Footer() {
             onClick={() => setShowLicense(true)}
             title="AGPL-3.0"
             aria-label="AGPL-3.0"
-            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
+            className="tap-y inline-flex items-center justify-center min-h-[1.625rem] rounded px-1.5 max-sm:px-1 py-1 hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors"
           >
             {t.licenseLabel}
           </button>
@@ -166,7 +176,7 @@ export default function Footer() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-4 sm:gap-x-2.5 sm:gap-y-1">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-4 max-sm:gap-y-2 sm:gap-x-2.5 sm:gap-y-1">
         <span>© 2026 STEM DIGITAL LAB</span>
         <ExternalLinkConfirm
           target={{ url: REPO_URLS.gitee, name: 'Gitee' }}

@@ -24,7 +24,7 @@ import {
   type LabCategoryId,
 } from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
-import { PeriodicTableIcon } from '../components/ui/LabIcon';
+import { FormulaIcon, PeriodicTableIcon } from '../components/ui/LabIcon';
 
 /**
  * 学科卡片「内容清单」按「项数」统一截断：显示前 3 项 + 省略号。
@@ -66,7 +66,7 @@ function ToolCard({
         <span className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
           <span className="text-sm font-semibold text-[var(--fg)] serif-font">{title}</span>
           {pro && (
-            <span className="border border-[var(--fg)] px-1 py-px text-[0.5625rem] leading-none mono-font text-[var(--fg)]">
+            <span className="border border-[var(--fg)] px-1 py-px text-[0.625rem] leading-none mono-font text-[var(--fg)]">
               BETA
             </span>
           )}
@@ -96,6 +96,7 @@ export default function HomePage() {
     const destinations: string[] = [
       ...labs.map(labHref),
       '/periodic-table',
+      '/chemistry-formulas',
       '/physics-constants',
       '/math-formulas',
       '/physics-formulas',
@@ -276,22 +277,29 @@ export default function HomePage() {
                     </Link>
                   )}
                   {subject.id === 'chemistry' && (
-                    <Link
-                      to="/periodic-table"
-                      className="group flex items-start gap-3 p-3 border border-[var(--border)] hover:border-[var(--fg)] transition-colors duration-[var(--dur-base)] sm:max-w-md"
-                    >
-                      <div className="shrink-0 mt-0.5 text-[var(--fg)]">
-                        <PeriodicTableIcon className="w-7 h-7" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="block text-sm font-semibold text-[var(--fg)] serif-font mb-0.5">
-                          {lang === 'zh' ? '元素周期表' : 'Periodic Table'}
-                        </span>
-                        <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
-                          {lang === 'zh' ? '118 个元素一表全览，支持检索与读音' : 'All 118 elements with search and pronunciation'}
-                        </span>
-                      </div>
-                    </Link>
+                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      <ToolCard
+                        to="/chemistry-formulas"
+                        icon={FormulaIcon}
+                        title={lang === 'zh' ? '化学式与化合价' : 'Chemical Formulas'}
+                        desc={
+                          lang === 'zh'
+                            ? '价态速查 · 十字交叉生成 · 由式反推 · 确定性练习'
+                            : 'Valence reference, cross-rule builder, solver, and practice'
+                        }
+                        pro
+                      />
+                      <ToolCard
+                        to="/periodic-table"
+                        icon={PeriodicTableIcon}
+                        title={lang === 'zh' ? '元素周期表' : 'Periodic Table'}
+                        desc={
+                          lang === 'zh'
+                            ? '118 个元素一表全览，支持检索与读音'
+                            : 'All 118 elements with search and pronunciation'
+                        }
+                      />
+                    </div>
                   )}
                   {subject.id === 'physics' && (
                     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

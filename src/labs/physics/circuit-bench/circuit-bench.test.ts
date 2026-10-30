@@ -206,7 +206,7 @@ import {
   dropdownPosition,
   nextActiveIndex,
   optionIndexOf,
-} from './circuit-bench-select';
+} from '../../../lib/select-model';
 import {
   blankMenuItems,
   elementMenuItems,
@@ -268,7 +268,7 @@ function runCli(text: string): number[] {
 }
 
 /**
- * C++/WASM 产物（scripts/build-wasm-circuit.sh 生成）。
+ * C++/WASM 产物（tools/build-wasm-circuit.sh 生成）。
  *
  * 运行器已支持异步用例（runAll 会 await 返回 thenable 的用例），但这里的加载是
  * **注册期**的一次性准备工作：用顶层 await 先实例化工厂，登记时就能确定 WASM 是否
@@ -291,7 +291,7 @@ const wasmModule: CircuitBenchWasmModule | null = await (async () => {
 const loadedEngineKind = await loadCircuitBenchEngine().then((e) => e.kind);
 
 function requireWasm(): CircuitBenchWasmModule {
-  assert.ok(wasmModule, '未找到 src/wasm/circuitBench.js：先运行 bash scripts/build-wasm-circuit.sh');
+  assert.ok(wasmModule, '未找到 src/wasm/circuitBench.js：先运行 bash tools/build-wasm-circuit.sh');
   return wasmModule;
 }
 
@@ -442,7 +442,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(vite.includes('lab.path ?? `/lab/${lab.id}`'), 'sitemap/SEO 未读取 path');
     assert.ok(vite.includes('const path = b.match('), 'parseLabs 未解析 path 字段');
     assert.ok(vite.includes('...(path ? { path } : {})'), 'parseLabs 未把 path 带入 SEO 数据');
-    assert.ok(vite.includes('15 个交互实验 + 5 个工具'), 'GEO 文案需与实际实验/工具数一致');
+    assert.ok(vite.includes('15 个交互实验 + 6 个工具'), 'GEO 文案需与实际实验/工具数一致');
     assert.ok(!vite.includes('16 个交互实验'), 'GEO 文案不得回到旧的实验数口径');
   });
 
@@ -450,7 +450,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     const app = readFileSync(resolve('src/App.tsx'), 'utf-8');
     const tags = [...app.matchAll(/<Route path="([^"]+)" element=\{([^}]*)\}/g)];
     assert.ok(tags.length > 0, '未解析到字面量路由');
-    // 渲染页面的字面量路由（排除参数化路由与纯跳转）都应是顶层单段，与 4 个查表工具同构
+    // 渲染页面的字面量路由（排除参数化路由与纯跳转）都应是顶层单段，与 5 个查表工具同构
     const rendered = tags
       .filter(([, p, el]) => !p.includes(':') && !/Navigate/.test(el))
       .map(([, p]) => p);
@@ -1375,7 +1375,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
   test(WASM_TEST, () => {
     assert.ok(
       wasmModule,
-      '未找到 src/wasm/circuitBench.js（本仓库入库的必需产物）：先运行 bash scripts/build-wasm-circuit.sh',
+      '未找到 src/wasm/circuitBench.js（本仓库入库的必需产物）：先运行 bash tools/build-wasm-circuit.sh',
     );
     assert.equal(loadedEngineKind, 'wasm');
     assert.equal(getCircuitEngineKind(), 'wasm');
@@ -3296,12 +3296,14 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(src.includes('data-bench-shell'), '全屏根容器须有稳定钩子');
     // 进出全屏补一次内容适配：盒子从「按版心宽度推导的固定高度」换成视口剩余高度，
     // 尺寸变化本身不会触发 fitViewToContent，电路会缩在旧比例里。
-    assert.match(src, /useEffect\(\(\) => \{\s*setFitSignal\(\(n\) => n \+ 1\);\s*\}, \[fullscreen\]\)/, '进出全屏未触发一次适配');
+    assert.match(src, /useEffect\(\(\) => \{\s*setFitSignal\(\(n\) => n \+ 1\);\s*\}, \[fsActive\]\)/, '进出全屏未触发一次适配');
     // 默认收起，把纵向空间 100% 让给画布；退出时恢复原选择
-    assert.match(src, /if \(fullscreen\) \{\s*measureBeforeFullscreen\.current = measureOpen;\s*setMeasureOpen\(false\);/, '全屏未默认收起数据面板');
+    // 原生全屏与 iOS 伪全屏（无 requestFullscreen 时的 fixed inset-0 回退）共用 fsActive。
+    assert.match(src, /if \(fsActive\) \{\s*measureBeforeFullscreen\.current = measureOpen;\s*setMeasureOpen\(false\);/, '全屏未默认收起数据面板');
     assert.match(src, /setMeasureOpen\(measureBeforeFullscreen\.current\)/, '退出全屏未恢复原折叠状态');
+    assert.match(src, /const request = el\.requestFullscreen\?\.\(\);\s*if \(!request\) \{\s*setPseudoFullscreen\(true\);/, 'iOS 无全屏 API 时未回退伪全屏');
     // 面板始终挂在同一处，只换外层容器——进出全屏不能卸载它、丢掉已记录的读数
-    assert.match(src, /floating=\{fullscreen\}/, '数据面板未接入浮层形态');
+    assert.match(src, /floating=\{fsActive\}/, '数据面板未接入浮层形态');
 
     const panel = readFileSync(resolve('src/labs/physics/circuit-bench/MeasurementPanel.tsx'), 'utf-8');
     assert.match(panel, /floating\?: boolean/, '数据面板缺少 floating 入参');
@@ -3966,8 +3968,24 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     }
     const measurement = readSrc('MeasurementPanel.tsx');
     const inspector = readSrc('InspectorPanel.tsx');
-    assert.ok(measurement.includes("from './BenchSelect'"), '数据记录面板未接入应用内下拉');
-    assert.ok(inspector.includes("from './BenchSelect'"), '详细参数面板未接入应用内下拉');
+    assert.ok(measurement.includes("from '../../../components/ui/BenchSelect'"), '数据记录面板未接入应用内下拉');
+    assert.ok(inspector.includes("from '../../../components/ui/BenchSelect'"), '详细参数面板未接入应用内下拉');
+    // 共享化之后另外两个调用方也不许留原生下拉：化学式页的「目标元素」与 AI 设置面板的发音人。
+    for (const rel of ['src/pages/ChemistryFormulas.tsx', 'src/components/ai/panels/SettingsPanel.tsx']) {
+      const src = readFileSync(resolve(rel), 'utf-8');
+      assert.ok(!/<select\b/.test(src), `${rel} 还留着原生 <select>`);
+      assert.ok(/from '\.\.\/(?:\.\.\/)?(?:components\/)?ui\/BenchSelect'/.test(src), `${rel} 未接入应用内下拉`);
+    }
+    // 提成共享件后不许反向依赖实验目录，守卫常量与 TOUCH_GUARD 必须同值（否则触屏上
+    // 弹层会把手指拖动当成页面滚动，选区也跟着乱走）。
+    {
+      const shared = readFileSync(resolve('src/components/ui/BenchSelect.tsx'), 'utf-8');
+      assert.ok(!/from '[^']*circuit-bench-touch'/.test(shared), '共享下拉不得反向依赖电学实验台的模块');
+      assert.ok(
+        shared.includes(`const TOUCH_GUARD = '${TOUCH_GUARD}'`),
+        'BenchSelect 里的触控守卫常量与 circuit-bench-touch 的 TOUCH_GUARD 漂移了',
+      );
+    }
     // 横轴 / 纵轴两个探针选择器共用同一个组件，探针表仍从纯函数模块取
     assert.match(measurement, /<ProbeSelect label=\{zh \? '横轴'/, '横轴探针选择器被改没了');
     assert.match(measurement, /<ProbeSelect label=\{zh \? '纵轴'/, '纵轴探针选择器被改没了');
@@ -4013,7 +4031,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
   });
 
   test('circuit-bench 下拉: listbox 语义齐备，Esc / 点外 / 滚动都收得干净', () => {
-    const sel = readSrc('BenchSelect.tsx');
+    const sel = readFileSync(resolve('src/components/ui/BenchSelect.tsx'), 'utf-8');
     for (const token of [
       'createPortal',
       'role="listbox"',

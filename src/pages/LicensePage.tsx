@@ -38,7 +38,7 @@ export default function LicensePage() {
           GNU Affero General Public License, Version 3, 19 November 2007
         </p>
       </div>
-      <pre className="text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-words font-mono border border-[var(--border)] bg-[var(--card-bg)] p-4 max-h-[70vh] overflow-y-auto">
+      <pre className="text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-words mono-font border border-[var(--border)] bg-[var(--card-bg)] p-4 max-h-[70vh] overflow-y-auto">
         {AGPL_LICENSE_TEXT}
       </pre>
     </div>

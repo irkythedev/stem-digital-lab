@@ -58,7 +58,7 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
       aria-label={c.title}
     >
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <div className="relative flex max-h-[85dvh] w-full max-w-md flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[0_12px_40px_rgba(0,0,0,0.25)]">
+      <div className="relative flex max-h-[85dvh] w-full max-w-md flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
           <h2 className="t-h2 flex items-center gap-2 font-bold tracking-widest">
             <HardDrive className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />

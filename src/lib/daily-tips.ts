@@ -43,4 +43,24 @@ export const DAILY_TIPS: DailyTip[] = [
   { subject: 'math', zh: '全等三角形的判定：SSS、SAS、ASA、AAS，直角三角形还有 HL。', en: 'Congruent triangles: SSS, SAS, ASA, AAS, and HL for right triangles.' },
   { subject: 'math', zh: '相似三角形：对应角相等、对应边成比例；面积比等于相似比的平方。', en: 'Similar triangles: corresponding angles equal and sides proportional; the area ratio equals the square of the similarity ratio.' },
   { subject: 'math', zh: '弧长与扇形面积：弧长 l = nπr/180，扇形面积 S = nπr²/360。', en: 'Arc length l = nπr/180 and sector area S = nπr²/360 (n in degrees).' },
+
+  // ── 化学补充（15 条规模）──
+  { subject: 'chemistry', zh: '溶质质量分数 = 溶质质量 / 溶液质量 × 100%；溶液质量 = 溶质质量 + 溶剂质量。', en: 'Mass fraction of solute = mass of solute / mass of solution × 100%; mass of solution = solute + solvent.' },
+  { subject: 'chemistry', zh: '大多数固体的溶解度随温度升高而增大，氢氧化钙的溶解度随温度升高而减小。', en: 'The solubility of most solids rises with temperature; calcium hydroxide is an exception — its solubility falls as temperature rises.' },
+  { subject: 'chemistry', zh: '复分解反应发生的条件：生成沉淀、气体或水，三者中至少满足一个。', en: 'A double displacement reaction occurs when at least one product is a precipitate, a gas, or water.' },
+  { subject: 'chemistry', zh: '除杂原则：不引入新杂质、不减少主体物质、便于分离；如除去 CO 中的 CO₂ 可用氢氧化钠溶液。', en: 'Impurity removal must add no new impurity, keep the main substance, and be easy to separate; CO₂ in CO can be removed with sodium hydroxide solution.' },
+  { subject: 'chemistry', zh: '常见难溶物：碳酸钙、氢氧化铜、氢氧化铁、硫酸钡、氯化银；其中硫酸钡和氯化银不溶于稀酸。', en: 'Common insoluble substances include calcium carbonate, copper(II) hydroxide, iron(III) hydroxide, barium sulfate and silver chloride; the last two do not dissolve in dilute acids.' },
+  { subject: 'chemistry', zh: '金属活动性顺序中排在氢前的金属能与稀盐酸、稀硫酸反应放出氢气；钾、钙、钠过于活泼，不能直接置换盐溶液中的金属。', en: 'Metals before hydrogen in the activity series react with dilute hydrochloric or sulfuric acid to release hydrogen; potassium, calcium and sodium are too reactive to displace metals from salt solutions directly.' },
+  { subject: 'chemistry', zh: '从微观上看，化学变化前后原子的种类、数目和质量都不变，分子的种类一定改变。', en: 'At the microscopic level, a chemical change keeps the kinds, numbers and masses of atoms unchanged, while the kinds of molecules must change.' },
+  { subject: 'chemistry', zh: '紫色石蕊溶液遇酸变红、遇碱变蓝；无色酚酞溶液遇酸不变色、遇碱变红。', en: 'Purple litmus turns red in acid and blue in alkali; colourless phenolphthalein stays colourless in acid and turns red in alkali.' },
+
+  // ── 数学补充（15 条规模）──
+  { subject: 'math', zh: '二次函数 y = ax² + bx + c 中，a 决定开口方向与大小，b 与 a 共同决定对称轴位置，c 是图像与 y 轴交点的纵坐标。', en: 'In y = ax² + bx + c, a sets the opening direction and width, a and b together fix the axis of symmetry, and c is the y-intercept.' },
+  { subject: 'math', zh: '二次函数顶点式 y = a(x − h)² + k 的顶点为 (h, k)，对称轴为直线 x = h；一般式的对称轴为 x = −b/(2a)。', en: 'The vertex form y = a(x − h)² + k has vertex (h, k) and axis x = h; the general form has axis x = −b/(2a).' },
+  { subject: 'math', zh: '圆的切线判定：经过半径外端且垂直于这条半径的直线是圆的切线；切线垂直于过切点的半径。', en: 'A tangent is a line through the outer end of a radius and perpendicular to it; a tangent is perpendicular to the radius at the point of contact.' },
+  { subject: 'math', zh: '垂径定理：垂直于弦的直径平分这条弦，并且平分弦所对的两条弧。', en: 'Perpendicular-diameter theorem: a diameter perpendicular to a chord bisects the chord and both arcs it subtends.' },
+  { subject: 'math', zh: '相似三角形判定：两角分别相等、两边成比例且夹角相等、三边成比例，三种方法都可判定相似。', en: 'Triangles are similar if two angles match, if two sides are proportional with equal included angles, or if all three sides are proportional.' },
+  { subject: 'math', zh: '圆内接四边形的对角互补，即相对的两个内角之和为 180°。', en: 'Opposite angles of a cyclic quadrilateral are supplementary — each pair sums to 180°.' },
+  { subject: 'math', zh: '圆锥的侧面展开图是扇形：扇形的弧长等于底面圆周长，侧面积 S = πrl（r 为底面半径，l 为母线长）。', en: 'A cone unfolds into a sector: the arc equals the base circumference, and the lateral area is S = πrl (r = base radius, l = slant height).' },
+  { subject: 'math', zh: '一元二次方程 ax² + bx + c = 0（a≠0）的两根为 x₁、x₂，则 x₁ + x₂ = −b/a，x₁x₂ = c/a。', en: 'For ax² + bx + c = 0 (a≠0) with roots x₁ and x₂, x₁ + x₂ = −b/a and x₁x₂ = c/a.' },
 ];

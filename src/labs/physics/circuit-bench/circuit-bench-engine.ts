@@ -7,7 +7,7 @@
  * 与 stem-engine.ts 相同的「全有或全无」策略：bench_solve 导出存在才启用 WASM，
  * 否则静默回退到 TS 求解器，页面不出现加载失败。
  *
- * 产物 src/wasm/circuitBench.js 由 scripts/build-wasm-circuit.sh 单独生成
+ * 产物 src/wasm/circuitBench.js 由 tools/build-wasm-circuit.sh 单独生成
  * （MODULARIZE + EXPORT_NAME=createCircuitBenchModule，默认导出是工厂函数）。
  *
  * Fault 状态码映射：C++ 返回 [status, v0 … v_{n-1}]，status=0 表示收敛，

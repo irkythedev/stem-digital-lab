@@ -302,7 +302,7 @@ export default function CircuitMonitor({
     : verdict === 'fault'
       ? `${faultCount} faulty`
       : empty
-        ? 'Blank canvas · start here'
+        ? 'Blank canvas — start here'
         : `${rows} OK`;
   const pillTitle = zh
     ? empty
@@ -367,12 +367,12 @@ export default function CircuitMonitor({
         </span>
         {/* 空台面不报「0」：没有东西可数的时候，那个数字只是把「空」再写一遍。 */}
         {!empty && (
-          <span className="font-mono text-[10px] leading-[14px] text-[var(--muted)] tabular-nums">
+          <span className="mono-font text-[10px] leading-[14px] text-[var(--muted)] tabular-nums">
             {rows}
           </span>
         )}
         {faultCount > 0 && (
-          <span className="font-mono text-[10px] leading-[14px] text-[var(--danger)] tabular-nums">
+          <span className="mono-font text-[10px] leading-[14px] text-[var(--danger)] tabular-nums">
             ⚠ {faultCount}
           </span>
         )}
@@ -497,7 +497,7 @@ export default function CircuitMonitor({
                   type="button"
                   onClick={pick}
                   title={cell.hint}
-                  className={`${CELL_BTN} mt-px truncate font-mono text-[10px] leading-[11px] text-[var(--muted)] tabular-nums`}
+                  className={`${CELL_BTN} mt-px truncate mono-font text-[10px] leading-[11px] text-[var(--muted)] tabular-nums`}
                 >
                   {cell.detail}
                 </button>

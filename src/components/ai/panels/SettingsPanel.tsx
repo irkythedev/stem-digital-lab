@@ -16,6 +16,7 @@ import { clearTokenUsage } from '../../../lib/token-usage';
 import { type TtsConfig } from '../../../lib/tts-config';
 import { resetTtsStatus } from '../../../lib/tts-status';
 import { TTS_SAMPLE } from '../../../lib/use-tts-preview';
+import BenchSelect from '../../ui/BenchSelect';
 import ProviderIcon from '../../ui/ProviderIcon';
 import TtsStatusBadge from '../TtsStatusBadge';
 import { ExternalLink, EyeOff, Eye, ShieldCheck, ChevronDown, RefreshCw, Activity, Coins, LoaderCircle, Volume2, Trash2 } from 'lucide-react';
@@ -305,7 +306,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                   aria-controls="ai-model-listbox"
                   aria-autocomplete="list"
                   aria-label={lang === 'zh' ? '模型' : 'Model'}
-                  placeholder={lang === 'zh' ? '可直接输入，或点 ▾ 选择' : 'Type a name, or click ▾ to pick'}
+                  placeholder={lang === 'zh' ? '可直接输入，或从下拉里选' : 'Type a name, or pick from the list'}
                   value={model}
                   onChange={(e) => setModel(e.target.value.trim())}
                   onClick={() => { if (liveModels.length > 0) setModelMenuOpen(true); }}
@@ -328,7 +329,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                   <div
                     id="ai-model-listbox"
                     role="listbox"
-                    className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                    className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]"
                   >
                     {liveModels.map((m) => (
                       <button
@@ -622,17 +623,21 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                       return (
                         <div key={key} className="flex items-center gap-2.5 mb-1.5">
                           <span className="w-20 shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">{label}</span>
-                          <select
+                          <BenchSelect
+                            size="setting"
+                            className="sm:w-72 max-w-xs"
+                            ariaLabel={label}
                             value={value}
-                            onChange={(e) => updateTts(key === 'zh' ? { localVoiceZh: e.target.value } : { localVoiceEn: e.target.value })}
-                            aria-label={label}
-                            className="min-h-9 w-full sm:w-72 max-w-xs rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none focus:border-[var(--fg)]"
-                          >
-                            <option value="">{lang === 'zh' ? '自动（按语言选择）' : 'Automatic (by language)'}</option>
-                            {(key === 'zh' ? groupedVoices.zh : groupedVoices.en).map((v) => (
-                              <option key={v.voiceURI || v.name} value={v.voiceURI || v.name}>{`${v.name} · ${v.lang}`}</option>
-                            ))}
-                          </select>
+                            onChange={(v) => updateTts(key === 'zh' ? { localVoiceZh: v } : { localVoiceEn: v })}
+                            options={[
+                              { value: '', label: lang === 'zh' ? '自动（按语言选择）' : 'Automatic (by language)' },
+                              ...(key === 'zh' ? groupedVoices.zh : groupedVoices.en).map((v) => ({
+                                value: v.voiceURI || v.name,
+                                label: v.name,
+                                hint: v.lang,
+                              })),
+                            ]}
+                          />
                           <button
                             type="button"
                             onClick={() => void ttsPreview.preview(key, ttsCfg)}

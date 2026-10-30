@@ -375,7 +375,7 @@ export default function PresetBriefing({
               <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
               {zh ? '启发追问 · 探究 AI' : 'Guided probes · inquiry AI'}
             </h3>
-            <span className="ml-auto shrink-0 rounded-full bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-[9px] font-medium leading-none tracking-wide text-[var(--accent)]">
+            <span className="ml-auto shrink-0 rounded-full bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-[0.625rem] font-medium leading-none tracking-wide text-[var(--accent)]">
               Socratic Coaching
             </span>
           </div>
@@ -394,7 +394,7 @@ export default function PresetBriefing({
                 className="relative group w-full flex flex-col gap-1.5 p-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer text-left motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 <span
-                  className={`w-fit shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-semibold leading-none ${STAGE_BADGE[prompt.stage]}`}
+                  className={`w-fit shrink-0 rounded-md border px-1.5 py-0.5 text-[0.625rem] font-semibold leading-none ${STAGE_BADGE[prompt.stage]}`}
                 >
                   {zh ? prompt.tag.zh : prompt.tag.en}
                 </span>
@@ -462,7 +462,7 @@ export default function PresetBriefing({
 
           {/* 导线与电流方向 */}
           <div className="mt-2">
-            <div className="text-[9px] leading-none text-[var(--muted)]">
+            <div className="text-[0.625rem] leading-none text-[var(--muted)]">
               {zh ? '导线绝缘套色 · ⑥ 之后循环' : 'Wire sheath colours · repeat past ⑥'}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
@@ -472,7 +472,7 @@ export default function PresetBriefing({
                     className="h-2.5 w-5 shrink-0 rounded-sm border border-[var(--border)]/60"
                     style={{ background: `var(--chart-${n})` }}
                   />
-                  <span className="mono-font text-[9px] leading-none text-[var(--fg)]">{n}</span>
+                  <span className="mono-font text-[0.625rem] leading-none text-[var(--fg)]">{n}</span>
                 </span>
               ))}
             </div>

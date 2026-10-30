@@ -121,9 +121,10 @@ export default function BenchToolbar({
   zh,
 }: BenchToolbarProps) {
   return (
-    // 窄屏换行成两排（隐藏横向滚动），避免「暂停」等末尾按钮被裁掉半截；
-    // 桌面仍是 44px 单行横向工具条。
-    <div data-bench-toolbar="" className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 max-sm:relative max-sm:z-[60] sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
+    // 窄屏保持单行横向滚动（隐藏滚动条），高度锁在 44px：flex-wrap 在 375 下会把
+    // 「全屏」挤到第三行，工具栏吃掉 121px，画布可见高度只剩 208px。
+    // 桌面仍是 44px 单行横向工具条，一字不改。
+    <div data-bench-toolbar="" className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-[var(--border)] px-2.5 py-1.5 max-sm:relative max-sm:z-[60] max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden sm:h-11 sm:flex-nowrap sm:overflow-x-auto sm:py-0">
       {/* 操作模式 */}
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -197,7 +198,7 @@ export default function BenchToolbar({
           <Wrench className={ICON} />
           <span className="hidden lg:inline">{zh ? '一键修复损坏元件' : 'Repair parts'}</span>
           <span className="lg:hidden">{zh ? '一键修复' : 'Repair'}</span>
-          <span className="font-mono tabular-nums">{faults}</span>
+          <span className="mono-font tabular-nums">{faults}</span>
         </button>
       )}
 
@@ -262,7 +263,7 @@ export default function BenchToolbar({
       </button>
 
       {counts && (
-        <span className="ml-auto hidden shrink-0 whitespace-nowrap pl-2 font-mono text-[10px] text-[var(--muted)] xl:inline">
+        <span className="ml-auto hidden shrink-0 whitespace-nowrap pl-2 mono-font text-[10px] text-[var(--muted)] xl:inline">
           {counts}
         </span>
       )}
