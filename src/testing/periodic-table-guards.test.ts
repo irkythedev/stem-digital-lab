@@ -699,14 +699,24 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
       const n = (i18n.match(new RegExp(`${k}:`, 'g')) ?? []).length;
       assert.equal(n, 2, `${k} 须 zh/en 各一份（实测 ${n}）`);
     }
-    assert.ok(i18n.includes('3D 空间原子模型 · 实物展台 · 语音跟读'), '概览的工具模块文案须同步 3D 能力');
-    assert.ok(i18n.includes('3D atom model · specimen dashboard · recite mode'), '英文概览同样须同步');
+    // 概览的能力清单必须跟着功能走：新增「错题集 + A4 打印」后，
+    // 这里既锁 3D 能力也不许它退化成纯名字枚举（用户 2026-10 明确要求补上错题集与打印）。
+    assert.ok(i18n.includes('3D 原子模型、实物照片、语音跟读'), '概览的工具模块文案须同步 3D 与语音能力');
+    assert.ok(i18n.includes('3D atom model, photos, spoken readings'), '英文概览同样须同步');
     // ⑥b 导语已移除：能力说明只在工具模块里讲一次，不得回潮成弹窗顶部的长段落
     assert.doesNotMatch(wd, /welcomeIntro/, '概览导语须已彻底移除（避免与四学科卡片重复）');
     assert.doesNotMatch(i18n, /welcomeIntro:/, 'i18n 不得再保留导语文案');
-    for (const kw of ['微观 3D 空间原子模型', '实物展台', '语音跟读']) {
+    for (const kw of ['3D 原子模型', '实物照片', '语音跟读']) {
       assert.ok(i18n.includes(kw), `工具模块须包含关键能力「${kw}」`);
     }
+    // ⑥c 错题集与打印是真实能力（错题自动入库 → 筛知识点 → A4 错题卷 → 打印 / 存 PDF）：
+    //    概览必须交代，否则用户不知道站里能打印。文案两处各一份，中英同步。
+    assert.equal((i18n.match(/welcomeQuiz:/g) ?? []).length, 2, 'welcomeQuiz 须 zh/en 各一份');
+    for (const kw of ['错题集', 'A4', '打印', 'PDF']) {
+      assert.ok(i18n.includes(kw), `概览须交代错题集与打印能力「${kw}」`);
+    }
+    assert.match(wd, /t\.welcomeQuiz/, '概览须渲染错题集与打印说明');
+    assert.match(wd, /\bPrinter\b[\s\S]{0,400}welcomeQuiz/, '该说明须配 Printer 图标（与文字同属一行）');
     // ⑦ 指引页结构锁定为「4 张卡片 + 1 条底部提示」；多出来的重复块一律不得回潮
     assert.match(wd, /import \{[^}]*\bLightbulb\b[^}]*\} from 'lucide-react'/, '提示须用 Lucide Lightbulb');
     assert.ok(!/💡/.test(wd) && !/💡/.test(i18n), '不得用 Emoji 充当图标（项目仅用 Lucide）');
@@ -736,6 +746,16 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
       const n = (i18n.match(new RegExp(`${k}:`, 'g')) ?? []).length;
       assert.equal(n, 2, `${k} 须 zh/en 各一份（实测 ${n}）`);
     }
+    /* ⑨b 表述必须与实现一致（用户 2026-10 指出「精选中考真题…随时召唤 AI 助教」失实）：
+       - 题目是 buildQuizPrompt 按**当前知识点即时生成**的，站内没有中考真题题库；
+       - AI 面板**不设自由对话输入框**，提问只能从页面入口发起，所以不存在「随时召唤」。
+       这两类说法一旦回潮，就是拿做不到的事招生。 */
+    for (const stale of ['真题', '中考', 'past paper', 'exam question', '随时召唤', 'whenever you are stuck']) {
+      assert.ok(!i18n.includes(stale), `文案不得把 AI 即时出题说成真题／把入口说成随时可唤：${stale}`);
+    }
+    assert.match(i18n, /由 AI 按当前知识点即时出题/, '第四条须写明题目由 AI 按知识点即时生成');
+    assert.match(i18n, /答错自动收进错题集/, '第四条须写明答错自动进错题集（真实行为，不是手动收藏）');
+    assert.match(i18n, /AI writes questions from the current topic on the spot/, '英文同样须写明即时出题');
 
     /* ⑩ AI 连通性状态机 + 顶栏角标（旧版四态守卫并入此处，不新增用例数）
        ─────────────────────────────────────────────────────────────────────

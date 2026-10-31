@@ -18,7 +18,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, MonitorSmartphone, Shapes, Sparkles, X } from 'lucide-react';
+import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, MonitorSmartphone, Printer, Shapes, Sparkles, X } from 'lucide-react';
 import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
@@ -202,11 +202,15 @@ export default function WelcomeDialog({
           <div className="mx-4 space-y-3">
           {tab === 'overview' ? (
           <>
-          {/* 多端适配 + AI 助手：合为一块柔和填充，去掉左侧硬引用竖线 */}
+          {/* 多端适配 + 错题集与打印 + AI 助手：合为一块柔和填充，去掉左侧硬引用竖线 */}
           <div className="rounded-xl bg-[var(--accent-light)]/50 p-3.5 space-y-2">
             <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
               <MonitorSmartphone className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>{t.welcomeDevices}</span>
+            </p>
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
+              <Printer className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{t.welcomeQuiz}</span>
             </p>
             <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
               <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
@@ -214,16 +218,21 @@ export default function WelcomeDialog({
             </p>
           </div>
 
-          {/* 四大板块：无边柔和填充 + 圆形图标底衬（手机单列 / ≥sm 双列）
+          {/* 四大板块：无边柔和填充 + 圆形图标底衬
+              栅格：窄屏单列 → ≥sm 三列（三张学科卡各占一列，工具卡横跨整行）。
+              早先是两列 + 工具卡跨两列，结果「化学」独占第二行左半、右边留白，
+              而工具卡又被挤到第三行；三列后学科卡同排、工具卡自成一行，没有空档。
               图标校准：四科同为 24 栅格矢量图标，统一 20px + stroke-width 2（见 smoke 守卫 ④e） */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
               { title: zh ? '数学' : 'Math', desc: t.welcomeMath, icon: <SubjectIcon subjectId="math" className="w-5 h-5" /> },
               { title: zh ? '物理' : 'Physics', desc: t.welcomePhysics, icon: <SubjectIcon subjectId="physics" className="w-5 h-5" /> },
               { title: zh ? '化学' : 'Chemistry', desc: t.welcomeChemistry, icon: <SubjectIcon subjectId="chemistry" className="w-5 h-5" /> },
               { title: zh ? '工具' : 'Tools', desc: t.welcomeTools, icon: <Calculator className="w-5 h-5" /> },
             ].map((s, i) => (
-              <div key={i} className="rounded-xl bg-[var(--accent-light)]/60 p-3">
+              /* 工具卡横跨三列：它列的是六个入口，比单张学科卡长得多；只跨两列会在
+                 第三列留空。窄屏单列时 col-span-3 无效，自然退回单列。 */
+              <div key={i} className={`rounded-xl bg-[var(--accent-light)]/60 p-3${i === 3 ? ' sm:col-span-3' : ''}`}>
                 {/* 徽标与标题同处一行 items-center → 两者中线严格对齐（此前徽标居中于整块，实测偏下 17~32px） */}
                 <div className="flex items-center gap-3">
                   <span
