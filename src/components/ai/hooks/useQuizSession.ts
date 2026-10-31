@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStable } from '../panels/panel-shared';
 import {
   CHAIN_MAX_TOKENS, QUIZ_SENTINEL, buildFillJudgePrompt, buildQuizPrompt, classifyChatFailure,
-  classifyStreamOutcome, estimateTokens, logPromptIssue, streamChat, stripThinkingFromHistory,
+  classifyStreamOutcome, estimateTokens, logPromptIssue, streamChat, streamChatWithRecovery, stripThinkingFromHistory,
   type AiConfig, type QuizAngle, type QuizQType,
 } from '../../../lib/ai-config';
 import { formatLabState, getLabState, labIdFromPath } from '../../../lib/ai-dynamic-questions';
@@ -181,7 +181,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const res = await streamChat(
+      const { result: res, recovered } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -199,6 +199,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
         undefined,
         'quiz',
       );
+      if (recovered) flashToast(true, lang === 'zh' ? '已自动降低思考并重试' : 'Retried with reduced thinking');
       const full = stripThinkingFromHistory(res.text);
       const outcome = classifyStreamOutcome(res);
       // 跨会话累计 token（出题请求 = prompt + 实际输出）

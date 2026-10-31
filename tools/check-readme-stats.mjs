@@ -32,21 +32,23 @@ try {
 }
 
 const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+// 首屏徽章已改为仓库自建 SVG（见 tools/gen-readme-badges.mjs），测试数从 SVG 里取。
+const testsSvg = readFileSync(join(ROOT, 'public', 'badges', 'tests.svg'), 'utf8');
 
 /** 每个数字都必须能取到：缺了就说明文案改了形状，守卫不能装作通过。 */
 const SLOTS = [
-  ['首屏徽章', /Tests-(\d+)%20passed/, (m) => m[1]],
-  ['三栏表', /(\d+) 项单测门禁/, (m) => m[1]],
-  ['口径注释', /(\d+) passed\s+←\s+npm test 实测/, (m) => m[1]],
-  ['中文正文', /\*\*(\d+) 项全绿\*\*/, (m) => m[1]],
-  ['English body', /\*\*(\d+) assertions, all green\*\*|\*\*(\d+) cases, all green\*\*/, (m) => m[1] ?? m[2]],
+  ['首屏徽章', /(\d+)\s+passed/, (m) => m[1], testsSvg],
+  ['三栏表', /(\d+) 项单测门禁/, (m) => m[1], readme],
+  ['口径注释', /(\d+) passed\s+←\s+npm test 实测/, (m) => m[1], readme],
+  ['中文正文', /\*\*(\d+) 项全绿\*\*/, (m) => m[1], readme],
+  ['English body', /\*\*(\d+) assertions, all green\*\*|\*\*(\d+) cases, all green\*\*/, (m) => m[1] ?? m[2], readme],
 ];
 
 const problems = [];
 const seen = new Map();
 
-for (const [label, re, pick] of SLOTS) {
-  const m = re.exec(readme);
+for (const [label, re, pick, src] of SLOTS) {
+  const m = re.exec(src ?? readme);
   if (!m) {
     problems.push(`${label}：取不到测试数（正则 ${re} 未命中）`);
     continue;

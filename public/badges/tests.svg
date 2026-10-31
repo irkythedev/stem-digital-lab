@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="121" height="20" role="img" aria-label="Tests: 740 passed">
+  <title>Tests: 740 passed</title>
+  <g shape-rendering="crispEdges">
+    <rect width="44" height="20" fill="#18181b"/>
+    <rect x="44" width="77" height="20" fill="#16a34a"/>
+  </g>
+  <g fill="#ffffff" text-anchor="middle" font-family="Verdana,Geneva,'DejaVu Sans',sans-serif" font-size="11">
+    <text x="22" y="14">Tests</text>
+    <text x="82.5" y="14">740 passed</text>
+  </g>
+</svg>

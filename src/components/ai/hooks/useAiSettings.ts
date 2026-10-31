@@ -15,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStable } from '../panels/panel-shared';
 import {
   AI_PROVIDERS, clearAiConfig, effectiveThinkingEffort, fetchModels, isTierLocked, keysByProviderOf,
-  loadAiConfig, normalizeBaseUrl, resolveThinkingDispatch, saveAiConfig, thinkingPlanFor,
+  loadAiConfig, MIN_OUTPUT_TOKENS, normalizeBaseUrl, resolveThinkingDispatch, saveAiConfig, thinkingPlanFor,
   type AiConfig, type AiProvider, type ThinkingEffort,
 } from '../../../lib/ai-config';
 import { reportAiFailure, reportAiSuccess } from '../../../lib/ai-status';
@@ -334,7 +334,15 @@ export default function useAiSettings(deps: AiSettingsDeps) {
     setKeyByProvider(nextKeys);
     // 输出上限：留空 = 不下发 max_tokens（思考型模型的思考也计入上限，填小了会挤出空白回答）
     const maxOutRaw = maxTokensText.trim();
-    const maxOutNum = /^\d+$/.test(maxOutRaw) ? Number(maxOutRaw) : 0;
+    const maxOutParsed = /^\d+$/.test(maxOutRaw) ? Number(maxOutRaw) : 0;
+    const maxOutTooSmall = maxOutParsed > 0 && maxOutParsed < MIN_OUTPUT_TOKENS;
+    const maxOutNum = maxOutTooSmall ? MIN_OUTPUT_TOKENS : maxOutParsed;
+    if (maxOutTooSmall) {
+      setMaxTokensText(String(MIN_OUTPUT_TOKENS));
+      flashToast(false, lang === 'zh'
+        ? `输出上限过小（不足 ${MIN_OUTPUT_TOKENS}），已按 ${MIN_OUTPUT_TOKENS} 处理：思考会占用该预算，设得太小会导致正文为空`
+        : `Output limit too small (below ${MIN_OUTPUT_TOKENS}); raised to ${MIN_OUTPUT_TOKENS} — thinking counts against it and a tiny cap leaves no answer.`);
+    }
     const cfg: AiConfig = { providerId, apiKey: trimmedKey, baseUrl, model, agreed: true, thinkingEffort, keyByProvider: nextKeys, extraParamsText: providerId === 'custom' ? extraParamsText.trim() : undefined, maxOutputTokens: maxOutNum > 0 ? maxOutNum : undefined };
     saveAiConfig(cfg);
     setConfigured(true);

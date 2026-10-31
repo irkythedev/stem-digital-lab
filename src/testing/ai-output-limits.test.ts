@@ -39,10 +39,10 @@ export function registerAiOutputLimitsTests(test: TestFn, testAsync: TestFn): vo
     assert.equal(resolveMaxTokens({ maxOutputTokens: 3000.7 }, undefined), 3000, '上限必须是整数');
   });
 
-  test('链路默认：对话与出题不下发上限，归纳/判分留足思考余量', () => {
+  test('链路默认：对话/出题/归纳不下发上限，判分留足思考余量', () => {
     assert.equal(CHAIN_MAX_TOKENS.chat, undefined, '对话封顶正是「有思考、无正文」的成因');
     assert.equal(CHAIN_MAX_TOKENS.quiz, undefined, '出题完整性交给 ===END=== 校验 + 一次修复');
-    assert.ok((CHAIN_MAX_TOKENS.summary ?? 0) >= 2048, '归纳上限不得低于 2048');
+    assert.equal(CHAIN_MAX_TOKENS.summary, undefined, '归纳同样不封顶，避免思考吃满上限导致正文为空');
     assert.ok((CHAIN_MAX_TOKENS.judge ?? 0) >= 1024, '判分上限不得低于 1024（旧的 20 连思考的零头都不够）');
   });
 

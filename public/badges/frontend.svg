@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="161" height="20" role="img" aria-label="Frontend: React 19 + TS">
+  <title>Frontend: React 19 + TS</title>
+  <g shape-rendering="crispEdges">
+    <rect width="64" height="20" fill="#18181b"/>
+    <rect x="64" width="97" height="20" fill="#3178C6"/>
+  </g>
+  <g fill="#ffffff" text-anchor="middle" font-family="Verdana,Geneva,'DejaVu Sans',sans-serif" font-size="11">
+    <text x="32" y="14">Frontend</text>
+    <text x="112.5" y="14">React 19 + TS</text>
+  </g>
+</svg>

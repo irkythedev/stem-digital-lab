@@ -45,7 +45,7 @@ import useQuizSession from './hooks/useQuizSession';
 import { pageSubject } from './page-subject';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import ProviderIcon from '../ui/ProviderIcon';
-import { buildSystemPrompt, countCjk, estimateTokens, streamChat, classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, stripThinkingFromHistory, type ChatFailure, type ThinkingTask } from '../../lib/ai-config';
+import { buildSystemPrompt, countCjk, estimateTokens, streamChat, streamChatWithRecovery, classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, stripThinkingFromHistory, sanitizeTagPayload, type ChatFailure, type ThinkingTask } from '../../lib/ai-config';
 
 /** 面板内的失败态：分类结果 + 本轮累计失败次数（≥3 时追加「检查网络」提示） */
 type FailureState = ChatFailure & { attempts: number };
@@ -637,7 +637,7 @@ export default function AiAssistant() {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const res = await streamChat(
+      const { result: res } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -1322,7 +1322,7 @@ export default function AiAssistant() {
     if (!pinned) {
       messages.push({
         role: 'user',
-        content: lang === 'zh' ? `<学生提问>${q}</学生提问>` : `<student_question>${q}</student_question>`,
+        content: lang === 'zh' ? `<学生提问>${sanitizeTagPayload(q)}</学生提问>` : `<student_question>${sanitizeTagPayload(q)}</student_question>`,
       });
     }
     attemptRef.current = { q, followUp, messages: messages.map((m) => ({ ...m })) };
@@ -1340,7 +1340,7 @@ export default function AiAssistant() {
     let reasoningSecLocal = 0;
     let reasoningStarted = false; // 呼吸灯只需置位一次：每个思考增量都 setState 是纯浪费
     try {
-      const res = await streamChat(
+      const { result: res, recovered } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -1380,6 +1380,8 @@ export default function AiAssistant() {
         },
         task,
       );
+      // 空正文自动恢复成功：思考曾吃满上限，已自动降思考重试；给一句轻提示，不打断阅读
+      if (recovered) flashToast(true, lang === 'zh' ? '已自动降低思考并重试' : 'Retried with reduced thinking');
       const full = res.text;
       // 收尾判定与面板共用同一口径：empty=正文一个字都没有（当失败重试）；
       // limit/cut=正文有但没写完（留下并标注，给「继续生成」）；ok=正常收完

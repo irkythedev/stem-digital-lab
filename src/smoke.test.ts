@@ -1212,12 +1212,15 @@ describe('README（工业风纪律与硬指标）', () => {
       hero.includes(`${regular} 个交互实验 + ${tools} 个工具`),
       `首屏须写明注册表真值「${regular} 个交互实验 + ${tools} 个工具」`,
     );
-    // 徽章视觉：统一深炭灰 labelColor，禁用高饱和撞色
-    const badges = hero.match(/https:\/\/img\.shields\.io\/[^\s")]+/g) || [];
+    // 徽章为仓库自建 SVG（shields.io 在部分网络不可达），不依赖任何第三方服务
+    const badges = hero.match(/public\/badges\/[a-z-]+\.svg/g) || [];
     assert.ok(badges.length >= 5, `首屏徽章数偏少：${badges.length}`);
-    for (const b of badges) {
-      assert.ok(b.includes('labelColor=18181b'), `徽章须统一深炭灰底 labelColor=18181b：${b.slice(0, 60)}…`);
-      assert.ok(!/color=(f|e|d)[0-9a-f]{5}/i.test(b), `徽章值色不得用高饱和亮色：${b.slice(0, 60)}…`);
+    assert.ok(!hero.includes('img.shields.io'), '首屏徽章不得再依赖 shields.io（部分网络不可达）');
+    for (const f of ['license', 'version', 'core', 'frontend', 'tests']) {
+      assert.ok(
+        readFileSync(`public/badges/${f}.svg`, 'utf8').includes('<svg'),
+        `缺少自托管徽章文件 public/badges/${f}.svg`,
+      );
     }
   });
 
@@ -1245,7 +1248,8 @@ describe('README（工业风纪律与硬指标）', () => {
     // 本守卫只能保证「五处彼此一致」——它们可以一起错。真正的「与实测一致」由
     // tools/check-readme-stats.mjs 在整条测试链跑完后比对（那里才有全量统计），
     // 所以这里改完数字后仍必须跑完整 npm test，不能只看本守卫是否为绿。
-    const badge = /Tests-(\d+)%20passed/.exec(hero)?.[1];
+    const testsSvg = readFileSync('public/badges/tests.svg', 'utf8');
+    const badge = />(\d+)\s+passed</.exec(testsSvg)?.[1];
     const table = /(\d+) 项单测门禁/.exec(readme)?.[1];
     const note = /(\d+) passed\s+←\s+npm test 实测/.exec(readme)?.[1];
     const zh = /\*\*(\d+) 项全绿\*\*/.exec(readme)?.[1];
@@ -1347,7 +1351,8 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     );
     // README 首屏的版本徽章没有第二个守卫，改版本时最容易漏掉它，在这里一起核。
     const readme = readFileSync('README.md', 'utf8');
-    const badge = /badge\/Version-v(\d+\.\d+\.\d+)-/.exec(readme)?.[1];
+    const versionSvg = readFileSync('public/badges/version.svg', 'utf8');
+    const badge = />v(\d+\.\d+\.\d+)</.exec(versionSvg)?.[1];
     const alt = /alt="Version v(\d+\.\d+\.\d+)"/.exec(readme)?.[1];
     assert.equal(badge, APP_VERSION, `README 版本徽章（${badge}）与 APP_VERSION（${APP_VERSION}）不一致`);
     assert.equal(alt, APP_VERSION, `README 版本徽章 alt（${alt}）与 APP_VERSION（${APP_VERSION}）不一致`);
