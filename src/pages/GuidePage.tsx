@@ -199,7 +199,7 @@ export default function GuidePage() {
           poster="/videos/stem-intro-poster.webp"
           className="h-full w-full object-cover"
         >
-          <source src="/videos/stem-intro.mp4?v=62b8afe7" type="video/mp4" />
+          <source src="/videos/stem-intro.mp4?v=deb04573" type="video/mp4" />
         </video>
         </div>
         <figcaption className="px-1 pt-2 text-xs leading-relaxed text-[var(--muted)]">

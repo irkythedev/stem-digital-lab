@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.46.2';
+export const APP_VERSION = '0.46.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.46.3',
+    date: '2026-10',
+    zh: [
+      '[优化] 介绍视频更新：新增化学式与化合价等功能演示，画面与最新版界面同步',
+      '[优化] 常规维护与体验微调',
+    ],
+    en: [
+      '[Improved] Intro video refreshed: adds the chemistry formulas and valence demo, with visuals synced to the latest interface',
+      '[Improved] Routine maintenance and experience tweaks',
+    ],
+  },
   {
     version: '0.46.2',
     date: '2026-10',
