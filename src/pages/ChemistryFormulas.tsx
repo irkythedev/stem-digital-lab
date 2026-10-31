@@ -17,10 +17,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
+  ArrowUpRight,
   Check,
   FlaskConical,
   RotateCcw,
   Search,
+  Square,
   Volume2,
   X,
 } from 'lucide-react';
@@ -29,7 +31,9 @@ import BenchSelect from '../components/ui/BenchSelect';
 import ShareInline from '../components/share/ShareInline';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
-import ChemFormula, { ValenceBadge } from '../components/chemistry/ChemFormula';
+import ChemFormula, { FormulaText, ValenceBadge } from '../components/chemistry/ChemFormula';
+import ElementDetailSheet, { useElementDetailState } from '../components/elements/ElementDetailSheet';
+import { elementBySymbol } from '../lib/elements';
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
@@ -51,6 +55,8 @@ import {
   atomCounts,
   formatMass,
   formatValence,
+  normalizeFormulaCase,
+  AMBIGUOUS_PAIRS,
   type ChemMode,
   type IonRef,
   type PracticeQuestion,
@@ -70,6 +76,7 @@ import {
   type CompoundKind,
 } from '../lib/chemistry/valency';
 import { nameCompound } from '../lib/chemistry/formula-name';
+import { intToChinese, valenceToSpeech, expressionToSpeech, sanitizeMrSpoken } from '../lib/chem-speech';
 
 const MODE_LABEL: Record<ChemMode, Bi> = {
   reference: { zh: '速查', en: 'Reference' },
@@ -158,14 +165,46 @@ export default function ChemistryFormulas() {
   const [cation, setCation] = useState<IonRef | null>(initialState.cation);
   const [anion, setAnion] = useState<IonRef | null>(initialState.anion);
   const [query, setQuery] = useState('');
-  const [solverFormula, setSolverFormula] = useState('Fe2O3');
+  const [solverFormula, setSolverFormula] = useState(initial.formula ?? 'Fe2O3');
   const [solverTarget, setSolverTarget] = useState('Fe');
+  // 大小写歧义备选（如 co 默认 CO，可一键切换为金属钴 Co）。
+  const [caseAlt, setCaseAlt] = useState<string | null>(null);
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  // 原地元素详情抽屉：点击化学式里的元素时设置，避免整页跳走丢失反推上下文。
+  const [activeDetailElement, setActiveDetailElement] = useState<string | null>(null);
 
   const { setAiCtx } = useAiContext();
   const { state: speakState, speak, stop: stopSpeak } = useSpeak();
   const speaking = speakState === 'synthesizing' || speakState === 'playing';
+
+  // 原地元素详情抽屉：与周期表共用同一份详情组件 + 同一套状态接线（useElementDetailState）。
+  const detailElement = activeDetailElement ? elementBySymbol.get(activeDetailElement) ?? null : null;
+  const detailState = useElementDetailState(detailElement, lang);
+
+  // 规范中文名（多价态金属按「亚」处理，如 FeCl₂ 氯化亚铁 / FeCl₃ 氯化铁）。
+  const solverCompound = nameCompound(solverFormula);
+
+  /**
+   * 化学式大小写智能规范化：只在失焦 / 回车 / 解析时触发，不在 onChange 实时强转，
+   * 避免打字时跳光标。歧义输入（co/no/cs/hf）额外给出可切换的元素备选。
+   */
+  const applyFormulaCaseNormalization = () => {
+    const src = solverFormula.trim();
+    if (!src) {
+      setCaseAlt(null);
+      return;
+    }
+    const norm = normalizeFormulaCase(src);
+    if (norm && norm !== solverFormula) setSolverFormula(norm);
+    const lower = src.toLowerCase();
+    if (AMBIGUOUS_PAIRS.has(lower)) {
+      const alt = normalizeFormulaCase(src, 'element');
+      setCaseAlt(alt && alt !== norm ? alt : null);
+    } else {
+      setCaseAlt(null);
+    }
+  };
 
   // URL 同步：刷新恢复、可分享、可被周期表深链打开。
   useEffect(() => {
@@ -262,7 +301,7 @@ export default function ChemistryFormulas() {
 
   const speakText = (text: string) => {
     if (speaking) stopSpeak();
-    else speak(text, undefined, lang);
+    else speak(sanitizeMrSpoken(text), undefined, lang);
   };
 
   const answerQuestion = (q: PracticeQuestion, idx: number) => {
@@ -515,6 +554,7 @@ export default function ChemistryFormulas() {
                         charge={ion.charge}
                         size="sm"
                         ariaLabel={`${pick(ion.name, lang)} ${ion.charge > 0 ? '正' : '负'} ${Math.abs(ion.charge)} 价`}
+                        lang={lang}
                         className="text-[var(--fg)]"
                       />
                       <span className="text-xs serif-font text-[var(--fg)]">{pick(ion.name, lang)}</span>
@@ -557,9 +597,9 @@ export default function ChemistryFormulas() {
                   className="border border-[var(--border)] px-2 py-1.5 text-left hover:border-[var(--fg)] transition-colors"
                 >
                   <span className="flex items-baseline justify-between gap-1.5">
-                    <ChemFormula formula={c.formula} size="sm" className="text-[var(--fg)]" />
+                    <ChemFormula formula={c.formula} size="sm" lang={lang} className="text-[var(--fg)]" />
                     <span className="shrink-0 text-[0.625rem] mono-font text-[var(--muted)]">
-                      Mr {formatMass(molarMass(c.formula) ?? 0)}
+                      <i>M</i><sub>r</sub> {formatMass(molarMass(c.formula) ?? 0)}
                     </span>
                   </span>
                   <span className="mt-0.5 block text-[0.6875rem] sm:text-xs serif-font leading-snug text-[var(--fg)]">
@@ -644,20 +684,21 @@ export default function ChemistryFormulas() {
             <div className="border border-[var(--border)] p-4 space-y-4">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div className="flex items-baseline gap-3">
-                  <ChemFormula formula={builderResult.formula} size="xl" ariaLabel={builderResult.formula} className="text-[var(--fg)]" />
+                  <ChemFormula formula={builderResult.formula} size="xl" ariaLabel={builderResult.formula} lang={lang} className="text-[var(--fg)]" />
                   {builderName && !('error' in builderName) && (
                     <span className="text-base serif-font text-[var(--fg)]">{pick(builderName, lang)}</span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs mono-font text-[var(--muted)]">
                   <span>
-                    {zh ? '相对分子质量' : 'Mr'} {formatMass(molarMass(builderResult.formula) ?? 0)}
+                    {zh ? '相对分子质量 ' : ''}<i>M</i><sub>r</sub> = {formatMass(molarMass(builderResult.formula) ?? 0)}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
                       const name = builderName && !('error' in builderName) ? pick(builderName, lang) : '';
-                      speakText(`${name}，化学式 ${builderResult.formula}`);
+                      const mr = Math.round(molarMass(builderResult.formula) ?? 0);
+                      speakText(`${name || builderResult.formula}，相对分子质量为${intToChinese(mr)}`);
                     }}
                     className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
                   >
@@ -673,7 +714,9 @@ export default function ChemistryFormulas() {
                     <div className="text-[0.625rem] mono-font text-[var(--muted)] tracking-wider mb-1">
                       {pick(step.title, lang)}
                     </div>
-                    <p className="text-xs serif-font leading-relaxed text-[var(--fg)]">{pick(step.detail, lang)}</p>
+                    <p className="text-xs serif-font leading-relaxed text-[var(--fg)]">
+                      <FormulaText text={pick(step.detail, lang)} lang={lang} />
+                    </p>
                   </li>
                 ))}
               </ol>
@@ -735,17 +778,55 @@ export default function ChemistryFormulas() {
                 <span className="block text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
                   {zh ? '化学式' : 'Formula'}
                 </span>
-                <input
-                  type="text"
-                  value={solverFormula}
-                  onChange={(e) => {
-                    setSolverFormula(e.target.value);
-                    setSolverTarget('');
-                  }}
-                  aria-label={zh ? '输入化学式' : 'Enter a formula'}
-                  style={{ outline: 'none' }}
-                  className="min-h-10 w-full border border-[var(--border-strong)] rounded-lg bg-transparent px-3 py-2 text-sm mono-font text-[var(--fg)] focus:border-[var(--accent)]"
-                />
+                <div className="relative w-full">
+                  {/* 底层排版层：与 input 逐像素对齐，展示规范下标化学式；不接收指针事件。 */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap px-3 text-sm mono-font text-[var(--fg)]"
+                  >
+                    {solverFormula ? (
+                      <ChemFormula formula={solverFormula} size="sm" lang={lang} />
+                    ) : (
+                      <span className="text-[var(--muted)]">{zh ? '输入化学式，如 Fe2O3' : 'Enter a formula, e.g. Fe2O3'}</span>
+                    )}
+                  </div>
+                  {/* 顶层真实输入框：文字透明、光标可见；value 始终是 ASCII，复制仍为标准字符串。 */}
+                  <input
+                    type="text"
+                    value={solverFormula}
+                    onChange={(e) => {
+                      setSolverFormula(e.target.value);
+                      setSolverTarget('');
+                      setCaseAlt(null);
+                    }}
+                    onBlur={applyFormulaCaseNormalization}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyFormulaCaseNormalization();
+                      }
+                    }}
+                    aria-label={zh ? '输入化学式' : 'Enter a formula'}
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    style={{ outline: 'none' }}
+                    className="relative z-10 min-h-10 w-full rounded-lg border border-[var(--border-strong)] bg-transparent px-3 py-2 text-sm mono-font text-transparent caret-[var(--fg)] selection:bg-[var(--accent-light)] selection:text-transparent focus:border-[var(--accent)]"
+                  />
+                </div>
+                {caseAlt && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSolverFormula(caseAlt);
+                      setCaseAlt(null);
+                    }}
+                    className="mt-1 inline-flex items-center gap-1 rounded border border-[var(--border)] px-2 py-0.5 text-[0.6875rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                  >
+                    {zh ? `切换为 ${caseAlt}` : `Switch to ${caseAlt}`}
+                  </button>
+                )}
               </label>
               <div className="sm:w-40">
                 <span className="block text-[0.6875rem] mono-font text-[var(--muted)] mb-1">
@@ -772,9 +853,9 @@ export default function ChemistryFormulas() {
                     setSolverFormula(f);
                     setSolverTarget('');
                   }}
-                  className="compact tap32 leading-5 px-3 py-[0.1875rem] text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
+                  className="compact tap32 leading-5 px-3 py-[0.1875rem] text-xs border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-colors"
                 >
-                  {f}
+                  <ChemFormula formula={f} size="sm" lang={lang} />
                 </button>
               ))}
             </div>
@@ -789,11 +870,58 @@ export default function ChemistryFormulas() {
           {solverResult && !isFormulaError(solverResult) && (
             <div className="border border-[var(--border)] p-4 space-y-3">
               <div className="flex flex-wrap items-baseline gap-3">
-                <ChemFormula formula={solverFormula} size="lg" className="text-[var(--fg)]" />
+                <ChemFormula
+                  formula={solverFormula}
+                  size="lg"
+                  className="text-[var(--fg)]"
+                  targetSymbol={effectiveTarget}
+                  onElementClick={(sym) => setActiveDetailElement(sym)}
+                  lang={lang}
+                />
+                {'error' in solverCompound ? null : (
+                  <span className="text-base font-medium text-[var(--fg)]">{solverCompound.zh}</span>
+                )}
                 <span className="text-xs mono-font text-[var(--muted)]">
-                  Mr {formatMass(molarMass(solverFormula) ?? 0)}
+                  <i>M</i><sub>r</sub> = {formatMass(molarMass(solverFormula) ?? 0)}
                 </span>
               </div>
+
+              {/* 可展开的计算详情：Mr 逐项乘积式 + 目标元素质量分数（学术排版 Mᵣ / ω） */}
+              {!isFormulaError(solverParsed) && (() => {
+                const entries = [...atomCounts(solverParsed)];
+                const total = molarMass(solverFormula) ?? 0;
+                const mrTerms = entries.map(([s, n]) => `${TEXTBOOK_MASSES[s] ?? '—'} × ${n}`).join(' + ');
+                const targetCount = atomCounts(solverParsed).get(effectiveTarget) ?? 0;
+                const targetMass = (TEXTBOOK_MASSES[effectiveTarget] ?? 0) * targetCount;
+                const omega = total > 0 && targetCount > 0 ? ((targetMass / total) * 100).toFixed(1) : null;
+                return (
+                  <details className="text-[0.6875rem] mono-font text-[var(--muted)]">
+                    <summary className="cursor-pointer select-none">
+                      {zh ? '计算详情' : 'Calculation details'}
+                    </summary>
+                    <div className="mt-1 space-y-0.5 pl-1">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span><i>M</i><sub>r</sub>(</span>
+                        <ChemFormula formula={solverFormula} size="sm" lang={lang} />
+                        <span>) = {mrTerms} = {formatMass(total)}</span>
+                      </div>
+                      {omega && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span>ω({effectiveTarget}) =</span>
+                          {/* 正规竖式分数（CSS 排版），不使用代码斜杠 */}
+                          <span className="mx-0.5 inline-flex flex-col items-center leading-none align-middle">
+                            <span className="border-b border-[var(--fg)] px-1 pb-0.5">
+                              {TEXTBOOK_MASSES[effectiveTarget] ?? 0} × {targetCount}
+                            </span>
+                            <span className="px-1 pt-0.5">{formatMass(total)}</span>
+                          </span>
+                          <span>× 100% = {omega}%</span>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                );
+              })()}
 
               {!isFormulaError(solverParsed) && (
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] mono-font text-[var(--muted)]">
@@ -813,11 +941,13 @@ export default function ChemistryFormulas() {
                   {solverResult.answers.map((a, i) => (
                     <li key={i} className="border border-[var(--border)] p-2.5">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <span className="text-xs serif-font text-[var(--fg)]">{pick(a.scope, lang)}</span>
+                        <span className="text-xs serif-font text-[var(--fg)]">
+                          <FormulaText text={pick(a.scope, lang)} targetSymbol={effectiveTarget} lang={lang} />
+                        </span>
                         <ValenceBadge valence={a.valence} />
                       </div>
                       <p className="mt-1 text-xs serif-font leading-relaxed text-[var(--muted)]">
-                        {pick(a.derivation, lang)}
+                        <FormulaText text={pick(a.derivation, lang)} targetSymbol={effectiveTarget} lang={lang} />
                       </p>
                     </li>
                   ))}
@@ -838,16 +968,29 @@ export default function ChemistryFormulas() {
                 <button
                   type="button"
                   onClick={() => {
-                    const answerText =
-                      solverResult.answers
-                        .map((a) => `${pick(a.scope, lang)} ${formatValence(a.valence)}`)
-                        .join('，') || pick(solverResult.note ?? { zh: '无单一化合价', en: 'No single valence' }, lang);
-                    speakText(`${solverFormula}，${answerText}`);
+                    const nameZh = 'error' in solverCompound ? solverFormula : solverCompound.zh;
+                    const targetZh = elementBySymbol.get(effectiveTarget)?.zh ?? effectiveTarget;
+                    const mr = Math.round(molarMass(solverFormula) ?? 0);
+                    const parts = [`${nameZh}，相对分子质量为${intToChinese(mr)}`];
+                    const first = solverResult.answers[0];
+                    if (first) {
+                      const eq = first.derivation.zh.split('，')[0]?.trim() ?? '';
+                      if (/^[0-9]+x/i.test(eq)) parts.push(expressionToSpeech(eq));
+                      const vals = solverResult.answers.map((a) => `${targetZh}的化合价为${valenceToSpeech(a.valence)}`);
+                      parts.push(`故${vals.join('；')}`);
+                    } else {
+                      parts.push(pick(solverResult.note ?? { zh: '无单一化合价', en: 'No single valence' }, lang));
+                    }
+                    speakText(parts.join('，') + '。');
                   }}
                   className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 text-xs mono-font border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
                 >
-                  <SpeakIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                  {speaking ? (zh ? '停止' : 'Stop') : zh ? '朗读' : 'Speak'}
+                  {speaking ? (
+                    <Square className="w-3.5 h-3.5" aria-hidden="true" />
+                  ) : (
+                    <SpeakIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                  )}
+                  {speaking ? (zh ? '播放中 · 停止' : 'Playing · Stop') : zh ? '朗读' : 'Speak'}
                 </button>
                 <AskAiButton
                   question={
@@ -895,7 +1038,9 @@ export default function ChemistryFormulas() {
           </div>
 
           <div className="border border-[var(--border)] p-4 space-y-3">
-            <p className="text-base serif-font leading-relaxed text-[var(--fg)]">{pick(question.prompt, lang)}</p>
+            <p className="text-base serif-font leading-relaxed text-[var(--fg)]">
+              <FormulaText text={pick(question.prompt, lang)} lang={lang} />
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
               {question.options.map((option, idx) => {
                 const picked = answers[question.id];
@@ -917,7 +1062,11 @@ export default function ChemistryFormulas() {
                   >
                     <span className="inline-flex items-center gap-2">
                       <span className="mono-font text-xs text-[var(--muted)]">{String.fromCharCode(65 + idx)}</span>
-                      {option}
+                      {question.kind === 'formula' ? (
+                        <ChemFormula formula={option} size="sm" lang={lang} />
+                      ) : (
+                        <FormulaText text={option} lang={lang} />
+                      )}
                     </span>
                   </button>
                 );
@@ -940,13 +1089,13 @@ export default function ChemistryFormulas() {
                       : zh
                         ? '再看一步：'
                         : 'One more step: '}
-                    {pick(question.explanation, lang)}
+                    <FormulaText text={pick(question.explanation, lang)} lang={lang} />
                   </span>
                 </div>
                 {answers[question.id] !== question.answer && question.diagnosis[answers[question.id]] && (
                   <p className="text-xs serif-font leading-relaxed text-[var(--error)] border-l-2 border-[var(--error)] pl-3">
                     {zh ? '错因：' : 'Diagnosis: '}
-                    {pick(question.diagnosis[answers[question.id]], lang)}
+                    <FormulaText text={pick(question.diagnosis[answers[question.id]], lang)} lang={lang} />
                   </p>
                 )}
               </div>
@@ -997,6 +1146,27 @@ export default function ChemistryFormulas() {
             : 'Principles, key facts, a reproducible data table, common misconceptions and FAQs.'}
         </p>
       </div>
+
+      {detailElement && (
+        <ElementDetailSheet
+          selected={detailElement}
+          lang={lang}
+          onClose={() => setActiveDetailElement(null)}
+          onNavigate={(el) => setActiveDetailElement(el.symbol)}
+          speak={(el) => speak(el.zh)}
+          speakState={speakState === 'playing' ? 'playing' : speakState === 'synthesizing' ? 'loading' : 'idle'}
+          {...detailState}
+          actionSlot={
+            <Link
+              to={`/periodic-table?element=${detailElement.symbol}`}
+              className="inline-flex items-center gap-1 text-xs mono-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
+            >
+              {lang === 'zh' ? '在完整元素周期表中查看' : 'View in full periodic table'}
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
+          }
+        />
+      )}
     </main>
   );
 }
@@ -1048,7 +1218,7 @@ function SpeciesPicker({
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
               }`}
             >
-              <ChemFormula formula={o.formula} size="sm" ariaLabel={o.name[lang]} />
+              <ChemFormula formula={o.formula} size="sm" ariaLabel={o.name[lang]} lang={lang} />
             </button>
           );
         })}

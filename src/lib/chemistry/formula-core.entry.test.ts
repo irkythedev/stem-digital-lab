@@ -27,6 +27,7 @@ import {
   massFraction,
   molarMass,
   normalizeFormula,
+  normalizeFormulaCase,
   parseChemistryQuery,
   parseFormula,
   parsePeriodicElementQuery,
@@ -323,6 +324,27 @@ describe('化学式与化合价内核（formula-core）', () => {
     assert.equal(wrapped.length, 14);
     assert.equal(wrapped[12].id, `${PRACTICE_QUESTIONS[0].id}-1`);
     assert.equal(wrapped[13].id, `${PRACTICE_QUESTIONS[1].id}-1`);
+  });
+});
+
+describe('化学式大小写智能规范化（normalizeFormulaCase）', () => {
+  test('全小写 / 不规则大小写 → 教材规范大写', () => {
+    assert.equal(normalizeFormulaCase('fe2o3'), 'Fe2O3');
+    assert.equal(normalizeFormulaCase('cu(oh)2'), 'Cu(OH)2');
+    assert.equal(normalizeFormulaCase('kmno4'), 'KMnO4');
+    assert.equal(normalizeFormulaCase('h2so4'), 'H2SO4');
+    assert.equal(normalizeFormulaCase('nh4no3'), 'NH4NO3');
+    assert.equal(normalizeFormulaCase('co2'), 'CO2');
+  });
+  test('歧义消解：co 默认 CO、元素备选 Co；hf 默认 HF、备选 Hf；cs 归元素 Cs', () => {
+    assert.equal(normalizeFormulaCase('co'), 'CO', 'co 默认判为常见化合物 CO');
+    assert.equal(normalizeFormulaCase('co', 'element'), 'Co', 'co 元素备选为金属钴 Co');
+    assert.equal(normalizeFormulaCase('hf'), 'HF', 'hf 默认判为氟化氢 HF');
+    assert.equal(normalizeFormulaCase('hf', 'element'), 'Hf', 'hf 元素备选为铪 Hf');
+    assert.equal(normalizeFormulaCase('cs'), 'Cs', 'cs 无常见化合物，归元素铯 Cs');
+    // 已知式优先：带下标时不做歧义切换
+    assert.equal(normalizeFormulaCase('co2'), 'CO2');
+    assert.equal(normalizeFormulaCase('no3'), 'NO3');
   });
 });
 

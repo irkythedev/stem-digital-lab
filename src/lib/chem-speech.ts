@@ -217,3 +217,62 @@ export function chemPrePass(tex: string): string {
 
   return s;
 }
+
+/* ───────────────────────── 口语化数字 / 化合价 / 算式（初中口径） ───────────────────────── */
+
+const CN_DIGITS = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+const CN_UNITS = ['', '十', '百', '千'];
+
+/** 0–9999 整数 → 中文读法：160 → 一百六十、80 → 八十、232 → 二百三十二。 */
+export function intToChinese(n: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (n === 0) return '零';
+  if (n < 0) return `负${intToChinese(-n)}`;
+  if (n > 9999) return String(n);
+  const digits = String(n);
+  let out = '';
+  for (let i = 0; i < digits.length; i++) {
+    const d = Number(digits[i]);
+    const pos = digits.length - 1 - i;
+    if (d === 0) {
+      if (out && !out.endsWith('零') && i < digits.length - 1) out += '零';
+    } else {
+      out += CN_DIGITS[d] + CN_UNITS[pos];
+    }
+  }
+  out = out.replace(/零+$/, '').replace(/^一十/, '十');
+  return out;
+}
+
+/** 化合价 → 口语：+3 → 正三价，−2 → 负二价（数值 1 保留「一」）。 */
+export function valenceToSpeech(v: number): string {
+  return `${v >= 0 ? '正' : '负'}${intToChinese(Math.abs(v))}价`;
+}
+
+/** 代数运算式 → 口语：2x + 3 × (−2) = 0 → 2x 加上 3 乘以 负2 等于 0。 */
+export function expressionToSpeech(expr: string): string {
+  return expr
+    .replace(/（/g, '(')
+    .replace(/）/g, ')')
+    // 先处理括号内的带符号数：(−2) → 负2、(＋3) → 正3，避免负号被当「减」
+    .replace(/\(([+＋−-]?)(\d+)\)/g, (_m, sign: string, num: string) => `${sign ? (sign === '+' || sign === '＋' ? '正' : '负') : ''}${num}`)
+    .replace(/\s*×\s*/g, ' 乘以 ')
+    .replace(/\s*\+\s*/g, ' 加上 ')
+    .replace(/\s*[−-]\s*/g, ' 减 ')
+    .replace(/\s*=\s*/g, ' 等于 ')
+    .replace(/[()]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * 朗读前兜底：把 Mr / M_r / Mᵣ / `<i>M</i><sub>r</sub>` 一律拦成「相对分子质量」，
+ * 避免语音引擎念成「Mister / M-R」；同时抹掉裸露的左右括号记号。
+ */
+export function sanitizeMrSpoken(text: string): string {
+  return text
+    .replace(/<i>\s*M\s*<\/i>\s*<sub>\s*r\s*<\/sub>/gi, '相对分子质量')
+    .replace(/M\s*[_ᵣ]\s*r?/g, '相对分子质量')
+    .replace(/\bM\s*r\b/g, '相对分子质量')
+    .replace(/[()]/g, '');
+}

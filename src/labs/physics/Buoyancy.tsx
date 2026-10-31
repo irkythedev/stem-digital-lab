@@ -400,7 +400,7 @@ export default function Buoyancy() {
                     <>
                       <line x1="16" y1="0" x2="16" y2={-Math.min(22, Fb * 18)} stroke="var(--accent)" strokeWidth="1.5" />
                       <polygon points={`13,${-Math.min(22, Fb * 18)} 19,${-Math.min(22, Fb * 18)} 16,${-Math.min(22, Fb * 18) - 6}`} fill="var(--accent)" />
-                      <text x="22" y="-5" fontSize="9" fill="var(--accent)" fontFamily="var(--f-mono)">F浮={Fb.toFixed(1)}N</text>
+                      <text x="22" y="-5" fontSize="9" fill="var(--accent)" fontFamily="var(--f-mono)">{lang === 'zh' ? 'F浮' : 'F_b'}={Fb.toFixed(1)}N</text>
                     </>
                   )}
                 </g>

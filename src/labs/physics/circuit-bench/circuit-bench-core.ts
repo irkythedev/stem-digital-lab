@@ -220,6 +220,29 @@ export function finite(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/**
+ * 外电路等效电阻 R_ext = U_terminal / I_total（供 AI 实时上下文使用）。
+ *
+ * 为什么不能直接用某个元件的 `reading.resistance`：电池是理想电压源 + 内阻模型，
+ * `resistanceOf('battery')` 恒为 Infinity（见 circuit-bench-models），旧代码用
+ * `Number.isFinite(batteryReading?.resistance) ? … : 0` 兜底，于是永远上报「外电阻 0Ω」这一错误物理量。
+ *
+ * 口径：端电压 U = emf − I·r_int（I 取电池放电电流，正为放电），
+ * - I_total ≤ 1e-6（回路断开 / 无电流）→ Infinity；
+ * - 端电压 ≤ 0（电源被短路）→ 0；
+ * - 其余 → U_terminal / I_total。
+ */
+export function externalEquivalentResistance(emf: number, internalR: number, current: number): number {
+  const ef = Number.isFinite(emf) ? emf : 0;
+  const rInt = Number.isFinite(internalR) ? Math.max(0, internalR) : 0;
+  const i = Number.isFinite(current) ? current : 0;
+  const iTotal = Math.abs(i);
+  if (!(iTotal > 1e-6)) return Infinity;
+  const terminalU = ef - i * rInt;
+  if (!(terminalU > 0)) return 0;
+  return terminalU / iTotal;
+}
+
 export function terminalRef(componentId: string, terminal: 'a' | 'b'): string {
   return `${componentId}:${terminal}`;
 }

@@ -11,6 +11,24 @@
 import { useMemo } from 'react';
 import katex from 'katex';
 
+/**
+ * KaTeX 零信任渲染契约（安全边界，勿放宽）：
+ * - `trust: false`（显式钉死）：禁用 `\href` / `\url` / `\htmlClass` / `\includegraphics`
+ *   等 HTML 扩展，模型输出里若混入 `\href{javascript:...}{click}` 也只会渲染成纯文本，
+ *   绝不生成可点击的 `<a>` 或任何带 `href` 的标签。
+ * - `throwOnError: false`：坏公式（括号不闭合、未知命令等）降级为红色纯文本（`.katex-error`），
+ *   而不是抛异常中断整棵 React 渲染树。
+ * 本函数被导出，便于 `src/testing` 对其做独立安全断言。
+ */
+export function katexToHtml(tex: string, block = false): string {
+  try {
+    return katex.renderToString(tex, { throwOnError: false, displayMode: block, trust: false });
+  } catch {
+    // 极端情况（如非字符串输入）退回纯文本，避免渲染崩溃
+    return typeof tex === 'string' ? tex : '';
+  }
+}
+
 interface FormulaProps {
   /** LaTeX 源码，如 "a^2 + b^2 = c^2" */
   tex: string;
@@ -22,14 +40,7 @@ interface FormulaProps {
 }
 
 export default function Formula({ tex, block = false, className = '' }: FormulaProps) {
-  const html = useMemo(() => {
-    try {
-      return katex.renderToString(tex, { throwOnError: false, displayMode: block });
-    } catch {
-      // 极端情况下退回原文，避免渲染崩溃
-      return tex;
-    }
-  }, [tex, block]);
+  const html = useMemo(() => katexToHtml(tex, block), [tex, block]);
 
   return block ? (
     <div className={`overflow-x-auto max-w-full py-1 scrollbar-thin ${className}`} dangerouslySetInnerHTML={{ __html: html }} />

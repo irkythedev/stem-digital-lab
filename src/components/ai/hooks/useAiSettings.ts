@@ -113,6 +113,18 @@ export default function useAiSettings(deps: AiSettingsDeps) {
   // 用 ref 做同步锁，请求返回前一律拦截后续点击，避免对限流严格的服务商打出重复请求。
   const fetchingRef = useRef(false);
   const testingRef = useRef(false);
+  // 动作冷却（误触防护）：3 秒内连点「获取模型 / 测试连接」只放行一次，避免重复请求与重复计费。
+  // 与上面的在途闸门互补——在途闸门拦「请求未返回」，冷却拦「请求已返回但用户又连点」。
+  const ACTION_COOLDOWN_MS = 3000;
+  const actionCooldownUntilRef = useRef(0);
+  const hitActionCooldown = (): boolean => {
+    const now = Date.now();
+    if (now < actionCooldownUntilRef.current) {
+      flashToast(false, lang === 'zh' ? '请稍候…' : 'Please wait…');
+      return true;
+    }
+    return false;
+  };
   // 保存成功 toast（面板内提示，2 秒自动消失）
   const [savedToast, setSavedToast] = useState(false);
   const savedToastTimer = useRef<number | null>(null);
@@ -222,9 +234,11 @@ export default function useAiSettings(deps: AiSettingsDeps) {
   // 不验证「能否对话」——那是「测试连接」的职责，两者拆开才能分别诊断。
   const fetchModelList = async () => {
     if (fetchingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
+    if (hitActionCooldown()) return; // 冷却：拦掉请求已返回后的连续误触
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     const baseUrl = resolveBaseUrl();
     if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
+    actionCooldownUntilRef.current = Date.now() + ACTION_COOLDOWN_MS;
     fetchingRef.current = true;
     setFetching(true);
     setTestResult(null);
@@ -266,11 +280,13 @@ export default function useAiSettings(deps: AiSettingsDeps) {
   // 注意：该动作会消耗极少量 token（由用户自己的 Key 承担）。
   const testConnection = async () => {
     if (testingRef.current) return; // 在途闸门：拦掉同一 tick 内的连点（状态尚未重渲染）
+    if (hitActionCooldown()) return; // 冷却：拦掉请求已返回后的连续误触
     if (!apiKey.trim()) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先填写 API Key' : 'Enter an API key first' }); return; }
     const baseUrl = resolveBaseUrl();
     if (!baseUrl) { setTestResult({ ok: false, msg: lang === 'zh' ? '端点地址无效（仅支持 http/https）' : 'Invalid endpoint URL (http/https only)' }); return; }
     const probeModel = model.trim() || provider.models[0] || '';
     if (!probeModel) { setTestResult({ ok: false, msg: lang === 'zh' ? '请先选择或输入模型名，再测试连接' : 'Choose or type a model name first' }); return; }
+    actionCooldownUntilRef.current = Date.now() + ACTION_COOLDOWN_MS;
     testingRef.current = true;
     setTesting(true);
     setTestResult(null);

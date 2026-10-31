@@ -15,13 +15,16 @@
  */
 import {
   ION_GROUP_KEYS,
+  ION_GROUPS,
   TEXTBOOK_MASSES,
+  TYPICAL_COMPOUNDS,
   ionGroupByFormula,
   valenceElementBySymbol,
   electronegativityOf,
   type Bi,
   type IonGroup,
 } from './valency';
+import { ELEMENTS } from '../elements';
 
 export interface ElementPart {
   kind: 'element';
@@ -121,6 +124,82 @@ export function normalizeFormula(raw: string): string {
     }
   }
   return out;
+}
+
+/** 元素周期表全集（含 Cs / Hf 等初中不常考但要能正确大写化的符号）。 */
+const ELEMENT_SYMBOLS = new Set(ELEMENTS.map((e) => e.symbol));
+
+/**
+ * 常见化学式/原子团真值表（用于消歧：优先认「人熟悉的分子」而非生僻单质）。
+ * 来源：初中常见化合物库 + 教材常见酸碱 + 原子团。
+ */
+const KNOWN_FORMULAS: ReadonlySet<string> = (() => {
+  const set = new Set<string>();
+  for (const c of TYPICAL_COMPOUNDS) set.add(c.formula);
+  for (const g of ION_GROUPS) set.add(g.formula);
+  for (const f of [
+    'H2O', 'H2O2', 'CO', 'CO2', 'NO', 'NO2', 'NO3', 'SO2', 'SO3', 'NH3', 'CH4',
+    'HF', 'HCl', 'H2SO4', 'HNO3', 'H2CO3', 'NH4NO3', 'KMnO4', 'K2MnO4', 'KClO3',
+    'Fe2O3', 'Fe3O4', 'CuO', 'Cu(OH)2', 'Fe(OH)3', 'Al2O3', 'Ca(OH)2', 'NaOH',
+  ]) set.add(f);
+  return set;
+})();
+
+/** 歧义输入：既可读作双字母元素、也可读作「两个单字母元素组成的常见分子」。 */
+export const AMBIGUOUS_PAIRS = new Set(['co', 'no', 'cs', 'hf']);
+
+/** 贪婪元素分词（双字母优先 + 元素表校验），只做大写规范化，不改数字/括号/下标。 */
+function greedyElementCase(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const ch = src[i];
+    if (!/[A-Za-z]/.test(ch)) {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    if (i + 1 < src.length && /[A-Za-z]/.test(src[i + 1])) {
+      const two = src[i].toUpperCase() + src[i + 1].toLowerCase();
+      if (ELEMENT_SYMBOLS.has(two)) {
+        out += two;
+        i += 2;
+        continue;
+      }
+    }
+    const one = ch.toUpperCase();
+    if (ELEMENT_SYMBOLS.has(one)) {
+      out += one;
+      i += 1;
+    } else {
+      out += ch;
+      i += 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * 化学式大小写智能规范化（供失焦/回车/解析时调用，不在 onChange 实时强转）。
+ *
+ * 策略：
+ *   1. 先查常见化学式真值表（忽略大小写全等）——`co2 → CO2`、`nh4no3 → NH4NO3`、
+ *      `cu(oh)2 → Cu(OH)2` 等直接命中教材写法；
+ *   2. 未命中则贪婪分词：双字母元素优先（`fe→Fe`、`na→Na`、`cl→Cl`），
+ *      再退回单字母（`h→H`、`o→O`），数字/括号/· 原样保留；
+ *   3. `mode='element'` 时跳过真值表、只按元素分词——用于给出「歧义切换」的备选答案
+ *      （如 `co` 默认 `CO`，备选 `Co`）。
+ */
+export function normalizeFormulaCase(raw: string, mode: 'compound' | 'element' = 'compound'): string {
+  const src = raw.trim();
+  if (!src) return '';
+  if (mode === 'compound') {
+    const lower = src.toLowerCase();
+    for (const f of KNOWN_FORMULAS) {
+      if (f.toLowerCase() === lower) return f;
+    }
+  }
+  return greedyElementCase(src);
 }
 
 function readCount(src: string, start: number): { count: number; next: number } {
@@ -369,8 +448,8 @@ const SPECIAL_SOLVES: Record<string, SolveResult> = {
     target: 'Fe',
     answers: [],
     note: bi(
-      '四氧化三铁可视为 FeO·Fe₂O₃，铁同时有 +2 和 +3 两种价态，初中阶段不作单一整数化合价反推。',
-      'Fe₃O₄ can be regarded as FeO·Fe₂O₃; iron is both +2 and +3, so junior high does not solve it as a single integer valence.',
+      '四氧化三铁可视为 FeO·Fe₂O₃ 的复合氧化物，初中阶段不作单一整数化合价反推。',
+      'Fe₃O₄ can be viewed as the composite oxide FeO·Fe₂O₃; junior high does not solve it as a single integer valence.',
     ),
   },
 };
@@ -534,12 +613,23 @@ export function solveValence(formula: string, target: string): SolveResult | For
         if (needsMembership && !(targetEntry?.valences.includes(x) ?? false)) continue;
         if (seen.has(x)) continue;
         seen.add(x);
+        // 完整因数式：每项都写成「原子个数 × (已知化合价)」，不跳步成乘积结果。
+        const terms: string[] = [];
+        for (const [symbol, v] of combo.valences) {
+          const count = elementParts.reduce((n, p) => (p.symbol === symbol ? n + p.count : n), 0);
+          terms.push(`${count} × (${formatValence(v)})`);
+        }
+        for (const gp of parsed.parts) {
+          if (gp.kind === 'group') terms.push(`${gp.count} × (${formatValence(gp.ion.charge)})`);
+        }
+        const coeffX = targetCount === 1 ? 'x' : `${targetCount}x`;
+        const expr = terms.length ? `${coeffX} + ${terms.join(' + ')}` : coeffX;
         answers.push({
           valence: x,
           scope: bi(`${formula} 中的 ${target}`, `${target} in ${formula}`),
           derivation: bi(
-            `${targetCount}x + (${formatSigned(fixed)}) = 0，解得 ${target} 为 ${formatValence(x)}。`,
-            `${targetCount}x + (${formatSigned(fixed)}) = 0, so ${target} is ${formatValence(x)}.`,
+            `${expr} = 0，解得 x = ${formatValence(x)}，故 ${target} 的化合价为 ${formatValence(x)}。`,
+            `${expr} = 0, so x = ${formatValence(x)}; the valence of ${target} is ${formatValence(x)}.`,
           ),
         });
       }
@@ -562,12 +652,20 @@ export function solveValence(formula: string, target: string): SolveResult | For
           x > 0 || (targetEntry?.valences.some((v) => v < 0) ?? false);
         if (needsMembership && !(targetEntry?.valences.includes(x) ?? false)) continue;
         if (answers.some((a) => a.valence === x)) continue;
+        const terms: string[] = [];
+        for (const [symbol, n] of innerCounts) {
+          if (symbol === target) continue;
+          const entry = valenceElementBySymbol.get(symbol);
+          if (entry && entry.valences.length === 1) terms.push(`${n} × (${formatValence(entry.valences[0])})`);
+        }
+        const coeffX = innerTargetCount === 1 ? 'x' : `${innerTargetCount}x`;
+        const expr = terms.length ? `${coeffX} + ${terms.join(' + ')}` : coeffX;
         answers.push({
           valence: x,
           scope: bi(`${part.ion.name.zh}（${part.ion.formula}）中的 ${target}`, `${target} in ${part.ion.name.en} (${part.ion.formula})`),
           derivation: bi(
-            `${part.ion.formula} 整体带 ${formatValence(part.ion.charge)}，${innerTargetCount}×x + 其它原子 = ${formatSigned(part.ion.charge)}，解得 x = ${formatValence(x)}。`,
-            `The ${part.ion.formula} group carries ${formatValence(part.ion.charge)}; ${innerTargetCount}×x + the other atoms = ${formatSigned(part.ion.charge)}, giving x = ${formatValence(x)}.`,
+            `${part.ion.formula} 整体带 ${formatValence(part.ion.charge)}：${expr} = ${formatSigned(part.ion.charge)}，解得 x = ${formatValence(x)}，故 ${target} 的化合价为 ${formatValence(x)}。`,
+            `The ${part.ion.formula} group carries ${formatValence(part.ion.charge)}: ${expr} = ${formatSigned(part.ion.charge)}, so x = ${formatValence(x)}; the valence of ${target} is ${formatValence(x)}.`,
           ),
         });
       }
@@ -873,6 +971,8 @@ export interface ChemQueryState {
   cation: IonRef | null;
   anion: IonRef | null;
   symbol: string | null;
+  /** 反推模式深链：预填化学式（保持原始 ASCII，便于输入框键盘编辑）。 */
+  formula: string | null;
   from: 'element' | null;
 }
 
@@ -892,11 +992,13 @@ const isChemMode = (v: string | null): v is ChemMode =>
 
 export function parseChemistryQuery(search: URLSearchParams): ChemQueryState {
   const mode = search.get('mode');
+  const rawFormula = search.get('formula');
   return {
     mode: isChemMode(mode) ? mode : 'reference',
     cation: parseIonRef(search.get('cation')),
     anion: parseIonRef(search.get('anion')),
     symbol: search.get('symbol'),
+    formula: rawFormula && /^[A-Za-z0-9()·]{1,40}$/.test(rawFormula) ? rawFormula : null,
     from: search.get('from') === 'element' ? 'element' : null,
   };
 }

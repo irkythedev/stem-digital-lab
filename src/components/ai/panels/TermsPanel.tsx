@@ -66,7 +66,10 @@ function TermsPanelInner({ lang, state, actions }: TermsPanelProps) {
 
                   {!collapsedTerms[1] && (
 
-                  <p>您的 API Key 仅保存在您本机浏览器的本地存储中。本站<strong className="font-bold text-[var(--fg)]">无后端服务器，不采集、不存储、不中转</strong>任何密钥或对话内容。对话数据由您的浏览器直接发送至您所选的服务商。请妥善保管您的 API Key，防范泄露风险。</p>
+                  <>
+                  <p>您的 API Key 仅以<strong className="font-bold text-[var(--fg)]">明文形式保存在当前浏览器的 localStorage 中，不在任何服务器落盘</strong>。本站<strong className="font-bold text-[var(--fg)]">无后端服务器，不采集、不存储、不中转</strong>任何密钥或对话内容。<strong className="font-bold text-[var(--fg)]">若在公共设备（如学校机房、图书馆）使用，请在离开前点击设置面板底部的「清除 AI 配置」，清空本机保存的 Key；问答历史与错题集请在「学习记录」中一并清空。</strong></p>
+                  <p>数据流向：您的<strong className="font-bold text-[var(--fg)]">提问内容、当前实验器材读数与错题记录</strong>会由浏览器<strong className="font-bold text-[var(--fg)]">直接发送至您所配置的大模型服务商</strong>（如 DeepSeek、通义千问 Qwen 等）用于生成回答与学情归纳，本站不经手、不留存。<strong className="font-bold text-[var(--fg)]">请勿在提问中输入个人隐私、账号密码或任何涉密信息。</strong></p>
+                  </>
 
                   )}
                 </div>
@@ -105,7 +108,10 @@ function TermsPanelInner({ lang, state, actions }: TermsPanelProps) {
 
                   {!collapsedTerms[1] && (
 
-                  <p>Your API key stays only in your browser's local storage. This site <strong className="font-bold text-[var(--fg)]">has no backend — it never collects, stores or relays</strong> keys or conversations. Chat data goes straight from your browser to your chosen provider. Keep your key safe.</p>
+                  <>
+                  <p>Your API key is stored <strong className="font-bold text-[var(--fg)]">in plain text only in this browser's localStorage — never written to any server</strong>. This site <strong className="font-bold text-[var(--fg)]">has no backend — it never collects, stores or relays</strong> keys or conversations. <strong className="font-bold text-[var(--fg)]">On a shared device (e.g. a school lab or library), click "Clear AI config" at the bottom of the settings panel before you leave to wipe the key saved here; clear Q&A history and the mistake set too under Records.</strong></p>
+                  <p>Data flow: your <strong className="font-bold text-[var(--fg)]">questions, the current lab instrument readings and your mistake records</strong> are sent by your browser <strong className="font-bold text-[var(--fg)]">directly to the model provider you configured</strong> (e.g. DeepSeek, Qwen) to generate answers and learning summaries — this site neither handles nor stores them. <strong className="font-bold text-[var(--fg)]">Never type personal, confidential or otherwise sensitive information into a question.</strong></p>
+                  </>
 
                   )}
                 </div>

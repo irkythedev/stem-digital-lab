@@ -59,7 +59,11 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     'src/components/ai/page-subject.ts',
   ];
   const readAiPanel = (): string => AI_PANEL_FILES.map((f) => readSrc(f)).join('\n');
-  const pt = readSrc('src/pages/PeriodicTable.tsx', 'utf8');
+  // 详情面板已抽离为公共组件：pt 同时覆盖页面与公共详情组件（跨页同一实现）。
+  const pt =
+    readSrc('src/pages/PeriodicTable.tsx', 'utf8') +
+    '\n' +
+    readSrc('src/components/elements/ElementDetailSheet.tsx', 'utf8');
   /** 取 [from, until) 之间的源码片段（体积与类名断言的统一取法） */
   const sliceTo = (from: string, until: string) => {
     const i = pt.indexOf(from);

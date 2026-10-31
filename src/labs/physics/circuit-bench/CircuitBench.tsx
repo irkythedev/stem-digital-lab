@@ -46,6 +46,7 @@ import {
 import { getPreset, instantiatePreset, type CircuitPreset } from './circuit-bench-presets';
 import { presetTitleOf, socraticPersona } from './circuit-bench-prompts';
 import {
+  externalEquivalentResistance,
   formatPhysicalValue,
   resetElementState,
   stepSimulation,
@@ -928,6 +929,11 @@ export default function CircuitBench() {
   const supplyI = batteryReading ? Math.abs(batteryReading.current) : 0;
   const supplyU = battery ? Number(battery.params.emf) || 0 : 0;
   const switchOn = mainSwitch ? mainSwitch.params.closed !== false : true;
+  // 外电路等效电阻：由端电压 / 干路电流按物理法则现算，绝不取电池的 reading.resistance（恒 Infinity）。
+  const batteryInternalR = battery ? Math.max(0.001, Number(battery.params.r) || 0.5) : 0;
+  const externalR = batteryReading
+    ? externalEquivalentResistance(supplyU, batteryInternalR, batteryReading.current)
+    : Infinity;
 
   useEffect(() => {
     setLabState(LAB_ID, {
@@ -938,7 +944,7 @@ export default function CircuitBench() {
       i: Number.isFinite(supplyI) ? Number(supplyI.toFixed(4)) : 0,
       u: supplyU,
       p: result ? Number(result.totalPower.toFixed(4)) : 0,
-      r: Number.isFinite(batteryReading?.resistance) ? Number(batteryReading?.resistance.toFixed(2)) : 0,
+      r: Number.isFinite(externalR) ? Number(externalR.toFixed(2)) : externalR,
       wires: bench.wires.length,
     });
   }, [
@@ -948,8 +954,8 @@ export default function CircuitBench() {
     switchOn,
     supplyI,
     supplyU,
+    externalR,
     result,
-    batteryReading?.resistance,
     bench.wires.length,
   ]);
 

@@ -63,10 +63,15 @@ navigator.serviceWorker?.addEventListener('controllerchange', () => {
 // 注册 Service Worker（PWA 离线可用 + 可安装）
 registerSW({ immediate: true, onNeedReload: () => { /* 统一交给上面的 controllerchange */ } });
 
-createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById('root')!;
+// 预渲染快照：静态 HTML 已在 #root 内写好正文，而 createRoot 会清空 #root；
+// 先抓下来交给 App，作为首次挂载期 Suspense 的骨架，避免「正文 → 加载条 → 正文」的闪跳（CLS）。
+const prerenderedHtml = rootEl.childElementCount > 0 ? rootEl.innerHTML : '';
+
+createRoot(rootEl).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <App initialFallbackHtml={prerenderedHtml} />
     </BrowserRouter>
   </StrictMode>,
 );

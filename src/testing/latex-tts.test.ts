@@ -16,7 +16,7 @@
  */
 import assert from 'node:assert';
 import type { TestFn } from './harness';
-import { detectChem } from '../lib/chem-speech';
+import { detectChem, intToChinese, valenceToSpeech, expressionToSpeech, sanitizeMrSpoken } from '../lib/chem-speech';
 import { latexToSpeech } from '../lib/latex-speech';
 import { cleanTextForTTS } from '../lib/use-speak';
 
@@ -243,5 +243,18 @@ export function registerLatexTtsTests(test: TestFn): void {
     assert.equal(latexToSpeech('a≠b', 'en'), 'a not equal to b');
     assert.equal(latexToSpeech('2×3', 'en'), '2 times 3');
     assert.equal(latexToSpeech('π', 'en'), 'pi');
+  });
+
+  test('化学口语清洗：Mr 拦截、化合价正负、运算式、括号兜底', () => {
+    assert.equal(intToChinese(160), '一百六十');
+    assert.equal(intToChinese(80), '八十');
+    assert.equal(intToChinese(232), '二百三十二');
+    assert.equal(valenceToSpeech(3), '正三价');
+    assert.equal(valenceToSpeech(-2), '负二价');
+    assert.equal(valenceToSpeech(1), '正一价');
+    assert.equal(expressionToSpeech('2x + 3 × (−2) = 0'), '2x 加上 3 乘以 负2 等于 0');
+    assert.ok(!/Mister|M-R/.test(sanitizeMrSpoken('M_r = 160，<i>M</i><sub>r</sub> 为 160')));
+    assert.ok(sanitizeMrSpoken('Mr = 160').includes('相对分子质量'));
+    assert.ok(!sanitizeMrSpoken('Ca(OH)2').includes('('), '括号不得原样留给 TTS');
   });
 }

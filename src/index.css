@@ -471,6 +471,8 @@ body {
   background-color: var(--bg);
   color: var(--fg);
   font-family: var(--f-sans);
+  /* 阻断 Android Chrome 在画布/滑片上拖拽时误触系统级下拉刷新（橡皮筋） */
+  overscroll-behavior-y: contain;
   min-height: 100vh;
   /* 移动浏览器 URL 栏收展时跟随实际视口，避免滚动到底后底部留白（PWA 无 URL 栏所以不触发） */
   min-height: 100dvh;
@@ -971,17 +973,35 @@ input[type="range"]::-moz-range-thumb:active {
   100% { transform: translate(0, 0); }
 }
 
-/* 更新提示绿点：慢呼吸（3.5s 一圈，柔和不闪）+ 外圈光晕扩散 */
+/* 更新提示绿点：慢呼吸（3.5s 一圈，柔和不闪）—— 只服务面板里的小圆点 */
 @keyframes dot-breath {
   0%, 100% { opacity: 0.45; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.15); }
 }
-@keyframes dot-ping {
-  0% { transform: scale(1); opacity: 0.6; }
-  80%, 100% { transform: scale(2.4); opacity: 0; }
-}
 .update-dot { animation: dot-breath 3.5s ease-in-out infinite; }
-.update-dot-halo { animation: dot-ping 3.5s ease-in-out infinite; }
+
+/* 顶栏「有新版本」徽章的呼吸环：一圈细线从盘缘向外推开，到 1.45 倍就淡尽。
+   旧写法（rgba 实心盘 + scale 2.4）量出来两个毛病：
+   ① 底子是 .35 的实心盘，静息时就是贴在徽章背后的一团雾，不是"环"；
+   ② 24px × 2.4 = 57.6px，而版本号右缘距徽章只有 4px —— 光晕整片压到「v0.45.1」上。
+   现在最大直径 26px（18px 盘 ×1.45）仍收在 28px 命中盒里；起点透明度 0，静息不见底雾。 */
+@keyframes update-halo-breathe {
+  0% { transform: scale(var(--halo-from)); opacity: 0; }
+  18% { opacity: 0.6; }
+  100% { transform: scale(var(--halo-to)); opacity: 0; }
+}
+.update-halo {
+  /* 14px 盘上"从 1.0 起跳"会与盘粘住（实测 25% 相位间隙不足 1px），所以窄屏从 1.06
+     起跳、推到 1.55（21.7px，仍在 28px 命中盒内）；≥1024 的 18px 盘起点即盘缘，
+     推到 1.45（26.1px），既离得开又不压左侧版本号（实测余量 5px）。 */
+  --halo-from: 1.06;
+  --halo-to: 1.55;
+  border: 1.5px solid currentColor;
+  animation: update-halo-breathe 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+@media (min-width: 1024px) {
+  .update-halo { --halo-from: 1; --halo-to: 1.45; }
+}
 
 /* 元素周期表 · 原子结构：电子绕核旋转（内层快、外层慢，交替反向更生动） */
 @keyframes electron-orbit {
@@ -1303,8 +1323,9 @@ html.dark .update-ring-track { stroke-opacity: 0.38; }
 /* 无障碍：系统开启"减少动效"时停用品牌装饰动画（三角旋转/绿点呼吸） */
 @media (prefers-reduced-motion: reduce) {
   .animate-tri-spin, .animate-sq-spin, .animate-ci-spin,
-  .update-dot, .update-dot-halo,
-  .update-ring-spin { animation: none; }
+  .update-dot, .update-ring-spin { animation: none; }
+  /* 减动效时不扩散：环停在约 1.2 倍、半透明，状态仍看得见但不流动 */
+  .update-halo { animation: none; opacity: 0.45; transform: scale(1.2); }
   /* 减少动效时不转也不插值：弧改成按阶段跳档，读数本身仍然成立 */
   .update-ring-arc { transition: none; }
 }

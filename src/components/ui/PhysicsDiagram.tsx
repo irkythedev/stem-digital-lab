@@ -126,7 +126,7 @@ export default function PhysicsDiagram({ type, className = '' }: PhysicsDiagramP
         <path d="M155 109 l-3.5 5.5 h7 Z" fill={ACC} />
         <text x="164" y="118" fontSize="12" fill={ACC} fontFamily="var(--f-serif)" fontStyle="italic">{lang === 'zh' ? 'F浮' : 'Fᵦ'}</text>
         {/* V排 标注 */}
-        <text x="155" y="148" fontSize="11" fill={MUT} textAnchor="middle" fontFamily="var(--f-serif)" fontStyle="italic">V排</text>
+        <text x="155" y="148" fontSize="11" fill={MUT} textAnchor="middle" fontFamily="var(--f-serif)" fontStyle="italic">{lang === 'zh' ? 'V排' : 'V_disp'}</text>
       </svg>
     );
   }
@@ -217,7 +217,7 @@ export default function PhysicsDiagram({ type, className = '' }: PhysicsDiagramP
         {/* 过原点直线 I = U/R（R=10Ω） */}
         <line x1={sx(0)} y1={sy(0)} x2={sx(12)} y2={sy(1.2)} stroke={ACC} strokeWidth="1.6" />
         {/* 斜率标注 */}
-        <text x={sx(3.2)} y={sy(0.42)} fontSize="11" fill={ACC} fontFamily="var(--f-serif)" fontStyle="italic">斜率 = 1/R</text>
+        <text x={sx(3.2)} y={sy(0.42)} fontSize="11" fill={ACC} fontFamily="var(--f-serif)" fontStyle="italic">{lang === 'zh' ? '斜率 = 1/R' : 'slope = 1/R'}</text>
         {/* 特征点 (U=6, I=0.6) */}
         <circle cx={sx(6)} cy={sy(0.6)} r="2.5" fill={ACC} />
         <line x1={sx(6)} y1={sy(0.6)} x2={sx(6)} y2={sy(0)} stroke={MUT} strokeWidth="0.7" strokeDasharray="3 3" />

@@ -158,3 +158,6 @@ export const ELEMENTS: ElementInfo[] = [
 
 /** 按原子序数快速索引 */
 export const elementByNumber = new Map<number, ElementInfo>(ELEMENTS.map((e) => [e.n, e]));
+
+/** 按元素符号快速索引（区分大小写，如 'Fe' / 'Cl'）。 */
+export const elementBySymbol = new Map<string, ElementInfo>(ELEMENTS.map((e) => [e.symbol, e]));

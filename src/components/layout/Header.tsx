@@ -47,26 +47,27 @@ const UPDATE_RING_C = 2 * Math.PI * UPDATE_RING_R;
  *   - logo 右上角的角标（<sm 可见；以前那块只有静态圆盘，现在同样跟着变进度环）
  * 之所以共用：形态映射只该有一处，否则两处迟早走偏（一个画弧、一个还在转箭头）。
  *
- * idle = 实心圆盘 + 白色上箭头；忙时圆盘让位给空心环，弧长＝已落实的预缓存条目比例；
+ * idle = 实心圆盘 + 白色上箭头 + 一圈从盘缘向外推开的呼吸环；
+ * 忙时圆盘让位给空心环，弧长＝已落实的预缓存条目比例；
  * 没有分母的阶段（checking / activating）只走一段扫动弧，绝不按时长插值。
  */
 function UpdateBadgeVisual({
   ring,
-  haloClass,
   arrowClass,
   arrowStroke,
 }: {
   ring: RingState;
-  haloClass: string;
   arrowClass: string;
   arrowStroke: number;
 }) {
   if (ring.mode === 'hidden') {
     return (
       <>
+        {/* 呼吸环与圆盘同尺寸起跳（h-full/w-full 继承外层的 14 / 18px），
+            几何和动画都写在 .update-halo 里：最大只推到 1.45 倍，不出命中盒。 */}
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 m-auto rounded-full bg-emerald-500/35 update-dot-halo ${haloClass}`}
+          className="update-halo pointer-events-none absolute inset-0 m-auto h-full w-full rounded-full text-emerald-500"
         />
         <span className="relative flex h-full w-full items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm">
           <svg viewBox="0 0 16 16" className={arrowClass} fill="none" stroke="currentColor" strokeWidth={arrowStroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -240,7 +241,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               className="sm:hidden absolute -top-1.5 -right-1.5 z-10 flex h-10 w-10 items-start justify-end rounded-full disabled:cursor-progress"
             >
               <span className="relative block h-3.5 w-3.5">
-                <UpdateBadgeVisual ring={ring} haloClass="h-4 w-4" arrowClass="h-2 w-2" arrowStroke={2.4} />
+                <UpdateBadgeVisual ring={ring} arrowClass="h-2 w-2" arrowStroke={2.4} />
               </span>
             </button>
           )}
@@ -292,7 +293,6 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               <span className="relative block h-3.5 w-3.5 lg:h-[18px] lg:w-[18px]">
                 <UpdateBadgeVisual
                   ring={ring}
-                  haloClass="h-4 w-4 lg:h-6 lg:w-6"
                   arrowClass="h-2 w-2 lg:h-2.5 lg:w-2.5"
                   arrowStroke={2.2}
                 />

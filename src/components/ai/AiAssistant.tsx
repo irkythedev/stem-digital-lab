@@ -34,6 +34,7 @@ import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-
 import { verifyAiStatus } from '../../lib/ai-status';
 import { addTokenUsage, loadTokenUsage, tokenUsageTotal, type TokenUsageData } from '../../lib/token-usage';
 import AnswerRich, { InlineAnswer, prettyScripts } from './AnswerRich';
+import { FormulaText } from '../chemistry/ChemFormula';
 import { Mark, useStable } from './panels/panel-shared';
 import TermsPanel from './panels/TermsPanel';
 import SettingsPanel from './panels/SettingsPanel';
@@ -64,6 +65,13 @@ const NOTCH_BASE =
   'h-1 w-5 rounded-full bg-[var(--border)] transition-all duration-200 group-hover/notch:w-8 group-hover/notch:bg-[var(--accent)]';
 /** 当前正在查看的那一轮：常亮主题色 + 与 Hover 同宽（Hover 时不会缩回去）。 */
 const NOTCH_ACTIVE = 'h-1 w-8 rounded-full bg-[var(--accent)] transition-all duration-200';
+
+/**
+ * 前端发问冷却（毫秒）：双击 / 连按回车 / 连点推荐追问时，`busy` 因 setState 异步在
+ * 同一 tick 内仍为 false，可能并发打出多个请求并重复计费。这里用 ref 做同步时间闸，
+ * 冷却期内直接拦截并提示「请稍候…」，从源头杜绝重复请求。
+ */
+const SEND_COOLDOWN_MS = 3000;
 
 /** 问答对的键：把本回合的思考草稿挂到对应历史气泡上（只存内存，不落盘） */
 function turnKey(user: string, assistant: string): string {
@@ -746,6 +754,10 @@ export default function AiAssistant() {
   const [pending, setPending] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [busy, setBusy] = useState(false);
+  // 发问冷却：cooldownUntilRef 是同步时间闸（拦截用），cooldownLeft 仅驱动按钮禁用态与「请稍候…」小字
+  const cooldownUntilRef = useRef(0);
+  const [cooldownLeft, setCooldownLeft] = useState(0);
+  const cooldownActive = cooldownLeft > 0;
   const [failure, setFailure] = useState<FailureState | null>(null);
   // 本轮请求快照：重试必须「重放同一份 messages」，而不是按当前页面重新拼装
   // （否则学生失败后拖了滑块，重试会悄悄换成另一个问题）
@@ -765,6 +777,15 @@ export default function AiAssistant() {
     return () => clearInterval(t);
   }, [busy]);
   const aiWaitingLong = aiElapsed > 4;
+  // 冷却倒计时：200ms 粒度刷新剩余毫秒（驱动按钮禁用态 + 「请稍候…」），归零即自动清理
+  useEffect(() => {
+    if (!cooldownActive) return;
+    const id = window.setInterval(() => {
+      const left = cooldownUntilRef.current - Date.now();
+      setCooldownLeft(left > 0 ? left : 0);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [cooldownActive]);
   // 同页内多轮问答历史（内存态，上限 20 条；关闭面板/切换页面时清空——对齐页面锚定设计；持久化历史独立保留在 localStorage）
   const [history, setHistory] = useState<{ user: string; assistant: string }[]>([]);
   const HISTORY_MAX = 20;
@@ -1104,12 +1125,14 @@ export default function AiAssistant() {
   useEffect(() => {
     if (!pending) return;
     if (config) {
+      // 冷却中保留 pending，等 cooldownLeft 归零后由本 effect 自动补发，避免静默丢问题
+      if (Date.now() < cooldownUntilRef.current) return;
       void sendQuestion(pending, false);
       setPending(null);
     } else if (!open) {
       setOpen(true); // 未配置就把面板打开去配；问题保留，保存后自动发出
     }
-  }, [pending, config, open, setOpen]);
+  }, [pending, config, open, setOpen, cooldownLeft]);
 
   // 回答区自动滚底：只在「贴着底部」时跟随；用 auto 而不是 smooth ——
   // 流式每个 delta 都会滚一次，smooth 动画会被不断打断重启，反而更抖。
@@ -1263,6 +1286,14 @@ export default function AiAssistant() {
       flashToast(false, lang === 'zh' ? '请先在 AI 设置里保存配置' : 'Save your AI settings first');
       return;
     }
+    // 冷却闸：同步拦截双击 / 连按回车 / 连点追问（busy 因 setState 异步可能仍为 false）
+    const cooldownNow = Date.now();
+    if (cooldownNow < cooldownUntilRef.current) {
+      flashToast(false, lang === 'zh' ? '请稍候…' : 'Please wait…');
+      return;
+    }
+    cooldownUntilRef.current = cooldownNow + SEND_COOLDOWN_MS;
+    setCooldownLeft(SEND_COOLDOWN_MS);
     setCurrentQuestion(q); // 立即更新问题行（推荐追问也即时生效，不等回答完成）
     // 新问题即最新一轮：刻度轨回到「跟随最新」，旧轮的 Hover 预览一并收起
     setFocusTurn(null);
@@ -1768,9 +1799,9 @@ export default function AiAssistant() {
         onPointerCancel={endDrag}
         onLostPointerCapture={endDragOrUnlock}
       >
-        <h2 className="text-xs font-bold tracking-widest mono-font uppercase truncate max-w-[80%] inline-flex items-center gap-1.5">
+        <h2 className="text-xs font-bold tracking-widest mono-font truncate max-w-[80%] inline-flex items-center gap-1.5">
           <Sparkles className="w-3 h-3 shrink-0 text-[var(--fg)]" aria-hidden="true" />
-          <span className="truncate">{view === 'settings'
+          <span className="truncate"><FormulaText text={view === 'settings'
             ? (lang === 'zh' ? 'AI 设置' : 'Settings')
             : view === 'terms'
               ? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')
@@ -1781,7 +1812,7 @@ export default function AiAssistant() {
                   : (aiCtx.topic
                     ? aiCtx.topic.replace(/[（(].*?[）)]/g, '') // 剥离年级等括号信息（如「实验（8-9 年级）」）
                     : (pageSubject(location.pathname, lang) ?? (lang === 'zh' ? 'AI 学习助手' : 'AI Assistant')))}
-          </span>
+            lang={lang} /></span>
         </h2>
         <div className="-my-1.5 -mr-1 flex items-center gap-1">
           {/* 设置入口：仅对话视图显示。子视图不再挂左上角返回箭头 ——
@@ -1967,7 +1998,7 @@ export default function AiAssistant() {
                     }}
                     className="space-y-1.5"
                   >
-                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={h.user} /></p>
+                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <FormulaText text={h.user} lang={lang} /></p>
                     {reasoningByTurn[turnKey(h.user, h.assistant)] && (
                       <div className="text-left">
                         {renderReasoning(
@@ -1993,7 +2024,7 @@ export default function AiAssistant() {
                           lastExchange.current = { user: h.user, assistant: stripStoppedMark(h.assistant) };
                           void sendQuestion(t.aiContinue.ask, true);
                         }}
-                        disabled={busy}
+                        disabled={busy || cooldownActive}
                         className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none rounded-md border border-[var(--border)]/80 bg-[var(--accent-light)] text-[var(--fg)] transition-colors hover:bg-[var(--accent-light)]/70 hover:border-[var(--border)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                       >
                         <ChevronsDown className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2006,7 +2037,7 @@ export default function AiAssistant() {
                 {/* 当前轮（流式显示中） */}
                 {(answer || pending || busy || failure) && (
                   <>
-                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <InlineAnswer text={pending || currentQuestion || ''} /></p>
+                    <p className="text-[0.625rem] mono-font text-[var(--muted)]">{lang === 'zh' ? '问题' : 'Question'}: <FormulaText text={pending || currentQuestion || ''} lang={lang} /></p>
                     {(answer || pending || busy) && (
                     <div className="text-left">
                       {/* AI 的思考草稿（部分模型才有）：默认折叠，思考中自动展开；拿不到就不渲染 */}
@@ -2094,7 +2125,7 @@ export default function AiAssistant() {
                       <button
                         type="button"
                         onClick={() => void refreshRecs()}
-                        disabled={refreshingRecs}
+                        disabled={refreshingRecs || cooldownActive}
                         className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-50 transition-colors tap-area"
                       >
                         <RotateCw className="h-3 w-3" aria-hidden="true" />
@@ -2108,7 +2139,8 @@ export default function AiAssistant() {
                           key={i}
                           type="button"
                           onClick={() => askRecommended(q)}
-                          className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-left text-xs leading-snug text-[var(--fg)] transition-colors hover:border-[var(--fg)] hover:bg-[var(--accent-light)] tap-area"
+                          disabled={cooldownActive}
+                          className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-left text-xs leading-snug text-[var(--fg)] transition-colors hover:border-[var(--fg)] hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:cursor-not-allowed tap-area"
                         >
                           <span className="min-w-0"><InlineAnswer text={prettyScripts(q)} /></span>
                           <span aria-hidden="true" className="shrink-0 mono-font text-xs text-[var(--muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--fg)]">→</span>
@@ -2133,7 +2165,8 @@ export default function AiAssistant() {
                     <button
                       type="button"
                       onClick={() => void sendQuestion(quick.q)}
-                      className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font border border-[var(--border)] px-3 py-1.5 hover:border-[var(--fg)] transition-colors"
+                      disabled={cooldownActive}
+                      className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font border border-[var(--border)] px-3 py-1.5 hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       <Sparkles className="w-3 h-3" />
                       {quick.label}
@@ -2173,6 +2206,9 @@ export default function AiAssistant() {
               >
                 <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
                 <span className="truncate">{lang === 'zh' ? 'AI 内容仅供参考' : 'AI output is for reference'}</span>
+                {cooldownActive && (
+                  <span className="shrink-0 mono-font text-[0.625rem] text-[var(--error)]">{lang === 'zh' ? '· 请稍候…' : '· Please wait…'}</span>
+                )}
               </p>
               {/* 当前模型名（电压表蓝区分，加粗）+ 用量统计（数值加大，流式中 token 滚动增长） */}
               <p className="shrink-0 flex items-center gap-2 mono-font tabular-nums whitespace-nowrap">

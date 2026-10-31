@@ -27,7 +27,11 @@ import {
 export function registerPeriodicDetailCardTests(test: TestFn): void {
   /** 读仓库内源码：参数保持仓库相对路径，错误消息里的文件标识也不变。 */
   const readSrc = (p: string, enc: BufferEncoding = 'utf8') => readFileSync(repoPath(p), enc);
-  const src = readSrc('src/pages/PeriodicTable.tsx', 'utf8');
+  // 详情面板已抽离为公共组件：断言范围 = 页面 + 公共详情组件（同一份实现，跨页复用）。
+  const src =
+    readSrc('src/pages/PeriodicTable.tsx', 'utf8') +
+    '\n' +
+    readSrc('src/components/elements/ElementDetailSheet.tsx', 'utf8');
 
   test('相邻元素导航：前一号 / 后一号成对，首末位自动禁用且不环绕', () => {
     // 边界：首末位

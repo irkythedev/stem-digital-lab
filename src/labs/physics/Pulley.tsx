@@ -363,7 +363,9 @@ export default function Pulley() {
         <div className="text-sm mono-font text-[var(--fg)]">
           <span className="text-[var(--muted)]">G = </span>{G}N
           <span className="text-[var(--muted)]"> · F = </span>{F}N
-          {type === 'moving' && <span className="text-[var(--muted)]">（省一半力）</span>}
+          {type === 'moving' && (
+            <span className="text-[var(--muted)]">{lang === 'zh' ? '（省一半力）' : ' (Halves effort)'}</span>
+          )}
         </div>
       </div>
 

@@ -4,7 +4,7 @@
  *
  * 应用外壳：路由 + 全局 Provider。
  */
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/app-context';
 import Header from './components/layout/Header';
@@ -63,10 +63,26 @@ function RouteLoading() {
   );
 }
 
-export default function App() {
+/**
+ * 首屏骨架：把构建期预渲染在 #root 里的静态正文原样再显示一次，作为首次挂载期
+ * Suspense 的 fallback。这样静态 HTML 被 createRoot 清空的一瞬，React 立刻补上
+ * 同样内容的骨架，等路由 chunk 就绪后再无缝换成真正的页面组件——不会出现
+ * 「有正文 → 一块全屏加载条 → 正文」的闪跳。
+ */
+function PrerenderFallback({ html }: { html: string }) {
+  return <div className="contents" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?: string } = {}) {
   // 路由变化时重建错误边界：某一页 chunk 失败后，点导航去已缓存的页面仍应能打开，
   // 而不是被上一次的错误状态永久锁在提示页。
   const location = useLocation();
+  // 首屏预渲染骨架只在首次进入时用；一旦用户发生路由跳转就退回普通加载占位。
+  const [initialFallback, setInitialFallback] = useState(initialFallbackHtml);
+  const firstPath = useRef(location.pathname);
+  useEffect(() => {
+    if (location.pathname !== firstPath.current) setInitialFallback('');
+  }, [location.pathname]);
   // 页面加载时补传一次；之后联网或从后台回到前台时继续补传，卸载时移除监听。
   useEffect(() => {
     void flushFeedbackQueue();
@@ -122,7 +138,7 @@ export default function App() {
             否则 justify-between 会把空白摊在页头下方，形成一条突兀的断层。 */}
         <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 sm:px-6 lg:max-w-5xl lg:px-8 xl:max-w-6xl 2xl:max-w-7xl">
           <AppErrorBoundary resetKey={location.pathname}>
-          <Suspense fallback={<RouteLoading />}>
+          <Suspense fallback={initialFallback ? <PrerenderFallback html={initialFallback} /> : <RouteLoading />}>
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/guide" element={<GuidePage />} />

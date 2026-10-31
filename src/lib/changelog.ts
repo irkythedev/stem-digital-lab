@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.45.1';
+export const APP_VERSION = '0.46.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,22 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.46.0',
+    date: '2026-10',
+    zh: [
+      '[新增] 化学式工具升级：答案、解析与选项里的化学式自动规范排版，元素带名称提示与分类高亮',
+      '[新增] 化学式反推更完整：自动规范大小写，显示中文名、相对分子质量与元素质量分数的分步计算',
+      '[优化] 化学式朗读更自然、AI 助手更省心：连点会提示稍候，隐私说明写明密钥存放与清除方法',
+      '[修复] 首屏更快看到正文，物理图示与实验标注补齐英文',
+    ],
+    en: [
+      '[New] Richer chemistry formulas: formulas in answers, notes and options are typeset properly, with element names on hover and category highlights',
+      '[New] A more complete formula solver: automatic casing, Chinese compound names, and step-by-step relative-mass and mass-fraction workings',
+      '[Improved] More natural chemistry read-aloud and a calmer AI assistant: a brief wait notice on repeated taps, and clearer key storage and clearing guidance',
+      '[Fixed] Page content appears sooner on first load, and physics diagrams and labs now show complete English labels',
+    ],
+  },
   {
     version: '0.45.1',
     date: '2026-10',

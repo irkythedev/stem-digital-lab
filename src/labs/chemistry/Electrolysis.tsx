@@ -526,11 +526,11 @@ export default function Electrolysis() {
           {/* 电极（碳棒从管顶插入水中）：极性符号与正负极文字都标在管顶部电极上端（导线连接处），贴合"电极从顶部插入、导线在顶部接电源"的原理 */}
           {/* 左电极：负极(−)，产 H₂ 多 */}
           <line x1="128" y1="60" x2="128" y2="96" stroke="var(--fg)" strokeWidth="1.5" strokeLinecap="round" />
-          <text x="128" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">负极</text>
+          <text x="128" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '负极' : 'Cathode'}</text>
           <text x="128" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">−</text>
           {/* 右电极：正极(+)，产 O₂ 少 */}
           <line x1="272" y1="60" x2="272" y2="96" stroke="var(--fg)" strokeWidth="1.5" strokeLinecap="round" />
-          <text x="272" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">正极</text>
+          <text x="272" y="42" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '正极' : 'Anode'}</text>
           <text x="272" y="56" textAnchor="middle" fontSize="15" fill="var(--fg)" fontFamily="var(--f-mono)" fontWeight="bold">+</text>
 
           {/* 气泡（通电时动态上浮：负极多且大、正极少且小；触到液面即破裂重置） */}
@@ -551,7 +551,7 @@ export default function Electrolysis() {
           <line x1="204" y1="10" x2="204" y2="20" stroke="var(--fg)" strokeWidth="1.2" />
           <text x="204" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">+</text>
           <text x="196" y="6" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">−</text>
-          <text x="200" y="38" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">直流电源</text>
+          <text x="200" y="38" textAnchor="middle" fontSize="9" fill="var(--muted)" fontFamily="var(--f-mono)">{lang === 'zh' ? '直流电源' : 'DC source'}</text>
 
           {/* ── 焦点图层：由探索卡的「试试这个」切换，四张卡各有一组互异的视觉焦点 ── */}
 
