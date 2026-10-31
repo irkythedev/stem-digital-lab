@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   Check,
   FlaskConical,
+  ChevronDown,
   RotateCcw,
   Search,
   Square,
@@ -30,10 +31,18 @@ import BackLink from '../components/layout/BackLink';
 import BenchSelect from '../components/ui/BenchSelect';
 import ShareInline from '../components/share/ShareInline';
 import AskAiButton from '../components/ai/AskAiButton';
-import AskQuizButton from '../components/ai/AskQuizButton';
 import ChemFormula, { FormulaText, ValenceBadge } from '../components/chemistry/ChemFormula';
 import ElementDetailSheet, { useElementDetailState } from '../components/elements/ElementDetailSheet';
 import { elementBySymbol } from '../lib/elements';
+import { CAT_COLOR } from '../lib/element-categories';
+
+/** 元素分类短标签（卡片右上角微标签；过长会挤压符号）。 */
+const CATEGORY_SHORT: Record<'metal' | 'nonmetal' | 'noble' | 'metalloid', { zh: string; en: string }> = {
+  metal: { zh: '金属', en: 'Metal' },
+  nonmetal: { zh: '非金属', en: 'Non-metal' },
+  noble: { zh: '稀有气体', en: 'Noble' },
+  metalloid: { zh: '类金属', en: 'Metalloid' },
+};
 import { useApp } from '../lib/app-context';
 import { useAiContext } from '../lib/ai-context';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
@@ -42,6 +51,9 @@ import { saveQuizHistory } from '../lib/quiz-history';
 import {
   CHEM_MODES,
   PRACTICE_KIND_LABEL,
+  PRACTICE_CATEGORY_LABEL,
+  PRACTICE_CATEGORY_ORDER,
+  PRACTICE_QUESTIONS,
   chemistryQuery,
   crossValence,
   isFormulaError,
@@ -59,6 +71,7 @@ import {
   AMBIGUOUS_PAIRS,
   type ChemMode,
   type IonRef,
+  type PracticeCategory,
   type PracticeQuestion,
 } from '../lib/chemistry/formula-core';
 import {
@@ -134,14 +147,14 @@ export default function ChemistryFormulas() {
     () => ({
       title: `${zh ? '化学式与化合价' : 'Chemical Formulas and Valence'} - ${t.brandName}`,
       description: zh
-        ? '初中化学式与化合价工具：元素价态速查、十字交叉生成化学式、由化学式反推化合价，附 6 类确定性练习与精确错因。'
-        : 'Junior-high chemical formulas and valence: reference, cross-rule formula builder, valence solver, and six deterministic practice types with precise diagnostics.',
+        ? '初中化学式与化合价工具：元素价态速查、十字交叉生成化学式、由化学式反推化合价，附四大分类题库（18 道）与精确错因。'
+        : 'Junior-high chemical formulas and valence: reference, cross-rule formula builder, valence solver, and a four-category practice bank (18 items) with precise diagnostics.',
       // 工具页只声明自己的交互工具身份；完整讲解的 FAQ/HowTo 在 /learn/chemistry-formulas
       jsonLd: learningResourceLd({
         name: zh ? '化学式与化合价' : 'Chemical Formulas and Valence',
         description: zh
           ? '初中化学式与化合价交互工具：价态速查、十字交叉生成、由式反推与六类练习。'
-          : 'Junior-high chemical formulas and valence: reference, cross-rule builder, valence solver and six practice types.',
+          : 'Junior-high chemical formulas and valence: reference, cross-rule builder, valence solver and a four-category practice bank.',
         url: 'https://stem.irky.dev/chemistry-formulas',
         resourceType: zh ? '交互工具' : 'Interactive Tool',
       }),
@@ -170,9 +183,16 @@ export default function ChemistryFormulas() {
   // 大小写歧义备选（如 co 默认 CO，可一键切换为金属钴 Co）。
   const [caseAlt, setCaseAlt] = useState<string | null>(null);
   const [practiceIndex, setPracticeIndex] = useState(0);
+  const [practiceCategory, setPracticeCategory] = useState<PracticeCategory>('basic');
+  const [variantQuestion, setVariantQuestion] = useState<PracticeQuestion | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  // 原地元素详情抽屉：点击化学式里的元素时设置，避免整页跳走丢失反推上下文。
-  const [activeDetailElement, setActiveDetailElement] = useState<string | null>(null);
+  // 原地元素详情抽屉：点击化学式里的元素或速查卡片时设置，避免整页跳走丢失上下文。
+  // 深链进入速查（?symbol=Fe）时直接弹出该元素详情。
+  const [activeDetailElement, setActiveDetailElement] = useState<string | null>(
+    initial.mode === 'reference' ? initial.symbol ?? null : null,
+  );
+  // 速查页原子团 Chip：点击就地展开「价态 + 经典化合物」，与元素卡片一致。
+  const [activeIonFormula, setActiveIonFormula] = useState<string | null>(null);
 
   const { setAiCtx } = useAiContext();
   const { state: speakState, speak, stop: stopSpeak } = useSpeak();
@@ -255,8 +275,8 @@ export default function ChemistryFormulas() {
       setAiCtx({
         topic: zh ? '化学式与化合价' : 'Chemical Formulas and Valence',
         knowledge: zh
-          ? '化学式与化合价工具：速查元素与原子团价态；用十字交叉法生成化学式；由化学式反推化合价；6 类确定性练习与精确错因。'
-          : 'Chemical formulas and valence: look up element and polyatomic-ion valences, build formulas with the cross rule, solve valences from formulas, and practise six deterministic question types with precise diagnostics.',
+          ? '化学式与化合价工具：速查元素与原子团价态；用十字交叉法生成化学式；由化学式反推化合价；四大分类题库（18 道）与精确错因。'
+          : 'Chemical formulas and valence: look up element and polyatomic-ion valences, build formulas with the cross rule, solve valences from formulas, and practise a four-category bank (18 items) with precise diagnostics.',
       });
     }
     return () => setAiCtx({});
@@ -296,8 +316,14 @@ export default function ChemistryFormulas() {
   }, [query]);
 
   const activeElement = symbol ? valenceElementBySymbol.get(symbol) : undefined;
-  const questions = useMemo(() => practiceQuestions(12), []);
-  const question = questions[Math.min(practiceIndex, questions.length - 1)];
+  const questions = useMemo(() => practiceQuestions(PRACTICE_QUESTIONS.length), []);
+  // 四大分类练习：分类内独立翻页；变式题临时覆盖当前题。
+  const categoryQuestions = useMemo(
+    () => questions.filter((q) => (q.category ?? 'basic') === practiceCategory),
+    [questions, practiceCategory],
+  );
+  const baseQuestion = categoryQuestions[Math.min(practiceIndex, Math.max(0, categoryQuestions.length - 1))];
+  const question = variantQuestion ?? baseQuestion;
 
   const speakText = (text: string) => {
     if (speaking) stopSpeak();
@@ -308,19 +334,40 @@ export default function ChemistryFormulas() {
     if (answers[q.id] !== undefined) return;
     setAnswers((prev) => ({ ...prev, [q.id]: idx }));
     const correct = idx === q.answer;
-    saveQuizHistory({
-      path: '/chemistry-formulas',
-      subject: zh ? '化学' : 'Chemistry',
-      topic: zh ? '化学式与化合价' : 'Chemical formulas and valence',
-      question: pick(q.prompt, 'zh'),
-      options: q.options,
-      answerIdx: q.answer,
-      pickedIdx: idx,
-      correct,
-      type: 'choice',
-      explanation: pick(q.explanation, 'zh'),
-      model: 'local-core',
-    });
+    // 错题自动入库：仅错误的练习题写入全局错题本（stem-quiz-history），
+    // 与实验页共用同一存储，可在错题集回看并导出 A4 错题卷。
+    if (!correct) {
+      saveQuizHistory({
+        path: '/chemistry-formulas',
+        subject: zh ? '化学' : 'Chemistry',
+        topic: zh ? '化学式与化合价' : 'Chemical formulas and valence',
+        question: pick(q.prompt, 'zh'),
+        options: q.options,
+        answerIdx: q.answer,
+        pickedIdx: idx,
+        correct,
+        type: 'choice',
+        explanation: pick(q.explanation, 'zh'),
+        model: 'local-core',
+      });
+    }
+  };
+
+  const chooseCategory = (c: PracticeCategory) => {
+    setPracticeCategory(c);
+    setPracticeIndex(0);
+    setVariantQuestion(null);
+  };
+
+  /** 本地变式引擎：优先取同 kind（同考点）的另一道题，原地替换当前练习。 */
+  const startVariant = () => {
+    if (!question) return;
+    const sameKind = questions.find(
+      (q) => q.id !== question.id && q.kind === question.kind && (q.category ?? 'basic') === practiceCategory,
+    );
+    const sameCat = questions.find((q) => q.id !== question.id && (q.category ?? 'basic') === practiceCategory);
+    const next = sameKind ?? sameCat;
+    if (next) setVariantQuestion(next);
   };
 
   return (
@@ -336,7 +383,7 @@ export default function ChemistryFormulas() {
             title={zh ? '化学式与化合价 · 数理化数字实验室' : 'Chemical Formulas and Valence · STEM Digital Lab'}
             text={
               zh
-                ? '初中化学式与化合价：价态速查、十字交叉、由式求价、6 类练习与精确错因，免费使用！'
+                ? '初中化学式与化合价：价态速查、十字交叉、由式求价、四大分类练习（18 道）与精确错因，免费使用！'
                 : 'Junior-high chemical formulas and valence: reference, cross-rule builder, valence solver, and practice with precise diagnostics. Free to use!'
             }
           />
@@ -347,7 +394,6 @@ export default function ChemistryFormulas() {
                 : 'Explain junior-high chemical formulas and valence: how the cross rule builds formulas and why polyatomic ions need brackets'
             }
           />
-          <AskQuizButton />
         </div>
         <p className="mt-2 text-xs serif-font italic text-[var(--muted)]">
           {zh
@@ -425,33 +471,54 @@ export default function ChemistryFormulas() {
               />
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-1.5">
+            {/* 20 个高频元素：桌面 5 列 × 4 行（消除 7 列末尾的孤立空白格） */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {filteredElements.map((el) => {
                 const active = symbol === el.symbol;
+                const info = elementBySymbol.get(el.symbol);
                 return (
-                  <button
+                  <div
                     key={el.symbol}
-                    type="button"
-                    onClick={() => setSymbol(active ? null : el.symbol)}
-                    aria-pressed={active}
-                    className={`border px-2 py-2 text-left transition-colors ${
-                      active
-                        ? 'border-[var(--fg)] bg-[var(--accent-light)]'
-                        : 'border-[var(--border)] hover:border-[var(--fg)]'
+                    className={`relative min-h-[92px] border p-3 text-left transition-colors ${
+                      active ? 'border-[var(--fg)] bg-[var(--accent-light)]' : 'border-[var(--border)] hover:border-[var(--fg)]'
                     }`}
                   >
-                    <span className="block text-sm font-bold mono-font text-[var(--fg)]">{el.symbol}</span>
-                    <span className="block text-[0.6875rem] serif-font text-[var(--muted)] truncate">
-                      {pick(el.name, lang)}
-                    </span>
-                    <span className="mt-1 flex flex-wrap gap-0.5">
+                    {/* 右上角：极简序号 26↗（干净无虚线下划线；点击打开详情） */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSymbol(el.symbol);
+                        setActiveDetailElement(el.symbol);
+                      }}
+                      aria-label={`${zh ? '查看' : 'View'} ${pick(el.name, lang)} ${zh ? '详情' : 'details'}`}
+                      title={`${zh ? '查看' : 'View'} ${pick(el.name, lang)}`}
+                      className="absolute right-1.5 top-1.5 inline-flex cursor-pointer items-center gap-0.5 border-none text-xs mono-font leading-none text-[var(--muted)] no-underline transition-colors hover:text-[var(--fg)]"
+                    >
+                      {el.atomicNumber}
+                      <ArrowUpRight className="h-2.5 w-2.5 shrink-0 text-[10px] opacity-70" aria-hidden="true" />
+                    </button>
+                    <span className="block pr-8 text-2xl font-bold tracking-tight mono-font text-[var(--fg)]">{el.symbol}</span>
+                    <span className="mt-0.5 block pr-1 text-sm font-medium serif-font text-[var(--fg)] truncate">{pick(el.name, lang)}</span>
+                    <span className="mt-1 flex flex-wrap gap-0.5 pr-6">
                       {el.valences.map((v) => (
                         <span key={v} className="text-[0.625rem] mono-font text-[var(--muted)] bg-[var(--card-bg)] border border-[var(--border)] px-1 rounded-xs">
                           {formatValence(v)}
                         </span>
                       ))}
                     </span>
-                  </button>
+                    {/* 右下角：分类 tag 采用「元素详情页」同款彩色徽标（类型色边框/文字/浅底） */}
+                    {info && (() => {
+                      const c = CAT_COLOR[info.cat];
+                      return (
+                        <span
+                          className="absolute bottom-1 right-1.5 inline-block rounded-xs border px-1 py-[1px] text-[0.5rem] leading-none"
+                          style={{ borderColor: c.border, color: c.border, backgroundColor: c.bg }}
+                        >
+                          {CATEGORY_SHORT[info.cat][zh ? 'zh' : 'en']}
+                        </span>
+                      );
+                    })()}
+                  </div>
                 );
               })}
             </div>
@@ -464,121 +531,80 @@ export default function ChemistryFormulas() {
             )}
           </div>
 
-          {activeElement && (
-            <div className="border border-[var(--border)] p-4 space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <span className="text-xl font-semibold serif-font text-[var(--fg)]">
-                    {pick(activeElement.name, lang)}
+
+          {/* 常见原子团：轻量 Chip 紧凑网格；点击就地看价态与经典化合物（与元素卡片同逻辑） */}
+          <div className="border border-[var(--border)] p-2.5 space-y-2">
+            <h2 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              // {zh ? '常见原子团' : 'Polyatomic ions'}
+            </h2>
+            <div className="flex flex-wrap gap-1.5">
+              {filteredIonGroups.map((ion) => {
+                const active = activeIonFormula === ion.formula;
+                return (
+                  <button
+                    key={ion.formula}
+                    type="button"
+                    data-ion-chip={ion.formula}
+                    aria-pressed={active}
+                    onClick={() => setActiveIonFormula(active ? null : ion.formula)}
+                    aria-label={`${pick(ion.name, lang)} ${ion.charge > 0 ? '正' : '负'} ${Math.abs(ion.charge)} 价`}
+                    className={`inline-flex items-center gap-1.5 border px-2 py-1 text-xs transition-colors ${
+                      active
+                        ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]'
+                        : 'border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)]'
+                    }`}
+                  >
+                    <ChemFormula formula={ion.formula} charge={ion.charge} size="sm" lang={lang} className="text-[var(--fg)]" />
+                    <span className="serif-font text-[var(--muted)]">{pick(ion.name, lang)}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* 点击原子团后，详情固定出现在 Chip 网格「下方」，不再挤占上方首屏 */}
+            {(() => {
+              const ion = activeIonFormula ? ION_GROUPS.find((g) => g.formula === activeIonFormula) : undefined;
+              const compounds = ion
+                ? TYPICAL_COMPOUNDS.filter((c) => c.formula.includes(ion.formula)).slice(0, 3)
+                : [];
+              if (!ion) return null;
+              return (
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-l-2 border-[var(--accent)] pl-2 py-1 text-xs">
+                  <span className="inline-flex items-baseline gap-1.5">
+                    <ChemFormula formula={ion.formula} charge={ion.charge} size="sm" lang={lang} className="text-[var(--fg)]" />
+                    <span className="serif-font text-[var(--fg)]">{pick(ion.name, lang)}</span>
                   </span>
-                  <span className="ml-2 mono-font text-sm text-[var(--muted)]">
-                    {activeElement.symbol} · Z = {activeElement.atomicNumber}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {activeElement.valences.map((v) => (
-                    <span key={v}>
-                      <ValenceBadge valence={v} />
+                  <ValenceBadge valence={ion.charge} size="sm" />
+                  {compounds.length > 0 && (
+                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-[var(--muted)]">
+                      <span>{zh ? '经典化合物：' : 'Typical: '}</span>
+                      {compounds.map((c) => (
+                        <span key={c.formula} className="inline-flex items-baseline gap-1">
+                          <ChemFormula formula={c.formula} size="sm" lang={lang} className="text-[var(--fg)]" />
+                          <span className="serif-font">{pick(c.name, lang)}</span>
+                        </span>
+                      ))}
                     </span>
-                  ))}
+                  )}
                 </div>
-              </div>
+              );
+            })()}
+          </div>
 
-              <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
-                {shellMechanism(activeElement, lang)}
-              </p>
-
-              <p className="text-xs serif-font leading-relaxed text-[var(--muted)]">
-                {zh
-                  ? `初中计算取整值：${TEXTBOOK_MASSES[activeElement.symbol]}；周期表标准原子量：${periodicElementOf(activeElement.symbol)?.massExact ?? periodicElementOf(activeElement.symbol)?.mass ?? '—'}。`
-                  : `Junior-high rounded mass: ${TEXTBOOK_MASSES[activeElement.symbol]}; periodic-table standard: ${periodicElementOf(activeElement.symbol)?.massExact ?? periodicElementOf(activeElement.symbol)?.mass ?? '—'}.`}
-                {zh ? ' 初中化学计算采用取整值（Cl 取 35.5）。' : ' Junior-high calculations use rounded values (Cl = 35.5).'}
-              </p>
-
-              {activeElement.note && (
-                <p className="text-xs serif-font leading-relaxed text-[var(--muted)] border-l-2 border-[var(--border)] pl-3">
-                  {pick(activeElement.note, lang)}
-                </p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() =>
-                    speakText(
-                      `${pick(activeElement.name, lang)}，常见化合价 ${activeElement.valences.map(formatValence).join('、')}`,
-                    )
-                  }
-                  className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 text-xs mono-font border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
-                >
-                  <SpeakIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                  {speaking ? (zh ? '停止' : 'Stop') : zh ? '朗读' : 'Speak'}
-                </button>
-                <Link
-                  to={`/periodic-table?element=${activeElement.symbol}`}
-                  className="inline-flex items-center gap-1 text-xs mono-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
-                >
-                  {zh ? '周期表详情' : 'Periodic table'}
-                  <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const pre = preselectFromSymbol(activeElement.symbol);
-                    if (pre) {
-                      setCation(pre.cation);
-                      setAnion(pre.anion);
-                    }
-                    setMode('builder');
-                  }}
-                  className="inline-flex items-center gap-1 text-xs mono-font text-[var(--fg)] underline decoration-[var(--border)] underline-offset-4 hover:decoration-[var(--fg)]"
-                >
-                  {zh ? '用它组化学式' : 'Build a formula'}
-                  <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="border border-[var(--border)] p-3 space-y-2">
-              <h2 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                // {zh ? '常见原子团' : 'Polyatomic ions'}
-              </h2>
-              <ul className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
-                {filteredIonGroups.map((ion) => (
-                  <li key={ion.formula} className="flex items-center justify-between gap-3 py-2">
-                    <div className="flex items-baseline gap-2">
-                      <ChemFormula
-                        formula={ion.formula}
-                        charge={ion.charge}
-                        size="sm"
-                        ariaLabel={`${pick(ion.name, lang)} ${ion.charge > 0 ? '正' : '负'} ${Math.abs(ion.charge)} 价`}
-                        lang={lang}
-                        className="text-[var(--fg)]"
-                      />
-                      <span className="text-xs serif-font text-[var(--fg)]">{pick(ion.name, lang)}</span>
-                    </div>
-                    <ValenceBadge valence={ion.charge} size="sm" />
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border border-[var(--border)] p-3 space-y-2">
-              <h2 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                // {zh ? '化合价口诀' : 'Valence mnemonic'}
-              </h2>
-              <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">
-                {pick(VALENCE_MNEMONIC, lang)}
-              </p>
+          {/* 化合价口诀：默认折叠为一行浅色提示栏，点击再展开全文，消除常驻留白 */}
+          <details className="group border border-[var(--border)]">
+            <summary className="flex cursor-pointer select-none items-center justify-between gap-2 bg-[var(--accent-light)]/30 px-3 py-1.5 text-[0.6875rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">
+              <span>// {zh ? '化合价口诀' : 'Valence mnemonic'}</span>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="space-y-1 px-3 py-2">
+              <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{pick(VALENCE_MNEMONIC, lang)}</p>
               <p className="text-[0.6875rem] serif-font leading-relaxed text-[var(--muted)]">
                 {zh
                   ? '口诀只是记忆线索，具体价态仍以化学式计算为准：正负化合价代数和为 0。'
                   : 'The mnemonic is a memory aid; always confirm with the zero-sum rule.'}
               </p>
             </div>
-          </div>
+          </details>
 
           <div className="border border-[var(--border)] p-3 space-y-2">
             <h2 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
@@ -736,8 +762,7 @@ export default function ChemistryFormulas() {
                       : `Explain why ${builderResult.cation} (${formatValence(builderResult.cationCharge)}) and ${builderResult.anion} (${formatValence(builderResult.anionCharge)}) give ${builderResult.formula}`
                   }
                 />
-                <AskQuizButton />
-                <button
+                      <button
                   type="button"
                   onClick={() => {
                     setSolverFormula(builderResult.formula);
@@ -999,8 +1024,7 @@ export default function ChemistryFormulas() {
                       : `Explain how to solve for the valence of ${effectiveTarget} in ${solverFormula}`
                   }
                 />
-                <AskQuizButton />
-              </div>
+                    </div>
             </div>
           )}
         </section>
@@ -1016,7 +1040,7 @@ export default function ChemistryFormulas() {
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs mono-font text-[var(--muted)]">
-              {zh ? '第' : 'Q'} {practiceIndex + 1} / {questions.length} · {pick(PRACTICE_KIND_LABEL[question.kind], lang)}
+              {zh ? '第' : 'Q'} {practiceIndex + 1} / {categoryQuestions.length} · {pick(PRACTICE_CATEGORY_LABEL[practiceCategory], lang)} · {pick(PRACTICE_KIND_LABEL[question.kind], lang)}
             </div>
             <div className="flex items-center gap-3 text-xs mono-font text-[var(--muted)]">
               <span>
@@ -1028,6 +1052,7 @@ export default function ChemistryFormulas() {
                 onClick={() => {
                   setAnswers({});
                   setPracticeIndex(0);
+                  setVariantQuestion(null);
                 }}
                 className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] transition-colors"
               >
@@ -1037,7 +1062,43 @@ export default function ChemistryFormulas() {
             </div>
           </div>
 
+          {/* 四大中考分类：基础反推 / 易错避坑 / 十字交叉写化学式 / 价态排序 */}
+          <div className="flex flex-wrap gap-1.5">
+            {PRACTICE_CATEGORY_ORDER.map((c) => {
+              const active = practiceCategory === c;
+              const count = questions.filter((q) => (q.category ?? 'basic') === c).length;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => chooseCategory(c)}
+                  aria-pressed={active}
+                  className={`compact tap32 inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs mono-font transition-colors ${
+                    active
+                      ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]'
+                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+                  }`}
+                >
+                  {pick(PRACTICE_CATEGORY_LABEL[c], lang)}
+                  <span className="text-[0.625rem] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="border border-[var(--border)] p-4 space-y-3">
+            {variantQuestion && (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-l-2 border-[var(--accent)] pl-2 text-[0.6875rem] mono-font text-[var(--muted)]">
+                <span>{zh ? '变式训练 · 同考点换一题' : 'Variation · same skill, new item'}</span>
+                <button
+                  type="button"
+                  onClick={() => setVariantQuestion(null)}
+                  className="underline decoration-[var(--border)] underline-offset-2 hover:decoration-[var(--fg)]"
+                >
+                  {zh ? '返回原题' : 'Back to original'}
+                </button>
+              </div>
+            )}
             <p className="text-base serif-font leading-relaxed text-[var(--fg)]">
               <FormulaText text={pick(question.prompt, lang)} lang={lang} />
             </p>
@@ -1098,13 +1159,36 @@ export default function ChemistryFormulas() {
                     <FormulaText text={pick(question.diagnosis[answers[question.id]], lang)} lang={lang} />
                   </p>
                 )}
+                {answers[question.id] !== question.answer && (
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    <AskAiButton
+                      label={zh ? 'AI 点拨思路' : 'AI hint'}
+                      className="border border-[var(--border)] text-[var(--fg)]"
+                      question={
+                        zh
+                          ? `我在这道化合价题上做错了，请不要直接告诉我答案，请一步一步点拨我如何推导这道题的思路。\n题干：${pick(question.prompt, 'zh')}\n我的选择：${question.options[answers[question.id]]}\n标准答案：${question.options[question.answer]}\n涉及知识点：${pick(PRACTICE_CATEGORY_LABEL[question.category ?? 'basic'], 'zh')} / ${pick(PRACTICE_KIND_LABEL[question.kind], 'zh')}`
+                          : `I got this valence question wrong. Do not give me the answer directly; step by step, guide me on how to derive it.\nQuestion: ${pick(question.prompt, 'en')}\nMy choice: ${question.options[answers[question.id]]}\nCorrect answer: ${question.options[question.answer]}\nSkill: ${pick(PRACTICE_CATEGORY_LABEL[question.category ?? 'basic'], 'en')} / ${pick(PRACTICE_KIND_LABEL[question.kind], 'en')}`
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={startVariant}
+                      className="compact tap32 inline-flex items-center gap-1 rounded border border-[var(--border)] px-2 py-1 text-xs mono-font text-[var(--fg)] transition-colors hover:border-[var(--fg)]"
+                    >
+                      {zh ? '变式训练' : 'Variation'}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
             <div className="flex items-center justify-between gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => setPracticeIndex((i) => Math.max(0, i - 1))}
+                onClick={() => {
+                  setVariantQuestion(null);
+                  setPracticeIndex((i) => Math.max(0, i - 1));
+                }}
                 disabled={practiceIndex === 0}
                 className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 text-xs mono-font border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 transition-colors"
               >
@@ -1113,8 +1197,11 @@ export default function ChemistryFormulas() {
               </button>
               <button
                 type="button"
-                onClick={() => setPracticeIndex((i) => Math.min(questions.length - 1, i + 1))}
-                disabled={practiceIndex === questions.length - 1}
+                onClick={() => {
+                  setVariantQuestion(null);
+                  setPracticeIndex((i) => Math.min(categoryQuestions.length - 1, i + 1));
+                }}
+                disabled={practiceIndex >= categoryQuestions.length - 1}
                 className="compact tap32 inline-flex items-center gap-1 rounded px-2 py-1 text-xs mono-font border border-[var(--border)] text-[var(--fg)] hover:border-[var(--fg)] disabled:opacity-40 transition-colors"
               >
                 {zh ? '下一题' : 'Next'}

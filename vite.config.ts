@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import path from 'path';
 import { defineConfig, type Plugin } from 'vite';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
+import { createHash } from 'crypto';
 import { fileURLToPath } from 'url';
 
 import {
@@ -39,18 +40,26 @@ function writeOfflineManifest(): Plugin {
   return {
     name: 'write-offline-manifest',
     generateBundle() {
+      const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version: string };
       const collect = (id: string, dir: string, match: (name: string) => boolean, base: string) => {
         const abs = path.resolve(__dirname, dir);
-        if (!existsSync(abs)) return { id, files: [] as { url: string; bytes: number }[] };
+        if (!existsSync(abs)) return { id, files: [] as { url: string; bytes: number; hash: string }[] };
         const files = readdirSync(abs)
           .filter(match)
           .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
-          .map((name) => ({ url: `${base}${name}`, bytes: statSync(path.join(abs, name)).size }));
+          .map((name) => {
+            const full = path.join(abs, name);
+            const bytes = statSync(full).size;
+            // 短内容哈希（8 位 hex）：用于「同 URL 素材被修正」时识别并触发补存。
+            const hash = createHash('sha256').update(readFileSync(full)).digest('hex').slice(0, 8);
+            return { url: `${base}${name}`, bytes, hash };
+          });
         return { id, files };
       };
-      // 15MB 的宣传视频不进离线包：为它把整包体积翻倍不划算；架构页的 html 首次访问后由
-      // 运行时缓存按需留下（见下方 runtimeCaching），这里只带上它用的两张图。
+      // 15MB 的宣传视频不进离线包：为它把整包体积翻倍不划算；架构页 html 已纳入 SW 预缓存
+      // （见 workbox globIgnores 注释），保证断网也能打开页脚的「运行架构页」。
       const manifest = {
+        version: pkg.version,
         builtAt: Date.now(),
         groups: [
           collect('photos', 'public/element-images', (n) => n.endsWith('.jpg'), '/element-images/'),
@@ -295,14 +304,13 @@ export default defineConfig({
         // 上限只影响「是否预缓存」，不改变离线策略，故按当前体积放宽到 3 MiB。
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff,woff2,ttf}', 'offline-manifest.json'],
-        // architecture.html 是重型查看器（约 735KB）：不预缓存，避免每个访客首装体积翻倍；
-        // 改由下方 runtimeCaching 首次访问后按需缓存（离线仍可打开）。
+        // architecture.html（约 735KB）已纳入预缓存：页脚「运行架构页」必须在断网时也能打开，
+        // 仅靠首次在线访问的运行时缓存无法保证新设备离线可用。
         // KaTeX 同时产出 woff2 / woff / ttf 三份同字形文件，浏览器优先用 woff2；
         // 预缓存只留 woff2，省掉约 800KB 的重复字体（离线公式排版仍完整）。
         globIgnores: [
           '**/version.json',
           '**/audio/*.mp3',
-          '**/architecture.html',
           '**/KaTeX_*.woff',
           '**/KaTeX_*.ttf',
         ],
@@ -341,8 +349,8 @@ export default defineConfig({
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: PHOTO_CACHE,
-              // 上限按「全量离线包」定（照片约 104 张），否则 LRU 会把刚下好的包自己淘汰掉
-              expiration: { maxEntries: 120, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              // 上限按「全量离线包」并留足余量（照片 104，含未来补图），否则 LRU 会淘汰离线包
+              expiration: { maxEntries: 150, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
@@ -357,13 +365,14 @@ export default defineConfig({
             },
           },
           {
-            // 元素读音音频：听过就不再走网络（单文件十几 KB，CacheFirst 最省流量）
+            // 元素读音音频：StaleWhileRevalidate——先放缓存、后台回源，纠正后的读音能自动更新
+            // （旧的纯 CacheFirst 会让修正音频在同 URL 下一年不回源）。
             urlPattern: AUDIO_URL_PATTERN,
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: AUDIO_CACHE,
-              // 上限按「全量离线包」定（118 元素 × 4 种读音 = 472 段）
-              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 365 },
+              // 上限按「全量离线包」并留余量（118 元素 × 4 种读音 = 472 段）
+              expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 365 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

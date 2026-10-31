@@ -90,9 +90,10 @@ export default function WelcomeDialog({
         style={reduceMotion ? undefined : { animation: 'welcome-fade-in 0.3s ease' }}
         aria-hidden="true"
       />
-      {/* 卡片：定高弹性约束（手机 85dvh / 桌面封顶 620px）——两页同高、居中不跳位，内容区独立滚动 */}
+      {/* 卡片：定高弹性约束（手机 85dvh / 桌面 680px，超高视口自动收敛）——两页同高、居中不跳位；
+          680 让「实验室概览」在 PC 上无需内部滚动即可完整呈现，移动端仍走 85dvh 不变 */}
       <div
-        className="relative w-full max-w-lg h-[85dvh] sm:h-[620px] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]"
+        className="relative w-full max-w-lg h-[85dvh] sm:h-[680px] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]"
         style={reduceMotion ? undefined : { animation: 'welcome-rise-in 0.35s ease' }}
       >
         {/* 顶部条：flex-shrink-0 常驻 */}
@@ -153,20 +154,9 @@ export default function WelcomeDialog({
           </button>
         </div>
 
-        {/* Tab：精致分段滑槽（轨道 + 等宽滑块，位移过渡），紧贴副标题下方居左 */}
-        <div className="flex-shrink-0 px-5 pb-2">
-          <div
-            className="relative grid w-fit max-w-full grid-cols-2 items-center rounded-[0.625rem] border border-[var(--border)]/60 bg-[var(--accent-light)]/60 p-0.5 sm:rounded-full sm:p-1"
-            role="tablist"
-            aria-label={t.welcomeTabsAria}
-          >
-            {/* 滑块：两格等宽 → 位移一格即切换；reduced-motion 由 index.css 全局兜底块压平
-                宽度取「轨道内宽的一半」：移动端轨道 p-0.5 + 1px 边框 → calc(50%-0.125rem) */}
-            <span
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc(50%-0.125rem)] rounded-lg bg-[var(--card-bg)] shadow-xs transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] sm:inset-y-1 sm:left-1 sm:w-[calc(50%-0.25rem)] sm:rounded-full"
-              style={{ transform: tab === 'overview' ? 'translateX(0)' : 'translateX(100%)' }}
-            />
+        {/* Tab：极简下划线（无大胶囊底槽，仅一条通栏底边） */}
+        <div className="flex-shrink-0 px-5">
+          <div className="flex gap-6 border-b border-[var(--border)] text-sm mb-2" role="tablist" aria-label={t.welcomeTabsAria}>
             {([
               ['overview', t.welcomeTabOverview],
               ['guide', t.welcomeTabGuide],
@@ -179,10 +169,10 @@ export default function WelcomeDialog({
                 aria-selected={tab === v}
                 aria-controls={`welcome-panel-${v}`}
                 onClick={() => setTab(v)}
-                /* 移动端视觉盒降到 30px（轨道随之 36px），命中区由 .tap-rail 上下各补 5px → 40px；
-                   桌面（sm:）维持原 36px 胶囊 + rounded-full，一字未改。 */ 
-                className={`tap-rail relative z-10 h-[1.875rem] rounded-lg px-3 py-0 text-xs mono-font transition-colors touch-manipulation sm:h-9 sm:rounded-full sm:px-4 sm:py-1.5 ${
-                  tab === v ? 'text-[var(--fg)] font-medium' : 'text-[var(--muted)] hover:text-[var(--fg)]'
+                className={`pb-2 text-xs mono-font transition-colors touch-manipulation ${
+                  tab === v
+                    ? 'text-[var(--accent)] font-medium border-b-2 border-[var(--accent)]'
+                    : 'text-[var(--muted)] hover:text-[var(--fg)] border-b-2 border-transparent'
                 }`}
               >
                 {label}
@@ -196,7 +186,7 @@ export default function WelcomeDialog({
           role="tabpanel"
           /* 内容区独立纵向滚动：px-1 让滚动条贴外缘、不压卡片；pb-6 保证滚到底时末行文字完全露出；
              min-h 取 12rem——「矮视口也不会把底栏顶出去」的安全上限 */
-          className="flex-1 overflow-y-auto px-1 pb-6 pt-1 min-h-[12rem]"
+          className="flex-1 overflow-y-auto px-1 pb-6 pt-0 min-h-[12rem]"
         >
           {/* 内容留白放在内层：mx-4 + 外层 px-1 = 20px，与头部/底栏的 px-5 对齐；滚动条落在外侧留白里 */}
           <div className="mx-4 space-y-3">
@@ -209,12 +199,12 @@ export default function WelcomeDialog({
               <span>{t.welcomeDevices}</span>
             </p>
             <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
-              <Printer className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
-              <span>{t.welcomeQuiz}</span>
-            </p>
-            <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
               <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
               <span>{t.welcomeAi}</span>
+            </p>
+            <p className="flex items-start gap-2 text-xs leading-relaxed text-[var(--muted)]">
+              <Printer className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+              <span>{t.welcomeQuiz}</span>
             </p>
           </div>
 

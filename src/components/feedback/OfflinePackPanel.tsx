@@ -102,6 +102,13 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
             </p>
           )}
 
+          {/* 站点更新 / 素材修正：已有本机素材但 hash 变了，提示「需补存 N 项」。 */}
+          {!isFull && status?.supported && (status.outdatedCount ?? 0) > 0 && (
+            <p className="border-l-2 border-[var(--accent)] pl-2.5 text-[0.6875rem] leading-relaxed text-[var(--fg)]">
+              {fill(c.outdated, { n: status.outdatedCount })}
+            </p>
+          )}
+
           {(running || (progress && !isFull)) && (
             <div className="space-y-2">
               <div className="h-1.5 w-full bg-[var(--border)]/40">

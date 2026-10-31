@@ -1076,7 +1076,7 @@ export default function PeriodicTable() {
                           loading="lazy"
                           draggable={false}
                           className="w-full h-full object-contain"
-                          style={{ display: heroFocus.n > 103 ? 'none' : 'block' }}
+                          style={{ display: heroFocus.n > 104 ? 'none' : 'block' }}
                           onError={(e) => {
                             const img = e.currentTarget as HTMLImageElement;
                             img.style.display = 'none';
@@ -1088,7 +1088,7 @@ export default function PeriodicTable() {
                           key={`hero-fb-${heroFocus.n}`}
                           data-hero-fallback
                           className="absolute inset-0 flex-col items-center justify-center gap-0.5"
-                          style={{ display: heroFocus.n > 103 ? 'flex' : 'none' }}
+                          style={{ display: heroFocus.n > 104 ? 'flex' : 'none' }}
                         >
                           <span className="text-lg font-bold mono-font leading-none" style={{ color: CAT_COLOR[heroFocus.cat].border }}>
                             {heroFocus.symbol}

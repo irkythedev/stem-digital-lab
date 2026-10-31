@@ -567,7 +567,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     assert.match(wd, /aria-selected=\{tab === v\}/, 'Tab 须带 aria-selected');
     // ② 弹性布局不变量：头 / Tab 栏 / 底栏常驻，内容区独立滚动
     //    高度上限用 dvh 而非 vh：移动端浏览器 UI 会伸缩，vh 会把底栏顶出屏幕
-    assert.match(wd, /h-\[85dvh\] sm:h-\[620px\] flex flex-col/, '外框须为定高弹性约束（两页同高才能居中不跳位）');
+    assert.match(wd, /h-\[85dvh\] sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（两页同高才能居中不跳位，PC 680px 免滚动）');
     const shrink0 = wd.match(/flex-shrink-0/g) ?? [];
     assert.ok(shrink0.length >= 3, `顶部条 / Tab 栏 / 底栏须 flex-shrink-0 常驻（实测 ${shrink0.length} 处）`);
     // 垂直居中：外框已定为固定高度（两页同高），故居中不会重解位置；此前 max-h 下居中会顶动头部 98px
@@ -596,30 +596,24 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     // 同一条导览的 zh + en 各计一次 → 至多 1 条提及元素周期表（= 至多 2 条字符串）
     assert.ok(ptRows.length <= 2, `至多一条导览可提及元素周期表（实测 ${ptRows.length}/8 条命中）`);
     // ④ 触屏热区（本弹窗挂在 body 上，不吃 main button 的 40px 全局底线）
-    //    移动端视觉减重：Tab 30px / 轨道 36px / 主按钮 36px + 12px 字；桌面（sm:）全部维持原样。
-    //    Tab 挂 .tap-rail（上下各 +5px 透明扩区）而不是 .tap-area——后者把**视觉盒**撑到 40px，
-    //    正是移动端「小字大壳」的来源；扩区必须落到伪元素上才只动命中不动版式。
-    assert.match(wd, /tap-rail relative z-10 h-\[1\.875rem\] rounded-lg px-3 py-0 text-xs mono-font/, 'Tab 触屏须为 30px 视觉盒（命中由 .tap-rail 补）');
-    assert.match(wd, /sm:h-9 sm:rounded-full sm:px-4 sm:py-1\.5/, 'Tab 桌面须维持 36px 胶囊（移动端减重不得外溢）');
-    // 圆角同心：外轨 10px - 内边距 2px = 滑块 8px（内外同为 10px 时四角留白会显得挤）
-    assert.match(wd, /rounded-\[0\.625rem\][^"]*p-0\.5 sm:rounded-full/, '轨道移动端圆角须为 10px');
-    assert.doesNotMatch(wd, /tap-area relative z-10/, 'Tab 不得再用 .tap-area 撑高视觉盒');
     assert.match(wd, /w-11 h-11 text-\[var\(--muted\)\]/, '关闭 × 热区须 44×44');
     assert.match(wd, /transition-colors min-h-9 touch-manipulation rounded-md sm:min-h-11 sm:px-5 sm:text-sm/, '主按钮移动端 36px / 桌面 44px 两档');
     assert.match(wd, /gap-2 min-h-11 text-xs/, '「下次不再显示」须 ≥44px 热区');
-    // ④b Tab：高级分段滑槽——轨道 + 等宽滑块（位移过渡），非孤悬灰块、非实心反色块
-    assert.match(wd, /grid w-fit max-w-full grid-cols-2 items-center rounded-\[0\.625rem\] border border-\[var\(--border\)\]\/60 bg-\[var\(--accent-light\)\]\/60 p-0\.5 sm:rounded-full sm:p-1/, 'Tab 轨道须为等宽两格且移动端 36px');
-    assert.match(wd, /absolute inset-y-0\.5 left-0\.5 w-\[calc\(50%-0\.125rem\)\] rounded-lg[^"]*sm:inset-y-1 sm:left-1 sm:w-\[calc\(50%-0\.25rem\)\] sm:rounded-full/, '须有等宽滑块（抬起面 + 位移过渡，桌面几何不变）');
-    assert.match(wd, /transform: tab === 'overview' \? 'translateX\(0\)' : 'translateX\(100%\)'/, '滑块位移须由当前分区驱动');
-    assert.doesNotMatch(wd, /bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/, '激活 Tab 不得再用实心反色块');
-    assert.doesNotMatch(wd, /flex-1 min-h-11/, 'Tab 不得再撑满整行（通栏）');
+    // ④b Tab：极简下划线（通栏底边 + 激活项主色下划线），彻底移除厚重胶囊底槽
+    assert.match(wd, /flex gap-6 border-b border-\[var\(--border\)\] text-sm mb-2/, 'Tab 须为通栏底边 + 固定 gap 的极简结构（切 Tab 不得位移）');
+    assert.match(wd, /text-\[var\(--accent\)\] font-medium border-b-2 border-\[var\(--accent\)\]/, '激活项须为主色文字 + 2px 下划线');
+    assert.match(wd, /text-\[var\(--muted\)\] hover:text-\[var\(--fg\)\] border-b-2 border-transparent/, '未激活项须静音色 + 透明下划线');
+    assert.doesNotMatch(wd, /border-transparent ml-6/, '未激活项不得用条件 ml-6（会导致切 Tab 时文字迁移重叠）');
+    assert.doesNotMatch(wd, /bg-\[var\(--accent-light\)\]\/60 p-0\.5 sm:rounded-full/, '不得再保留厚底槽胶囊');
+    assert.doesNotMatch(wd, /translateX\(100%\)/, '不得再使用滑块位移（已改为下划线结构）');
+    assert.doesNotMatch(wd, /bg-\[var\(--fg\)\] text-\[var\(--bg\)\]/, '激活 Tab 不得用实心反色块');
     // 明暗主题由 html.dark / :root:not(.light) 控制，Tailwind 的 dark 前缀变体只认 prefers-color-scheme
     // —— 手动切主题时会与站点脱节，故本文件禁用该变体（写法为 dark 前缀 + 冒号 + 工具类，中间无空格），一律走 var 令牌
     assert.doesNotMatch(wd, /dark:[^\s]/, '弹窗不得使用 dark 前缀变体（与手动主题切换脱节）');
     // ④c 定高弹性 + 去边框化 + 滚动安全
-    assert.match(wd, /h-\[85dvh\] sm:h-\[620px\] flex flex-col/, '外框须为定高弹性约束（桌面封顶 620px）');
+    assert.match(wd, /h-\[85dvh\] sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（桌面 680px，超高视口由 max-h 收敛）');
     // 滚动条落在 px-1 的外侧留白里；内容留白放在内层 mx-4，与外框 px-5 对齐（20px）
-    assert.match(wd, /flex-1 overflow-y-auto px-1 pb-6 pt-1 min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 外侧留白容下滚动条');
+    assert.match(wd, /flex-1 overflow-y-auto px-1 pb-6 pt-0 min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 外侧留白容下滚动条');
     assert.match(wd, /<div className="mx-4 space-y-3">/, '内容留白须放内层并与外框对齐');
     assert.match(wd, /border-t border-\[var\(--border\)\]\/60 px-5 pt-3/, '底栏须常驻且只留一条发丝分隔线');
     assert.doesNotMatch(wd, /border border-\[var\(--border\)\]\/70/, '内容块不得再挂灰色冷边框');

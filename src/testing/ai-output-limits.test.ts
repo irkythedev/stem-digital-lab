@@ -60,7 +60,8 @@ export function registerAiOutputLimitsTests(test: TestFn, testAsync: TestFn): vo
   test('空正文入失败态：不落盘、不入历史、给重试', () => {
     const ai = readAiPanel();
     assert.match(ai, /if \(outcome === 'empty'\) throw new EmptyAnswerError\(res\.finishReason\)/, '对话空正文必须抛 EmptyAnswerError');
-    assert.match(ai, /const body = outcome === 'ok' \? rawBody : markTruncated\(rawBody, lang, outcome === 'cut' \? 'cut' : 'limit'\)/, '没写完的正文必须按成因标注');
+    assert.match(ai, /markTruncated\(rawBody, lang, outcome === 'cut' \? 'cut' : 'limit'\)/, '没写完的正文必须按成因标注');
+    assert.match(ai, /const body = stripThinkingFromHistory\(/, '正文落盘/入历史前必须经思考清洗门禁');
     const i18n = readSrc('src/lib/i18n.ts', 'utf8');
     assert.match(i18n, /empty: '模型这次没有输出正文/, '中文文案必须说明「没输出正文」');
     assert.match(i18n, /empty: 'The model produced no answer this time/, '英文文案必须同步');

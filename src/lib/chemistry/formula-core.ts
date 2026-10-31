@@ -709,11 +709,16 @@ function formatSigned(n: number): string {
 /* 练习题：固定题库 + 固定选项顺序，无随机数                            */
 /* ------------------------------------------------------------------ */
 
-export type PracticeKind = 'valence' | 'formula' | 'solve' | 'judge' | 'name' | 'mass';
+export type PracticeKind = 'valence' | 'formula' | 'solve' | 'judge' | 'name' | 'mass' | 'order';
+
+/** 中考课标四大练习分类。 */
+export type PracticeCategory = 'basic' | 'pitfall' | 'formula' | 'order';
 
 export interface PracticeQuestion {
   id: string;
   kind: PracticeKind;
+  /** 所属练习分类（缺省按 basic 处理，兼容旧数据）。 */
+  category?: PracticeCategory;
   prompt: Bi;
   formula?: string;
   options: string[];
@@ -903,6 +908,87 @@ const RAW_PRACTICE_QUESTIONS: readonly PracticeQuestion[] = [
     },
     '(NH4)2SO4',
   ),
+  Q(
+    'pitfall-nh4no3-n',
+    'judge',
+    bi('NH₄NO₃（硝酸铵）中氮元素的化合价，下列说法正确的是？', 'Which statement about nitrogen in NH₄NO₃ is correct?'),
+    ['铵根中氮为 −3，硝酸根中氮为 +5', '两处氮都是 +5', '两处氮都是 −3', '铵根中氮为 +5，硝酸根中氮为 −3'],
+    0,
+    bi('分两处算：NH₄⁺ 整体 +1，x + 4×(+1) = +1 → x = −3；NO₃⁻ 整体 −1，x + 3×(−2) = −1 → x = +5。', 'Treat them separately: NH₄⁺ carries +1, x + 4×(+1) = +1 → x = −3; NO₃⁻ carries −1, x + 3×(−2) = −1 → x = +5.'),
+    {
+      1: bi('两处环境不同，不能都按 +5 算；铵根里的氮是 −3。', 'The two sites differ; nitrogen is −3 in ammonium, not +5.'),
+      2: bi('硝酸根里的氮是 +5，不是 −3。', 'Nitrogen in nitrate is +5, not −3.'),
+      3: bi('符号反了：铵根 −3、硝酸根 +5。', 'Signs are reversed: −3 in ammonium, +5 in nitrate.'),
+    },
+    'NH4NO3',
+  ),
+  Q(
+    'pitfall-fe3o4',
+    'judge',
+    bi('关于 Fe₃O₄ 中铁的化合价，下列说法正确的是？', 'Which statement about iron in Fe₃O₄ is correct?'),
+    ['可视为 FeO·Fe₂O₃，铁为 +2/+3 混合价，初中不作单一整数反推', '铁全部为 +2', '铁全部为 +3', '铁为 +8/3，直接按分数记'],
+    0,
+    bi('Fe₃O₄ 是复合氧化物 FeO·Fe₂O₃，铁同时有 +2 和 +3，教材不要求推出单一整数价。', 'Fe₃O₄ is the composite oxide FeO·Fe₂O₃; iron is +2 and +3, and the textbook does not assign one integer valence.'),
+    {
+      1: bi('若全为 +2，与 FeO·Fe₂O₃ 的真实组成不符。', 'All +2 would not reflect the FeO·Fe₂O₃ composition.'),
+      2: bi('全为 +3 也不符合 FeO·Fe₂O₃ 的组成。', 'All +3 also contradicts the FeO·Fe₂O₃ composition.'),
+      3: bi('+8/3 是数学平均，不是教材要求的整数化合价。', '+8/3 is a mathematical average, not a textbook integer valence.'),
+    },
+    'Fe3O4',
+  ),
+  Q(
+    'pitfall-o2-zero',
+    'valence',
+    bi('O₂（氧气）中氧元素的化合价是？', 'What is the valence of oxygen in O₂?'),
+    ['0', '−2', '+2', '−1'],
+    0,
+    bi('单质中元素化合价为 0，O₂ 是单质。', 'In a free element the valence is 0; O₂ is an element.'),
+    {
+      1: bi('−2 是化合物中氧的常见价态，单质里不是。', '−2 is common in compounds, not in the free element.'),
+      2: bi('氧在单质中不带正价。', 'Oxygen is not positive in its free state.'),
+      3: bi('−1 是过氧化物中的特例，O₂ 中为 0。', '−1 is the peroxide exception; here it is 0.'),
+    },
+    'O2',
+  ),
+  Q(
+    'order-cl',
+    'order',
+    bi('下列含氯物质中，氯元素化合价由低到高排列正确的是？', 'Which order lists chlorine valence from low to high?'),
+    ['HCl → Cl₂ → HClO → HClO₃', 'Cl₂ → HCl → HClO → HClO₃', 'HClO → HCl → Cl₂ → HClO₃', 'HCl → HClO → Cl₂ → HClO₃'],
+    0,
+    bi('HCl(−1) → Cl₂(0) → HClO(+1) → HClO₃(+5)。', 'HCl(−1) → Cl₂(0) → HClO(+1) → HClO₃(+5).'),
+    {
+      1: bi('Cl₂ 是 0，应排在 HCl(−1) 之后。', 'Cl₂ is 0 and should come after HCl(−1).'),
+      2: bi('HClO 是 +1，比 HCl(−1) 高，不能放最前。', 'HClO is +1, higher than HCl(−1).'),
+      3: bi('HClO₃ 是 +5，应排在 Cl₂(0) 之后。', 'HClO₃ is +5 and should come after Cl₂(0).'),
+    },
+  ),
+  Q(
+    'order-s',
+    'order',
+    bi('下列含硫物质中，硫元素化合价由低到高排列正确的是？', 'Which order lists sulfur valence from low to high?'),
+    ['H₂S → S → SO₂ → SO₃', 'SO₂ → H₂S → S → SO₃', 'S → H₂S → SO₂ → SO₃', 'H₂S → SO₂ → S → SO₃'],
+    0,
+    bi('H₂S(−2) → S(0) → SO₂(+4) → SO₃(+6)。', 'H₂S(−2) → S(0) → SO₂(+4) → SO₃(+6).'),
+    {
+      1: bi('SO₂ 是 +4，应排在 H₂S(−2) 之后。', 'SO₂ is +4 and should come after H₂S(−2).'),
+      2: bi('S 是 0，比 H₂S(−2) 高。', 'S is 0, higher than H₂S(−2).'),
+      3: bi('S 是 0，应排在 SO₂(+4) 之前。', 'S is 0 and should come before SO₂(+4).'),
+    },
+  ),
+  Q(
+    'order-n',
+    'order',
+    bi('下列含氮物质中，氮元素化合价由低到高排列正确的是？', 'Which order lists nitrogen valence from low to high?'),
+    ['NH₃ → N₂ → NO → HNO₃', 'N₂ → NH₃ → NO → HNO₃', 'NO → NH₃ → N₂ → HNO₃', 'NH₃ → NO → N₂ → HNO₃'],
+    0,
+    bi('NH₃(−3) → N₂(0) → NO(+2) → HNO₃(+5)。', 'NH₃(−3) → N₂(0) → NO(+2) → HNO₃(+5).'),
+    {
+      1: bi('N₂ 是 0，应排在 NH₃(−3) 之后。', 'N₂ is 0 and should come after NH₃(−3).'),
+      2: bi('NO 是 +2，比 NH₃(−3) 高。', 'NO is +2, higher than NH₃(−3).'),
+      3: bi('N₂ 是 0，应排在 NO(+2) 之前。', 'N₂ is 0 and should come before NO(+2).'),
+    },
+  ),
 ] as const;
 
 /**
@@ -930,9 +1016,34 @@ function rotateQuestion(q: PracticeQuestion, index: number): PracticeQuestion {
   };
 }
 
-export const PRACTICE_QUESTIONS: readonly PracticeQuestion[] = RAW_PRACTICE_QUESTIONS.map(
-  rotateQuestion,
-);
+const PRACTICE_CATEGORY_BY_ID: Record<string, PracticeCategory> = {
+  'valence-fe2o3': 'basic',
+  'solve-kmno4': 'basic',
+  'name-fe2o3': 'basic',
+  'name-cu2o': 'basic',
+  'mass-h2o': 'basic',
+  'mass-fe2o3-fraction': 'basic',
+  'judge-feo': 'pitfall',
+  'judge-caoh2': 'pitfall',
+  'valence-h2o2': 'pitfall',
+  'pitfall-nh4no3-n': 'pitfall',
+  'pitfall-fe3o4': 'pitfall',
+  'pitfall-o2-zero': 'pitfall',
+  'formula-feo': 'formula',
+  'formula-ca-po4': 'formula',
+  'formula-nh4-so4': 'formula',
+  'order-cl': 'order',
+  'order-s': 'order',
+  'order-n': 'order',
+};
+
+export const PRACTICE_QUESTIONS: readonly PracticeQuestion[] = RAW_PRACTICE_QUESTIONS.map((q, i) => ({
+  ...rotateQuestion(q, i),
+  category: PRACTICE_CATEGORY_BY_ID[q.id] ?? 'basic',
+}));
+
+/** 四大练习分类的固定展示顺序。 */
+export const PRACTICE_CATEGORY_ORDER: readonly PracticeCategory[] = ['basic', 'pitfall', 'formula', 'order'];
 
 /** 按固定顺序取题；count 超过题库长度时循环（题目 id 加轮次后缀保证唯一）。 */
 export function practiceQuestions(count = 6): PracticeQuestion[] {
@@ -951,6 +1062,14 @@ export const PRACTICE_KIND_LABEL: Record<PracticeKind, Bi> = {
   judge: bi('判断正误', 'True or false'),
   name: bi('物质命名', 'Naming'),
   mass: bi('相对分子质量', 'Relative mass'),
+  order: bi('价态排序', 'Valence ordering'),
+};
+
+export const PRACTICE_CATEGORY_LABEL: Record<PracticeCategory, Bi> = {
+  basic: bi('基础反推', 'Basics'),
+  pitfall: bi('易错避坑', 'Pitfalls'),
+  formula: bi('十字交叉写化学式', 'Cross-rule formulas'),
+  order: bi('价态排序', 'Valence ordering'),
 };
 
 /* ------------------------------------------------------------------ */

@@ -300,14 +300,18 @@ describe('化学式与化合价内核（formula-core）', () => {
   });
 
   test('练习题：固定题库、选项四选一、答案下标合法、按轮次取题', () => {
-    assert.equal(PRACTICE_QUESTIONS.length, 12);
+    const L = PRACTICE_QUESTIONS.length;
+    assert.equal(L, 18);
     for (const q of PRACTICE_QUESTIONS) {
       assert.equal(q.options.length, 4, `${q.id} 应有 4 个选项`);
       assert.ok(q.answer >= 0 && q.answer < q.options.length, `${q.id} 答案下标越界`);
       assert.ok(q.explanation.zh && q.explanation.en, `${q.id} 缺双语解析`);
       assert.equal(q.diagnosis[q.answer], undefined, `${q.id} 正确选项不应带错因`);
     }
-    // 正确答案必须均匀分布，不能 12 道题全在同一个位置。
+    // 四大中考分类必须齐备且都有题。
+    const cats = new Set(PRACTICE_QUESTIONS.map((q) => q.category));
+    assert.deepEqual([...cats].sort(), ['basic', 'formula', 'order', 'pitfall'], '须覆盖基础/易错/十字交叉/排序四类');
+    // 正确答案必须均匀分布，不能所有题都落在同一个位置。
     assert.deepEqual(
       PRACTICE_QUESTIONS.map((q) => q.answer),
       PRACTICE_QUESTIONS.map((_, i) => i % 4),
@@ -315,15 +319,15 @@ describe('化学式与化合价内核（formula-core）', () => {
     const positions = new Set(PRACTICE_QUESTIONS.map((q) => q.answer));
     assert.equal(positions.size, 4, '四个选项位置都应出现正确答案');
 
-    const first = practiceQuestions(12);
-    const again = practiceQuestions(12);
+    const first = practiceQuestions(L);
+    const again = practiceQuestions(L);
     assert.deepEqual(first.map((q) => q.id), again.map((q) => q.id), '同一输入必须得到同一题序');
-    assert.equal(new Set(first.map((q) => q.id)).size, 12);
+    assert.equal(new Set(first.map((q) => q.id)).size, L);
 
-    const wrapped = practiceQuestions(14);
-    assert.equal(wrapped.length, 14);
-    assert.equal(wrapped[12].id, `${PRACTICE_QUESTIONS[0].id}-1`);
-    assert.equal(wrapped[13].id, `${PRACTICE_QUESTIONS[1].id}-1`);
+    const wrapped = practiceQuestions(L + 2);
+    assert.equal(wrapped.length, L + 2);
+    assert.equal(wrapped[L].id, `${PRACTICE_QUESTIONS[0].id}-1`);
+    assert.equal(wrapped[L + 1].id, `${PRACTICE_QUESTIONS[1].id}-1`);
   });
 });
 

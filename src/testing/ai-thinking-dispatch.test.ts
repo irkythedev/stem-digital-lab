@@ -85,7 +85,7 @@ export function registerAiThinkingDispatchTests(test: TestFn): void {
     const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
     const lib = strip(readSrc('src/lib/ai-config.ts', 'utf8'));
     const body = lib.slice(lib.indexOf('export async function streamChat'));
-    assert.ok(body.includes('resolveThinkingDispatch(cfg).params'), 'streamChat 必须用 resolveThinkingDispatch 组装');
+    assert.match(body, /resolveThinkingDispatch\(cfg(?:, \w+)?\)\.params/, 'streamChat 必须用 resolveThinkingDispatch 组装');
     assert.ok(!body.includes('buildThinkingParams(cfg.providerId'), 'streamChat 不得再自己拼一半');
     assert.ok(!body.includes('parseExtraParams(cfg.extraParamsText)'), '透传不得在 streamChat 里另拼一次');
     const panel = strip(readAiPanel());

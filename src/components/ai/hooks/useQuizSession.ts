@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStable } from '../panels/panel-shared';
 import {
   CHAIN_MAX_TOKENS, QUIZ_SENTINEL, buildFillJudgePrompt, buildQuizPrompt, classifyChatFailure,
-  classifyStreamOutcome, estimateTokens, logPromptIssue, streamChat,
+  classifyStreamOutcome, estimateTokens, logPromptIssue, streamChat, stripThinkingFromHistory,
   type AiConfig, type QuizAngle, type QuizQType,
 } from '../../../lib/ai-config';
 import { formatLabState, getLabState, labIdFromPath } from '../../../lib/ai-dynamic-questions';
@@ -196,8 +196,10 @@ export default function useQuizSession(deps: QuizSessionDeps) {
         quizAbortRef.current.signal,
         // 默认不下发上限：出题对思考型模型同样会被思考吃满预算，护栏交给下面的完整性校验 + 一次修复
         CHAIN_MAX_TOKENS.quiz,
+        undefined,
+        'quiz',
       );
-      const full = res.text;
+      const full = stripThinkingFromHistory(res.text);
       const outcome = classifyStreamOutcome(res);
       // 跨会话累计 token（出题请求 = prompt + 实际输出）
       addTokenUsage(config?.model, promptTokens + estimateTokens(full));
@@ -211,7 +213,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
             config,
             [
               messages[0],
-              { role: 'assistant', content: full.slice(-2000) },
+              { role: 'assistant', content: stripThinkingFromHistory(full.slice(-2000)) },
               {
                 role: 'user',
                 content: lang === 'zh'
@@ -222,6 +224,8 @@ export default function useQuizSession(deps: QuizSessionDeps) {
             () => {},
             quizAbortRef.current.signal,
             CHAIN_MAX_TOKENS.quiz,
+            undefined,
+            'quiz',
           );
           const merged = parseQuizBatchChecked(`${full}\n${repair.text}`, count);
           if (merged.items.length > parsed.items.length) parsed = merged;
@@ -312,10 +316,12 @@ export default function useQuizSession(deps: QuizSessionDeps) {
           () => {},
           signal.signal,
           CHAIN_MAX_TOKENS.judge,
+          undefined,
+          'judge', // 二值判分：强制极简思考（能关则关，不可关回落最低档）
         );
         clearTimeout(timeoutId);
         // 取第一个 Y/N，而不是首字符（解析见 ai-quiz.ts parseJudgeVerdict）
-        if (parseJudgeVerdict(res.text)) finalCorrect = true;
+        if (parseJudgeVerdict(stripThinkingFromHistory(res.text))) finalCorrect = true;
         else if (!res.text.trim()) {
           // 空正文（思考吃满预算最常见）：判分不可用就保留规则判分结果——
           // 绝不能因为「AI 没回话」把学生答对的题判错（旧实现正是如此）

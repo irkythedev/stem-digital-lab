@@ -4,15 +4,18 @@
  *
  * 离线教学包：把元素实物照片、全部读音和两张架构图存到本机，断网的教室也能照常上课。
  *
- * 存的位置就是 Service Worker 已经在用的那几个缓存桶（见 offline-cache-names.ts），
+ * 存的位置就是 Service Worker 已经在用的那几个缓存桶（见 offline-media.ts），
  * 所以断网时页面请求直接命中缓存，不需要改动 dist/sw.js。
- * 清单由构建时生成（vite.config.ts 的 writeOfflineManifest），数量与体积都不写死。
+ * 清单由构建时生成（vite.config.ts 的 writeOfflineManifest），数量与体积都不写死；
+ * 每个文件带 8 位内容 hash，配合本机记录的「已装 hash」识别素材修正/站点更新。
  */
 import { AUDIO_CACHE, DIAGRAM_CACHE, PHOTO_CACHE } from './offline-media';
 
 export interface PackFile {
   url: string;
   bytes: number;
+  /** 8 位内容哈希；旧清单可能缺失（缺省时按「存在即已装」兼容）。 */
+  hash?: string;
 }
 
 export interface PackGroup {
@@ -21,8 +24,34 @@ export interface PackGroup {
 }
 
 export interface PackManifest {
+  /** 构建时的应用版本（APP_VERSION），用于整包换代提示。 */
+  version?: string;
   builtAt: number;
   groups: PackGroup[];
+}
+
+/** 本机已装素材的 hash 索引（localStorage）：url → hash。用来与最新清单比对是否需补存。 */
+const HASH_STORAGE_KEY = 'stem-offline-pack-hashes';
+
+function readInstalledHashes(): Map<string, string> {
+  try {
+    if (typeof localStorage === 'undefined') return new Map();
+    const raw = localStorage.getItem(HASH_STORAGE_KEY);
+    if (!raw) return new Map();
+    const obj = JSON.parse(raw) as Record<string, string>;
+    return new Map(Object.entries(obj));
+  } catch {
+    return new Map();
+  }
+}
+
+function writeInstalledHashes(hashes: Map<string, string>): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(HASH_STORAGE_KEY, JSON.stringify(Object.fromEntries(hashes)));
+  } catch {
+    /* 隐私模式不可写：忽略，下次仍会按未装处理 */
+  }
 }
 
 /** 不支持时的真实原因：非安全上下文 / 浏览器确实没有该能力 */
@@ -37,6 +66,8 @@ export interface PackStatus {
   isFull: boolean;
   cachedCount: number;
   totalCount: number;
+  /** 已缓存但 hash 与最新清单不一致（或旧版无 hash）而需要补存的条目数。 */
+  outdatedCount: number;
   cachedBytes: number;
   totalBytes: number;
   /** 各组明细（照片/读音/架构图各多少个、共多少字节）——面板文案据此显示，不写死数字 */
@@ -95,13 +126,19 @@ export function supportReason(): SupportReason {
 export function planTasks(
   manifest: PackManifest,
   cachedPaths: Map<string, Set<string>>,
-): { file: PackFile; cache: string; cached: boolean }[] {
-  const tasks: { file: PackFile; cache: string; cached: boolean }[] = [];
+  installedHashes: Map<string, string> = new Map(),
+): { file: PackFile; cache: string; cached: boolean; present: boolean }[] {
+  const tasks: { file: PackFile; cache: string; cached: boolean; present: boolean }[] = [];
   for (const group of manifest.groups) {
     const cache = GROUP_CACHE[group.id];
     if (!cache) continue;
     const have = cachedPaths.get(cache) ?? new Set<string>();
-    for (const file of group.files) tasks.push({ file, cache, cached: have.has(file.url) });
+    for (const file of group.files) {
+      const present = have.has(file.url);
+      // 有 hash 时必须与「本机已装 hash」一致才算已就绪；旧版无 hash 的清单退化为「存在即已装」。
+      const cached = present && (!file.hash || installedHashes.get(file.url) === file.hash);
+      tasks.push({ file, cache, cached, present });
+    }
   }
   return tasks;
 }
@@ -125,11 +162,17 @@ export async function checkStatus(): Promise<PackStatus> {
   const supported = reason === 'ok';
   const manifest = await loadManifest();
   if (!manifest) {
-    return { supported, reason, isFull: false, cachedCount: 0, totalCount: 0, cachedBytes: 0, totalBytes: 0, groups: [] };
+    return { supported, reason, isFull: false, cachedCount: 0, totalCount: 0, outdatedCount: 0, cachedBytes: 0, totalBytes: 0, groups: [] };
   }
-  const tasks = planTasks(manifest, supported ? await readCachedPaths() : new Map());
+  const tasks = planTasks(
+    manifest,
+    supported ? await readCachedPaths() : new Map(),
+    supported ? readInstalledHashes() : new Map(),
+  );
   const totalBytes = tasks.reduce((sum, t) => sum + t.file.bytes, 0);
   const cached = tasks.filter((t) => t.cached);
+  // 「已在本机、但版本旧了」的条目：需要补存（不与「全新未下载」混为一谈）。
+  const outdatedCount = tasks.filter((t) => t.present && !t.cached).length;
   const groups = manifest.groups.map((g) => ({
     id: g.id,
     count: g.files.length,
@@ -142,6 +185,7 @@ export async function checkStatus(): Promise<PackStatus> {
     isFull: tasks.length > 0 && cached.length === tasks.length,
     cachedCount: cached.length,
     totalCount: tasks.length,
+    outdatedCount,
     cachedBytes: cached.reduce((sum, t) => sum + t.file.bytes, 0),
     totalBytes,
   };
@@ -163,7 +207,8 @@ export async function downloadAll(
     }
   }
 
-  const tasks = planTasks(manifest, await readCachedPaths());
+  const installedHashes = readInstalledHashes();
+  const tasks = planTasks(manifest, await readCachedPaths(), installedHashes);
   const totalBytes = tasks.reduce((sum, t) => sum + t.file.bytes, 0);
   const total = tasks.length;
   const handles = new Map<string, Cache>();
@@ -197,6 +242,7 @@ export async function downloadAll(
       if (ok) {
         done += 1;
         bytes += task.file.bytes;
+        if (task.file.hash) installedHashes.set(task.file.url, task.file.hash);
       } else {
         // 个别文件失败不打断整体，最后一起报出来
         failed.push(task.file.url);
@@ -206,6 +252,7 @@ export async function downloadAll(
   };
 
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, worker));
+  writeInstalledHashes(installedHashes);
   return { ok: done, failed };
 }
 
@@ -217,6 +264,7 @@ export async function clearOfflinePack(): Promise<void> {
       /* 忽略 */
     }
   }
+  writeInstalledHashes(new Map());
 }
 
 export function formatSize(bytes: number): string {

@@ -45,7 +45,7 @@ import useQuizSession from './hooks/useQuizSession';
 import { pageSubject } from './page-subject';
 import TokenUsageDialog from '../ui/TokenUsageDialog';
 import ProviderIcon from '../ui/ProviderIcon';
-import { buildSystemPrompt, countCjk, estimateTokens, streamChat, classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, type ChatFailure } from '../../lib/ai-config';
+import { buildSystemPrompt, countCjk, estimateTokens, streamChat, classifyChatFailure, EmptyAnswerError, CHAIN_MAX_TOKENS, classifyStreamOutcome, stripThinkingFromHistory, type ChatFailure, type ThinkingTask } from '../../lib/ai-config';
 
 /** 面板内的失败态：分类结果 + 本轮累计失败次数（≥3 时追加「检查网络」提示） */
 type FailureState = ChatFailure & { attempts: number };
@@ -650,7 +650,7 @@ export default function AiAssistant() {
           });
         },
         quizSummaryAbortRef.current.signal,
-        CHAIN_MAX_TOKENS.summary, // 诊断 250 字以内，但要给思考型模型留出思考余量（1200 会被思考吃光）
+        CHAIN_MAX_TOKENS.summary, undefined, 'summary', // 诊断 250 字以内；任务分级为 summary（沿用用户档位）
       );
       const full = res.text;
       // 空正文按失败处理：空白诊断会被当成「没有问题」而不是「这次没生成出来」
@@ -1277,6 +1277,8 @@ export default function AiAssistant() {
     text: string,
     followUp = false,
     pinned?: { role: 'system' | 'user' | 'assistant'; content: string }[],
+    /** 任务分级：快捷提问等单步任务传 'quick'，把思考上限压到 standard（默认 chat 沿用用户档位） */
+    task: ThinkingTask = 'chat',
   ) => {
     expandFromCapsule(); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
@@ -1315,7 +1317,7 @@ export default function AiAssistant() {
       messages.push({ role: 'user', content: lastExchange.current.user });
       // 中断过的回答在本地带 [已停止]/[stopped] 标记：发给模型前必须剥掉，
       // 否则人造标记会被当成正文回灌进上下文
-      messages.push({ role: 'assistant', content: stripStoppedMark(lastExchange.current.assistant) });
+      messages.push({ role: 'assistant', content: stripThinkingFromHistory(stripStoppedMark(lastExchange.current.assistant)) });
     }
     if (!pinned) {
       messages.push({
@@ -1376,6 +1378,7 @@ export default function AiAssistant() {
           }
           setReasoning((x) => x + r);
         },
+        task,
       );
       const full = res.text;
       // 收尾判定与面板共用同一口径：empty=正文一个字都没有（当失败重试）；
@@ -1389,7 +1392,8 @@ export default function AiAssistant() {
       refreshTokenUsage();
       const { body: rawBody, recs: parsedRecs } = parseRecQuestions(full);
       // 没写完的正文必须标注，并把「继续生成」入口交给学生（半句话看着像结论才是真问题）
-      const body = outcome === 'ok' ? rawBody : markTruncated(rawBody, lang, outcome === 'cut' ? 'cut' : 'limit');
+      // 上下文清洗门禁：入历史 / 落盘 / 回灌前，抹掉任何残留思考标签与草稿（防 context leak）
+      const body = stripThinkingFromHistory(outcome === 'ok' ? rawBody : markTruncated(rawBody, lang, outcome === 'cut' ? 'cut' : 'limit'));
       setAnswer(body);
       // 追问推荐三级兜底：①新解析优先 ②保留上一轮有效追问 ③本地主题模板（保证任何模型都不断供）
       const topic = aiCtx.topic ?? pageSubject(location.pathname, lang);
@@ -1514,12 +1518,12 @@ export default function AiAssistant() {
     // 携带上一轮问答作为「刚才讨论的主题」上下文（与追问同模式，避免换一批飘回页面主题）
     if (lastExchange.current) {
       messages.push({ role: 'user', content: lastExchange.current.user });
-      messages.push({ role: 'assistant', content: lastExchange.current.assistant });
+      messages.push({ role: 'assistant', content: stripThinkingFromHistory(lastExchange.current.assistant) });
     }
     messages.push({ role: 'user', content: lang === 'zh' ? '请仅针对刚才讨论的主题，换一批给出 3 个不同的学生视角独立追问（每行一个，编号 1. 2. 3.，不要解释；必须写明具体物理量、化学式或术语，严禁用「它」「这个」等指代，也不是确认类反问）' : 'Based only on the topic just discussed, give 3 new self-contained follow-up questions from a student\'s perspective (one per line, numbered 1. 2. 3., no explanation; name the specific quantity, formula or substance — no pronouns like "it" or "this", and no confirmation questions).' });
     try {
       const t0 = performance.now();
-      const res = await streamChat(config, messages, () => {}, undefined, CHAIN_MAX_TOKENS.chat);
+      const res = await streamChat(config, messages, () => {}, undefined, CHAIN_MAX_TOKENS.chat, undefined, 'quick');
       const full = res.text;
       // 宽松解析：优先 marker，无 marker 时整段按行拆
       const { recs: parsed } = parseRecQuestions(full);
@@ -2164,7 +2168,7 @@ export default function AiAssistant() {
                   return (
                     <button
                       type="button"
-                      onClick={() => void sendQuestion(quick.q)}
+                      onClick={() => void sendQuestion(quick.q, false, undefined, 'quick')}
                       disabled={cooldownActive}
                       className="inline-flex items-center gap-1.5 text-[0.6875rem] mono-font border border-[var(--border)] px-3 py-1.5 hover:border-[var(--fg)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >

@@ -1432,11 +1432,15 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
 {
   test('离线包按组写进 SW 既有缓存桶，已在本机的条目不再重复下载（断点续下）', () => {
     const manifest: PackManifest = {
+      version: '0.46.0',
       builtAt: 1,
       groups: [
-        { id: 'photos', files: [{ url: '/element-images/1.jpg', bytes: 100 }, { url: '/element-images/2.jpg', bytes: 200 }] },
-        { id: 'audio', files: [{ url: '/audio/1.mp3', bytes: 50 }] },
-        { id: 'diagrams', files: [{ url: '/architecture-diagram-cn.jpg', bytes: 900 }] },
+        { id: 'photos', files: [
+          { url: '/element-images/1.jpg', bytes: 100, hash: 'aaaa1111' },
+          { url: '/element-images/2.jpg', bytes: 200, hash: 'bbbb2222' },
+        ] },
+        { id: 'audio', files: [{ url: '/audio/1.mp3', bytes: 50, hash: 'cccc3333' }] },
+        { id: 'diagrams', files: [{ url: '/architecture-diagram-cn.jpg', bytes: 900, hash: 'dddd4444' }] },
       ],
     };
     const cached = new Map<string, Set<string>>([
@@ -1444,10 +1448,15 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
       [AUDIO_CACHE, new Set()],
       [DIAGRAM_CACHE, new Set()],
     ]);
-    const tasks = planTasks(manifest, cached);
+    // 本机记录的 hash 与清单一致 → 已就绪；不一致 → 需补存（outdated），不得当成已缓存。
+    const installed = new Map<string, string>([['/element-images/1.jpg', 'aaaa1111']]);
+    const tasks = planTasks(manifest, cached, installed);
     assert.equal(tasks.length, 4);
     assert.deepEqual(tasks.map((t) => t.cache), [PHOTO_CACHE, PHOTO_CACHE, AUDIO_CACHE, DIAGRAM_CACHE]);
-    assert.deepEqual(tasks.map((t) => t.cached), [true, false, false, false], '已在本机的照片必须标记为已缓存，否则每次都会重下');
+    assert.deepEqual(tasks.map((t) => t.cached), [true, false, false, false], '已在本机且 hash 一致的照片才算已缓存');
+    const stale = planTasks(manifest, cached, new Map([['/element-images/1.jpg', 'ffff9999']]));
+    assert.equal(stale[0].cached, false, 'hash 不一致必须判为需补存');
+    assert.equal(stale[0].present, true, 'hash 不一致仍算「本机已有」，用于区分补存与全新下载');
     assert.equal(formatSize(1048576), '1.0 MB');
     assert.equal(formatSize(0), '0 MB');
   });
@@ -1455,8 +1464,9 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
   test('离线包桶名与 vite.config.ts 的运行时路由同源，且限额放得下全量包', () => {
     const cfg = readFileSync('vite.config.ts', 'utf8');
     assert.ok(cfg.includes('cacheName: PHOTO_CACHE') && cfg.includes('cacheName: AUDIO_CACHE') && cfg.includes('cacheName: DIAGRAM_CACHE'), '桶名必须来自 offline-cache-names.ts 单一来源');
-    assert.match(cfg, /maxEntries:\s*120/, '照片上限须 ≥ 全量照片数，否则 LRU 会把离线包自己淘汰');
-    assert.match(cfg, /maxEntries:\s*500/, '音频上限须 ≥ 全量音频数（118 元素 × 4 种读音）');
+    assert.match(cfg, /maxEntries:\s*150/, '照片上限须 ≥ 全量照片数并留余量，否则 LRU 会把离线包自己淘汰');
+    assert.match(cfg, /maxEntries:\s*600/, '音频上限须 ≥ 全量音频数（118 元素 × 4 种读音）并留余量');
+    assert.match(cfg, /AUDIO_URL_PATTERN,\s*\n\s*handler:\s*'StaleWhileRevalidate'/, '读音须可回源更新（StaleWhileRevalidate）');
     assert.equal(PHOTO_CACHE, 'element-photos');
     assert.equal(AUDIO_CACHE, 'element-audio');
     assert.equal(DIAGRAM_CACHE, 'architecture-assets');
@@ -1467,6 +1477,9 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     assert.match(cfg, /writeOfflineManifest/, '清单须由构建期插件生成');
     assert.ok(cfg.includes("'offline-manifest.json'"), '清单须进预缓存，否则断网读不到状态');
     assert.ok(!/element-images\/105|472\s*个/.test(cfg), '数量不得硬编码');
+    assert.match(cfg, /createHash\('sha256'\)/, '清单须计算内容 hash');
+    assert.match(cfg, /version:\s*pkg\.version/, '清单根节点须带 APP_VERSION');
+    assert.ok(!cfg.includes("'**/architecture.html'"), 'architecture.html 须纳入预缓存（不得在 globIgnores 中排除）');
   });
 
   test('离线媒体规则必须覆盖 public/ 下的每一个真实文件（下好了却打不开就是规则漏了）', () => {
@@ -1619,6 +1632,12 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     }
     for (const f of paired) {
       const src = readFileSync(f, 'utf8');
+      // 化学式与化合价页已把测评收口到第 4 个「练习」Tab：页内不再挂全局「考考你」，
+      // 只保留「问 AI」，避免与页内练习入口重复。
+      if (f.endsWith('ChemistryFormulas.tsx')) {
+        assert.doesNotMatch(src, /AskQuizButton/, '化学式页练习已内聚到 Tab，不得再挂全局考考你');
+        continue;
+      }
       assert.ok(/import AskQuizButton from/.test(src), f + ' 须引入 AskQuizButton');
       assert.ok(src.includes('<AskQuizButton'), f + ' 须挂载 AskQuizButton');
       const ai = (src.match(/<AskAiButton/g) || []).length;

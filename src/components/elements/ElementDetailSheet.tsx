@@ -645,10 +645,10 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
                   {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
                   <div>
                     <div
-                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden rounded-xs ${selected.n <= 103 ? 'cursor-zoom-in' : ''}`}
-                      onClick={() => selected.n <= 103 && setPhotoZoom(true)}
-                      role={selected.n <= 103 ? 'button' : undefined}
-                      aria-label={selected.n <= 103 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
+                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden rounded-xs ${selected.n <= 104 ? 'cursor-zoom-in' : ''}`}
+                      onClick={() => selected.n <= 104 && setPhotoZoom(true)}
+                      role={selected.n <= 104 ? 'button' : undefined}
+                      aria-label={selected.n <= 104 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
                     >
                       <img
                         src={`/element-images/${selected.n}.jpg`}
