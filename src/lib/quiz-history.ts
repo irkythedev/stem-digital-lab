@@ -138,7 +138,9 @@ export function groupQuizByQuestion(
 ): Array<QuizHistoryEntry & { repeatCount: number }> {
   const map = new Map<string, QuizHistoryEntry & { repeatCount: number }>();
   for (const e of entries) {
-    const key = (e.question || '').replace(/\s+/g, '').trim();
+    // 聚合键必须带学科/知识点：不同学科常出现「下列说法正确的是？」这类同题干，
+    // 只按题干合并会把物理题与数学题误并成一张卡、隐藏真实错题（评审 Important）。
+    const key = `${e.subject || ''}|${(e.topic || '').replace(/[（(].*?[）)]/g, '')}|${(e.question || '').replace(/\s+/g, '').trim()}`;
     const prev = map.get(key);
     if (prev) prev.repeatCount += 1;
     else map.set(key, { ...e, repeatCount: 1 });

@@ -8,10 +8,10 @@
 
 <p>
   <a href="LICENSE"><img src="public/badges/license.svg" alt="License: AGPL-3.0"></a>
-  <img src="public/badges/version.svg" alt="Version v0.47.0">
+  <img src="public/badges/version.svg" alt="Version v0.47.1">
   <img src="public/badges/core.svg" alt="Core: C++17 / WebAssembly">
   <img src="public/badges/frontend.svg" alt="Frontend: React 19 + TypeScript">
-  <img src="public/badges/tests.svg" alt="749 tests passing">
+  <img src="public/badges/tests.svg" alt="762 tests passing">
 </p>
 
 <p>
@@ -42,13 +42,13 @@
 
 | 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
 | :--- | :--- | :--- |
-| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 749 项单测门禁 |
+| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 762 项单测门禁 |
 
 无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
 
 <!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
      15 实验 + 6 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 5 个固定路由查表工具，smoke 计数守卫会核对）
-     749 passed     ← npm test 实测（47 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
+     762 passed     ← npm test 实测（48 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
                       新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，tools/check-readme-stats.mjs 会与实测比对）
      C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
      React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
@@ -66,6 +66,8 @@
 - [路线图（探索中）](#路线图探索中)
 - [运行架构](#运行架构)
 - [快速开始](#快速开始)
+- [测试](#测试)
+- [用 AI 部署](#用-ai-部署)
 - [三幕式探究](#三幕式探究)
 - [元素周期表工具](#元素周期表工具)
 - [AI 学习助手](#ai-学习助手)
@@ -142,15 +144,23 @@
 ### 快速开始
 
 ```bash
-npm install        # 安装依赖
+# 1. 获取源码：复制本页「克隆 / Code」按钮给出的地址
+git clone "<仓库地址>"
+cd stem-digital-lab
+
+# 2. 安装与运行
+npm ci             # 按 package-lock.json 安装依赖
 npm run dev        # 开发服务器（默认 http://localhost:3000）
-npm run build      # 生产构建
+npm run build      # 生产构建（产物在 dist/）
 npm run preview    # 本地预览构建产物
 npm run test       # 运行测试
 ```
 
 > 局域网访问：开发服务器监听 `0.0.0.0`，启动后其他设备打开 `http://<本机局域网IP>:3000`。
-> Node.js 建议使用 nvm 管理的 v24.19.0（npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
+> Node.js 建议使用 nvm 管理的 Node 24（版本见 `.nvmrc`；npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
+> 完整测试另需本机 `g++` 与 `bash`（三方对拍用）；Windows 建议在 WSL 或 MinGW 下运行，缺失会直接失败，详见下文「测试」。
+> Gitee 与 GitHub 发布同一份源码：从哪个平台打开本页，就用该页面「克隆 / Code」给出的地址，构建 / 测试 / 部署命令完全相同；Issue 在任一平台提交都可以。
+> 托管平台的 Pages 默认不会执行本项目的 Vite 构建：请先 `npm run build`，再把 `dist/` 作为发布目录；SPA 回退与缓存规则见下文「用 AI 部署」。
 
 ### 测试
 
@@ -158,12 +168,46 @@ npm run test       # 运行测试
 npm test           # 运行全部测试（无需任何服务）
 ```
 
-内置测试套件 **749 项全绿**（47 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 578 项；另有一个独立脚本 `src/latex-speech.golden.test.ts` 钉住 **436 条逐字快照**，单独统计、不计入 749），秒级完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
+提交前另跑 `npm run lint`（即 `tsc --noEmit`）做类型检查，它不包含在 `npm test` 里。
+
+内置测试套件 **762 项全绿**（48 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 591 项；其中 `src/latex-speech.golden.test.ts` 已含在上述 48 条内，钉住 **436 条逐字快照**，快照单独统计、不计入 762），约 1 分钟内完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
 - **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
 - **源码级约束**：触控命中区 ≥40px、不引入第三方图表库、界面不出现 Emoji、中英文案必须对称；
 - **进程内替身**：涉及请求的用例一律替换 `fetch` 并在 `finally` 中恢复，绝不触发真实请求。
+
+### 用 AI 部署
+
+把下面这段直接交给 AI 编程助手（通义灵码 / 文心快码 / 腾讯 CodeBuddy / 字节 Trae / CodeGeeX 等）：
+
+```text
+你是本仓库的部署助手。目标：把「数理化数字实验室」构建为静态站点，并部署到我指定的托管平台。
+
+开始前先确认：目标平台、部署域名、是否部署在子路径。未提供平台或凭据时，只交付 dist/ 和配置清单，不要假装已上线。
+
+执行：
+0. 仓库：https://gitee.com/K4Ricky2Win/stem-digital-lab.git（GitHub 镜像：https://github.com/irkythedev/stem-digital-lab.git）。当前目录不是仓库时先克隆其中一个地址（失败再换另一个）；已在仓库内则直接开始。
+1. 读 package.json、vite.config.ts 和 .nvmrc，确认 Node 24 与构建链。
+2. 执行 npm ci && npm run build。产物在 dist/；构建失败先修构建，不要改业务逻辑。
+3. 把 dist/ 作为站点根目录发布，不要上传仓库根目录。
+4. 托管配置：
+   - 只对未命中的路径回退 /index.html；真实静态文件（/videos、/audio、/element-images、/architecture.html 等）不得被 SPA 接管。
+   - 开启 HTTPS（PWA / Service Worker 必需）。
+   - 缓存：/assets/* → public, max-age=31536000, immutable；/index.html 与 /sw.js → no-cache；/version.json → no-store。
+5. 验收并贴出原始输出：
+   curl -sS <域名>/version.json
+   curl -sSI <域名>/index.html
+   curl -sSI <域名>/sw.js
+   再手动打开首页、一个实验深链、/guide，并断网复开一次。
+6. 报告：部署地址、构建耗时、产物大小、以上命令输出；未完成项写「未完成」及原因。
+
+约束：
+- 不改 vite.config.ts 和 package.json；子路径部署需要改 base 时先停下来问我。
+- 不编造 URL、命令输出或验收结果。
+```
+
+> 在国内平台使用自有域名时，请先完成 ICP 备案，并遵守平台的合规要求。
 
 ### 三幕式探究
 
@@ -258,6 +302,8 @@ src/
 - [Roadmap (experimental)](#roadmap-experimental)
 - [Running Architecture](#running-architecture)
 - [Getting Started](#getting-started)
+- [Testing](#testing)
+- [Deploy with an AI Agent](#deploy-with-an-ai-agent)
 - [Three-Act Inquiry](#three-act-inquiry)
 - [Periodic Table Tool](#periodic-table-tool)
 - [AI Assistant](#ai-assistant)
@@ -334,15 +380,23 @@ This is a **pure front-end SPA** (React 19 + react-router 7 + Vite 6 + TypeScrip
 ### Getting Started
 
 ```bash
-npm install        # Install dependencies
+# 1. Get the source: copy the URL from this page's “Clone / Code” button
+git clone "<repository-url>"
+cd stem-digital-lab
+
+# 2. Install and run
+npm ci             # Install from package-lock.json
 npm run dev        # Dev server (default http://localhost:3000)
-npm run build      # Production build
+npm run build      # Production build (output in dist/)
 npm run preview    # Preview the build locally
 npm run test       # Run tests
 ```
 
 > LAN access: the dev server listens on `0.0.0.0`; open `http://<your-LAN-IP>:3000` from other devices.
-> Node.js: use nvm-managed v24.19.0 (npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
+> Node.js: use nvm-managed Node 24 (version in `.nvmrc`; npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
+> The full suite also requires local `g++` and `bash` for the three-way parity checks; on Windows, use WSL or MinGW — missing either fails the run. See Testing below.
+> Gitee and GitHub publish the same source: whichever host you opened this page on, use the URL from that page's “Clone / Code” button — build, test, and deploy commands are identical, and issues are welcome on either host.
+> Your host's Pages build does not run this project's Vite build by default: run `npm run build` first and publish `dist/`; see “Deploy with an AI Agent” below for SPA fallback and cache rules.
 
 ### Testing
 
@@ -350,12 +404,46 @@ npm run test       # Run tests
 npm test           # Run the whole suite (no service required)
 ```
 
-The built-in suite runs **749 cases, all green** (47 test commands: 171 in `src/smoke.test.ts` plus 578 across the rest; one further standalone script, `src/latex-speech.golden.test.ts`, pins **436 verbatim snapshots** and is counted separately), in seconds and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
+Before committing, also run `npm run lint` (`tsc --noEmit`) for type checking; it is not part of `npm test`.
+
+The built-in suite runs **762 cases, all green** (48 test commands: 171 in `src/smoke.test.ts` plus 591 across the rest, including `src/latex-speech.golden.test.ts` (one of the 48 commands), which pins **436 verbatim snapshots** counted separately from the 762), in about a minute, and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
 - **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;
 - **Source-level constraints**: touch targets ≥40px, no third-party chart library, no emoji in the UI, zh/en copy must stay symmetric;
 - **In-process stand-ins**: every request-related case replaces `fetch` and restores it in `finally`, so no real request ever fires.
+
+### Deploy with an AI Agent
+
+Hand the following prompt to your AI coding assistant (Tongyi Lingma, Baidu Comate, Tencent CodeBuddy, ByteDance Trae, CodeGeeX, etc.):
+
+```text
+You are the deployment assistant for this repository. Goal: build STEM Digital Lab into a static site and deploy it to the hosting platform I specify.
+
+Before starting, confirm: target platform, domain, and whether it is deployed under a sub-path. If I have not provided a platform or credentials, deliver only dist/ plus a configuration checklist — do not pretend it is live.
+
+Steps:
+0. Repository: https://gitee.com/K4Ricky2Win/stem-digital-lab.git (GitHub mirror: https://github.com/irkythedev/stem-digital-lab.git). If the current directory is not the repository, clone one of these URLs first (fall back to the other if it fails); if it is, start directly.
+1. Read package.json, vite.config.ts, and .nvmrc; confirm Node 24 and the build chain.
+2. Run npm ci && npm run build. The output is dist/. If the build fails, fix the build first; do not change business logic.
+3. Publish dist/ as the site root; do not upload the repository root.
+4. Hosting configuration:
+   - Fall back to /index.html only for unmatched paths; real static files (/videos, /audio, /element-images, /architecture.html, etc.) must not be taken over by the SPA.
+   - Enable HTTPS (required for PWA / Service Worker).
+   - Caching: /assets/* → public, max-age=31536000, immutable; /index.html and /sw.js → no-cache; /version.json → no-store.
+5. Verify and paste the raw output:
+   curl -sS <domain>/version.json
+   curl -sSI <domain>/index.html
+   curl -sSI <domain>/sw.js
+   Then manually open the home page, one lab deep link, and /guide, and reopen once offline.
+6. Report: deployment URL, build time, artifact size, output of the commands above; mark anything unfinished as "not done" with the reason.
+
+Constraints:
+- Do not modify vite.config.ts or package.json; if a sub-path deployment requires changing base, stop and ask me first.
+- Do not fabricate URLs, command output, or verification results.
+```
+
+> When hosting on a domestic platform with your own domain, complete ICP filing first and follow the platform's compliance requirements.
 
 ### Three-Act Inquiry
 

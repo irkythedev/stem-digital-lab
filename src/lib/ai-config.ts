@@ -1339,13 +1339,13 @@ export async function streamChatWithRecovery(
   maxTokens?: number,
   onReasoning?: (text: string) => void,
   task: ThinkingTask = 'chat',
-): Promise<{ result: StreamResult; recovered: boolean }> {
+): Promise<{ result: StreamResult; recovered: boolean; attempts: number }> {
   const first = await streamChat(cfg, messages, onDelta, signal, maxTokens, onReasoning, task);
-  if (classifyStreamOutcome(first) !== 'empty') return { result: first, recovered: false };
+  if (classifyStreamOutcome(first) !== 'empty') return { result: first, recovered: false, attempts: 1 };
   // 用户主动停止 / 已中止：不自动重试
-  if (signal?.aborted) return { result: first, recovered: false };
+  if (signal?.aborted) return { result: first, recovered: false, attempts: 1 };
   const recoverCfg: AiConfig = { ...cfg, maxOutputTokens: undefined };
   const second = await streamChat(recoverCfg, messages, onDelta, signal, undefined, onReasoning, 'judge');
-  return { result: second, recovered: true };
+  return { result: second, recovered: true, attempts: 2 };
 }
 

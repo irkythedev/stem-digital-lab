@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from 'react';
 import { APP_VERSION } from './changelog';
+import { isVersionNewer } from './version-compare';
 
 export function useVersionCheck(): { hasUpdate: boolean } {
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -16,7 +17,7 @@ export function useVersionCheck(): { hasUpdate: boolean } {
     fetch('/version.json', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!cancelled && d && typeof d.version === 'string' && d.version !== APP_VERSION) {
+        if (!cancelled && d && typeof d.version === 'string' && isVersionNewer(d.version, APP_VERSION)) {
           setHasUpdate(true);
         }
       })

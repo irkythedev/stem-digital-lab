@@ -12,6 +12,8 @@ import { useEffect, useRef, useState, type ReactNode, type PointerEvent as React
 import { createPortal } from 'react-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { useParamDock } from '../../lib/use-param-dock';
+import { useEscapeKey } from '../../lib/use-escape-key';
+import { useFocusReturn } from '../../lib/use-focus-return';
 
 interface ParamDockProps {
   children: ReactNode;
@@ -47,15 +49,16 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
     return () => cls.remove('param-dock-open');
   }, [dock.state]);
 
-  // 展开期间 Esc 收起
+  // 展开期间 Esc 收起（走浮层栈：同时开着别的浮层时，只退最后打开的那一层）
+  useEscapeKey(() => dock.close(), dock.state === 'open');
+
+  /* 抽屉是模态的（上半屏有透明拦截层），所以打开时把焦点搬进抽屉、关闭时还给胶囊：
+     否则键盘用户点开抽屉后，Tab 还在背后的画布上转圈，压根进不来。 */
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useFocusReturn(dock.state === 'open');
   useEffect(() => {
-    if (dock.state !== 'open') return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dock.close();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [dock.state, dock.close]);
+    if (dock.state === 'open') sheetRef.current?.focus({ preventScroll: true });
+  }, [dock.state]);
 
   // 展开时把画布卡滚到视口顶部（略留 12px），抽屉只盖住下半屏
   useEffect(() => {
@@ -122,9 +125,12 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
         className="fixed inset-x-0 top-0 bottom-[50dvh] z-sticky-layer touch-none"
       />
       <div
+        ref={sheetRef}
         role="dialog"
+        aria-modal="true"
         aria-label={title}
-        className="param-sheet fixed inset-x-0 bottom-0 z-overlay flex max-h-[50dvh] flex-col rounded-t-xl border-t border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-up)] pb-[env(safe-area-inset-bottom,0px)]"
+        tabIndex={-1}
+        className="param-sheet fixed inset-x-0 bottom-0 z-overlay flex max-h-[50dvh] flex-col rounded-t-xl border-t border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-up)] pb-[env(safe-area-inset-bottom,0px)] focus:outline-none"
         style={{ transform: dragDy ? `translateY(${dragDy}px)` : undefined, transition: dragDy ? 'none' : undefined }}
       >
         <button

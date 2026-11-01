@@ -5,15 +5,24 @@
  * 离线教学包面板：说清体积与内容，一键把元素照片、读音与架构图存到本机。
  * 下载中显示进度、可暂停，关掉面板下载也会继续（状态在 use-offline-pack.ts 里）。
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CircleCheck, Download, HardDrive, Trash2 } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { useEscapeKey } from '../../lib/use-escape-key';
+import { useFocusReturn } from '../../lib/use-focus-return';
 import { formatSize } from '../../lib/offline-pack';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 
-export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
+export default function OfflinePackPanel({
+  onClose,
+  elevated = false,
+}: {
+  onClose: () => void;
+  /** 从另一个模态（版本历史）里打开：整层抬到宿主之上，否则面板被宿主盖住 */
+  elevated?: boolean;
+}) {
   const { lang, t } = useApp();
   const c = t.offlinePack;
   const { status, progress, running, failedCount, start, stop, clear } = useOfflinePack();
@@ -21,14 +30,9 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
   const [cleared, setCleared] = useState(false);
 
   useLockBodyScroll(true);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Esc 只退这一层（与宿主弹窗共用一个栈，见 use-escape-key.ts）
+  useEscapeKey(onClose);
+  useFocusReturn(); // 关掉后焦点回到「离线教学包」入口
 
   const closeLabel = lang === 'zh' ? '关闭' : 'Close';
   /** 文案模板里的 {size} {n} 等占位替换 */
@@ -52,7 +56,7 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-overlay flex items-center justify-center p-4"
+      className={`fixed inset-0 ${elevated ? 'z-modal-top' : 'z-overlay'} flex items-center justify-center p-4`}
       role="dialog"
       aria-modal="true"
       aria-label={c.title}

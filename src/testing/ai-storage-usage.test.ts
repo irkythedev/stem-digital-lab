@@ -113,18 +113,23 @@ export function registerAiStorageUsageTests(test: TestFn): void {
   });
 
   test('groupQuizByQuestion：同题干聚合为 1 张卡，repeatCount 累计且保留最新一条', () => {
-    const mk = (id: string, ts: number, question: string) => ({ id, ts, question } as any);
+    const mk = (id: string, ts: number, question: string, extra: Record<string, unknown> = {}) => ({ id, ts, question, ...extra } as any);
     const grouped = groupQuizByQuestion([
-      mk('a', 5, 'Fe₂O₃ 中铁元素的化合价是？'),
-      mk('b', 4, 'Fe₂O₃ 中铁元素的化合价是？'),
-      mk('c', 3, 'KMnO₄ 中锰元素的化合价是？'),
-      mk('d', 2, 'Fe₂O₃  中铁元素的化合价是？'), // 多空格去空白后同题
+      mk('a', 5, 'Fe₂O₃ 中铁元素的化合价是？', { subject: '化学', topic: '化合价' }),
+      mk('b', 4, 'Fe₂O₃ 中铁元素的化合价是？', { subject: '化学', topic: '化合价' }),
+      mk('c', 3, 'KMnO₄ 中锰元素的化合价是？', { subject: '化学', topic: '化合价' }),
+      mk('d', 2, 'Fe₂O₃  中铁元素的化合价是？', { subject: '化学', topic: '化合价' }), // 多空格去空白后同题
+      mk('m1', 1, '下列说法正确的是？', { subject: '数学', topic: '函数' }),
+      mk('p1', 0, '下列说法正确的是？', { subject: '物理', topic: '电路' }), // 同题干但不同学科，不得合并
     ]);
-    assert.equal(grouped.length, 2, '同题合并，只剩 2 张卡');
+    assert.equal(grouped.length, 4, '同题合并、跨学科不合并：Fe 1 + KMnO₄ 1 + 数学 1 + 物理 1');
     const fe = grouped.find((g) => g.question.includes('Fe₂O₃'))!;
     assert.equal(fe.repeatCount, 3, '同一题错 3 次');
     assert.equal(fe.id, 'a', '保留最新（首条）记录');
     const km = grouped.find((g) => g.question.includes('KMnO₄'))!;
     assert.equal(km.repeatCount, 1);
+    // 跨学科同名题干必须各留一张卡（评审 Important 回归）
+    assert.ok(grouped.some((g) => g.id === 'm1' && g.repeatCount === 1), '数学同名题不得被物理题吞并');
+    assert.ok(grouped.some((g) => g.id === 'p1' && g.repeatCount === 1), '物理同名题不得被数学题吞并');
   });
 }

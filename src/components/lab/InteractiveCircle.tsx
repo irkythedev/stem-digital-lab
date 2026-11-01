@@ -14,7 +14,7 @@
  * 样式说明：只用 --fg / --muted / --border / --accent / --accent-light / --error。
  */
 
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode, type SVGProps } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent, type ReactNode, type SVGProps } from 'react';
 import { useApp } from '../../lib/app-context';
 
 /* ── 布局常量 ── */
@@ -313,6 +313,47 @@ export default function InteractiveCircle({
   const handlePointerUp = () => {
     setDragging(null);
   };
+
+  /* ── 键盘拖动 ──
+     动点原本只有一个透明大圆接指针事件：Tab 序里根本没有它们，键盘/读屏用户
+     完全碰不到「拖着弦走、看垂径怎么变」这个核心互动。这里把动点声明成
+     role="slider"（值是圆周角），方向键每次走 2°，与拖动共用同一条 onChange 通路。 */
+
+  const KEY_STEP = Math.PI / 90; // 2°
+
+  const normalizeAngle = (rad: number) => ((rad % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+  const applyAngle = (key: string, next: number) => {
+    switch (key) {
+      case 'chordAngleA': setAAngle(next); break;
+      case 'chordAngleB': setBAngle(next); break;
+      case 'inscribedAngleP': setPAngle(next); break;
+      case 'thalesAngleC': setCAngleThales(next); break;
+      default: break;
+    }
+    onChange?.(key, next);
+  };
+
+  /** 动点的键盘可达属性：焦点环 + 角度读出 + 方向键微调 */
+  const pointA11y = (key: string, cur: number, label: string) => ({
+    role: 'slider' as const,
+    tabIndex: 0,
+    'aria-label': label,
+    'aria-valuemin': 0,
+    'aria-valuemax': 360,
+    'aria-valuenow': Math.round((normalizeAngle(cur) * 180) / Math.PI),
+    'aria-valuetext': `${Math.round((normalizeAngle(cur) * 180) / Math.PI)}°`,
+    onKeyDown: (e: ReactKeyboardEvent<SVGCircleElement>) => {
+      const dir =
+        e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
+          : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
+            : 0;
+      if (dir === 0) return;
+      e.preventDefault(); // 方向键默认会滚页面
+      applyAngle(key, normalizeAngle(cur + dir * KEY_STEP));
+    },
+    className: 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
+  });
 
   /* ── 渲染 ── */
 
@@ -633,21 +674,21 @@ export default function InteractiveCircle({
         {/* ── 可拖动点 ── */}
         {mode === 'chord' && (
           <Fade show={show(1)}>
-            <circle cx={a.x} cy={a.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('A')} />
+            <circle {...pointA11y('chordAngleA', aAngle, zh ? '点 A：方向键沿圆周移动' : 'Point A: arrow keys move it around the circle')} cx={a.x} cy={a.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('A')} />
             <circle cx={a.x} cy={a.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
-            <circle cx={b.x} cy={b.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('B')} />
+            <circle {...pointA11y('chordAngleB', bAngle, zh ? '点 B：方向键沿圆周移动' : 'Point B: arrow keys move it around the circle')} cx={b.x} cy={b.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('B')} />
             <circle cx={b.x} cy={b.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
           </Fade>
         )}
         {mode === 'inscribed' && (
           <Fade show={show(1)}>
-            <circle cx={p.x} cy={p.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('P')} />
+            <circle {...pointA11y('inscribedAngleP', pAngle, zh ? '点 P：方向键改变圆周角' : 'Point P: arrow keys change the inscribed angle')} cx={p.x} cy={p.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('P')} />
             <circle cx={p.x} cy={p.y} r={5} fill="var(--card-bg)" stroke="var(--accent)" strokeWidth={2} pointerEvents="none" />
           </Fade>
         )}
         {mode === 'thales' && (
           <Fade show={show(1)}>
-            <circle cx={cT.x} cy={cT.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('C')} />
+            <circle {...pointA11y('thalesAngleC', cAngleThales, zh ? '点 C：方向键沿圆周移动' : 'Point C: arrow keys move it around the circle')} cx={cT.x} cy={cT.y} r={HIT_R} fill="transparent" style={{ cursor: 'grab' }} onPointerDown={handlePointerDown('C')} />
             <circle cx={cT.x} cy={cT.y} r={5} fill="var(--card-bg)" stroke="var(--fg)" strokeWidth={2} pointerEvents="none" />
           </Fade>
         )}

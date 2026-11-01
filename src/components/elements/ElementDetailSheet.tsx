@@ -26,6 +26,7 @@ import { ATOM_VIEW, coreRadiusFor, shellLayout } from '../../lib/atom-shells';
 import { CAT_COLOR, CAT_ZH, CAT_EN } from '../../lib/element-categories';
 import { valenceElementBySymbol, TEXTBOOK_MASSES } from '../../lib/chemistry/valency';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { useFocusReturn } from '../../lib/use-focus-return';
 import {
   LEGEND_DOT, SHELL_NAMES, VALENCE_LABEL, groupDisplay, neighborOf, particleCount,
   valenceTendency, valenceNote,
@@ -102,6 +103,8 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
 
   // 抽屉打开时锁 body 滚动；Esc 关闭（化学式页没有页面级键盘处理，需组件自带）。
   useLockBodyScroll(true);
+  // 关闭后焦点回到被点的那颗元素卡
+  useFocusReturn();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -129,6 +132,7 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
             className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--card-bg)] shadow-2xl rounded-xl overflow-hidden z-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
+            aria-modal="true"
             aria-label={`${selected.zh} ${selected.symbol}`}
           >
             {/* 顶部固定标题与导航区 */}

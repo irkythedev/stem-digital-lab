@@ -9,18 +9,27 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import { useEscapeKey } from '../../lib/use-escape-key';
+import { useFocusReturn } from '../../lib/use-focus-return';
 import { AGPL_LICENSE_TEXT } from '../../lib/license-text';
 
 interface LicenseDialogProps {
   onClose: () => void;
+  /** 从另一个模态（欢迎弹窗）里打开：整层抬到宿主卡片之上，否则遮罩和卡片都被盖住 */
+  elevated?: boolean;
 }
 
-export default function LicenseDialog({ onClose }: LicenseDialogProps) {
+export default function LicenseDialog({ onClose, elevated = false }: LicenseDialogProps) {
   useLockBodyScroll(true);
   useEscapeKey(onClose);
+  useFocusReturn(); // 关掉后焦点回到「AGPL-3.0」那颗按钮
 
   return createPortal(
-    <div className="fixed inset-0 z-overlay flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="AGPL-3.0 License">
+    <div
+      className={`fixed inset-0 ${elevated ? 'z-modal-top' : 'z-overlay'} flex items-center justify-center p-4`}
+      role="dialog"
+      aria-modal="true"
+      aria-label="AGPL-3.0 License"
+    >
       {/* 遮罩：点击关闭 */}
       <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden="true" />
       {/* 弹窗卡片 */}

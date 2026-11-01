@@ -318,9 +318,12 @@ function QuizPanelInner({ lang, state, actions }: QuizPanelProps) {
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => pickQuizOption(idx)}
-                          disabled={quizSelected !== null}
-                          className={`text-left text-xs serif-font px-2.5 py-1.5 border transition-colors disabled:cursor-default ${cls}`}
+                          onClick={() => { if (quizSelected === null) pickQuizOption(idx); }}
+                          /* 答完后用 aria-disabled 而不是 disabled：disabled 会把按钮从 Tab 序里摘掉，
+                             焦点当场掉回 body，键盘用户答完一题就「失联」了。
+                             点击入口用上面的守卫挡住，行为不变。 */
+                          aria-disabled={quizSelected !== null}
+                          className={`text-left text-xs serif-font px-2.5 py-1.5 border transition-colors ${quizSelected !== null ? 'cursor-default' : ''} ${cls}`}
                         >
                           <span className="mono-font text-[var(--muted)] mr-1.5">{String.fromCharCode(65 + idx)}.</span>
                           <InlineAnswer text={opt} />
@@ -331,7 +334,8 @@ function QuizPanelInner({ lang, state, actions }: QuizPanelProps) {
                 )}
                 {/* 答后反馈：对/错 + 解析（选择题；填空已在其输入框区内反馈） */}
                 {quizQ.type === 'choice' && quizSelected !== null && quizQ.answerIdx !== -1 && (
-                  <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
+                  /* role="status"：判分结果与解析是异步出现的，读屏用户不主动移动就无法得知 */
+                  <div role="status" aria-live="polite" className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
                     <p className={`text-[0.6875rem] mono-font font-bold ${quizSelected === quizQ.answerIdx ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                       {quizSelected === -1
                         ? <><Timer className="mr-1 inline-block h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{lang === 'zh' ? '超时未作答' : 'Timed out'}</>

@@ -11,8 +11,8 @@
  * 所以放在这里，读 `tools/run-tests.mjs` 落盘的 `test-stats.json`。
  *
  * 三个概念分开校验，互不冒充：
- *   - **测试命令数**：39 条（`scripts["test:chain"]` 的长度）
- *   - **通过用例数**：604 条（各段 `Results:` 的 passed 之和）
+ *   - **测试命令数**：48 条（`scripts["test:chain"]` 的长度）
+ *   - **通过用例数**：762 条（各段 `Results:` 的 passed 之和）
  *   - **golden 快照数**：436 条（109 输入 × 4 配置，独立脚本、不计入通过用例数）
  */
 import { readFileSync } from 'node:fs';
@@ -60,13 +60,19 @@ for (const [label, re, pick, src] of SLOTS) {
   }
 }
 
-// 命令数：README 若声明了"39 条测试命令"，必须与链条长度一致
-const cmdClaim = /(\d+) 条测试命令/.exec(readme);
-if (cmdClaim) {
-  const n = Number(cmdClaim[1]);
-  if (n !== stats.commands) problems.push(`命令数：README 写 ${n} 条，实际链条 ${stats.commands} 条`);
-} else {
-  problems.push('命令数：README 未声明"N 条测试命令"（口径必须显式写清，否则三者易混）');
+// 命令数：中英文都必须显式声明，且与链条长度一致（只改中文会漏掉英文漂移）
+const CMD_SLOTS = [
+  ['中文', /(\d+) 条测试命令/, 'N 条测试命令'],
+  ['英文', /(\d+) test commands/, 'N test commands'],
+];
+for (const [label, re, shape] of CMD_SLOTS) {
+  const m = re.exec(readme);
+  if (!m) {
+    problems.push(`命令数（${label}）：README 未声明"${shape}"（口径必须显式写清，否则三者易混）`);
+    continue;
+  }
+  const n = Number(m[1]);
+  if (n !== stats.commands) problems.push(`命令数（${label}）：README 写 ${n} 条，实际链条 ${stats.commands} 条`);
 }
 
 // golden 快照：声明了就必须与实际输出一致（436 = 109 × 4）
@@ -93,5 +99,5 @@ if (problems.length) {
 
 console.log(
   `✓ README 测试数与实测一致：${stats.passed} 条通过用例 / ${stats.commands} 条命令 / ` +
-    `golden ${snapClaim ? snapClaim[1] : '436'} 条快照（5 处数字均已核对）`,
+    `golden ${snapClaim ? snapClaim[1] : '436'} 条快照（中英文命令数与 5 处用例数均已核对）`,
 );

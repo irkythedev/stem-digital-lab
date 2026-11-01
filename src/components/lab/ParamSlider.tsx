@@ -5,7 +5,7 @@
  * 通用参数滑块：label + 数值范围 + 步长 + 实时读数。
  * 与语言无关，文案由父级按当前语言解析后传入。
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { Minus, Plus } from 'lucide-react';
 
 interface ParamSliderProps {
@@ -78,10 +78,14 @@ export default function ParamSlider({
     onChange(quantize(nextRaw));
   };
 
+  /* 滑块的可访问名：标题是 label，但之前没有 htmlFor/id 关联，
+     读屏软件只会念「滑块 6」，说不出调的是哪个参数。useId 保证同页多个滑块不撞车。 */
+  const sliderId = useId();
+
   return (
     <div className={`flex flex-col space-y-1.5 ${disabled ? 'opacity-50' : ''}`}>
       <div className="flex items-baseline justify-between text-xs 2xl:text-sm mono-font">
-        <label className="text-[var(--fg)] tracking-wider font-medium">{label}</label>
+        <label htmlFor={sliderId} className="text-[var(--fg)] tracking-wider font-medium">{label}</label>
         <span className="text-[var(--fg)] font-semibold tabular-nums px-2 py-0.5 rounded-md bg-[var(--accent-light)]">
           {format ? format(value) : value}
         </span>
@@ -98,6 +102,7 @@ export default function ParamSlider({
           <Minus className="w-3.5 h-3.5" />
         </button>
         <input
+          id={sliderId}
           type="range"
           min={min}
           max={max}

@@ -25,6 +25,7 @@ import {
 import { loadAiConfig } from '../../lib/ai-config';
 import { APP_VERSION } from '../../lib/changelog';
 import { useAppUpdate } from '../../lib/use-app-update';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import { ringStateFor, type RingState } from '../../lib/update-progress';
 import VersionDialog from '../feedback/VersionDialog';
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
@@ -209,12 +210,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   }, [aiStatus.checkedAt, aiStatus.status]);
 
   // Esc 关闭健康卡片（外部点击由覆盖层负责，不挂 document 监听）
-  useEffect(() => {
-    if (!showHealth) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowHealth(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showHealth]);
+  useEscapeKey(() => setShowHealth(false), showHealth);
   // 离线教学包状态：只在「下载中 / 已就绪」时于顶栏露出徽标，平时不占位置
   const { status: packStatus, progress: packProgress, running: packRunning } = useOfflinePack();
 

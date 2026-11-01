@@ -18,6 +18,8 @@ import { Mark } from './panel-shared';
 import QuizPaperPrint from '../QuizPaperPrint';
 import { ShieldCheck, ChevronDown, History, ArrowLeft, Check, CircleX, Copy, Trash2, Printer, Eye, Sparkles, GraduationCap } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useEscapeKey } from '../../../lib/use-escape-key';
+import { useFocusReturn } from '../../../lib/use-focus-return';
 
 export interface HistoryPanelState {
   aiCtx: any;
@@ -119,6 +121,10 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
   const { aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, pendingStorageLimit, storageLimit, storageLimitOptions, storageUsage, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen } = state;
   const { applyStorageLimit, backToPaperOptions, cancelStorageLimit, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, confirmStorageLimit, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView } = actions;
   const { quizTopicMenuRef, topicMenuRef } = refs;
+  // 错题卷导出弹窗自己是一层浮层：开着时 Esc 只关它。
+  // 不注册的话按键会落到 AiAssistant 的处理器上，把历史视图踢回聊天，弹窗反而留着。
+  useEscapeKey(() => setPaperOpen(false), paperOpen);
+  useFocusReturn(paperOpen);
   // 用量条按「剩余空间」三档配色，全部走主题变量（--success/--warn/--error 均有明/暗两套取值，自动适配主题）：
   //   剩余充足(<60% 占用) = 绿；接近上限(60%~85%) = 琥珀；即将覆盖(>=85%) = 红。
   const usageBarColor = (r: number) => (r >= 0.85 ? 'var(--error)' : r >= 0.6 ? 'var(--warn)' : r > 0 ? 'var(--success)' : 'var(--border)');

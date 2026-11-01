@@ -22,6 +22,8 @@ import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, Mon
 import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
 import { useApp } from '../../lib/app-context';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { useEscapeKey } from '../../lib/use-escape-key';
+import { useFocusReturn } from '../../lib/use-focus-return';
 import SubjectIcon from './SubjectIcon';
 import LicenseDialog from './LicenseDialog';
 import VersionDialog from '../feedback/VersionDialog';
@@ -59,15 +61,21 @@ export default function WelcomeDialog({
   const reduceMotion =
     typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+  // 关掉后焦点回到打开它的入口（Header 帮助按钮 / 首开自动弹出时是 body，无需处理）
+  useFocusReturn();
   // Esc 关闭；初始焦点落在主按钮
+  useEscapeKey(() => {
+    // 先退最近开的那一层：确认条 > 整个弹窗。协议 / 版本历史 / 离线包各有自己的
+    // 栈条目，开着时这一条根本轮不到执行，按一次 Esc 只退它们中间的一层。
+    if (pendingWork) {
+      setPendingWork(null);
+      return;
+    }
+    onClose(dontShow);
+  });
   useEffect(() => {
     gotItRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose(dontShow);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [dontShow]);
+  }, []);
 
   // 确认条展开后确保在可视范围内（移动端内容区滚动场景；block:'nearest' 仅不可见时才滚动）
   useEffect(() => {
@@ -411,8 +419,9 @@ export default function WelcomeDialog({
           </button>
         </div>
       </div>
-      {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
-      {showVersion && <VersionDialog onClose={() => setShowVersion(false)} />}
+      {/* elevated：这两层是「模态里再开模态」，不抬到宿主卡片之上就整层被盖住 */}
+      {showLicense && <LicenseDialog elevated onClose={() => setShowLicense(false)} />}
+      {showVersion && <VersionDialog elevated onClose={() => setShowVersion(false)} />}
     </div>,
     document.body,
   );

@@ -19,6 +19,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_VERSION } from './changelog';
+import { AUDIO_CACHE, DIAGRAM_CACHE, PHOTO_CACHE } from './offline-media';
+import { isVersionNewer } from './version-compare';
 import {
   countCachedEntries,
   parsePrecacheManifest,
@@ -58,6 +60,18 @@ function claimHardReset(remoteVersion: string): boolean {
   }
 }
 
+/** 硬重置只清「应用外壳」的缓存。
+ *
+ *  离线教学包（元素照片 / 元素音频 / 架构图）是用户主动下载、可能花了几百 MB 流量的内容，
+ *  和「换一版前端」没有关系。旧实现删掉 `caches.keys()` 里的全部缓存，用户只是想更新，
+ *  下载好的离线包却一起没了 —— 而且删完还要重新下载。 */
+const PACK_CACHES = new Set<string>([PHOTO_CACHE, AUDIO_CACHE, DIAGRAM_CACHE]);
+
+/** 纯函数：给定当前全部缓存名，返回本次硬重置该删的那些（离线包保留）。 */
+export function selectShellCachesToClear(keys: readonly string[]): string[] {
+  return keys.filter((k) => !PACK_CACHES.has(k));
+}
+
 /** 清缓存 + 注销 SW + 带版本号硬跳转；三步都不依赖旧 SW 配合。
  *
  *  `onProgress` 给出这一步的真值（单位同样是**条目**：一个注册 + 一个缓存各算一条）。
@@ -73,7 +87,7 @@ export async function hardResetAndReload(
   } catch { /* 无 SW / 隐私模式：继续清缓存 */ }
   let keys: string[] = [];
   try {
-    if (typeof caches !== 'undefined') keys = await caches.keys();
+    if (typeof caches !== 'undefined') keys = selectShellCachesToClear(await caches.keys());
   } catch { /* ignore */ }
 
   const total = regs.length + keys.length;
@@ -171,7 +185,7 @@ export function useAppUpdate() {
         .then((d) => {
           if (cancelled || !d || typeof d.version !== 'string') return;
           remoteVersionRef.current = d.version;
-          setHasUpdate(d.version !== APP_VERSION);
+          setHasUpdate(isVersionNewer(d.version, APP_VERSION));
         })
         .catch(() => { /* 离线 / 网络异常：保持上一次结论，不打扰 */ });
     };
@@ -188,6 +202,14 @@ export function useAppUpdate() {
 
   const applyUpdate = useCallback(async () => {
     if (runningRef.current) return; // 防连点
+    // 徽章只该在「远端确实更新」时点亮。万一状态已过期（远端回滚 / 边缘给了旧清单），
+    // 这里再确认一次方向：为一版更旧的远端版本去注销 SW、删缓存，只会白清一次本机。
+    const known = remoteVersionRef.current;
+    if (known && !isVersionNewer(known, APP_VERSION)) {
+      setHasUpdate(false);
+      setPhase('idle');
+      return;
+    }
     runningRef.current = true;
     setPhase('checking');
     setProgress(null);

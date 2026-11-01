@@ -1814,8 +1814,8 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
   test('重试链路源码守卫：快照重放 / 离线仅一次 / 429 倒计时 / 触控 40px', () => {
     const ai = readAiPanel();
     assert.match(ai, /const attemptRef = useRef</, '必须保存本轮请求快照，重试才能重放同一份 messages');
-    assert.match(ai, /attemptRef\.current = \{ q, followUp, messages: messages\.map/, '发送时固化快照（messages 需深拷贝）');
-    assert.match(ai, /void sendQuestion\(a\.q, a\.followUp, a\.messages\)/, '重试必须走快照重放，而不是按当前页面重新拼装');
+    assert.match(ai, /attemptRef\.current = \{ q, followUp, task, messages: messages\.map/, '发送时固化快照（messages 需深拷贝，含任务分级）');
+    assert.match(ai, /void sendQuestion\(a\.q, a\.followUp, a\.messages, a\.task, true\)/, '重试必须走快照重放（保留任务分级并绕过冷却），而不是按当前页面重新拼装');
     assert.match(ai, /stripStoppedMark\(lastExchange\.current\.assistant\)/, '中断内容回灌上下文前必须剥离人造标记');
     assert.match(ai, /addEventListener\('online', onOnline, \{ once: true \}\)/, '离线恢复只允许自动重试一次：严禁无限自动重发烧 token');
     assert.match(ai, /setRetryCountdown\(failure\.retryAfterSec/, '429 必须按 Retry-After 倒计时');

@@ -126,9 +126,18 @@ export function BladeSwitch({
   return (
     <g
       role="button"
+      /* 键盘可达：SVG 里的可点热区不是原生按钮，不写 tabIndex 就完全跳过 Tab 序。
+         Enter / 空格是按钮的约定按键；空格必须 preventDefault，否则页面会跟着滚。 */
+      tabIndex={0}
+      aria-pressed={on}
       aria-label={`${label}: ${on ? (lang === 'zh' ? '闭合' : 'closed') : (lang === 'zh' ? '断开' : 'open')}`}
       onClick={onToggle}
-      className="cursor-pointer"
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        onToggle();
+      }}
+      className="cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--fg)]"
     >
       {/* 透明命中区：沿开关方向延伸，保证够点。
           高度取 44 用户单位而不是 40：390 视口下电路 SVG 缩放约 0.96，

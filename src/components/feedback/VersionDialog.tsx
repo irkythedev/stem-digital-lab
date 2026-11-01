@@ -12,22 +12,29 @@ import OfflinePackPanel from './OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import { CHANGELOG } from '../../lib/changelog';
 import { useEscapeKey } from '../../lib/use-escape-key';
+import { useFocusReturn } from '../../lib/use-focus-return';
 
 interface VersionDialogProps {
   onClose: () => void;
+  /** 从欢迎弹窗里打开：整层抬到宿主卡片之上，否则面板被宿主卡片（z-modal）盖住 */
+  elevated?: boolean;
 }
 
 const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
-export default function VersionDialog({ onClose }: VersionDialogProps) {
+export default function VersionDialog({ onClose, elevated = false }: VersionDialogProps) {
   useEscapeKey(onClose);
+  useFocusReturn(); // 关掉后焦点回到版本号按钮
   const { lang, t } = useApp();
   const { status: packStatus } = useOfflinePack();
   const [showPack, setShowPack] = useState(false);
   const closeLabel = lang === 'zh' ? '关闭' : 'Close';
   const title = t.changelogTitle;
   return createPortal(
-    <>
+    /* 拦截层与面板必须处在同一个层叠上下文里才能保证「面板在遮罩之上」。
+       平时包一层 `relative`（z-index:auto，不建上下文，行为与直接挂 body 一致）；
+       从欢迎弹窗打开时再加 `z-modal-top`：建上下文并整体抬到宿主卡片之上。 */
+    <div className={`relative ${elevated ? 'z-modal-top' : ''}`}>
       {/* 点外关闭：透明拦截层低于卡片（dropdown < tooltip），不会盖住弹层本身 */}
       <button
         type="button"
@@ -70,7 +77,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
                 : `${packStatus?.cachedCount ?? 0}/${packStatus?.totalCount ?? 0}`}
           </span>
         </button>
-        {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
+        {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} elevated={elevated} />}
 
         <div className="space-y-4 max-h-[50vh] overflow-y-auto">
           {CHANGELOG.map((entry) => (
@@ -105,7 +112,7 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
         </div>
       </div>
       </div>
-    </>,
+    </div>,
     document.body,
   );
 }

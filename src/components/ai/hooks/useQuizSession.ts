@@ -181,7 +181,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const { result: res, recovered } = await streamChatWithRecovery(
+      const { result: res, recovered, attempts } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -203,7 +203,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
       const full = stripThinkingFromHistory(res.text);
       const outcome = classifyStreamOutcome(res);
       // 跨会话累计 token（出题请求 = prompt + 实际输出）
-      addTokenUsage(config?.model, promptTokens + estimateTokens(full));
+      addTokenUsage(config?.model, promptTokens * attempts + estimateTokens(full));
       refreshTokenUsage();
       let parsed = parseQuizBatchChecked(full, count);
       if (parsed.reason) {

@@ -13,7 +13,7 @@
  * 所有计算走 src/lib/chemistry/formula-core.ts（纯 TS，无 WASM），
  * URL 查询串持久化模式与选择，支持周期表深链与刷新恢复。
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -182,6 +182,8 @@ export default function ChemistryFormulas() {
   const [solverTarget, setSolverTarget] = useState('Fe');
   // 大小写歧义备选（如 co 默认 CO，可一键切换为金属钴 Co）。
   const [caseAlt, setCaseAlt] = useState<string | null>(null);
+  /** 化学式输入框下方的「排版层」：输入框滚动时要跟着横向偏移（见 onScroll） */
+  const solverEchoRef = useRef<HTMLDivElement>(null);
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [practiceCategory, setPracticeCategory] = useState<PracticeCategory>('basic');
   const [variantQuestion, setVariantQuestion] = useState<PracticeQuestion | null>(null);
@@ -804,8 +806,11 @@ export default function ChemistryFormulas() {
                   {zh ? '化学式' : 'Formula'}
                 </span>
                 <div className="relative w-full">
-                  {/* 底层排版层：与 input 逐像素对齐，展示规范下标化学式；不接收指针事件。 */}
+                  {/* 底层排版层：与 input 逐像素对齐，展示规范下标化学式；不接收指针事件。
+                      宽度设成和 input 一样、横向偏移由 onScroll 同步 —— 否则长化学式
+                      在窄屏上输入框已经滚到中间，排版层却还停在开头，两边文字对不上。 */}
                   <div
+                    ref={solverEchoRef}
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap px-3 text-sm mono-font text-[var(--fg)]"
                   >
@@ -825,6 +830,10 @@ export default function ChemistryFormulas() {
                       setCaseAlt(null);
                     }}
                     onBlur={applyFormulaCaseNormalization}
+                    onScroll={(e) => {
+                      // 输入框横向滚动 → 排版层同步偏移（文字长度可能略差，末尾会自然对齐）
+                      if (solverEchoRef.current) solverEchoRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();

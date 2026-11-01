@@ -19,6 +19,7 @@ import { ArrowDown, ChevronDown, ChevronUp, ChevronsDown, GraduationCap, History
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import TtsStatusBadge from './TtsStatusBadge';
 import { symbolsForTopic } from '../../lib/physics-speech-symbols';
 import { labFromPath, labMap } from '../../lib/labs';
@@ -183,6 +184,23 @@ export default function AiAssistant() {
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal, settingsSignal } = useAiContext();
+
+  // 移动端判定跟随窗口尺寸实时更新（旋转 / 桌面窗口缩放）：<640px 为底部抽屉。
+  // 原先只在渲染时读 innerWidth，缩放后要等下一次无关重渲染才切换，会出现「横屏仍是抽屉 / 窄屏仍是浮窗」。
+  const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobileViewport(mq.matches);
+    sync();
+    if (mq.addEventListener) {
+      mq.addEventListener('change', sync);
+      return () => mq.removeEventListener('change', sync);
+    }
+    // 兼容旧 Safari：matchMedia 只支持 addListener
+    mq.addListener?.(sync);
+    return () => mq.removeListener?.(sync);
+  }, []);
 
   /*
    * 跨域共用件（设置域与刷题域都读同一份）：轻量 Toast 出口 + 累计 token 用量 + 会话用量。
@@ -651,7 +669,7 @@ export default function AiAssistant() {
       const baseTokens = usage?.tokens ?? 0;
       const promptTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
       let received = 0;
-      const { result: res } = await streamChatWithRecovery(
+      const { result: res, attempts } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -670,7 +688,7 @@ export default function AiAssistant() {
       // 空正文按失败处理：空白诊断会被当成「没有问题」而不是「这次没生成出来」
       if (classifyStreamOutcome(res) === 'empty') throw new EmptyAnswerError(res.finishReason);
       // 跨会话累计 token（归纳请求 = prompt + 实际输出）
-      addTokenUsage(config?.model, promptTokens + estimateTokens(full));
+      addTokenUsage(config?.model, promptTokens * attempts + estimateTokens(full));
       refreshTokenUsage();
       // 没写完必须标注：半句诊断看起来像结论，其实不完整（上限截断或连接被切断）
       setQuizSummaryText(classifyStreamOutcome(res) === 'ok' ? full : `${full}\n\n${t.aiError.truncatedNote}`);
@@ -775,7 +793,7 @@ export default function AiAssistant() {
   const [failure, setFailure] = useState<FailureState | null>(null);
   // 本轮请求快照：重试必须「重放同一份 messages」，而不是按当前页面重新拼装
   // （否则学生失败后拖了滑块，重试会悄悄换成另一个问题）
-  const attemptRef = useRef<{ q: string; followUp: boolean; messages: { role: 'system' | 'user' | 'assistant'; content: string }[] } | null>(null);
+  const attemptRef = useRef<{ q: string; followUp: boolean; task: ThinkingTask; messages: { role: 'system' | 'user' | 'assistant'; content: string }[] } | null>(null);
   // 同一轮连续失败次数（≥3 追加「检查网络」提示）
   const attemptsRef = useRef(0);
   // 429 倒计时（秒）：>0 时「重试」进入禁用态，倒计时结束仍需学生手动点
@@ -1262,7 +1280,7 @@ export default function AiAssistant() {
     // 调低且当前已存条目超过新上限：不立刻裁剪，先弹确认
     if (next < persistHistory.length || next < quizHistoryData.length) {
       setPendingStorageLimit(next);
-      flashToast(false, lang === 'zh' ? `上限低于现有记录，请确认裁剪最旧部分（保留最新 ${next} 条）` : `Limit is below current records — confirm to trim the oldest (keep newest ${next}).`);
+      flashToast(true, lang === 'zh' ? `上限低于现有记录，请确认裁剪最旧部分（保留最新 ${next} 条）` : `Limit is below current records — confirm to trim the oldest (keep newest ${next}).`);
       return;
     }
     saveStorageLimit(next);
@@ -1325,6 +1343,8 @@ export default function AiAssistant() {
     pinned?: { role: 'system' | 'user' | 'assistant'; content: string }[],
     /** 任务分级：快捷提问等单步任务传 'quick'，把思考上限压到 standard（默认 chat 沿用用户档位） */
     task: ThinkingTask = 'chat',
+    /** 重试/恢复同一快照时绕过发问冷却（快速失败后立即重试不应被 3s 闸挡成无反应） */
+    skipCooldown = false,
   ) => {
     expandFromCapsule(); // 有提问就把胶囊展开，否则学生看不到回答
     const q = text.trim();
@@ -1336,7 +1356,7 @@ export default function AiAssistant() {
     }
     // 冷却闸：同步拦截双击 / 连按回车 / 连点追问（busy 因 setState 异步可能仍为 false）
     const cooldownNow = Date.now();
-    if (cooldownNow < cooldownUntilRef.current) {
+    if (!skipCooldown && cooldownNow < cooldownUntilRef.current) {
       flashToast(false, lang === 'zh' ? '请稍候…' : 'Please wait…');
       return;
     }
@@ -1371,7 +1391,7 @@ export default function AiAssistant() {
         content: lang === 'zh' ? `<学生提问>${sanitizeTagPayload(q)}</学生提问>` : `<student_question>${sanitizeTagPayload(q)}</student_question>`,
       });
     }
-    attemptRef.current = { q, followUp, messages: messages.map((m) => ({ ...m })) };
+    attemptRef.current = { q, followUp, task, messages: messages.map((m) => ({ ...m })) };
     abortRef.current = new AbortController();
     const t0 = performance.now();
     // 用量实时统计：会话基准（本轮之前的累计）固定，prompt 一次计入，输出随流式滚动增长
@@ -1386,7 +1406,7 @@ export default function AiAssistant() {
     let reasoningSecLocal = 0;
     let reasoningStarted = false; // 呼吸灯只需置位一次：每个思考增量都 setState 是纯浪费
     try {
-      const { result: res, recovered } = await streamChatWithRecovery(
+      const { result: res, recovered, attempts } = await streamChatWithRecovery(
         config,
         messages,
         (delta) => {
@@ -1436,7 +1456,7 @@ export default function AiAssistant() {
       // 空回答绝不能当成功写进历史 / localStorage，否则学生只看到一个空白框、连重试都没有。
       if (outcome === 'empty') throw new EmptyAnswerError(res.finishReason);
       // 跨会话累计 token（本次请求 = prompt + 实际输出 + 思考增量：想得多花得多，口径与本轮显示一致）
-      addTokenUsage(config?.model, promptTokens + Math.round(accCjk + (accLen - accCjk) / 4));
+      addTokenUsage(config?.model, promptTokens * attempts + Math.round(accCjk + (accLen - accCjk) / 4));
       refreshTokenUsage();
       const { body: rawBody, recs: parsedRecs } = parseRecQuestions(full);
       // 没写完的正文必须标注，并把「继续生成」入口交给学生（半句话看着像结论才是真问题）
@@ -1483,7 +1503,7 @@ export default function AiAssistant() {
       const elapsedSec = Math.max(0.1, (performance.now() - t0) / 1000);
       const outTokens = Math.round(accCjk + (accLen - accCjk) / 4);
       setUsage({
-        tokens: baseTokens + promptTokens + outTokens,
+        tokens: baseTokens + promptTokens * attempts + outTokens,
         speed: Math.round(outTokens / elapsedSec),
       });
     } catch (e) {
@@ -1526,7 +1546,8 @@ export default function AiAssistant() {
   const retryLastAttempt = () => {
     const a = attemptRef.current;
     if (!a || busy) return;
-    void sendQuestion(a.q, a.followUp, a.messages);
+    // 重放同一份快照：保留原任务分级，且绕过发问冷却（否则快速失败后点重试会被 3s 闸挡成无反应）
+    void sendQuestion(a.q, a.followUp, a.messages, a.task, true);
   };
 
   // 离线：联网恢复后自动重试一次（仅一次 —— 自动路径绝不无限重发，免得白烧 token）
@@ -1611,20 +1632,15 @@ export default function AiAssistant() {
     setPending(null);
   };
 
-  // Esc：子视图先回对话，对话视图直接收起面板（与关闭按钮同语义）
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (collapsed) { expandFromCapsule(); return; }
-      if (view !== 'chat') { setView('chat'); return; }
-      resetConversation();
-      setOpen(false);
-      setPending(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, view, collapsed]);
+  // Esc：子视图先回对话，对话视图直接收起面板（与关闭按钮同语义）。
+  // 走浮层栈：错题卷导出弹窗等内层浮层开着时，那一次 Esc 归它们，面板保持原样。
+  useEscapeKey(() => {
+    if (collapsed) { expandFromCapsule(); return; }
+    if (view !== 'chat') { setView('chat'); return; }
+    resetConversation();
+    setOpen(false);
+    setPending(null);
+  }, open);
 
   // 收起 / 展开后对齐同一条右边缘：新版宽度只有渲染后才知道，所以放在渲染后的 effect 里量一次
   useEffect(() => {
@@ -1687,7 +1703,7 @@ export default function AiAssistant() {
   if (!open) return null;
 
   // 移动端（<640px，含窄屏）：面板改为顶部锚定的近全宽卡片——忽略桌面拖拽/缩放记忆、隐藏缩放手柄、限制最大高度不超可视区
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const isMobile = isMobileViewport; // 由上方 matchMedia 状态驱动，缩放/旋转会实时更新
 
   // 面板位置：记忆的 pos 若超出当前视口（如桌面拖动保存后切到小屏/移动端），回退右上默认位置；移动端一律顶部锚定
   // 挂载时夹取一次：外接屏拔除 / 窗口变小后，被记住的位置可能落在屏幕外，强制拉回可见区域

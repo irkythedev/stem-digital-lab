@@ -193,6 +193,7 @@ export function registerAiThinkingGovernanceTests(test: TestFn, testAsync: TestF
       );
       assert.equal(call, 2, '首轮空正文须自动再试一次');
       assert.equal(r.recovered, true, '须标记为已自动恢复');
+      assert.equal(r.attempts, 2, '须回报实际请求次数（供调用方按 2× prompt 计费，防少算）');
       assert.equal(r.result.text, '正文', '恢复后应拿到正文');
       assert.deepEqual(contents, ['正文']);
       assert.deepEqual(bodies[1].thinking, { type: 'disabled' }, '恢复轮必须关闭思考');
