@@ -24,7 +24,7 @@ export default function CircuitTooltip({ x, y, formula, substitution, principle,
   return (
     <div
       role="tooltip"
-      className="fixed z-50 pointer-events-none max-w-[220px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-sm)] px-2.5 py-2"
+      className="fixed z-tooltip pointer-events-none max-w-[220px] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-sm)] px-2.5 py-2"
       style={{
         left: x,
         top: y - 8,

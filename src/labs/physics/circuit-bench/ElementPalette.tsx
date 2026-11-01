@@ -346,7 +346,7 @@ export default function ElementPalette({
           /* 窄屏换形态：贴画布底边的横向长条坞（fixed 到视口底），而不是 124px 宽的
              竖板——375px 的屏上竖板会吃掉三分之一画布宽度，而横向长条只吃掉约
              110px 高度，剩下的画布仍然能接线。桌面宽度、圆角、阴影一个字符不动。 */
-          className={`pointer-events-auto flex max-h-full w-[124px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-40 max-sm:max-h-40 max-sm:w-auto ${TOUCH_GUARD}`}
+          className={`pointer-events-auto flex max-h-full w-[124px] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-sticky-layer max-sm:max-h-40 max-sm:w-auto ${TOUCH_GUARD}`}
         >
           <div className="flex shrink-0 items-center gap-0.5 border-b border-[var(--border)]/70 px-1.5 py-1">
             <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-[var(--fg)]">
@@ -435,7 +435,7 @@ export default function ElementPalette({
           画布外则变虚、变红。 */}
       {ghost && (
         <div
-          className="pointer-events-none fixed z-[70] -translate-x-1/2 -translate-y-1/2"
+          className="pointer-events-none fixed z-tooltip -translate-x-1/2 -translate-y-1/2"
           style={{ left: ghost.x, top: ghost.y }}
           data-view-mode={viewMode}
           aria-hidden

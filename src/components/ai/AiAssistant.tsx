@@ -62,9 +62,9 @@ const SHELL_SKIN =
 
 /** 历史刻度轨（minimap notches）单条短横：视觉 20×4，Hover 拉宽到 32 并转主题色。 */
 const NOTCH_BASE =
-  'h-1 w-5 rounded-full bg-[var(--border)] transition-all duration-200 group-hover/notch:w-8 group-hover/notch:bg-[var(--accent)]';
+  'h-1 w-5 rounded-full bg-[var(--border)] transition-[width,background-color] duration-200 group-hover/notch:w-8 group-hover/notch:bg-[var(--accent)]';
 /** 当前正在查看的那一轮：常亮主题色 + 与 Hover 同宽（Hover 时不会缩回去）。 */
-const NOTCH_ACTIVE = 'h-1 w-8 rounded-full bg-[var(--accent)] transition-all duration-200';
+const NOTCH_ACTIVE = 'h-1 w-8 rounded-full bg-[var(--accent)] transition-[width,background-color] duration-200';
 
 /**
  * 前端发问冷却（毫秒）：双击 / 连按回车 / 连点推荐追问时，`busy` 因 setState 异步在
@@ -1704,14 +1704,14 @@ export default function AiAssistant() {
       {/* 移动端遮罩层：点击空白处安全关闭，同时给软键盘弹出提供稳定视口边界 */}
       {isMobile && (
         <div
-          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-none sm:backdrop-blur-[1px]"
+          className="fixed inset-0 z-overlay bg-black/45 backdrop-blur-sm"
           onClick={() => { resetConversation(); setOpen(false); setPending(null); }}
           aria-hidden="true"
         />
       )}
       <div
         ref={panelRef}
-        className={`fixed z-50 flex flex-col overflow-hidden ${
+        className={`fixed z-modal flex flex-col overflow-hidden ${
           isMobile
             ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]'
             : collapsed
@@ -1781,16 +1781,16 @@ export default function AiAssistant() {
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
-          <span className="w-1.5 h-1.5 rounded-full bg-green-500 update-dot" aria-hidden="true" />
+        <div className="absolute left-1/2 -translate-x-1/2 top-2.5 z-tooltip flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--success)] update-dot" aria-hidden="true" />
           {lang === 'zh' ? '已保存' : 'Saved'}
           <Mark ok className="ml-1" />
         </div>
       )}
       {/* 动作结果轻量 Toast（获取模型 / 测试连接）：放第二行，避免与「已保存」重叠 */}
       {actToast && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-30 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
-          <span className={`w-1.5 h-1.5 rounded-full ${actToast.ok ? 'bg-green-500' : 'bg-[var(--error)]'}`} aria-hidden="true" />
+        <div className="absolute left-1/2 -translate-x-1/2 top-11 z-tooltip flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-[0.6875rem] text-[var(--fg)] shadow-[var(--elev-sm)] whitespace-nowrap">
+          <span className={`w-1.5 h-1.5 rounded-full ${actToast.ok ? 'bg-[var(--success)]' : 'bg-[var(--error)]'}`} aria-hidden="true" />
           {actToast.msg}
         </div>
       )}
@@ -1953,7 +1953,7 @@ export default function AiAssistant() {
               </div>
               {/* Hover 预览：该轮的问题摘要（回答不进气泡——气泡是「找哪一轮」的线索，不是预览全文） */}
               {peekTurn !== null && peekQuestion && (
-                <div className="pointer-events-none absolute left-3 top-full z-20 mt-1 max-w-[calc(100%-1.5rem)] rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-2.5 py-1.5 text-[0.6875rem] leading-snug text-[var(--fg)] shadow-xl">
+                <div className="pointer-events-none absolute left-3 top-full z-dropdown mt-1 max-w-[calc(100%-1.5rem)] rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-2.5 py-1.5 text-[0.6875rem] leading-snug text-[var(--fg)] shadow-xl">
                   <span className="mono-font text-[var(--muted)]">Q: </span>
                   <span className="line-clamp-2">{peekQuestion}</span>
                 </div>
@@ -1973,7 +1973,7 @@ export default function AiAssistant() {
           >
             {/* 离底恢复入口：sticky + 零高度包裹 —— 悬浮在可视区右下角，不占布局、不遮正文 */}
             {showJump && (
-              <div className="sticky bottom-0 z-10 flex h-0 justify-end pointer-events-none">
+              <div className="sticky bottom-0 z-sticky-layer flex h-0 justify-end pointer-events-none">
                 <button
                   type="button"
                   onClick={() => {
@@ -2086,6 +2086,12 @@ export default function AiAssistant() {
                         <p className="text-[0.6875rem] mono-font text-[var(--fg)]">{t.aiError[failure.kind]}</p>
                         {failure.kind === 'offline' && (
                           <p className="text-[0.625rem] mono-font text-[var(--muted)]">{t.aiError.offlineAuto}</p>
+                        )}
+                        {failure.kind === 'blocked' && (
+                          <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">{t.aiError.blockedHint}</p>
+                        )}
+                        {failure.code && (
+                          <p className="text-[0.625rem] mono-font text-[var(--muted)]">{t.aiError.codeLabel} {failure.code}</p>
                         )}
                         {failure.raw && (
                           <p className="text-[0.625rem] mono-font text-[var(--muted)] break-all leading-snug">{failure.raw}</p>

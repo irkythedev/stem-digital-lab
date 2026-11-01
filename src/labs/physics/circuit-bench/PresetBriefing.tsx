@@ -279,7 +279,7 @@ export default function PresetBriefing({
       aria-label={zh ? `实验导读 · ${title}` : `Lab guide · ${title}`}
       data-guide-card=""
       data-guide-sheet={sheet ? '' : undefined}
-      className={`fixed z-50 flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[55dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl ${
+      className={`fixed z-overlay flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[55dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl ${
         shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
       }`}
       style={sheet ? undefined : pos ? { left: pos.x, top: pos.y } : { right: DEFAULT_RIGHT, top: DEFAULT_TOP + topInset }}
@@ -375,8 +375,8 @@ export default function PresetBriefing({
               <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" />
               {zh ? '启发追问 · 探究 AI' : 'Guided probes · inquiry AI'}
             </h3>
-            <span className="ml-auto shrink-0 rounded-full bg-gradient-to-r from-[var(--accent)]/15 to-[var(--accent)]/5 px-2 py-0.5 text-[0.625rem] font-medium leading-none tracking-wide text-[var(--accent)]">
-              Socratic Coaching
+            <span className="ml-auto shrink-0 border border-[var(--border)] px-1.5 py-0.5 text-[0.625rem] font-medium leading-none tracking-wide text-[var(--muted)]">
+              {zh ? '苏格拉底式追问' : 'Socratic probes'}
             </span>
           </div>
           <p className="mt-1.5 text-[10px] leading-snug text-[var(--muted)]">
@@ -391,7 +391,7 @@ export default function PresetBriefing({
                 type="button"
                 onClick={() => ask(prompt)}
                 title={stageHint(prompt, zh)}
-                className="relative group w-full flex flex-col gap-1.5 p-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer text-left motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+                className="relative group w-full flex flex-col gap-1.5 p-3 rounded-xl border border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/50 hover:shadow-md hover:-translate-y-0.5 transition-[background-color,border-color,box-shadow,transform] duration-200 cursor-pointer text-left motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
                 <span
                   className={`w-fit shrink-0 rounded-md border px-1.5 py-0.5 text-[0.625rem] font-semibold leading-none ${STAGE_BADGE[prompt.stage]}`}

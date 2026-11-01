@@ -329,7 +329,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                   <div
                     id="ai-model-listbox"
                     role="listbox"
-                    className="absolute left-0 right-0 top-full mt-1 z-20 max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]"
+                    className="absolute left-0 right-0 top-full mt-1 z-dropdown max-h-44 overflow-y-auto border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]"
                   >
                     {liveModels.map((m) => (
                       <button
@@ -731,7 +731,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
           )}
 
         {/* 操作栏：吸底常驻——表单再长也不会把「保存」挤出可见范围 */}
-          <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
+          <div className="sticky bottom-0 z-sticky-layer -mx-4 px-4 pb-4 pt-2 space-y-1.5 bg-[var(--bg)] border-t border-[var(--border)]">
             <div className="flex items-center gap-2">
             {config ? (
               <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">

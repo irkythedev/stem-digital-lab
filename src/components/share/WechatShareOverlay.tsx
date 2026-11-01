@@ -4,7 +4,7 @@
  *
  * 微信内转发引导覆层：微信内置浏览器打开本站时，引导点击右上角「···」转发给同学。
  * 防骚扰：会话级一次（sessionStorage）；首访者（欢迎弹窗未确认）本轮不弹，避免叠罗汉。
- * 层级 z-[110]，高于欢迎弹窗（z-[100]）。
+ * 层级走 z-toast，高于欢迎弹窗（z-overlay / z-modal）。
  */
 import { useEffect, useState } from 'react';
 import { isWechat } from '../../lib/is-wechat';
@@ -37,7 +37,7 @@ export default function WechatShareOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-[110] bg-black/60 flex flex-col items-center"
+      className="fixed inset-0 z-toast bg-black/60 flex flex-col items-center"
       onClick={dismiss}
       role="dialog"
       aria-modal="true"

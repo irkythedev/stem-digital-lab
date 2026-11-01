@@ -168,7 +168,7 @@ export function SchematicBody({ el, half, stroke, reading }: BodyProps) {
             y1={0}
             x2={el.params.closed === false ? 8 : 14}
             y2={el.params.closed === false ? -16 : 0}
-            style={{ transition: 'all 0.18s ease-out' }}
+            style={{ transition: 'x2 0.18s ease-out, y2 0.18s ease-out' }}
           />
         </g>
       );

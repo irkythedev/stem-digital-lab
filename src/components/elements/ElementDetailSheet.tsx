@@ -14,6 +14,7 @@
  * 纯函数邻居/微粒/倾向等来自 pages/PeriodicTable（保持单一实现，不重复抄写）。
  */
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, LoaderCircle, Volume2, X, Box } from 'lucide-react';
 import Atom3D from '../lab/Atom3D';
@@ -114,9 +115,9 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
 
   return (
     <>
-      {selected && (
+      {selected && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-overlay flex items-start justify-center overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]"
           onClick={() => setSelected(null)}
         >
           <div
@@ -125,7 +126,7 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
                绝不再因「垂直居中重算」整体上下跳（改前实测：1280×1100 下切 Tab 面板 top
                66 → 172 → 66，跳幅 106px = 高度差 212px 的一半）。max-h 与 padding 对齐，
                保证底边仍留出同样边距；overlay 自身 overflow-y-auto 兜底极矮视口。 */
-            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--card-bg)] shadow-2xl rounded-xl overflow-hidden z-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.zh} ${selected.symbol}`}
@@ -723,13 +724,14 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
               <div className="shrink-0 border-t border-[var(--border)] px-4 py-3">{actionSlot}</div>
             ) : null}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* 实物照片放大预览（全屏） */}
-      {photoZoom && selected && (
+      {photoZoom && selected && createPortal(
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
           onClick={() => setPhotoZoom(false)}
           role="dialog"
           aria-label={`${selected.zh} ${selected.symbol}`}
@@ -754,7 +756,8 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
     </>

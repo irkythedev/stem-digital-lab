@@ -698,7 +698,7 @@ export default function PeriodicTable() {
         onBlur={previewOff}
         title={`${el.zh} ${el.symbol}`}
         aria-label={`${el.zh} ${el.symbol}`}
-        className={`relative flex-1 h-[58px] flex flex-col border transition-all duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)] ${
+        className={`relative flex-1 h-[58px] flex flex-col border transition-[border-color,box-shadow,transform] duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)] ${
           matched ? 'ring-2 ring-[var(--fg)]' : ''
         } ${reciting ? 'recite-active' : ''}`}
         style={{ borderColor: color.border, backgroundColor: color.bg }}
@@ -816,7 +816,9 @@ export default function PeriodicTable() {
               className="chip-tap inline-flex items-center gap-0.5 text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
             >
               <HardDrive className="w-4 h-4 shrink-0" aria-hidden="true" />
-              {packStatus?.isFull && <CircleCheck className="w-3 h-3 shrink-0 text-green-600" aria-hidden="true" />}
+              {packStatus?.isFull && (
+                <CircleCheck className="w-3 h-3 shrink-0 text-[var(--success)]" aria-hidden="true" />
+              )}
             </button>
           </div>
           {/* 声音切换（女声/男声，语言跟随界面）+ 跟读进度 */}
@@ -957,7 +959,7 @@ export default function PeriodicTable() {
                   </span>
                   <div className="flex-1 h-1 bg-[var(--border)] overflow-hidden">
                     <div
-                      className="h-full bg-[var(--fg)] transition-all duration-[var(--dur-slow)]"
+                      className="h-full bg-[var(--fg)] transition-[width] duration-[var(--dur-slow)]"
                       style={{ width: `${(recite.pos / recitePreset.ns.length) * 100}%` }}
                     />
                   </div>

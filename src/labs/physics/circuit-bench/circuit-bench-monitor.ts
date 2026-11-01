@@ -697,11 +697,11 @@ export function deenergizePlan({
     const clearLabel = clear ? elementCanvasLabel(repaired, clear, lang) : '';
     hint = zh
       ? clear
-        ? `⚠ 换好后先断开 ${clearLabel} 再合上 ${switchLabel}：现在这样合闸，${hazardNames} 还会再坏一次。`
-        : `⚠ 换好后先别急着合闸：电路里还有短路或电源电压过高，合上还会再坏一次。`
+        ? `换好后先断开 ${clearLabel} 再合上 ${switchLabel}：现在这样合闸，${hazardNames} 还会再坏一次。`
+        : `换好后先别急着合闸：电路里还有短路或电源电压过高，合上还会再坏一次。`
       : clear
-        ? `⚠ After replacing, open ${clearLabel} before closing ${switchLabel} — otherwise ${hazardNames} breaks again.`
-        : `⚠ Do not close the switch right away: the circuit still has a short or too high a supply voltage, and the new part will break again.`;
+        ? `After replacing, open ${clearLabel} before closing ${switchLabel} — otherwise ${hazardNames} breaks again.`
+        : `Do not close the switch right away: the circuit still has a short or too high a supply voltage, and the new part will break again.`;
   }
 
   return {

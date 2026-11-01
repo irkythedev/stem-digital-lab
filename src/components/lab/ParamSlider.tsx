@@ -93,7 +93,7 @@ export default function ParamSlider({
           disabled={disabled || value <= min}
           onClick={() => handleStep(-step)}
           aria-label={`Decrease ${label}`}
-          className="shrink-0 w-8 h-11 sm:w-7 sm:h-11 tap-area flex items-center justify-center border border-[var(--border)]/80 text-[var(--fg)] hover:border-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all rounded-lg touch-manipulation select-none"
+          className="shrink-0 w-8 h-11 sm:w-7 sm:h-11 tap-area flex items-center justify-center border border-[var(--border)]/80 text-[var(--fg)] hover:border-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-[border-color,background-color,transform] rounded-lg touch-manipulation select-none"
         >
           <Minus className="w-3.5 h-3.5" />
         </button>
@@ -117,7 +117,7 @@ export default function ParamSlider({
           disabled={disabled || value >= max}
           onClick={() => handleStep(step)}
           aria-label={`Increase ${label}`}
-          className="shrink-0 w-8 h-11 sm:w-7 sm:h-11 tap-area flex items-center justify-center border border-[var(--border)]/80 text-[var(--fg)] hover:border-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all rounded-lg touch-manipulation select-none"
+          className="shrink-0 w-8 h-11 sm:w-7 sm:h-11 tap-area flex items-center justify-center border border-[var(--border)]/80 text-[var(--fg)] hover:border-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-[border-color,background-color,transform] rounded-lg touch-manipulation select-none"
         >
           <Plus className="w-3.5 h-3.5" />
         </button>

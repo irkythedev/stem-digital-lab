@@ -156,7 +156,7 @@ export default function HomePage() {
                   scrollToLabList();
                 }
               }}
-              className={`group relative border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center transition-[border-color,background-color,transform] duration-[var(--dur-slow)] hover:z-10 hover:scale-[1.02] ${
+              className={`group relative border-t pt-2.5 pb-3 sm:pt-4 sm:pb-5 flex flex-col items-center text-center transition-[border-color,background-color] duration-[var(--dur-slow)] ${
                 isActive
                   ? 'border-[var(--fg)]'
                   : 'border-[var(--border)] hover:border-[var(--fg)] hover:bg-[var(--fg)]/[0.04]'
@@ -165,7 +165,7 @@ export default function HomePage() {
               <div className="h-9 sm:h-12 flex items-center justify-center mb-1.5 sm:mb-3 text-[var(--fg)]">
                 <SubjectIcon
                   subjectId={subject.id}
-                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0] transition-transform duration-[var(--dur-slow)] group-hover:scale-110"
+                  className="w-7 h-7 sm:w-9 sm:h-9 stroke-[1.0]"
                 />
               </div>
               <span className="text-sm font-semibold tracking-wide text-[var(--fg)] serif-font mb-0.5 sm:mb-1.5">
@@ -198,7 +198,7 @@ export default function HomePage() {
           return (
             <div
               key={subject.id}
-              className={`w-full transition-all duration-[var(--dur-slow)] ${
+              className={`w-full transition-[opacity,transform] duration-[var(--dur-slow)] ${
                 isActive
                   ? 'opacity-100 translate-y-0 pointer-events-auto'
                   : 'opacity-0 translate-y-2 pointer-events-none absolute inset-0'

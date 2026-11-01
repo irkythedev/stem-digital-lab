@@ -144,8 +144,8 @@ export function canvasSlotClass(fullscreen: boolean): string {
  */
 export function measureDrawerClass(open: boolean): string {
   return open
-    ? 'pointer-events-none absolute inset-x-3 bottom-3 z-40 flex max-h-[62vh] items-end justify-center'
-    : 'pointer-events-none absolute bottom-3 left-3 z-40 flex';
+    ? 'pointer-events-none absolute inset-x-3 bottom-3 z-sticky-layer flex max-h-[62vh] items-end justify-center'
+    : 'pointer-events-none absolute bottom-3 left-3 z-sticky-layer flex';
 }
 
 export interface ChartPoint {

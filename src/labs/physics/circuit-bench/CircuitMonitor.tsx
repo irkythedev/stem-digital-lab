@@ -37,7 +37,7 @@
  * 表格只呈现 `circuit-bench-monitor` 算好的行，组件本身不做任何物理判断。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Gauge, Plus, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronUp, Gauge, Plus, TriangleAlert, Wrench } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
 import type { BenchState, ElementReading } from './circuit-bench-core';
@@ -73,7 +73,7 @@ export interface CircuitMonitorProps {
   onOpenPalette?: () => void;
   /**
    * 停靠角。默认右上角（`top-14 right-4`，画布卡工具栏下沿）。
-   * 实验导读浮卡打开时让到右下角：导读卡固定 `z-50` 且默认就停在右上角，
+   * 实验导读浮卡打开时让到右下角：导读卡固定 `z-overlay` 且默认就停在右上角，
    * 两块卡各占一角才不至于把实时读数整个盖住。
    */
   corner?: 'top-right' | 'bottom-right';
@@ -235,7 +235,7 @@ export default function CircuitMonitor({
    * 右上角在窄屏是参数面板关闭钮与全屏按钮的地盘，HUD 胶囊压上去就会出现
    * 「想关面板、结果展开了监控」的误触（审计 P0-2）。
    */
-  const anchor = corner === 'bottom-right' ? 'absolute right-4 bottom-4 z-30' : 'absolute top-14 right-4 z-30';
+  const anchor = corner === 'bottom-right' ? 'absolute right-4 bottom-4 z-tooltip' : 'absolute top-14 right-4 z-tooltip';
   const model = useMemo(
     () => buildMonitorModel({ state, readings, lang: zh ? 'zh' : 'en', shortCircuit }),
     [state, readings, zh, shortCircuit],
@@ -294,7 +294,8 @@ export default function CircuitMonitor({
   );
 
   /**
-   * 折叠态药丸：`🟢 6 元件正常` / `⚠ 1 元件损坏` / `◌ 空白画布 · 从这里开始`。
+   * 折叠态药丸：`● 6 元件正常` / `● 1 元件损坏` / `○ 空白画布 · 从这里开始`。
+   * 三档的区分靠圆点的实心/空心与语义色，文案里不再插字符图标。
    *
    * 三档文案由 `verdict` 决定，而不是由计数算出来：空台面既不是「0 元件正常」
    * （绿勾是没有测量支撑的空真），也不该在药丸上装作一块仪表——它是一条入口，
@@ -388,7 +389,7 @@ export default function CircuitMonitor({
   return (
     <div
       data-drop-blocked=""
-      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-40 max-sm:max-h-[45dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
+      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-sticky-layer max-sm:max-h-[45dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
     >
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-2">
         <Gauge className="h-3 w-3 shrink-0 text-[var(--muted)]" />
@@ -402,8 +403,9 @@ export default function CircuitMonitor({
           </span>
         )}
         {faultCount > 0 && (
-          <span className="mono-font text-[10px] leading-[14px] text-[var(--danger)] tabular-nums">
-            ⚠ {faultCount}
+          <span className="mono-font flex items-center gap-1 text-[10px] leading-[14px] text-[var(--danger)] tabular-nums">
+            <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {faultCount}
           </span>
         )}
         <button
@@ -412,7 +414,7 @@ export default function CircuitMonitor({
           aria-expanded
           title={zh ? '最小化为药丸' : 'Minimize'}
           aria-label={zh ? '最小化元件状态监控' : 'Minimize live monitor'}
-          className="compact tap-area relative z-40 ml-auto -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
+          className="compact tap-area relative z-tooltip ml-auto -mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
         >
           <ChevronUp className="h-3 w-3 shrink-0" />
         </button>
@@ -423,7 +425,7 @@ export default function CircuitMonitor({
         <div className="flex shrink-0 flex-col border-y border-red-500/20 bg-red-500/15 px-2 py-1 text-[10px] leading-[14px] text-red-700 [html.dark_&]:text-red-400">
           <div className="flex items-center justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 font-medium">
-              <span className="shrink-0">⚠️</span>
+              <TriangleAlert className="h-3 w-3 shrink-0" aria-hidden="true" />
               <span className="truncate">{zh ? '元件损坏' : 'Parts damaged'}</span>
             </span>
             {/* 红底白字取 red-600：red-500 上的白字只有 3.81:1，而这颗按钮的字

@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="数理化数字实验室 - 基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台。无需登录、中英双语、免费在线使用：15 个交互实验（一次函数、二次函数、反比例函数、圆的性质、欧姆定律、串并联电路、凸透镜成像、浮力、杠杆、压强、滑轮、质量守恒定律、酸碱中和、电解水、金属活动性）+ 6 个工具（化学式与化合价、元素周期表、物理常量、物理公式、数学公式、专业电学工作台）。在线访问 https://stem.irky.dev" />
     <meta name="keywords" content="初中数学实验,初中物理实验,初中化学实验,数字实验室,STEM,数理化,函数图像,欧姆定律,凸透镜成像,元素周期表,在线实验" />
-    <meta name="theme-color" content="#f7f7f5" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#111210" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafafa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#161613" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="canonical" href="https://stem.irky.dev/" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -58,32 +58,81 @@
   <body class="antialiased selection:bg-neutral-300 dark:selection:bg-neutral-700">
     <div id="root">
       <!-- 静态内容快照（GEO 预渲染）：React 挂载后自动替换；对不执行 JS 的 AI 爬虫 / 搜索引擎可见。
-           注意：文字内容不可删减（收录依赖 textContent），仅可通过外层样式做骨架屏观感 -->
-      <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:#f7f7f5;">
-        <div style="width:100%; max-width:44rem; margin:0 auto; padding:2.5rem 1.25rem;">
-          <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:1.25rem;">
-            <span style="width:0.9rem; height:0.9rem; border:2px solid #10b981; border-top-color:transparent; border-radius:9999px; animation:stemlabSpin 0.9s linear infinite;"></span>
-            <span style="font-size:0.8rem; color:#6b7280;">正在加载实验室…</span>
+           注意：文字内容不可删减（收录依赖 textContent），仅可通过外层样式做骨架屏观感。
+
+           样式与真实界面同一套令牌（src/index.css）：素底、1px 发丝线、方角、衬线标题 +
+           等宽标签。加载指示是页眉下方 2px 单色进度条，不是彩色转圈——否则慢网下先闪
+           一屏"通用 SaaS 落地页"，再硬切成黑白编排，前后像两个产品。 -->
+      <div class="boot">
+        <div class="boot-wrap">
+          <div class="boot-bar">
+            <svg class="boot-mark" width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <path d="M4 1.2 6.8 5.6H1.2L4 1.2Z" />
+              <rect x="11.4" y="8.2" width="4.6" height="4.6" />
+              <circle cx="4.3" cy="10.5" r="2.3" />
+            </svg>
+            <span class="boot-brand">STEM DIGITAL LAB</span>
+            <span class="boot-status">// 正在加载实验室…</span>
           </div>
-          <div style="background:#ffffff; border:1px solid #e7e5e4; border-radius:0.75rem; padding:2rem 1.75rem; box-shadow:0 1px 2px rgba(0,0,0,0.04);">
-            <h1 style="font-size:1.5rem; margin:0 0 0.4rem; color:#111827; font-family: 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', SimSun, serif;">数理化数字实验室</h1>
-            <p style="margin:0 0 1.5rem; color:#4b5563;">STEM Digital Lab —— 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台。无需登录、中英双语、免费在线使用。</p>
-            <h2 style="font-size:1.15rem; margin:1.6rem 0 0.6rem; color:#111827;">15 个交互实验</h2>
-            <ul style="margin:0; padding-left:1.2rem; color:#374151;">
-              <li>数学：一次函数 · 二次函数 · 反比例函数 · 圆的性质</li>
-              <li>物理：欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮</li>
-              <li>化学：质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性</li>
-            </ul>
-            <h2 style="font-size:1.15rem; margin:1.6rem 0 0.6rem; color:#111827;">6 个工具</h2>
-            <ul style="margin:0; padding-left:1.2rem; color:#374151;">
-              <li>专业电学工作台：自由画布搭电路 · 原理图 / 实物图双视图 · 读表与元件状态监控</li>
-              <li>化学式与化合价（速查 · 生成 · 反推 · 练习）· 元素周期表（118 元素 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查</li>
-            </ul>
-            <p style="margin:1.8rem 0 0; font-size:0.9rem; color:#6b7280;">页面加载中，若长时间未跳转请启用 JavaScript 或刷新重试。</p>
-          </div>
+          <div class="boot-track" role="progressbar" aria-label="正在加载实验室"><span></span></div>
+          <h1 style="font-family: 'Noto Serif CJK SC', 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong', SimSun, serif;" class="boot-h1">数理化数字实验室</h1>
+          <p class="boot-lead">STEM Digital Lab —— 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台。无需登录、中英双语、免费在线使用。</p>
+          <h2>15 个交互实验</h2>
+          <ul>
+            <li>数学：一次函数 · 二次函数 · 反比例函数 · 圆的性质</li>
+            <li>物理：欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮</li>
+            <li>化学：质量守恒定律 · 酸碱中和 · 电解水 · 金属活动性</li>
+          </ul>
+          <h2>6 个工具</h2>
+          <ul>
+            <li>专业电学工作台：自由画布搭电路 · 原理图 / 实物图双视图 · 读表与元件状态监控</li>
+            <li>化学式与化合价（速查 · 生成 · 反推 · 练习）· 元素周期表（118 元素 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查</li>
+          </ul>
+          <p class="boot-note">页面加载中，若长时间未跳转请启用 JavaScript 或刷新重试。</p>
         </div>
       </div>
-      <style>@keyframes stemlabSpin{to{transform:rotate(360deg)}}</style>
+      <style>
+        .boot {
+          min-height: 100vh; background: #fafafa; color: #111111;
+          font-family: 'Noto Sans CJK SC', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+        }
+        .boot-wrap { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+        .boot-bar { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.85rem; border-bottom: 1px solid #d4d4d4; }
+        .boot-mark { flex: none; color: #111111; }
+        .boot-brand, .boot-status {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+          font-size: 0.6875rem; line-height: 1; letter-spacing: 0.14em;
+        }
+        .boot-brand { color: #111111; }
+        .boot-status { margin-left: auto; letter-spacing: 0.02em; color: #5c5c5c; }
+        .boot-track { height: 2px; margin-bottom: 2.25rem; background: #e6e6e6; overflow: hidden; }
+        .boot-track > span {
+          display: block; width: 28%; height: 100%; background: #111111;
+          transform: translateX(-110%); animation: stemlabLoad 1.2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+        }
+        .boot-h1 { margin: 0 0 0.75rem; font-size: 1.75rem; font-weight: 500; line-height: 1.25; letter-spacing: -0.01em; color: #111111; }
+        .boot-lead { margin: 0 0 2rem; max-width: 34rem; font-size: 0.9375rem; line-height: 1.75; color: #5c5c5c; }
+        .boot h2 {
+          margin: 2rem 0 0.75rem; padding-top: 0.85rem;
+          border-top: 1px solid #d4d4d4; font-size: 0.9375rem; font-weight: 600; color: #111111;
+        }
+        .boot ul { margin: 0; padding: 0; list-style: none; }
+        .boot li { font-size: 0.875rem; line-height: 1.9; color: #374151; }
+        .boot-note { margin: 2rem 0 0; font-size: 0.75rem; color: #5c5c5c; }
+        @keyframes stemlabLoad { to { transform: translateX(370%); } }
+        @media (prefers-reduced-motion: reduce) {
+          .boot-track > span { animation: none; width: 100%; transform: none; opacity: 0.35; }
+        }
+        @media (prefers-color-scheme: dark) {
+          .boot { background: #161613; color: #e8e6df; }
+          .boot-mark, .boot-brand, .boot-h1, .boot h2 { color: #e8e6df; }
+          .boot-bar, .boot h2 { border-color: #2e2e28; }
+          .boot-status, .boot-lead, .boot-note { color: #9c9a90; }
+          .boot-track { background: #262621; }
+          .boot-track > span { background: #e8e6df; }
+          .boot li { color: #c9c6bd; }
+        }
+      </style>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -8,7 +8,7 @@
 
 <p>
   <a href="LICENSE"><img src="public/badges/license.svg" alt="License: AGPL-3.0"></a>
-  <img src="public/badges/version.svg" alt="Version v0.46.3">
+  <img src="public/badges/version.svg" alt="Version v0.46.4">
   <img src="public/badges/core.svg" alt="Core: C++17 / WebAssembly">
   <img src="public/badges/frontend.svg" alt="Frontend: React 19 + TypeScript">
   <img src="public/badges/tests.svg" alt="740 tests passing">

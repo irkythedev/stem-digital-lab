@@ -51,7 +51,7 @@ export default function PredictStage({ prediction, onPredict, labels }: PredictS
               role="radio"
               aria-checked={isSel}
               onClick={() => onPredict(opt.value)}
-              className={`min-h-[44px] text-left text-sm 2xl:text-base px-3.5 py-2.5 border transition-all rounded-sm flex items-center justify-between touch-manipulation active:scale-[0.99] ${
+              className={`min-h-[44px] text-left text-sm 2xl:text-base px-3.5 py-2.5 border transition-[border-color,background-color,transform] rounded-sm flex items-center justify-between touch-manipulation active:scale-[0.99] ${
                 isSel
                   ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)] font-medium shadow-xs'
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'

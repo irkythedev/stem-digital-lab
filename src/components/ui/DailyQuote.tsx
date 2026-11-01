@@ -11,6 +11,7 @@
  * 数据编排：src/lib/daily-science.ts；名言数据：src/lib/quotes.ts；考点速记：src/lib/daily-tips.ts。
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { RefreshCw, RotateCcw, X } from 'lucide-react';
 import type { ScienceQuote } from '../../lib/quotes';
 import {
@@ -279,16 +280,16 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
       )}
 
       {/* 外链确认弹窗：标题与说明均来自条目的 link 结构 */}
-      {pendingLink && (
+      {pendingLink && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-overlay flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '前往外部网站' : 'Open external site'}
           onClick={() => setPendingLink(null)}
         >
           <div
-            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-xl"
+            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--card-bg)] p-4 sm:p-5 shadow-2xl rounded-xl z-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xs font-bold tracking-widest mono-font uppercase text-[var(--fg)] mb-2">
@@ -322,20 +323,21 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* 移动端完整故事浮窗（仅故事被截断时才可达） */}
-      {storyModal && q && (
+      {storyModal && q && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
+          className="fixed inset-0 z-overlay flex items-center justify-center bg-black/45 p-3 sm:p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
           aria-label={lang === 'zh' ? '人物小故事' : 'Story'}
           onClick={() => setStoryModal(false)}
         >
           <div
-            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-xl"
+            className="w-full max-w-sm max-h-[90dvh] overflow-y-auto border border-[var(--border)] bg-[var(--card-bg)] p-4 sm:p-5 shadow-2xl rounded-xl z-modal"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-2.5">
@@ -358,7 +360,8 @@ export default function DailyQuote({ lang }: DailyQuoteProps) {
               — {lang === 'zh' ? q.person.zh : q.person.en}
             </p>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

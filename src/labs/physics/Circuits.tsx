@@ -15,7 +15,7 @@
  * + 电流小点流动 + 灯泡亮度 ∝ P + 自由放置探针（虚线预览/非法接法拒绝）
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
-import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { Check, RotateCcw, SlidersHorizontal, TriangleAlert, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -729,8 +729,9 @@ export default function Circuits() {
               </p>
             )}
             {meterErr && (
-              <p className="text-xs text-[var(--error)] serif-font mt-1" role="alert">
-                ⚠ {meterErr}
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--error)] serif-font" role="alert">
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{meterErr}</span>
               </p>
             )}
           </div>

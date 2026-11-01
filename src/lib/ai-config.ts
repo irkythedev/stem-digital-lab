@@ -90,8 +90,44 @@ export function isNetworkError(msg: string): boolean {
   return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg);
 }
 
-/** 失败分类：决定文案、是否给「重试」、以及 429 要不要先倒计时 */
-export type AiFailureKind = 'offline' | 'network' | 'timeout' | 'stall' | 'empty' | 'rate_limit' | 'server' | 'auth' | 'other';
+/** 失败分类：决定文案、是否给「重试」、以及 429 要不要先倒计时。
+ *
+ *  `blocked` 与 `offline` 的分界正是这次要修的点：浏览器对跨域被拒、DNS 失败、
+ *  连接重置、证书错误都只抛同一个 `TypeError: Failed to fetch`，前端拿不到原因。
+ *  因此只有 `navigator.onLine === false` 才敢说「断网」；设备在线却仍然失败时一律归
+ *  `blocked`（请求没发出去，原因未知），措辞必须中性，不许断言是跨域。
+ */
+export type AiFailureKind = 'offline' | 'blocked' | 'network' | 'timeout' | 'stall' | 'empty' | 'rate_limit' | 'server' | 'auth' | 'other';
+
+/**
+ * 学生可见的错误代码：老师/维护者按码定位，不必让初中生去开控制台。
+ *
+ * 对照表（改文案时一并核对）：
+ *   AI-E10 请求未发出（网络不稳，或端点不允许网页跨域调用）
+ *   AI-E11 设备离线
+ *   AI-E12 API Key 无效或失效
+ *   AI-E13 服务商限流
+ *   AI-E14 服务商 5xx
+ *   AI-E15 等待首字超时
+ *   AI-E16 流式传输停滞
+ *   AI-E17 模型没输出正文
+ *   AI-E18 其他网络错误
+ *   AI-E19 其他请求失败
+ *
+ * 用 `Record` 而不是散落字符串：新增分类时 TypeScript 会强制补全代码。
+ */
+export const AI_FAILURE_CODES: Record<AiFailureKind, string> = {
+  blocked: 'AI-E10',
+  offline: 'AI-E11',
+  auth: 'AI-E12',
+  rate_limit: 'AI-E13',
+  server: 'AI-E14',
+  timeout: 'AI-E15',
+  stall: 'AI-E16',
+  empty: 'AI-E17',
+  network: 'AI-E18',
+  other: 'AI-E19',
+};
 
 /**
  * 空正文失败：这一轮模型只吐了思考（或什么都没吐），正文一个字符都没有。
@@ -117,6 +153,8 @@ export interface ChatFailure {
   retryable: boolean;
   /** 原生/服务商原文：只作为灰色次要行呈现，绝不直接当主文案 */
   raw: string;
+  /** 学生可见的错误代码（见 AI_FAILURE_CODES）：老师按码排查，学生不必开控制台 */
+  code: string;
   /** 429 的等待秒数：有值则「重试」先进入倒计时禁用态 */
   retryAfterSec?: number;
 }
@@ -127,25 +165,42 @@ export interface ChatFailure {
  * 文案与重试策略都由 kind 决定，组件里不再靠正则猜谜 ——
  * 旧实现会把浏览器原文（"Failed to fetch"）或服务商英文原文直接端给初中生看。
  */
-export function classifyChatFailure(e: unknown, opts: { offline?: boolean } = {}): ChatFailure {
+export function classifyChatFailure(
+  e: unknown,
+  opts: { offline?: boolean; online?: boolean } = {}
+): ChatFailure {
   const err = e as { message?: string; status?: number; retryAfterSec?: number } | null;
   const raw = (err && typeof err.message === 'string' ? err.message : String(e)) || '';
   const status = typeof err?.status === 'number' ? err.status : undefined;
+  // 设备是否在线：调用方可以显式传入（测试用）；默认读 navigator。
+  // 注意 `undefined !== false`——Node 等环境没有 navigator.onLine 时按「在线」处理，
+  // 绝不能因为取不到值就把学生判成断网。
+  const online = opts.online ?? (typeof navigator === 'undefined' || navigator.onLine !== false);
 
-  // 空正文：端点真的回了（否则会走 network/offline），只是正文一个字符都没有。
+  const fail = (kind: AiFailureKind, retryable: boolean, extra: Partial<ChatFailure> = {}): ChatFailure => ({
+    kind,
+    retryable,
+    raw,
+    code: AI_FAILURE_CODES[kind],
+    ...extra,
+  });
+
+  // 空正文：端点真的回了（否则会走 blocked/offline），只是正文一个字符都没有。
   // 这类必须给「重试」（重采样一次通常就有正文），且 raw 留空——学生不需要看 finish_reason=length。
-  if (e instanceof EmptyAnswerError) return { kind: 'empty', retryable: true, raw: '' };
-  if (opts.offline || isNetworkError(raw)) return { kind: 'offline', retryable: true, raw };
+  if (e instanceof EmptyAnswerError) return fail('empty', true, { raw: '' });
+  // 只有明确离线才说「断网」；否则「请求没发出去」——原因（跨域/DNS/证书/重置）前端无法得知
+  if (opts.offline || !online) return fail('offline', true);
+  if (isNetworkError(raw)) return fail('blocked', true);
   if (status === 401 || status === 403 || /authentication|invalid[^.]*api|api key/i.test(raw)) {
-    return { kind: 'auth', retryable: false, raw };
+    return fail('auth', false);
   }
-  if (status === 429) return { kind: 'rate_limit', retryable: true, raw, retryAfterSec: err?.retryAfterSec };
-  if (status !== undefined && status >= 500) return { kind: 'server', retryable: true, raw };
-  if (/no response in \d+s/.test(raw)) return { kind: 'timeout', retryable: true, raw };
-  if (/stalled for \d+s/.test(raw)) return { kind: 'stall', retryable: true, raw };
+  if (status === 429) return fail('rate_limit', true, { retryAfterSec: err?.retryAfterSec });
+  if (status !== undefined && status >= 500) return fail('server', true);
+  if (/no response in \d+s/.test(raw)) return fail('timeout', true);
+  if (/stalled for \d+s/.test(raw)) return fail('stall', true);
   // 其余 4xx 属于请求/配置问题：重试同样会失败，别让学生白点一次
-  if (status !== undefined && status >= 400 && status < 500) return { kind: 'other', retryable: false, raw };
-  return { kind: 'network', retryable: true, raw };
+  if (status !== undefined && status >= 400 && status < 500) return fail('other', false);
+  return fail('network', true);
 }
 
 /**

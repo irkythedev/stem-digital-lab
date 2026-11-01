@@ -52,13 +52,13 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-overlay flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={c.title}
     >
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <div className="relative flex max-h-[85dvh] w-full max-w-md flex-col border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]">
+      <div className="relative z-modal flex max-h-[85dvh] w-full max-w-md flex-col border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-2xl">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
           <h2 className="t-h2 flex items-center gap-2 font-bold tracking-widest">
             <HardDrive className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
@@ -85,7 +85,7 @@ export default function OfflinePackPanel({ onClose }: { onClose: () => void }) {
           ) : isFull ? (
             <div className="space-y-2">
               <p className="flex items-center gap-2 text-sm font-bold text-[var(--fg)]">
-                <CircleCheck className="h-4 w-4 shrink-0 text-green-600" aria-hidden="true" />
+                <CircleCheck className="h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden="true" />
                 {c.readyTitle}
               </p>
               <p className="text-xs serif-font leading-relaxed text-[var(--muted)]">

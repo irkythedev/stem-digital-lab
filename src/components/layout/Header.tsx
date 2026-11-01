@@ -332,7 +332,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                 {Math.round(((packProgress?.bytes ?? 0) / Math.max(1, packProgress?.totalBytes ?? 1)) * 100)}%
               </span>
             ) : (
-              <CircleCheck className="w-3.5 h-3.5 text-green-600" />
+              <CircleCheck className="w-3.5 h-3.5 text-[var(--success)]" />
             )}
           </button>
         )}
@@ -400,13 +400,13 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
                 tabIndex={-1}
                 aria-label={lang === 'zh' ? '关闭连通状态卡片' : 'Close connection status'}
                 onClick={() => setShowHealth(false)}
-                className="fixed inset-0 z-[70] cursor-default bg-transparent"
+                className="fixed inset-0 z-dropdown cursor-default bg-transparent"
               />
               <div
                 role="dialog"
                 aria-label={lang === 'zh' ? 'AI 连通状态' : 'AI connection status'}
                 data-ai-health-card
-                className="fixed z-[71] inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[var(--elev-md)] sm:w-[19rem]"
+                className="fixed z-tooltip inset-x-3 sm:inset-x-auto sm:right-6 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-3 text-left normal-case tracking-normal shadow-[var(--elev-md)] sm:w-[19rem]"
               >
                 <div className="flex items-center gap-2">
                   {isHollowStatus(shownStatus) ? (

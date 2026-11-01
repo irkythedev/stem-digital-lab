@@ -7,7 +7,9 @@
  * 未配置或离线时保存在本机队列，联网后自动补传。以右下角浮动卡片形式呈现。
  */
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useEscapeKey } from '../../lib/use-escape-key';
+import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import { MessageSquare, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { GITHUB_PATH, GITEE_PATH, ISSUE_URLS } from '../../lib/brand-icons';
@@ -54,6 +56,9 @@ const labels = {
 } as const;
 
 export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelProps) {
+  // 浮层挂到 body：反馈面板可能从工作台里打开，父级 transform/backdrop-blur 会成为
+  // fixed 的定位与裁剪基准，导致面板被压在页面浮层下面。
+  useLockBodyScroll(true);
   useEscapeKey(onClose);
   const { lang, t } = useApp();
   const l = labels[lang];
@@ -88,13 +93,13 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
     setDone(sent ? 'sent' : 'queued');
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/45 sm:bg-black/20 backdrop-blur-[1px] sm:backdrop-blur-none"
+      className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/45 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative z-modal w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--card-bg)] p-4 sm:p-5 shadow-2xl rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true"
         aria-label={type === 'experiment' ? l.experimentTitle : l.projectTitle}
@@ -157,6 +162,7 @@ export default function FeedbackPanel({ type, labId, onClose }: FeedbackPanelPro
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

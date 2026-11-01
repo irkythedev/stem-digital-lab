@@ -1008,7 +1008,7 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
   const cssSrc = readFileSync('src/index.css', 'utf8');
 
   test('错题卷导出弹窗：安全最大高度 + 内容区可滚 + 页脚不参与收缩', () => {
-    const card = panelSrc.match(/className="relative z-10 flex flex-col w-full max-w-sm max-h-\[85dvh\][^"]*"/);
+    const card = panelSrc.match(/className="relative z-modal flex flex-col w-full max-w-sm max-h-\[85dvh\][^"]*"/);
     assert.ok(card, '弹窗卡片必须显式声明 flex flex-col 与 max-h-[85dvh]——否则矮视口下顶底同时被裁且遮罩不可滚');
     assert.ok(
       panelSrc.includes('flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3'),
@@ -1760,9 +1760,17 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
 // ---------- AI 失败分类与重试链路：文案归一 / 上下文纯净 / 触控与图标纪律 ----------
 {
   test('失败分类：网络·认证·限流·服务端·超时·停滞各归其位，是否可重试判定正确', () => {
-    const net = classifyChatFailure(new TypeError('Failed to fetch'));
-    assert.equal(net.kind, 'offline', '浏览器原文 "Failed to fetch" 必须归到离线/网络类，不能直接端给学生');
+    // 在线时 fetch 失败：可能是跨域被拒、DNS、证书、连接重置——浏览器不区分，所以只能说「没发出去」
+    const net = classifyChatFailure(new TypeError('Failed to fetch'), { online: true });
+    assert.equal(net.kind, 'blocked', '设备在线时 "Failed to fetch" 不能断言断网（可能是跨域），措辞必须中性');
     assert.equal(net.retryable, true);
+    assert.equal(net.code, 'AI-E10', '请求未发出必须带稳定错误代码，供老师按码定位');
+    // 只有浏览器明确报告离线，才允许说「断网」
+    assert.equal(
+      classifyChatFailure(new TypeError('Failed to fetch'), { online: false }).kind,
+      'offline',
+      'navigator.onLine === false 时才归离线'
+    );
     assert.equal(classifyChatFailure(new Error('boom'), { offline: true }).kind, 'offline', '面板已知离线时优先按离线处理');
 
     const auth = classifyChatFailure(Object.assign(new Error('nope'), { status: 401 }));

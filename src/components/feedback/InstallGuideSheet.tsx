@@ -14,8 +14,10 @@
  * - 标题用品牌三角方块圆（与 Header logo 同源）；iOS 附价值副标题；底部单一主按钮「我知道了」
  */
 import { CircleCheck, Ellipsis, EllipsisVertical, ExternalLink, Share, SquarePlus } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../../lib/app-context';
 import { useEscapeKey } from '../../lib/use-escape-key';
+import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 
 export type InstallGuideKind = 'ios' | 'wechat' | 'webview' | 'menu';
 
@@ -61,6 +63,7 @@ function TimelineStep({
 
 export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetProps) {
   useEscapeKey(onClose);
+  useLockBodyScroll(true);
   const { t, lang } = useApp();
 
   const title =
@@ -71,13 +74,13 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
   const hint = kind === 'wechat' ? t.installWechatHint : t.installWebviewHint;
   const after = kind === 'wechat' ? t.installWechatAfter : t.installWebviewAfter;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/60 sm:bg-black/20 backdrop-blur-[1px] sm:backdrop-blur-none"
+      className="fixed inset-0 z-overlay flex items-end sm:items-center justify-center sm:justify-end p-0 sm:p-6 bg-black/45 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5 shadow-[var(--elev-lg)] rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
+        className="relative z-modal w-full sm:max-w-sm max-h-[85dvh] flex flex-col border border-[var(--border)] bg-[var(--card-bg)] p-4 sm:p-5 shadow-2xl rounded-t-xl sm:rounded-xl overflow-y-auto overscroll-contain pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-4"
         onClick={(e) => e.stopPropagation()}
         role="dialog" aria-modal="true"
         aria-label={title}
@@ -180,6 +183,7 @@ export default function InstallGuideSheet({ kind, onClose }: InstallGuideSheetPr
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

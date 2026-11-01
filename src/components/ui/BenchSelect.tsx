@@ -301,7 +301,7 @@ export default function BenchSelect({
         // 量尺寸那一帧先藏起来：否则弹层会闪现在左上角再跳到位。
         visibility: pos ? 'visible' : 'hidden',
       }}
-      className={`fixed z-[80] max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD} ${listClassName}`}
+      className={`fixed z-tooltip max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD} ${listClassName}`}
       // 指针离开整个弹层就撤高亮（在两项之间移动时这里不触发，只有真的走开才算）。
       onPointerLeave={() => hover.current?.(null)}
     >

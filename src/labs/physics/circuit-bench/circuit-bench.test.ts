@@ -1217,7 +1217,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     const capsule = labels.find((l) => l.id === 'v:value');
     assert.ok(capsule, '超量程时读数胶囊必须仍然显示');
     assert.equal(capsule!.over, true, '胶囊必须带上超量程标记（用于红色配色）');
-    assert.ok(capsule!.text.startsWith('⚠ '), `超量程胶囊应带 ⚠ 前缀，实得「${capsule!.text}」`);
+    assert.ok(capsule!.text.startsWith('[!] '), `超量程胶囊应带 [!] 前缀，实得「${capsule!.text}」`);
 
     const model = buildMonitorModel({ state: st, readings: solved.elements });
     assert.equal(model.meterAlerts, 1);
@@ -2689,7 +2689,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(warn, '接反必须产生 meter-reversed 告警');
     assert.ok(warn!.elementIds?.includes('m'), '告警必须指向那块被接反的表');
 
-    // 画布胶囊：负读数带 ⚠ 前缀并改用警示色，学生一眼能分清「接反」和「电路真的反向」。
+    // 画布胶囊：负读数带 [!] 前缀并改用警示色，学生一眼能分清「接反」和「电路真的反向」。
     const readings = solveCircuit(backward).elements;
     const labels = layoutCircuitLabels({
       state: backward,
@@ -2703,7 +2703,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     const capsule = labels.find((l) => l.id === 'm:value');
     assert.ok(capsule, '接反时读数胶囊必须仍然显示');
     assert.equal(capsule!.reversed, true);
-    assert.ok(capsule!.text.startsWith('⚠ '), `接反胶囊应带 ⚠ 前缀，实得「${capsule!.text}」`);
+    assert.ok(capsule!.text.startsWith('[!] '), `接反胶囊应带 [!] 前缀，实得「${capsule!.text}」`);
     assert.ok(capsule!.text.includes('-'), `接反胶囊应保留负号，实得「${capsule!.text}」`);
 
     // 实物视图的结构约束：表盘与表针在 0/90/180/270 都反向自转回正立，
@@ -3825,7 +3825,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
       assert.ok(palette.includes(token), `元件坞缺少 ${token}——希沃/iPad 上原生拖拽根本不工作`);
     }
     // 幽灵预览：跟手 + 落点是否在画布内（绿/红）
-    assert.ok(palette.includes('fixed z-[70]'), '幽灵预览须是跟手的固定定位浮层');
+    assert.ok(palette.includes('fixed z-tooltip'), '幽灵预览须是跟手的固定定位浮层（z-tooltip 层级令牌）');
     assert.ok(palette.includes('ok:'), '幽灵预览须带「能否落下」的状态');
     // 消抖：pointerup 之后合成的 click 不能再走一次「自动摆放」，否则一次拖拽建两个
     assert.ok(palette.includes('handledAt'), '缺少合成点击消抖');

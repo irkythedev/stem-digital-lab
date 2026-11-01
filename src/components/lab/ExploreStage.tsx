@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 三幕式探究 · 幕 2「探索」：任务卡引导（提示而非锁定）+ 观察笔记。
- * 学生操作完全自由；关键状态可「✎ 记一条观察」保存为轨迹。
+ * 学生操作完全自由；关键状态可「记一条观察」保存为轨迹（按钮用铅笔图标，不用字符）。
  * 快照字段由父组件以 label/value 对传入，本组件与具体实验无关。
  * 与语言无关，全部文案由父级传入。
  */
 import { useState } from 'react';
+import { Pencil } from 'lucide-react';
 
 export interface Observation {
   id: number;
@@ -93,7 +94,7 @@ export default function ExploreStage({
           <button
             type="button"
             onClick={cards[activeCard].tryIt}
-            className="compact min-h-[38px] text-xs 2xl:text-sm mono-font px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-all rounded-sm touch-manipulation"
+            className="compact min-h-[38px] text-xs 2xl:text-sm mono-font px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-[border-color,background-color,transform] rounded-sm touch-manipulation"
           >
             {cards[activeCard].tryLabel}
           </button>
@@ -118,9 +119,10 @@ export default function ExploreStage({
             type="button"
             onClick={submit}
             disabled={recordDisabled}
-            className="min-h-[38px] text-xs 2xl:text-sm mono-font font-medium px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent rounded-sm touch-manipulation"
+            className="min-h-[38px] text-xs 2xl:text-sm mono-font font-medium px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent rounded-sm touch-manipulation"
           >
-            ✎ {recordLabel}
+            <Pencil className="mr-1.5 inline-block h-3.5 w-3.5 align-[-0.15em]" aria-hidden="true" />
+            {recordLabel}
           </button>
         </div>
         {recordDisabled && recordDisabledHint && (

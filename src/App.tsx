@@ -41,7 +41,7 @@ function SkipLink() {
   return (
     <a
       href="#app-main"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:px-3 focus:py-1.5 focus:bg-[var(--bg)] focus:border focus:border-[var(--fg)] focus:text-xs focus:text-[var(--fg)]"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-critical focus:px-3 focus:py-1.5 focus:bg-[var(--bg)] focus:border focus:border-[var(--fg)] focus:text-xs focus:text-[var(--fg)]"
     >
       {t.skipToContent}
     </a>

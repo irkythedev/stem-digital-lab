@@ -1181,7 +1181,7 @@ export default function CircuitBench() {
       // 伪全屏（iOS）：没有 :fullscreen 宿主，只能自己 fixed 到视口并压住页面。
       data-pseudo-fullscreen={pseudoFullscreen ? '' : undefined}
       className={`${benchShellClass(fsActive)} ${
-        pseudoFullscreen ? 'max-sm:fixed max-sm:inset-0 max-sm:z-[80] max-sm:bg-[var(--bg)]' : ''
+        pseudoFullscreen ? 'max-sm:fixed max-sm:inset-0 max-sm:z-sticky-layer max-sm:bg-[var(--bg)]' : ''
       }`}
     >
       {/* 预设胶囊行：与画布卡同宽，右侧固定「实验导读」 */}
@@ -1344,14 +1344,14 @@ export default function CircuitBench() {
               窄屏（`max-sm:`）换形态：256px 竖卡压在 325px 宽的画布上会吃掉七成可点面积，
               改成与导读卡/监控同一套贴底抽屉——画布留在抽屉上方，面板内部自己滚。 */}
           <div
-            className={`pointer-events-none absolute left-4 top-14 z-20 flex max-h-[calc(100%-4.5rem)] flex-col items-start ${
+            className={`pointer-events-none absolute left-4 top-14 z-dropdown flex max-h-[calc(100%-4.5rem)] flex-col items-start ${
               // 只有「检查器真的开着」才转抽屉：没选中元件时这里只是一条计数胶囊，
               // 也套 fixed 会把它拉成整宽横条，正压在元件库坞上。
               showInspector
                 ? // 52dvh 而不是 45dvh：检查器两整组控件实测 326px 高，45dvh（375×667 下
                   // 300px）会裁掉最后 28px，第二组的增减按钮必须再滚一次才点得到（审计 §2.5/§2.6）。
                   // 52dvh ≈ 347px，两组一屏放得下；FAB 与胶囊此时已让位。
-                  'max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-40 max-sm:max-h-[52dvh] max-sm:items-stretch max-sm:overflow-y-auto'
+                  'max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-sticky-layer max-sm:max-h-[52dvh] max-sm:items-stretch max-sm:overflow-y-auto'
                 : ''
             }`}
           >
@@ -1385,7 +1385,7 @@ export default function CircuitBench() {
               拖进画布即在该网格落点建元件并选中；只点击则自动铺到空位。
               缩略图跟着 viewMode 走：仿真图下显示的就是实物教具本身。
               左侧要让位给检查器/导读时由上层置 collapsed 收成胶囊（互斥见 paletteHidden）。 */}
-          <div className="pointer-events-none absolute left-3 top-3 z-30 flex max-h-[calc(100%-1.5rem)] items-start">
+          <div className="pointer-events-none absolute left-3 top-3 z-tooltip flex max-h-[calc(100%-1.5rem)] items-start">
             <ElementPalette
               onAdd={onAdd}
               onDropAt={onDropAt}
@@ -1402,14 +1402,14 @@ export default function CircuitBench() {
           {/* 报错条顶部居中：画布右上角是元件状态 HUD 的地盘，接线错误提示横铺一条
               会叠在监控卡上，两条红字各说各话。 */}
           {error && (
-            <div className="pointer-events-none absolute inset-x-2 top-2 z-40 mx-auto flex w-fit max-w-[80%] items-start gap-1.5 rounded-lg border border-[var(--danger)]/40 bg-[var(--card-bg)]/95 px-2 py-1.5 text-[10px] text-[var(--danger)] shadow-sm backdrop-blur-sm">
+            <div className="pointer-events-none absolute inset-x-2 top-2 z-sticky-layer mx-auto flex w-fit max-w-[80%] items-start gap-1.5 rounded-lg border border-[var(--danger)]/40 bg-[var(--card-bg)]/95 px-2 py-1.5 text-[10px] text-[var(--danger)] shadow-sm backdrop-blur-sm">
               <X className="mt-px h-3 w-3 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* 右上（看）：元件状态 HUD 常驻右上角，左半边只控、右半边只看，两块浮板
-              各占一边，互不遮挡。导读卡（fixed z-50）默认也停在右上角，它开着时 HUD
+              各占一边，互不遮挡。导读卡（fixed z-overlay）默认也停在右上角，它开着时 HUD
               自动挪到右下角，两块卡不会叠在同一角上。
               窄屏只有一列，右下角改成底部抽屉（max-sm:fixed），元件库展开时它让回
               右上角——底部横向坞是元件库的地盘。

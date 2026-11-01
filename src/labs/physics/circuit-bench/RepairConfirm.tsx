@@ -17,10 +17,11 @@
  * 只做确认，不懂物理、不改状态：`plan` 由 `circuit-bench-monitor` 的纯函数算好，
  * 两个动作（断电、换件）由上层在一次 `commit` 里完成（见 CircuitBench 的 `applyRepair`）。
  *
- * 层叠：`fixed inset-0 z-50` 盖在画布之上，但它只挡指针、不锁页面滚动——
+ * 层叠：`fixed inset-0 z-overlay` 盖在画布之上，但它只挡指针、不锁页面滚动——
  * 全屏时工作台根节点就是 `:fullscreen` 宿主，浮层挂在它里面才跟着一起全屏。
  */
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { PowerOff, TriangleAlert, X } from 'lucide-react';
 
 import type { DeenergizePlan } from './circuit-bench-monitor';
@@ -69,9 +70,9 @@ export default function RepairConfirm({ plan, zh, onConfirm, onCancel }: RepairC
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-overlay flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-label={plan.title}
@@ -127,6 +128,7 @@ export default function RepairConfirm({ plan, zh, onConfirm, onCancel }: RepairC
             : 'Following the procedure keeps the parts safe — close the switch again when you are done.'}
         </p>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

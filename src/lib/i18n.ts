@@ -63,6 +63,9 @@ export const translations = {
     aiError: {
       offline: '网络似乎断开 · 已暂停',
       offlineAuto: '网络恢复后会自动重试一次',
+      blocked: '这次请求没能发出去',
+      blockedHint: '可能是网络不稳，也可能是这个接口地址不允许网页直接访问。换一个地址，或稍后再试。',
+      codeLabel: '错误代码',
       network: '网络请求没有成功，可以再试一次',
       timeout: '等待 20 秒没有收到内容，可以再试一次',
       stall: '内容传输停滞了，请重试',
@@ -113,8 +116,10 @@ export const translations = {
     share: '分享',
     shareTitle: '数理化数字实验室',
     shareText: '初中数学·物理·化学互动探究实验，免费在线使用',
-    shareLabZh: '我在玩「{name}」：{desc}，来数理化数字实验室一起探究吧！',
-    shareLabEn: 'I\'m exploring "{name}": {desc} on the STEM Digital Lab. Join me!',
+    // 分享卡片是「别人看到的一句话」，不是替你邀约对方的口播：
+    // 只陈述「我在做什么 + 这是什么」，不加「吧！」和 Join me! 这类号召尾巴。
+    shareLabZh: '我在用「{name}」做探究：{desc}。数理化数字实验室，免登录在线运行',
+    shareLabEn: 'Exploring "{name}" on the STEM Digital Lab: {desc}. Free, no sign-in.',
     qrCode: '扫码访问',
     qrScanHint: '打开微信扫一扫，或长按识别二维码',
     wechatInnerHint: '点右上角「···」→ 转发给朋友 / 发送到群聊，即可分享本页',
@@ -273,6 +278,9 @@ export const translations = {
     aiError: {
       offline: 'Network seems offline · paused',
       offlineAuto: 'It will retry once when the network is back',
+      blocked: 'The request could not be sent',
+      blockedHint: 'The network may be unstable, or this endpoint does not let a web page call it directly. Try another address, or retry later.',
+      codeLabel: 'Error code',
       network: 'The request did not go through — you can retry',
       timeout: 'No content within 20 seconds — you can retry',
       stall: 'The stream stalled — please retry',

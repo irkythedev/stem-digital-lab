@@ -8,6 +8,41 @@
   --default-transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* ── 全站浮层层级阶梯（唯一来源，禁止再写 z-[9999] 之类的魔法数）──────
+   问题背景：分享弹窗、下拉菜单、抽屉、Toast 曾各自硬编码 z-10/50/70/80/100/110，
+   同层级的浮层只能靠 DOM 顺序决胜负。电学工作台里后渲染的工作台浮层（同为 z-50）
+   因此盖住分享卡片，出现「文字叠罗汉 / 背景穿透」。
+
+   规则（数字越大越靠上）：
+     · dropdown —— 页面内下拉菜单、气泡菜单
+     · tooltip  —— 悬停提示、拖拽幽灵预览（高于下拉，避免被菜单裁掉）
+     · sticky   —— 吸顶栏、页面级浮动工具坞、全屏预览（仍低于任何模态）
+     · overlay  —— 模态遮罩 / 抽屉遮罩（全屏拦截层）
+     · modal    —— 模态内容 / 嵌套弹窗（必须 portal 到 body）
+     · toast    —— 全局提示、微信转发引导等跨页面浮层
+     · critical —— 只在 Escape/焦点等系统级场景使用（略过导航等）
+
+   所有模态类组件必须 createPortal 到 document.body：一旦父级存在 transform /
+   filter / backdrop-blur / overflow，fixed 会被困在局部层叠上下文里，
+   再大的 z-index 也盖不过后续页面内容。 */
+:root {
+  --z-dropdown: 20;
+  --z-tooltip: 30;
+  --z-sticky: 40;
+  --z-overlay: 50;
+  --z-modal: 55;
+  --z-toast: 60;
+  --z-critical: 70;
+}
+/* 语义化工具类：与 Tailwind 的 z-* 同属 utilities 层，可直接写在 className 上。 */
+.z-dropdown { z-index: var(--z-dropdown); }
+.z-tooltip { z-index: var(--z-tooltip); }
+.z-sticky-layer { z-index: var(--z-sticky); }
+.z-overlay { z-index: var(--z-overlay); }
+.z-modal { z-index: var(--z-modal); }
+.z-toast { z-index: var(--z-toast); }
+.z-critical { z-index: var(--z-critical); }
+
 :root {
   --bg: #fafafa;
   --fg: #111111;

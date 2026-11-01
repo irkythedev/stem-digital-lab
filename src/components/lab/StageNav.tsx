@@ -97,7 +97,7 @@ export default function StageNav({
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`min-h-[28px] px-2 py-1 tap-area rounded-lg font-medium sm:min-h-[34px] transition-all duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap sm:px-3.5 ${
+              className={`min-h-[28px] px-2 py-1 tap-area rounded-lg font-medium sm:min-h-[34px] transition-[background-color,border-color,color] duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap sm:px-3.5 ${
                 active
                   ? 'bg-[var(--card-bg)] text-[var(--fg)] shadow-xs font-semibold'
                   : done
@@ -123,7 +123,7 @@ export default function StageNav({
           <button
             type="button"
             onClick={handleNext}
-            className="min-h-[28px] px-2.5 py-1 tap-area border border-[var(--fg)] sm:min-h-[34px] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-all rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap sm:px-4 sm:py-1.5"
+            className="min-h-[28px] px-2.5 py-1 tap-area border border-[var(--fg)] sm:min-h-[34px] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-[background-color,opacity,transform] rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap sm:px-4 sm:py-1.5"
           >
             {labels.next}
           </button>
@@ -131,7 +131,7 @@ export default function StageNav({
           <button
             type="button"
             onClick={onRedo}
-            className="group inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 tap-area sm:min-h-[34px] border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-all rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap sm:px-3.5 sm:py-1.5"
+            className="group inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 tap-area sm:min-h-[34px] border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-[border-color,background-color,color,transform] rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap sm:px-3.5 sm:py-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
             <span>{labels.redo || 'Redo'}</span>

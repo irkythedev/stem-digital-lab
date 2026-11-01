@@ -330,7 +330,7 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepBack}
             disabled={step <= 0}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-all touch-manipulation active:scale-95 rounded-sm"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.back}
           </button>
@@ -338,21 +338,21 @@ export default function InteractiveCircle({
             type="button"
             onClick={stepNext}
             disabled={step >= MAX}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:pointer-events-none transition-all touch-manipulation active:scale-95 rounded-sm"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:pointer-events-none transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.next}
           </button>
           <button
             type="button"
             onClick={togglePlay}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all touch-manipulation active:scale-95 rounded-sm"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
           >
             {playing ? ctl.pause : ctl.play}
           </button>
           <button
             type="button"
             onClick={replay}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-all touch-manipulation active:scale-95 rounded-sm"
+            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
           >
             {ctl.replay}
           </button>

@@ -65,7 +65,7 @@ export default function CanvasContextMenu({ x, y, items, zh, onPick, onClose }: 
       ref={ref}
       role="menu"
       aria-label={zh ? '元件操作菜单' : 'Part actions'}
-      className={`fixed z-[80] min-w-[150px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD}`}
+      className={`fixed z-tooltip min-w-[150px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card-bg)]/97 py-1 shadow-xl backdrop-blur-md ${TOUCH_GUARD}`}
       style={{ left: pos?.x ?? x, top: pos?.y ?? y, visibility: pos ? 'visible' : 'hidden' }}
       onContextMenu={(e) => e.preventDefault()}
     >

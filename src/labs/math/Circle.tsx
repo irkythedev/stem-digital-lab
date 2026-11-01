@@ -454,7 +454,7 @@ export default function Circle() {
                   key={opt.value}
                   type="button"
                   onClick={() => setPredict(opt.value as PredictBisect)}
-                  className={`rounded text-left text-sm px-3 py-2 border transition-all touch-manipulation active:scale-95 ${
+                  className={`rounded text-left text-sm px-3 py-2 border transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 ${
                     predict === opt.value
                       ? 'border-[var(--accent)] bg-[var(--accent-light)] text-[var(--fg)] font-medium'
                       : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'

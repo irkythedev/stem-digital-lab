@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
-import { Check, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { Check, RotateCcw, SlidersHorizontal, TriangleAlert, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
@@ -838,8 +838,9 @@ export default function Ohm() {
               {t.meterHint}
             </p>
             {meterErr && (
-              <p className="text-xs text-[var(--error)] serif-font mt-1" role="alert">
-                ⚠ {meterErr}
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--error)] serif-font" role="alert">
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>{meterErr}</span>
               </p>
             )}
             {/* 电流方向标注 */}
@@ -886,13 +887,14 @@ export default function Ohm() {
                 className={`text-[0.6875rem] mono-font mb-2 ${shortCircuit ? 'text-[var(--error)] font-bold' : 'text-[var(--error)]'}`}
                 role="alert"
               >
+                <TriangleAlert className="mr-1 inline-block h-3 w-3 align-[-0.15em]" aria-hidden="true" />
                 {shortCircuit
                   ? (lang === 'zh'
-                      ? '⚠ 危险短路！R=0 且变阻器为 0，电源两极直接相连，电流趋近无穷大——会烧坏电源！请增大电阻或断开开关。'
-                      : '⚠ Short circuit! R=0 and rheostat at 0 — the supply terminals are joined directly and the current becomes enormous. Increase R or open the switch!')
+                      ? '危险短路！R=0 且变阻器为 0，电源两极直接相连，电流趋近无穷大——会烧坏电源！请增大电阻或断开开关。'
+                      : 'Short circuit! R=0 and rheostat at 0 — the supply terminals are joined directly and the current becomes enormous. Increase R or open the switch!')
                   : (lang === 'zh'
-                      ? '⚠ R=0 相当于导线：元件被短路，电流绕过它。若变阻器也为 0，将发生危险短路！'
-                      : '⚠ R=0 acts as a wire: the element is short-circuited and current bypasses it. If the rheostat is also 0, this becomes a dangerous short!')}
+                      ? 'R=0 相当于导线：元件被短路，电流绕过它。若变阻器也为 0，将发生危险短路！'
+                      : 'R=0 acts as a wire: the element is short-circuited and current bypasses it. If the rheostat is also 0, this becomes a dangerous short!')}
               </p>
             )}
             {/* 控制电压提示（探究二：换电阻后调变阻器使电压回到设定值） */}
@@ -901,10 +903,13 @@ export default function Ohm() {
                 className={`text-[0.6875rem] mono-font mb-2 ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}
                 role={Math.abs(elemVoltage - targetV) > 0.05 ? 'alert' : undefined}
               >
+                {Math.abs(elemVoltage - targetV) > 0.05 && (
+                  <TriangleAlert className="mr-1 inline-block h-3 w-3 align-[-0.15em]" aria-hidden="true" />
+                )}
                 {Math.abs(elemVoltage - targetV) > 0.05
                   ? (lang === 'zh'
-                      ? `⚠ 电压已改变（当前 ${elemVoltage.toFixed(2)}V），请调节滑动变阻器使电压表回到 ${targetV.toFixed(1)}V！`
-                      : `⚠ Voltage changed (now ${elemVoltage.toFixed(2)}V) — adjust the rheostat back to ${targetV.toFixed(1)}V!`)
+                      ? `电压已改变（当前 ${elemVoltage.toFixed(2)}V），请调节滑动变阻器使电压表回到 ${targetV.toFixed(1)}V！`
+                      : `Voltage changed (now ${elemVoltage.toFixed(2)}V) — adjust the rheostat back to ${targetV.toFixed(1)}V!`)
                   : (lang === 'zh'
                       ? `控制电压：${targetV.toFixed(1)}V（保持电压不变）`
                       : `Control voltage: ${targetV.toFixed(1)}V (keep it fixed)`)}

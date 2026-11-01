@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Share2, Library, Mail, Network } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
@@ -19,6 +19,8 @@ export default function Footer() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showWorks, setShowWorks] = useState(false);
+  // 分享浮层已 portal 到 body，用按钮自身的屏幕坐标定位（不再依赖父级 relative）。
+  const shareBtnRef = useRef<HTMLButtonElement>(null);
   // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
   const [showLicense, setShowLicense] = useState(false);
 
@@ -101,7 +103,7 @@ export default function Footer() {
               <span className="footer-works-tip" aria-hidden="true">{t.moreWorksHint}</span>
             )}
             {showWorks && (
-              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-20 flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
+              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-dropdown flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
                 {t.works.map((w) => (
                   <a
                     key={w.url}
@@ -158,8 +160,9 @@ export default function Footer() {
             <Network className="w-3.5 h-3.5" />
           </a>
           {/* 分享：icon + hover 显示「分享」；二维码从按钮位置向上弹出（anchored popover，移动端/PC 一致） */}
-          <span className="relative">
+          <span>
             <button
+              ref={shareBtnRef}
               type="button"
               onClick={() => setShowShare(true)}
               title={t.share}
@@ -168,7 +171,7 @@ export default function Footer() {
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
-            {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} anchored />}
+            {showShare && <ShareDialog url={shareUrl} onClose={() => setShowShare(false)} anchored anchorRef={shareBtnRef} />}
           </span>
         </div>
         {showDisclaimer && (

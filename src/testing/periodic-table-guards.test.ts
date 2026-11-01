@@ -395,7 +395,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
   test('⑬ 详情卡顶部锚定：切 Tab 时弹窗头部与 Tab 栏绝对静止', () => {
     // 根因：外框与 overlay 原为 items-center + 高度随内容变化 → 垂直居中重算导致整框上下跳。
     // 改前实测（1280×1100）：面板 top 66 → 172 → 66，跳幅 106px = 高度差 212px 的一半。
-    const ov = pt.match(/className="fixed inset-0 z-50 flex ([^"]+)"/);
+    const ov = pt.match(/className="fixed inset-0 z-overlay flex ([^"]+)"/);
     assert.ok(ov, '须能定位弹窗 overlay');
     assert.match(ov[1], /items-start/, 'overlay 须顶部锚定（items-start），避免居中重算');
     assert.doesNotMatch(ov[1], /items-center/, 'overlay 不得垂直居中（内容高度变化会带动整框重排）');
@@ -571,7 +571,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     const shrink0 = wd.match(/flex-shrink-0/g) ?? [];
     assert.ok(shrink0.length >= 3, `顶部条 / Tab 栏 / 底栏须 flex-shrink-0 常驻（实测 ${shrink0.length} 处）`);
     // 垂直居中：外框已定为固定高度（两页同高），故居中不会重解位置；此前 max-h 下居中会顶动头部 98px
-    assert.match(wd, /z-\[100\] flex items-center justify-center p-4/, 'overlay 须垂直居中');
+    assert.match(wd, /z-overlay flex items-center justify-center p-4/, 'overlay 须垂直居中');
     assert.doesNotMatch(wd, /items-start justify-center overflow-y-auto p-4/, 'overlay 不得再顶部锚定');
     // min-h 取 12rem：更大就可能在矮视口挤掉底栏（与「底栏永不越界」的要求冲突）
     assert.match(wd, /flex-1 overflow-y-auto[^"]*min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 安全的 min-h');

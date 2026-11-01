@@ -11,7 +11,7 @@
  * 左控右看：左半边画布只谈「怎么调」（元件坞 / 这块检查器），右上角那块 HUD 只谈
  * 「现在怎么了」。两者由 workbench 保证同一时刻各占一边、左边只站一块面板。
  */
-import { ArrowLeftRight, RotateCcw, RotateCw, Trash2, X } from 'lucide-react';
+import { ArrowLeftRight, RotateCcw, RotateCw, Trash2, TriangleAlert, X } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
 import ParamSlider from '../../../components/lab/ParamSlider';
@@ -82,7 +82,7 @@ function CloseButton({ zh, onClose }: { zh: boolean; onClose: () => void }) {
       onClick={onClose}
       title={zh ? '收起参数面板' : 'Close parameters'}
       aria-label={zh ? '收起参数面板' : 'Close parameters'}
-      className="compact tap-area relative z-40 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)]"
+      className="compact tap-area relative z-tooltip flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] text-[var(--muted)] transition-colors hover:border-[var(--accent)] hover:text-[var(--fg)]"
     >
       <X className="h-3.5 w-3.5 shrink-0" />
     </button>
@@ -361,8 +361,9 @@ function Readout({ el, result, zh }: { el: CircuitComponent; result: SolveResult
   return (
     <div className="space-y-1.5">
       {reversed && (
-        <div className="rounded-md border border-[var(--danger)]/45 bg-[var(--danger)]/8 px-1.5 py-1 text-xs leading-snug text-[var(--danger)]">
-          {zh ? '⚠ 表笔接反：红柱应接高电位侧（电流由「+」流入）' : '⚠ Probes reversed: red post must take current in'}
+        <div className="flex items-start gap-1 rounded-md border border-[var(--danger)]/45 bg-[var(--danger)]/8 px-1.5 py-1 text-xs leading-snug text-[var(--danger)]">
+          <TriangleAlert className="mt-[1px] h-3 w-3 shrink-0" aria-hidden="true" />
+          <span>{zh ? '表笔接反：红柱应接高电位侧（电流由「+」流入）' : 'Probes reversed: red post must take current in'}</span>
         </div>
       )}
       <div className="grid grid-cols-2 gap-1.5">

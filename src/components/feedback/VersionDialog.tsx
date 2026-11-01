@@ -5,6 +5,7 @@
  * 版本历史面板：点击 Header 版本号弹出，展示面向用户的更新记录。
  */
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { HardDrive, Check } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import OfflinePackPanel from './OfflinePackPanel';
@@ -25,12 +26,21 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
   const [showPack, setShowPack] = useState(false);
   const closeLabel = lang === 'zh' ? '关闭' : 'Close';
   const title = t.changelogTitle;
-  return (
-    <div
-      className="fixed top-16 right-4 sm:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--bg)] p-4 shadow-[var(--elev-md)]"
-      role="dialog" aria-modal="true"
-      aria-label="version"
-    >
+  return createPortal(
+    <>
+      {/* 点外关闭：透明拦截层低于卡片（dropdown < tooltip），不会盖住弹层本身 */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={closeLabel}
+        onClick={onClose}
+        className="fixed inset-0 z-dropdown cursor-default bg-transparent"
+      />
+      <div
+        className="fixed top-16 right-4 sm:right-6 z-tooltip w-[calc(100vw-2rem)] max-w-sm border border-[var(--border)] bg-[var(--card-bg)] p-4 text-[var(--fg)] shadow-2xl"
+        role="dialog" aria-modal="true"
+        aria-label="version"
+      >
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="t-h2 flex items-center gap-2 font-bold tracking-widest text-[var(--fg)]">
@@ -94,6 +104,8 @@ export default function VersionDialog({ onClose }: VersionDialogProps) {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </>,
+    document.body,
   );
 }

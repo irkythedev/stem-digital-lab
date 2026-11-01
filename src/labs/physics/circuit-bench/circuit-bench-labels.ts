@@ -36,13 +36,13 @@ export interface PlacedLabel extends ScreenRect {
   variant: 'name' | 'value';
   text: string;
   selected: boolean;
-  /** 电表表笔接反：胶囊改用警示色，文字已带 ⚠ 前缀。 */
+  /** 电表表笔接反：胶囊改用警示色，文字已带 [!] 前缀。 */
   reversed?: boolean;
-  /** 电表读数越过满量程：胶囊改用危险色，文字同样带 ⚠ 前缀。 */
+  /** 电表读数越过满量程：胶囊改用危险色，文字同样带 [!] 前缀。 */
   over?: boolean;
   /**
    * 熔毁元件（灯泡烧毁 / 保险丝熔断）：这一枚不是读数胶囊，而是就近可点的告警徽章
-   * 「⚠️ 已断路」。组件据此换成告警配色并把指针事件收回来（见 CircuitLabels）。
+   * 「[已断路]」。组件据此换成告警配色并把指针事件收回来（见 CircuitLabels）。
    */
   fault?: boolean;
   leader?: { x1: number; y1: number; x2: number; y2: number };
@@ -134,10 +134,11 @@ const READOUT_EPS = 1e-9;
 
 /**
  * 熔毁元件就近徽章的文案。单测、布局层与组件共用这一处出处。
- * 前缀那个 ⚠️ 不只是装饰：11px 字号下「已断路」和「0 A」在余光里长得一样，
- * 形状上的差别（图标 vs 数字）比颜色更快被人眼抓住。
+ * 前缀那个方括号不只是装饰：11px 字号下「已断路」和「0 A」在余光里长得一样，
+ * 形状上的差别（括号 vs 数字）比颜色更快被人眼抓住；而且它是纯文本符号，
+ * 走系统等宽字体渲染，颜色由胶囊的告警配色统一控制，不会被平台 emoji 字体抢走。
  */
-export const FAULT_BADGE_TEXT = { zh: '⚠️ 已断路', en: '⚠️ Open circuit' } as const;
+export const FAULT_BADGE_TEXT = { zh: '[已断路]', en: '[Open]' } as const;
 
 export function sanitizeReadout(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -509,7 +510,7 @@ function makeSpecs(input: LabelLayoutInput): LabelSpec[] {
     const reading = readings?.[el.id];
     if (showValues && reading && hasCanvasReadout(el)) {
       const { value, unit } = readingForKind(el.kind, reading);
-      // 表笔接反：读数带负号，再补一个 ⚠ 前缀把「负号」和「电路真的反向」区分开。
+      // 表笔接反：读数带负号，再补一个 [!] 前缀把「负号」和「电路真的反向」区分开。
       // 前缀计入同一次宽度估算，所以加字不会撑破胶囊、不会被裁。
       const reversed = readingReversed(el.kind, reading);
       // 超量程同样要在画布上「看得见」：只看表盘/看板会漏掉正盯着电路读数的那一眼。
@@ -523,7 +524,7 @@ function makeSpecs(input: LabelLayoutInput): LabelSpec[] {
         variant: 'value',
         // 画布读数与检查器共用同一套工程单位排版（258 mA / 2.96 V），
         // 绝不在画布上印出 e-6、e+6 这类裸指数。
-        text: warned ? `⚠ ${valueText}` : valueText,
+        text: warned ? `[!] ${valueText}` : valueText,
         reversed,
         over,
         fontPx: VALUE_FONT,
