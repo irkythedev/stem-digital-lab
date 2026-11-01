@@ -8,7 +8,7 @@
 
 <p>
   <a href="LICENSE"><img src="public/badges/license.svg" alt="License: AGPL-3.0"></a>
-  <img src="public/badges/version.svg" alt="Version v0.47.1">
+  <img src="public/badges/version.svg" alt="Version v0.47.2">
   <img src="public/badges/core.svg" alt="Core: C++17 / WebAssembly">
   <img src="public/badges/frontend.svg" alt="Frontend: React 19 + TypeScript">
   <img src="public/badges/tests.svg" alt="762 tests passing">
@@ -157,7 +157,7 @@ npm run test       # 运行测试
 ```
 
 > 局域网访问：开发服务器监听 `0.0.0.0`，启动后其他设备打开 `http://<本机局域网IP>:3000`。
-> Node.js 建议使用 nvm 管理的 Node 24（版本见 `.nvmrc`；npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
+> Node.js 建议使用 nvm 管理的 Node 24（npm ≥ 11.10，.npmrc 配置了供应链保护 min-release-age=7）。
 > 完整测试另需本机 `g++` 与 `bash`（三方对拍用）；Windows 建议在 WSL 或 MinGW 下运行，缺失会直接失败，详见下文「测试」。
 > Gitee 与 GitHub 发布同一份源码：从哪个平台打开本页，就用该页面「克隆 / Code」给出的地址，构建 / 测试 / 部署命令完全相同；Issue 在任一平台提交都可以。
 > 托管平台的 Pages 默认不会执行本项目的 Vite 构建：请先 `npm run build`，再把 `dist/` 作为发布目录；SPA 回退与缓存规则见下文「用 AI 部署」。
@@ -188,7 +188,7 @@ npm test           # 运行全部测试（无需任何服务）
 
 执行：
 0. 仓库：https://gitee.com/K4Ricky2Win/stem-digital-lab.git（GitHub 镜像：https://github.com/irkythedev/stem-digital-lab.git）。当前目录不是仓库时先克隆其中一个地址（失败再换另一个）；已在仓库内则直接开始。
-1. 读 package.json、vite.config.ts 和 .nvmrc，确认 Node 24 与构建链。
+1. 读 package.json 与 vite.config.ts，确认 Node 24 与构建链。
 2. 执行 npm ci && npm run build。产物在 dist/；构建失败先修构建，不要改业务逻辑。
 3. 把 dist/ 作为站点根目录发布，不要上传仓库根目录。
 4. 托管配置：
@@ -393,7 +393,7 @@ npm run test       # Run tests
 ```
 
 > LAN access: the dev server listens on `0.0.0.0`; open `http://<your-LAN-IP>:3000` from other devices.
-> Node.js: use nvm-managed Node 24 (version in `.nvmrc`; npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
+> Node.js: use nvm-managed Node 24 (npm ≥ 11.10; .npmrc enables supply-chain guard min-release-age=7).
 > The full suite also requires local `g++` and `bash` for the three-way parity checks; on Windows, use WSL or MinGW — missing either fails the run. See Testing below.
 > Gitee and GitHub publish the same source: whichever host you opened this page on, use the URL from that page's “Clone / Code” button — build, test, and deploy commands are identical, and issues are welcome on either host.
 > Your host's Pages build does not run this project's Vite build by default: run `npm run build` first and publish `dist/`; see “Deploy with an AI Agent” below for SPA fallback and cache rules.
@@ -424,7 +424,7 @@ Before starting, confirm: target platform, domain, and whether it is deployed un
 
 Steps:
 0. Repository: https://gitee.com/K4Ricky2Win/stem-digital-lab.git (GitHub mirror: https://github.com/irkythedev/stem-digital-lab.git). If the current directory is not the repository, clone one of these URLs first (fall back to the other if it fails); if it is, start directly.
-1. Read package.json, vite.config.ts, and .nvmrc; confirm Node 24 and the build chain.
+1. Read package.json and vite.config.ts; confirm Node 24 and the build chain.
 2. Run npm ci && npm run build. The output is dist/. If the build fails, fix the build first; do not change business logic.
 3. Publish dist/ as the site root; do not upload the repository root.
 4. Hosting configuration:
