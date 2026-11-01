@@ -40,6 +40,22 @@ import type { AiStatus } from '../../lib/ai-status';
 const UPDATE_RING_R = 7.7;
 const UPDATE_RING_STROKE = 2.2;
 const UPDATE_RING_C = 2 * Math.PI * UPDATE_RING_R;
+/**
+ * 内芯（只在「清理旧缓存」时出现）：半径 4.1、描边 1.5，比外弧细一档，14px 下约
+ * 3.2px 半径 / 1.2px 描边 —— 仍能看出「里面还有一条反向的弧」，但不和外弧抢重量。
+ * 画 24% 内周长并逆时针慢转，语义是「把旧条目一圈圈扫掉」，不是又一段进度。
+ *
+ * 14px @1x 实测（DPR=1 逐像素放大比对，非模拟）：静态帧里内芯只剩 2–3 个像素的
+ * 一个小钩子，靠 1.6s 慢转才读得出「内部还有一条弧」；18px 及以上是一眼可辨的短弧。
+ * 14px 的落点只有「窄桌面窗口 + 非 Retina」，手机/平板在同样 14px 下是 DPR 2–3，
+ * 与 2x 实测图一致清楚 —— 因此不加大内芯（加到 r4.8/s1.8 会在 14px 与外弧贴成一团），
+ * 也不把徽章整体提到 18px（会顶开顶栏的品牌行高）。
+ */
+const UPDATE_RING_INNER_R = 4.1;
+const UPDATE_RING_INNER_STROKE = 1.5;
+const UPDATE_RING_INNER_C = 2 * Math.PI * UPDATE_RING_INNER_R;
+/** 完成态的对勾：落在 18 单位视口正中，描边 1.9（满环 stroke 2.2）保证 14px 下也清楚 */
+const UPDATE_CHECK_PATH = 'M5.3 9.15 L7.7 11.55 L12.5 6.45';
 
 /**
  * 更新徽章的可视部分。两个入口共用一份：
@@ -77,7 +93,11 @@ function UpdateBadgeVisual({
       </>
     );
   }
-  /* 忙时不再叠光晕：光晕会在环心填出一块底色，把 1/4 的那段弧吃掉 */
+  /* 忙时不再叠光晕：光晕会在环心填出一块底色，把 1/4 的那段弧吃掉。
+     三种忙态共用同一个外环，圆内细节负责区分（见 update-progress.ts 的 RingState）：
+       determinate（下载）→ 只有外弧
+       clearing（清理）  → 外弧 + 反向慢转的内芯短弧
+       complete（完成）  → 满环 + 中心对勾 */
   return (
     <svg
       viewBox="0 0 18 18"
@@ -105,8 +125,34 @@ function UpdateBadgeVisual({
         strokeDasharray={
           ring.mode === 'indeterminate' ? `${UPDATE_RING_C * 0.3} ${UPDATE_RING_C}` : UPDATE_RING_C
         }
-        strokeDashoffset={ring.mode === 'determinate' ? UPDATE_RING_C * (1 - ring.ratio) : 0}
+        strokeDashoffset={
+          ring.mode === 'determinate' || ring.mode === 'clearing' ? UPDATE_RING_C * (1 - ring.ratio) : 0
+        }
       />
+      {ring.mode === 'clearing' && (
+        <g className="update-ring-inner">
+          <circle
+            cx="9"
+            cy="9"
+            r={UPDATE_RING_INNER_R}
+            stroke="currentColor"
+            strokeWidth={UPDATE_RING_INNER_STROKE}
+            strokeLinecap="round"
+            transform="rotate(-90 9 9)"
+            strokeDasharray={`${UPDATE_RING_INNER_C * 0.24} ${UPDATE_RING_INNER_C}`}
+          />
+        </g>
+      )}
+      {ring.mode === 'complete' && (
+        <path
+          className="update-ring-check"
+          d={UPDATE_CHECK_PATH}
+          stroke="currentColor"
+          strokeWidth={1.9}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
     </svg>
   );
 }
@@ -174,7 +220,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
 
   // 更新状态机：检测（挂载 / 回前台 / 恢复联网）+ 显式阶段 + 硬兜底
   const { hasUpdate, phase, progress, applyUpdate, busy } = useAppUpdate();
-  /** 徽章形态：idle 静态箭头 / 有分母时 determinate 弧 / 其余扫动弧 / reloading 满环 */
+  /** 徽章形态：idle 静态箭头 / 下载 determinate 弧 / 清理弧+内芯 / 完成满环+对勾 / 其余扫动弧 */
   const ring = ringStateFor(phase, progress);
   const phaseText =
     phase === 'checking' ? (lang === 'zh' ? '正在检查新版本…' : 'Checking for updates…')

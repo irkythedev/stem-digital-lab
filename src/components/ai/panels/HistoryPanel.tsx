@@ -43,6 +43,14 @@ export interface HistoryPanelState {
   paperOpts: any;
   paperPreview: any;
   persistHistory: any;
+  /** 待确认的调低后新上限（null = 无待确认） */
+  pendingStorageLimit: any;
+  /** 当前保留上限 */
+  storageLimit: any;
+  /** 可选上限档位（30/100/300/500） */
+  storageLimitOptions: readonly number[];
+  /** 本地存储用量统计（条数/上限/字节） */
+  storageUsage: any;
   quizExpandedId: any;
   quizHistoryData: any;
   quizOverview: any;
@@ -67,10 +75,13 @@ export interface HistoryPanelState {
 }
 
 export interface HistoryPanelActions {
+  applyStorageLimit: (n: number) => void;
   backToPaperOptions: () => void;
+  cancelStorageLimit: () => void;
   clearHistoryAll: () => void;
   clearQuizHistoryAll: () => void;
   closePaperPreview: () => void;
+  confirmStorageLimit: () => void;
   copyAnswer: (id: string, text: string) => Promise<void>;
   exportPaper: (preview: boolean) => void;
   gotoHistoryPath: (path: string) => void;
@@ -105,9 +116,13 @@ interface HistoryPanelProps {
 }
 
 function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
-  const { aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen } = state;
-  const { backToPaperOptions, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView } = actions;
+  const { aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, pendingStorageLimit, storageLimit, storageLimitOptions, storageUsage, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen } = state;
+  const { applyStorageLimit, backToPaperOptions, cancelStorageLimit, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, confirmStorageLimit, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView } = actions;
   const { quizTopicMenuRef, topicMenuRef } = refs;
+  // 用量条按「剩余空间」三档配色，全部走主题变量（--success/--warn/--error 均有明/暗两套取值，自动适配主题）：
+  //   剩余充足(<60% 占用) = 绿；接近上限(60%~85%) = 琥珀；即将覆盖(>=85%) = 红。
+  const usageBarColor = (r: number) => (r >= 0.85 ? 'var(--error)' : r >= 0.6 ? 'var(--warn)' : r > 0 ? 'var(--success)' : 'var(--border)');
+  const usageTextClass = (r: number) => (r >= 0.85 ? 'text-[var(--error)] font-medium' : r >= 0.6 ? 'text-[var(--warn)] font-medium' : r > 0 ? 'text-[var(--success)]' : '');
   return (
     <>
 <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -141,7 +156,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
           </p>
           {/* 筛选：科目 chips + 知识点下拉（动态提取，空历史时隐藏） */}
           {persistHistory.length > 0 && (
-            <div className="shrink-0 px-3 pt-2 space-y-1.5">
+            <div className="shrink-0 px-3 pt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
@@ -292,8 +307,8 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
           <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between gap-2">
             <span className="text-[0.625rem] text-[var(--muted)] mono-font shrink-0">
               {lang === 'zh'
-                ? (hasFilter ? `筛选出 ${filteredHistory.length} 条 / 共 ${persistHistory.length} 条` : `共 ${persistHistory.length} 条 · 自动保留最近 100 条`)
-                : (hasFilter ? `${filteredHistory.length} of ${persistHistory.length} items` : `${persistHistory.length} items · keeps latest 100`)}
+                ? (hasFilter ? `筛选出 ${filteredHistory.length} 条 / 共 ${persistHistory.length} 条` : `共 ${persistHistory.length} 条 · 自动保留最近 ${storageLimit} 条`)
+                : (hasFilter ? `${filteredHistory.length} of ${persistHistory.length} items` : `${persistHistory.length} items · keeps latest ${storageLimit}`)}
             </span>
             {/* 翻页：一页 8 条 */}
             {histPageCount > 1 && (
@@ -539,8 +554,9 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                     {/* 折叠态摘要行 */}
                     {!quizOverviewOpen && quizOverview.weakTopics.length > 0 && (
                       <span className="text-[0.625rem] mono-font text-[var(--muted)] truncate">
-                        {lang === 'zh' ? '薄弱点' : 'Weak'}: {quizOverview.weakTopics.map((t) => t.topic).join('、')}
-                        {quizOverview.trend && ` | ${lang === 'zh' ? '趋势' : 'Trend'}: ${quizOverview.trend.recentRate}%`}
+                        {lang === 'zh'
+                          ? `薄弱点：${quizOverview.weakTopics[0].topic}（占错题 ${Math.round(quizOverview.weakTopics[0].wrong / Math.max(1, quizOverview.wrong) * 100)}%）`
+                          : `Weak: ${quizOverview.weakTopics[0].topic} (${Math.round(quizOverview.weakTopics[0].wrong / Math.max(1, quizOverview.wrong) * 100)}% of mistakes)`}
                       </span>
                     )}
                     {/* AI 按钮（始终可见） */}
@@ -589,7 +605,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                             <span key={t.topic} className="mr-1.5">
                               {i > 0 ? '、' : ''}
                               <span className="text-[var(--error)]">{t.topic}</span>
-                              <span className="opacity-70">({lang === 'zh' ? '错' : '×'}{t.wrong})</span>
+                              <span className="opacity-70">({lang === 'zh' ? '错' : '×'}{t.wrong} · {Math.round(t.wrong / Math.max(1, quizOverview.wrong) * 100)}%)</span>
                             </span>
                           ))}
                         </div>
@@ -671,7 +687,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             )}
             {/* 筛选：科目 chips + 知识点下拉（动态提取，与问答历史一致）*/}
             {(quizSubjects.length > 0 || hasQuizFilter) && (
-              <div className="shrink-0 px-3 pt-2 space-y-1.5">
+              <div className="shrink-0 px-3 pt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
                 <div className="flex flex-wrap items-center gap-1.5">
                   {quizSubjects.length > 0 && (
                     <>
@@ -776,13 +792,18 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                             <span className={`inline-flex items-center gap-0.5 text-[0.6875rem] mono-font font-bold ${e.correct ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
                               <Mark ok={e.correct} />
                             </span>
-                            <span className="block text-xs serif-font leading-snug line-clamp-2"><InlineAnswer text={e.question} /></span>
+                            <span className="flex items-start gap-1.5 min-w-0">
+                              <span className="block text-xs serif-font leading-snug line-clamp-2 min-w-0"><InlineAnswer text={e.question} /></span>
+                              {e.repeatCount > 1 && (
+                                <span className="shrink-0 bg-red-50 text-red-600 px-1.5 py-0.5 rounded text-[11px] font-medium">{lang === 'zh' ? `错 ${e.repeatCount} 次` : `×${e.repeatCount}`}</span>
+                              )}
+                            </span>
                           </span>
                           <span className="block mt-0.5 text-[0.625rem] mono-font text-[var(--muted)]">
                             {relativeTime(e.ts, lang)}
                             {e.subject ? ` · ${e.subject}` : ''}
                             {e.topic && e.topic !== e.subject && !e.topic.includes(e.subject) ? ` · ${e.topic.replace(/[（(].*?[）)]/g, '')}` : ''}
-                            {e.model ? <span className="text-[var(--tech-blue)]"> · {e.model}</span> : ''}
+                            {e.model ? <span className="text-[var(--tech-blue)]"> · {e.model === 'local-core' ? (lang === 'zh' ? '本地题库' : 'Built-in') : e.model}</span> : ''}
                           </span>
                         </span>
                         <ChevronDown className={`w-3.5 h-3.5 shrink-0 mt-0.5 text-[var(--muted)] transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -866,7 +887,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             {/* 清空记录（二次确认） */}
             <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center justify-between gap-2">
               <span className="text-[0.625rem] text-[var(--muted)] mono-font shrink-0">
-                {lang === 'zh' ? `共 ${quizStatsData.total} 条 · 自动保留最近 100 条` : `${quizStatsData.total} items · keeps latest 100`}
+                {lang === 'zh' ? `共 ${quizStatsData.total} 条 · 自动保留最近 ${storageLimit} 条` : `${quizStatsData.total} items · keeps latest ${storageLimit}`}
               </span>
               {/* 翻页：一页 8 条 */}
               {quizPageCount > 1 && (
@@ -901,6 +922,37 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             </div>
           </div>
           )}
+          {/* 底部状态栏：存储用量 + 保留上限（紧凑；不换算百分比，≥85% 时数字与微型条转琥珀色提示） */}
+          <div className="shrink-0 px-4 py-1.5 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[0.625rem] mono-font text-[var(--muted)] tabular-nums">
+            <span className="flex items-center gap-1.5 min-w-0 flex-wrap" title={lang === 'zh' ? '本机浏览器 localStorage 占用' : 'localStorage usage in this browser'}>
+              <span className={usageTextClass(storageUsage.historyRatio)}>{lang === 'zh' ? `问答 ${storageUsage.historyCount}/${storageUsage.limit}` : `Q&A ${storageUsage.historyCount}/${storageUsage.limit}`}</span>
+              <span aria-hidden="true" className="inline-block w-14 h-1.5 rounded-full bg-[var(--border)]/40 overflow-hidden"><span className="block h-full rounded-full" style={{ width: `${Math.min(100, Math.round((storageUsage.historyRatio || 0) * 100))}%`, backgroundColor: usageBarColor(storageUsage.historyRatio) }} /></span>
+              <span className={usageTextClass(storageUsage.quizRatio)}>{lang === 'zh' ? `错题 ${storageUsage.quizCount}/${storageUsage.limit}` : `Mistakes ${storageUsage.quizCount}/${storageUsage.limit}`}</span>
+              <span aria-hidden="true" className="inline-block w-14 h-1.5 rounded-full bg-[var(--border)]/40 overflow-hidden"><span className="block h-full rounded-full" style={{ width: `${Math.min(100, Math.round((storageUsage.quizRatio || 0) * 100))}%`, backgroundColor: usageBarColor(storageUsage.quizRatio) }} /></span>
+              <span>{lang === 'zh' ? `（约 ${storageUsage.totalText}）` : `(≈ ${storageUsage.totalText})`}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span>{lang === 'zh' ? '保留上限' : 'Keep'}</span>
+              {storageLimitOptions.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => applyStorageLimit(n)}
+                  aria-pressed={storageLimit === n}
+                  className={`tap-area rounded-full border px-1.5 py-0.5 text-[0.625rem] mono-font tabular-nums transition-colors ${storageLimit === n ? 'border-[var(--fg)]/30 bg-[var(--accent-light)] text-[var(--fg)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                >
+                  {n}{lang === 'zh' ? ' 条' : ''}
+                </button>
+              ))}
+            </span>
+            {pendingStorageLimit != null && (
+              <span className="w-full flex flex-wrap items-center gap-2 rounded border border-[var(--warn)]/40 bg-[var(--accent-light)]/70 px-2 py-1 leading-snug text-[var(--warn)]">
+                <span>{lang === 'zh' ? `将上限调低为 ${pendingStorageLimit} 条，将裁剪最旧记录（仅保留最新 ${pendingStorageLimit} 条）。确认？` : `Lower the limit to ${pendingStorageLimit}? Oldest records will be trimmed (keep newest ${pendingStorageLimit}).`}</span>
+                <button type="button" onClick={confirmStorageLimit} className="tap-area rounded border border-[var(--warn)]/60 px-1.5 py-0.5 font-bold text-[var(--warn)] hover:bg-[var(--warn)]/10">{lang === 'zh' ? '确认裁剪' : 'Trim'}</button>
+                <button type="button" onClick={cancelStorageLimit} className="tap-area rounded px-1.5 py-0.5 text-[var(--muted)] hover:text-[var(--fg)]">{lang === 'zh' ? '取消' : 'Cancel'}</button>
+              </span>
+            )}
+          </div>
           {/* 返回对话：子视图无左上角箭头后，返回由本栏左侧承担（与设置页同一形态） */}
           <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center">
             <button type="button" onClick={() => setView('chat')} className="tap-primary tap-ai-primary rounded-md px-3 py-1.5 text-xs mono-font border border-transparent text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]">

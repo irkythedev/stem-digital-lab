@@ -323,8 +323,13 @@ export function registerAppShellResilienceTests(test: TestFn): void {
     assert.deepEqual(ringStateFor('activating', measured), { mode: 'indeterminate' });
     assert.deepEqual(ringStateFor('downloading', null), { mode: 'indeterminate' });
     assert.deepEqual(ringStateFor('downloading', measured), { mode: 'determinate', ratio: 0.3 });
-    assert.deepEqual(ringStateFor('clearing', { done: 1, total: 4 }), { mode: 'determinate', ratio: 0.25 });
-    assert.deepEqual(ringStateFor('reloading', null), { mode: 'full' });
+    // 清理与下载共用同一个真值比例，但必须是两种形态：清理要多一条内芯短弧
+    assert.deepEqual(ringStateFor('clearing', { done: 1, total: 4 }), { mode: 'clearing', ratio: 0.25 },
+      'clearing 不能复用 determinate，否则圆内与下载完全同形');
+    assert.deepEqual(ringStateFor('clearing', null), { mode: 'indeterminate' },
+      '清理拿不到分母时退回扫动弧，不编造百分比');
+    assert.deepEqual(ringStateFor('reloading', null), { mode: 'complete' },
+      '完成态是「满环 + 对勾」，不是满环');
     // 越界与脏数据要夹住，不能让 dashoffset 变成负数或 NaN
     const over = ringStateFor('downloading', { done: 120, total: 100 });
     assert.equal(over.mode === 'determinate' && over.ratio, 1);
@@ -349,8 +354,18 @@ export function registerAppShellResilienceTests(test: TestFn): void {
       '必须保留 sr-only 的阶段播报：看得见的环替代不了看不见的 live region');
     assert.match(header, /update-ring-track[\s\S]{0,400}update-ring-arc/,
       '徽章忙时必须渲染进度环（轨道 + 弧）');
-    assert.match(header, /strokeDashoffset=\{ring\.mode === 'determinate'/, '弧长须由 determinate 读数驱动');
+    assert.match(header, /strokeDashoffset=\{[\s\S]{0,60}ring\.mode === 'determinate'[\s\S]{0,20}ring\.mode === 'clearing'/,
+      '弧长须由 determinate / clearing 的真实读数驱动');
+    assert.match(header, /ring\.mode === 'clearing' &&[\s\S]{0,120}update-ring-inner/,
+      '清理态必须在圆内画内芯反向短弧（否则和下载同形）');
+    assert.match(header, /ring\.mode === 'complete' &&[\s\S]{0,120}UPDATE_CHECK_PATH/,
+      '完成态必须在圆内画对勾，不能只留一个满环');
     assert.match(header, /ringStateFor\(phase, progress\)/, '形态必须走 ringStateFor，不得就地另写一套映射');
+
+    const main = readSrc('src/main.tsx', 'utf8');
+    assert.match(main, /window\.setTimeout\(\(\) => window\.location\.reload\(\), UPDATE_DONE_HOLD_MS\)/,
+      '完成态要停留一小段再刷新，否则对勾一帧都看不到');
+    assert.match(main, /if \(reloadScheduled\) return/, '多次 controllerchange 只能排一次刷新');
 
     const hook = readSrc('src/lib/use-app-update.ts', 'utf8');
     assert.match(hook, /window\.clearInterval\(pollRef\.current\)/, '采样必须能停表');
@@ -358,5 +373,75 @@ export function registerAppShellResilienceTests(test: TestFn): void {
       '读的是 workbox 预缓存，不是其它缓存');
     assert.ok(hook.includes("parsePrecacheManifest(await res.text())"),
       '分母来自 sw.js 的新清单（不是当前缓存条目数）');
+  });
+
+  test('update clearing: the inner arc is shown long enough to be perceived', () => {
+    const hook = readSrc('src/lib/use-app-update.ts', 'utf8');
+    const declared = /const MIN_CLEAR_MS = (\d+)/.exec(hook);
+    assert.ok(declared, '清理态必须有最短可见时长常量');
+    const min = Number(declared[1]);
+    // 真机实测硬重置只要 ~56ms：不留最低时长，内芯反向短弧一帧都撑不住。
+    assert.ok(min >= 400 && min <= 800, `最短可见时长应在 400–800ms，实际 ${min}ms`);
+    assert.match(hook, /if \(total > 0\) \{[\s\S]{0,200}MIN_CLEAR_MS - \(Date\.now\(\) - startedAt\)/,
+      '只补足差额，删除本身已经更久时不再追加等待；没有条目可清时不伪造停顿');
+    const floorAt = hook.indexOf('MIN_CLEAR_MS - (Date.now() - startedAt)');
+    const replaceAt = hook.indexOf('window.location.replace');
+    assert.ok(floorAt > 0 && replaceAt > floorAt, '等待必须发生在硬跳转之前');
+  });
+
+  test('first paint: the blocking head script picks the theme before any style runs', () => {
+    const html = readSrc('index.html', 'utf8');
+    const headEnd = html.indexOf('</head>');
+    assert.ok(headEnd > 0);
+    const head = html.slice(0, headEnd);
+    const scriptAt = head.indexOf("localStorage.getItem('stem-theme')");
+    assert.ok(scriptAt > 0, '首帧主题必须由 <head> 内的阻塞脚本决定');
+    assert.match(head, /var mode = 'light'/, '默认浅色：深色系统上未选过主题也不该先刷一帧黑底');
+    assert.match(head, /classList\.add\(dark \? 'dark' : 'light'\)/,
+      '未选过主题也要显式写 light，否则 @media 暗色回退会抢在 React 挂载前生效');
+    // 键与默认值必须和 AppProvider 完全一致，否则首帧与挂载后会二次跳变
+    const ctx = readSrc('src/lib/app-context.tsx', 'utf8');
+    assert.match(ctx, /THEME_STORAGE_KEY = 'stem-theme'/);
+    assert.match(ctx, /return 'light'/);
+    assert.ok(html.includes("localStorage.getItem('stem-theme')"), '两处存储键不得各写各的');
+    // 骨架屏暗色：显式深色 + 「跟随系统且未被判为浅色」，不能留裸 media 回退
+    assert.match(html, /html\.dark \.boot \{/);
+    assert.match(html, /@media \(prefers-color-scheme: dark\) \{\s*html:not\(\.light\) \.boot \{/);
+    assert.doesNotMatch(html, /@media \(prefers-color-scheme: dark\) \{\s*\.boot \{/,
+      '裸 media 的 .boot 暗色会在「默认浅色 + 深色系统」下把骨架屏整块刷黑');
+  });
+
+  test('overlay ladder: one ordered source of z-index, share dialog portalled and opaque', () => {
+    const css = readSrc('src/index.css', 'utf8');
+    const order = [
+      ['--z-dropdown', 'z-dropdown'],
+      ['--z-tooltip', 'z-tooltip'],
+      ['--z-sticky', 'z-sticky-layer'], // 避开 Tailwind 自带的 sticky 定位类
+      ['--z-overlay', 'z-overlay'],
+      ['--z-modal', 'z-modal'],
+      ['--z-toast', 'z-toast'],
+      ['--z-critical', 'z-critical'],
+    ] as const;
+    let previous = -1;
+    for (const [name, className] of order) {
+      const hit = new RegExp(`${name}: (\\d+);`).exec(css);
+      assert.ok(hit, `层级阶梯缺少 ${name}`);
+      const value = Number(hit![1]);
+      assert.ok(value > previous, `${name} 必须高于前一层（实际 ${value} ≤ ${previous}）`);
+      previous = value;
+      assert.match(css, new RegExp(`\\.${className} \\{ z-index: var\\(${name}\\); \\}`),
+        `${name} 必须有对应语义类，组件才不必写魔法数`);
+    }
+    // 分享卡片必须 portal 到 body：工作区/页头的 transform、filter、overflow
+    // 会把 fixed 困在局部层叠上下文里，再高的 z-index 也压不住后渲染的浮层。
+    const share = readSrc('src/components/feedback/ShareDialog.tsx', 'utf8');
+    assert.match(share, /return createPortal\([\s\S]{0,2600}document\.body,\s*\);/);
+    assert.match(share, /bg-\[var\(--card-bg\)\]/, '卡片必须不透明，不能用半透明底让下层文字透出来');
+    assert.match(share, /className="fixed inset-0 z-overlay/, '遮罩占 overlay 层');
+    assert.match(share, /z-modal/, '卡片内容占 modal 层');
+    assert.match(share, /useEscapeKey\(onClose\)/, 'Escape 必须关闭');
+    assert.equal((share.match(/onClick=\{\(e\) => \{\s*e\.stopPropagation\(\);\s*onClose\(\);/g) ?? []).length, 2,
+      '锚定层与遮罩都要点击外部关闭（两处）');
+    assert.match(share, /onClick=\{\(e\) => e\.stopPropagation\(\)\}/, '卡片内部点击不得冒泡到遮罩');
   });
 }

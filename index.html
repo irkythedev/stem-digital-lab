@@ -26,6 +26,26 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" media="(prefers-color-scheme: light)" />
     <link rel="icon" type="image/svg+xml" href="/icon-dark.svg" media="(prefers-color-scheme: dark)" />
     <title>数理化数字实验室 | STEM Digital Lab</title>
+    <!--
+      首帧主题（阻塞式，必须在样式绘制前执行）：
+      React 挂载前 <html> 没有任何主题类，`@media (prefers-color-scheme: dark)` 的
+      令牌回退会让深色系统的用户先看到一帧黑底，等 AppProvider 的 effect 加上 .light
+      才变白——这就是「默认浅色却先闪黑」的来源。这里按与 AppProvider 相同的存储键
+      和默认值（浅色）先挂好类，React 挂载后读同一份偏好，不会二次跳变。
+      改动规则请同步 src/lib/app-context.tsx 的 THEME_STORAGE_KEY / readThemeMode。
+    -->
+    <script>
+      (function () {
+        var mode = 'light';
+        try {
+          var saved = localStorage.getItem('stem-theme');
+          if (saved === 'light' || saved === 'dark' || saved === 'system') mode = saved;
+        } catch (e) { /* 隐私模式：按默认浅色 */ }
+        var dark = mode === 'dark' ||
+          (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.add(dark ? 'dark' : 'light');
+      })();
+    </script>
     <!-- 结构化数据（GEO：让 AI 引擎识别教育平台实体） -->
     <script type="application/ld+json">
     {
@@ -123,14 +143,24 @@
         @media (prefers-reduced-motion: reduce) {
           .boot-track > span { animation: none; width: 100%; transform: none; opacity: 0.35; }
         }
+        /* 骨架屏的暗色只认「显式深色」或「跟随系统且没被首帧脚本判为浅色」：
+           旧的裸 media 查询会在浅色默认下、深色系统上把骨架屏整块刷黑（首帧闪黑的另一半）。
+           html.dark 与 media 两处必须逐值同步（同 index.css 的暗色双写约定）。 */
+        html.dark .boot { background: #161613; color: #e8e6df; }
+        html.dark .boot-mark, html.dark .boot-brand, html.dark .boot-h1, html.dark .boot h2 { color: #e8e6df; }
+        html.dark .boot-bar, html.dark .boot h2 { border-color: #2e2e28; }
+        html.dark .boot-status, html.dark .boot-lead, html.dark .boot-note { color: #9c9a90; }
+        html.dark .boot-track { background: #262621; }
+        html.dark .boot-track > span { background: #e8e6df; }
+        html.dark .boot li { color: #c9c6bd; }
         @media (prefers-color-scheme: dark) {
-          .boot { background: #161613; color: #e8e6df; }
-          .boot-mark, .boot-brand, .boot-h1, .boot h2 { color: #e8e6df; }
-          .boot-bar, .boot h2 { border-color: #2e2e28; }
-          .boot-status, .boot-lead, .boot-note { color: #9c9a90; }
-          .boot-track { background: #262621; }
-          .boot-track > span { background: #e8e6df; }
-          .boot li { color: #c9c6bd; }
+          html:not(.light) .boot { background: #161613; color: #e8e6df; }
+          html:not(.light) .boot-mark, html:not(.light) .boot-brand, html:not(.light) .boot-h1, html:not(.light) .boot h2 { color: #e8e6df; }
+          html:not(.light) .boot-bar, html:not(.light) .boot h2 { border-color: #2e2e28; }
+          html:not(.light) .boot-status, html:not(.light) .boot-lead, html:not(.light) .boot-note { color: #9c9a90; }
+          html:not(.light) .boot-track { background: #262621; }
+          html:not(.light) .boot-track > span { background: #e8e6df; }
+          html:not(.light) .boot li { color: #c9c6bd; }
         }
       </style>
     </div>

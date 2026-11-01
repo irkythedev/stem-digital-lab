@@ -38,6 +38,14 @@ const PROGRESS_POLL_MS = 120;
 /** 硬重置的「已执行版本」标记：同一会话同一远端版本只允许一次 */
 const HARD_RESET_KEY = 'stem_hard_reset_ver';
 
+/** 清理态的最短可见时长。
+ *
+ *  真机实测：注销 1 个注册 + 删除 1 个缓存只花 ~56ms，随后立刻 location.replace ——
+ *  内芯反向短弧连一帧都撑不住，用户看到的是「点了更新，页面白一下」，清理与下载
+ *  在观感上根本没分开。450ms 够看清「正在清掉旧缓存」，也不至于让兜底路径像卡住；
+ *  删除本身就超过这个时长时不再追加等待（总量恒为注册数 + 缓存数，通常 2–4）。 */
+const MIN_CLEAR_MS = 450;
+
 /** 记录本次硬重置；返回 false 表示该远端版本本次会话已经硬重置过，需要放弃自动循环 */
 function claimHardReset(remoteVersion: string): boolean {
   try {
@@ -57,6 +65,8 @@ function claimHardReset(remoteVersion: string): boolean {
 export async function hardResetAndReload(
   onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
+  /** 清理计时起点：等待的只是「不满最短可见时长的那一截」 */
+  const startedAt = Date.now();
   let regs: readonly ServiceWorkerRegistration[] = [];
   try {
     regs = await navigator.serviceWorker.getRegistrations();
@@ -80,6 +90,14 @@ export async function hardResetAndReload(
     await caches.delete(key).catch(() => false);
     done += 1;
     onProgress?.(done, total);
+  }
+
+  // 留出最短可见时长再跳转：没有条目可清（total 为 0）时不伪造这段停顿
+  if (total > 0) {
+    const remaining = MIN_CLEAR_MS - (Date.now() - startedAt);
+    if (remaining > 0) {
+      await new Promise<void>((resolve) => { window.setTimeout(resolve, remaining); });
+    }
   }
 
   const url = new URL(window.location.href);

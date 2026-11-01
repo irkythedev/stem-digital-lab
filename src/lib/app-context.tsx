@@ -7,6 +7,7 @@
  */
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -16,6 +17,23 @@ import {
 import { translations, type Language, type Translation } from './i18n';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
+
+/**
+ * 主题偏好的存储键。index.html 里有一段**阻塞式**首帧脚本按同一个键、同一套规则
+ * 给 <html> 挂 class —— 改键名或默认值时必须两处同时改，否则首帧又会闪回系统色。
+ */
+export const THEME_STORAGE_KEY = 'stem-theme';
+
+/** 读取持久化的主题模式；没有偏好或存储不可用时回到浅色（产品默认）。 */
+export function readThemeMode(): ThemeMode {
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+  } catch {
+    /* 隐私模式等场景下 localStorage 不可用时静默回退 */
+  }
+  return 'light';
+}
 
 interface AppContextValue {
   lang: Language;
@@ -51,7 +69,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       /* 忽略写入失败 */
     }
   };
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  // 首帧已由 index.html 的内联脚本按持久化偏好挂好 class；这里必须读同一个值，
+  // 否则 React 挂载后的第一次 applyTheme 会把深色用户切回浅色（或反之）。
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(readThemeMode);
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, mode);
+    } catch {
+      /* 忽略写入失败 */
+    }
+  }, []);
 
   // 断网感知：只反映「有没有网络」，局域网里没外网也算在线（此时 AI 仍值得一试）
   const [isOffline, setIsOffline] = useState(
@@ -97,7 +125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setThemeMode,
       isOffline,
     }),
-    [lang, themeMode, isOffline],
+    [lang, themeMode, setThemeMode, isOffline],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -54,10 +54,20 @@ window.visualViewport?.addEventListener('scroll', setKeyboardVars);
 // 刷新时机统一由 controllerchange 驱动（唯一的刷新入口）：
 // 插件默认会在 activated 阶段直接 reload，与手动点击形成两个刷新驱动 → 可能连刷两次。
 let hadController = !!navigator.serviceWorker?.controller;
+/**
+ * 完成态停留：用户点更新后，徽章要先画出「满环 + 对勾」再刷新。
+ * 原先 controllerchange 里立刻 reload，reloading 阶段一帧都渲染不出来，
+ * 完成态在用户眼里等同于「卡在 100% 然后页面突然白了」。
+ * 600ms 只延后本标签页的刷新，不改变 SW 接管时机；主刷新驱动仍然只有这一处。
+ */
+const UPDATE_DONE_HOLD_MS = 600;
+let reloadScheduled = false;
 navigator.serviceWorker?.addEventListener('controllerchange', () => {
   // 首次接管（clientsClaim 让首个 SW 接管本页）不算更新：不刷新
   if (!hadController) { hadController = true; return; }
-  window.location.reload();
+  if (reloadScheduled) return; // 多次 controllerchange 只排一次刷新
+  reloadScheduled = true;
+  window.setTimeout(() => window.location.reload(), UPDATE_DONE_HOLD_MS);
 });
 
 // 注册 Service Worker（PWA 离线可用 + 可安装）

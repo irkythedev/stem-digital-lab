@@ -37,12 +37,19 @@ export type UpdatePhase =
  *  所以弧长用 `(done - base) / (total - base)`，即**本次更新还需要做的量**走了多少。 */
 export type UpdateProgress = { done: number; total: number; base?: number };
 
-/** 徽章在某一帧应该长什么样。`hidden` = 回到静态的实心箭头徽章。 */
+/** 徽章在某一帧应该长什么样。`hidden` = 回到静态的实心箭头徽章。
+ *
+ *  `determinate` 与 `clearing` 都带同一个真值比例，但**必须长得不一样**：
+ *  前者是「正在下载新版本」，后者是「正在清掉旧缓存」（注销 SW + 逐个删 Cache）。
+ *  删除同样逐条发生，所以比例照旧成立；差异只体现在圆内 —— clearing 多一条
+ *  反向慢转的内芯短弧，读作「把旧条目扫走」，不必看 tooltip 也能分清。
+ *  `complete` 不是「满环」：满环看起来像卡在 100%，完成态要有自己的符号（对勾）。 */
 export type RingState =
   | { mode: 'hidden' }
   | { mode: 'indeterminate' }
   | { mode: 'determinate'; ratio: number }
-  | { mode: 'full' };
+  | { mode: 'clearing'; ratio: number }
+  | { mode: 'complete' };
 
 export type PrecacheEntry = { url: string; revision: string | null };
 
@@ -117,10 +124,13 @@ export function isPrecacheComplete(
  * 只有 downloading（预缓存条目）与 clearing（缓存逐个删）有分母；
  * checking / activating 只是在等事件或等超时，**没有分母**，因此恒为扫动弧 ——
  * 按时长插值伪造百分比比不动更糟。
+ *
+ * clearing 单独一档（而不是复用 determinate）：它虽然也有分母，但视觉上必须能和
+ * 「下载」分开；reloading 用 complete（对勾）而不是满环 —— 满环没有完成语义。
  */
 export function ringStateFor(phase: UpdatePhase, progress: UpdateProgress | null): RingState {
   if (phase === 'idle') return { mode: 'hidden' };
-  if (phase === 'reloading') return { mode: 'full' };
+  if (phase === 'reloading') return { mode: 'complete' };
   const measured = (() => {
     if (!progress || !(progress.total > 0) || !Number.isFinite(progress.done)) return null;
     const base = Number.isFinite(progress.base) ? Math.max(0, progress.base as number) : 0;
@@ -129,8 +139,14 @@ export function ringStateFor(phase: UpdatePhase, progress: UpdateProgress | null
     if (span <= 0) return 1;
     return Math.min(1, Math.max(0, (progress.done - base) / span));
   })();
-  if (phase === 'downloading' || phase === 'clearing') {
+  if (phase === 'downloading') {
     return measured === null ? { mode: 'indeterminate' } : { mode: 'determinate', ratio: measured };
+  }
+  if (phase === 'clearing') {
+    // 分母通常只有 2–4（一个注册 + 几个缓存）：比例粗，所以「清理」的身份靠内芯短弧
+    // 承载，外弧只负责诚实。完全没有条目可汇报（total 为 0）时不造第二档形态，
+    // 直接退回扫动弧 —— 那一刻已经紧挨着刷新，内芯来不及被看见。
+    return measured === null ? { mode: 'indeterminate' } : { mode: 'clearing', ratio: measured };
   }
   return { mode: 'indeterminate' };
 }

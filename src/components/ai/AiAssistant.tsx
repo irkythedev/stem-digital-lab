@@ -25,9 +25,11 @@ import { labFromPath, labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import { buildQuizSummaryPrompt, logPromptIssue } from '../../lib/ai-config';
 import { formatLabState, getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
-import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, type AiHistoryEntry } from '../../lib/ai-history';
+import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, trimHistoryToLimit, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
-import { clearQuizHistory, listQuizHistory, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
+import { clearQuizHistory, groupQuizByQuestion, listQuizHistory, trimQuizHistoryToLimit, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
+import { STORAGE_LIMIT_OPTIONS, loadStorageLimit, saveStorageLimit } from '../../lib/ai-storage-limit';
+import { getStorageUsageStats } from '../../lib/storage-usage';
 import { buildQuizPaper, type QuizPaper, type PaperBlankLevel, type PaperSortMode } from '../../lib/quiz-paper';
 import QuizPaperPrint from './QuizPaperPrint';
 import { buildQuizRecordsForSummary, computeQuizOverview } from '../../lib/quiz-summary';
@@ -354,6 +356,11 @@ export default function AiAssistant() {
   // 问答历史 & 错题集共用：一页固定条数
   const PAGE_SIZE = 8;
   const [quizHistoryData, setQuizHistoryData] = useState<QuizHistoryEntry[]>(() => listQuizHistory());
+  // 本地历史保留上限（问答/错题共用同一档位）：可配置 + 调低时的待确认值
+  const [storageLimit, setStorageLimitState] = useState<number>(() => loadStorageLimit());
+  const [pendingStorageLimit, setPendingStorageLimit] = useState<number | null>(null);
+  // 用量统计（条数 / 上限 / 字节）：随历史与上限变化重算（getStorageUsageStats 为纯函数）
+  const storageUsage = useMemo(() => getStorageUsageStats(), [persistHistory, quizHistoryData, storageLimit]);
   const [quizSubjFilter, setQuizSubjFilter] = useState<string | null>(null);
   // 错题集范围：all = 全部记录 / wrong = 仅错题（默认仅错题，贴近错题集语义）
   const [quizScope, setQuizScope] = useState<'all' | 'wrong'>('wrong');
@@ -447,16 +454,23 @@ export default function AiAssistant() {
     }),
     [quizHistoryData, quizSubjFilter, quizScope, quizTopicFilter],
   );
+  // 错题集视图：同一题干多次答错聚合为 1 张卡片（保留最新一次），并带 repeatCount
+  const groupedQuizHistory = useMemo(
+    () => quizScope === 'wrong'
+      ? groupQuizByQuestion(filteredQuizHistory)
+      : filteredQuizHistory.map((e) => ({ ...e, repeatCount: 1 })),
+    [filteredQuizHistory, quizScope],
+  );
   // 错题集分页：一页固定 8 条；筛选条件变化时重置回第 1 页
   const [quizPage, setQuizPage] = useState(1);
-  const quizPageCount = Math.max(1, Math.ceil(filteredQuizHistory.length / PAGE_SIZE));
+  const quizPageCount = Math.max(1, Math.ceil(groupedQuizHistory.length / PAGE_SIZE));
   const pagedQuizHistory = useMemo(
-    () => filteredQuizHistory.slice((quizPage - 1) * PAGE_SIZE, quizPage * PAGE_SIZE),
-    [filteredQuizHistory, quizPage],
+    () => groupedQuizHistory.slice((quizPage - 1) * PAGE_SIZE, quizPage * PAGE_SIZE),
+    [groupedQuizHistory, quizPage],
   );
   useEffect(() => {
-    setQuizPage((p) => Math.min(p, Math.max(1, Math.ceil(filteredQuizHistory.length / PAGE_SIZE))));
-  }, [filteredQuizHistory.length]);
+    setQuizPage((p) => Math.min(p, Math.max(1, Math.ceil(groupedQuizHistory.length / PAGE_SIZE))));
+  }, [groupedQuizHistory.length]);
   useEffect(() => { setQuizPage(1); }, [quizSubjFilter, quizTopicFilter, quizScope]);
   // 学情概览：基于当前筛选范围（科目 × 仅错题/全部）的本地聚合
   // 趋势的 overall 取全量正确率（而非筛选后），使「仅错题」视图下 recent vs overall 仍有对比意义
@@ -1242,6 +1256,38 @@ export default function AiAssistant() {
     setConfirmClearHist(false);
   };
 
+  // ── 本地历史保留上限：切换档位（调低且已超额 → 先二次确认再安全裁剪）──
+  const applyStorageLimit = (next: number) => {
+    if (!(STORAGE_LIMIT_OPTIONS as readonly number[]).includes(next)) return;
+    // 调低且当前已存条目超过新上限：不立刻裁剪，先弹确认
+    if (next < persistHistory.length || next < quizHistoryData.length) {
+      setPendingStorageLimit(next);
+      flashToast(false, lang === 'zh' ? `上限低于现有记录，请确认裁剪最旧部分（保留最新 ${next} 条）` : `Limit is below current records — confirm to trim the oldest (keep newest ${next}).`);
+      return;
+    }
+    saveStorageLimit(next);
+    setStorageLimitState(next);
+    setPendingStorageLimit(null);
+    flashToast(true, lang === 'zh' ? `保留上限已设为 ${next} 条` : `History limit set to ${next}`);
+  };
+  const confirmStorageLimit = () => {
+    const next = pendingStorageLimit;
+    if (next == null) return;
+    saveStorageLimit(next);
+    // 只裁掉最旧的超出部分（保留最新 next 条），严禁清空全部
+    const rh = trimHistoryToLimit(next);
+    const rq = trimQuizHistoryToLimit(next);
+    setPersistHistory(listHistory());
+    setQuizHistoryData(listQuizHistory());
+    setStorageLimitState(next);
+    setPendingStorageLimit(null);
+    const removed = rh.removed + rq.removed;
+    flashToast(true, lang === 'zh'
+      ? `保留上限已设为 ${next} 条${removed > 0 ? `，已裁剪最旧 ${removed} 条` : ''}`
+      : `History limit set to ${next}${removed > 0 ? `; trimmed ${removed} oldest` : ''}`);
+  };
+  const cancelStorageLimit = () => setPendingStorageLimit(null);
+
   // 回到来源页（页面级跳转：pathname + 保留 query；topic 由页面从 URL/内部状态还原）
   const gotoHistoryPath = (path: string) => {
     setView('chat');
@@ -1634,8 +1680,8 @@ export default function AiAssistant() {
 
   const termsState = useMemo(() => ({ collapsedTerms, pending }), [collapsedTerms, pending]);
   const termsActions = useStable(() => ({ setView, toggleTerm }));
-  const historyState = useMemo(() => ({ aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen }), [aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen]);
-  const historyActions = useStable(() => ({ backToPaperOptions, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView }));
+  const historyState = useMemo(() => ({ aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageLimitOptions: STORAGE_LIMIT_OPTIONS, storageUsage }), [aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageUsage]);
+  const historyActions = useStable(() => ({ applyStorageLimit, backToPaperOptions, cancelStorageLimit, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, confirmStorageLimit, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView }));
   const historyRefs = useMemo(() => ({ quizTopicMenuRef, topicMenuRef }), [quizTopicMenuRef, topicMenuRef]);
 
   if (!open) return null;

@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.46.4';
+export const APP_VERSION = '0.47.0';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,20 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.47.0',
+    date: '2026-11',
+    zh: [
+      '[新增] 本地数据管理：设置里可查看问答与错题的存储占用，并自选保留上限（30/100/300/500 条），调低时只安全裁剪最旧记录',
+      '[优化] 错题集按题目合并显示重复次数与薄弱点占比；化学式里的多余空格自动压紧',
+      '[修复] 更新时「清理旧缓存」状态更清楚，首屏主题不再闪黑/闪白',
+    ],
+    en: [
+      '[New] Local data management: see how much space Q&A and mistakes use and choose a retention limit (30/100/300/500); lowering it only trims the oldest records safely',
+      '[Improved] The mistake set merges repeated questions with a count and shows weak-topic share; stray spaces inside chemical formulas are collapsed',
+      '[Fixed] The "clearing old cache" update state is clearer, and the first paint no longer flashes dark/light',
+    ],
+  },
   {
     version: '0.46.4',
     date: '2026-10',

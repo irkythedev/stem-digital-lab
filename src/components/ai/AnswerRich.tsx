@@ -11,6 +11,7 @@
  */
 import { cloneElement, isValidElement, memo, useMemo, type ReactElement, type ReactNode } from 'react';
 import Formula from '../ui/Formula';
+import { compactChemicalSpacing } from '../../lib/chem-text';
 
 /** 块级公式：$$...$$ 或 \[...\]（可跨行） */
 const BLOCK_RE = /(\$\$[\s\S]+?\$\$|\\{1,2}\[[\s\S]+?\\{1,2}\])/g;
@@ -46,7 +47,7 @@ function renderInline(text: string, keyBase: number): ReactNode[] {
         return;
       }
     }
-    out.push(<span key={keyBase * 1000 + i}>{p}</span>);
+    out.push(<span key={keyBase * 1000 + i}>{compactChemicalSpacing(p)}</span>);
   });
   return out;
 }

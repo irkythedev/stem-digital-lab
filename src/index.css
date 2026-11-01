@@ -1354,11 +1354,31 @@ html.dark .update-ring-track { stroke-opacity: 0.38; }
   to { transform: rotate(360deg); }
 }
 .update-ring-spin { animation: update-ring-turn 900ms linear infinite; }
+/* 「清理旧缓存」的内芯：一条更细的短弧反向慢转。
+   外弧仍是真实条目进度（分母通常只有 2–4，比例很粗），内芯负责让「在清理」
+   一眼区别于「在下载」——两者此前是同一个满环涨弧，只能靠 tooltip 分辨。 */
+@keyframes update-ring-turn-reverse {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+.update-ring-inner {
+  transform-origin: 9px 9px;
+  animation: update-ring-turn-reverse 1600ms linear infinite;
+}
+/* 完成态：满环 + 中心对勾。对勾只做 180ms 淡入，不做缩放 ——
+   SVG 的 transform-origin 在小尺寸下容易算偏，且这一刻马上就要刷新页面。 */
+@keyframes update-ring-check-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.update-ring-check { animation: update-ring-check-in 180ms ease-out both; }
 
 /* 无障碍：系统开启"减少动效"时停用品牌装饰动画（三角旋转/绿点呼吸） */
 @media (prefers-reduced-motion: reduce) {
   .animate-tri-spin, .animate-sq-spin, .animate-ci-spin,
-  .update-dot, .update-ring-spin { animation: none; }
+  .update-dot, .update-ring-spin, .update-ring-inner { animation: none; }
+  /* 对勾不做淡入，直接出现：完成态本身是静态符号，减动效下只需保证看得见 */
+  .update-ring-check { animation: none; }
   /* 减动效时不扩散：环停在约 1.2 倍、半透明，状态仍看得见但不流动 */
   .update-halo { animation: none; opacity: 0.45; transform: scale(1.2); }
   /* 减少动效时不转也不插值：弧改成按阶段跳档，读数本身仍然成立 */
