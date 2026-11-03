@@ -196,8 +196,8 @@ export default function MeasurementPanel({
               open
                 ? // 窄屏：数据记录不再占页面流的高度，改成贴底抽屉（与全屏那套同一个姿态）。
                   // 45dvh 是上限而不是定高，两三行记录时它自己缩回去，画布留得更多。
-                  'max-sm:fixed max-sm:inset-x-2 max-sm:bottom-2 max-sm:z-sticky-layer max-sm:max-h-[45dvh] max-sm:overflow-auto'
-                : 'max-sm:fixed max-sm:left-2 max-sm:bottom-2 max-sm:z-sticky-layer max-sm:w-auto max-sm:rounded-full'
+                  'max-sm:fixed max-sm:inset-x-2 max-sm:bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] max-sm:z-sticky-layer max-sm:max-h-[45dvh] max-sm:overflow-auto'
+                : 'max-sm:fixed max-sm:left-2 max-sm:bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] max-sm:z-sticky-layer max-sm:w-auto max-sm:rounded-full'
             }`
       }
     >

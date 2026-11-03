@@ -279,7 +279,7 @@ export default function PresetBriefing({
       aria-label={zh ? `实验导读 · ${title}` : `Lab guide · ${title}`}
       data-guide-card=""
       data-guide-sheet={sheet ? '' : undefined}
-      className={`fixed z-overlay flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[55dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl ${
+      className={`fixed z-overlay flex w-[380px] max-w-[calc(100vw-1.5rem)] max-h-[calc(100vh-140px)] flex-col rounded-2xl border border-[var(--border)] bg-[var(--card-bg)]/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-200 motion-reduce:transition-none max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:max-h-[55dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:pb-[env(safe-area-inset-bottom,0px)] ${
         shown ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
       }`}
       style={sheet ? undefined : pos ? { left: pos.x, top: pos.y } : { right: DEFAULT_RIGHT, top: DEFAULT_TOP + topInset }}

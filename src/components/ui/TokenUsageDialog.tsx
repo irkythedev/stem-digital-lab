@@ -75,9 +75,9 @@ export default function TokenUsageDialog({ usage, onClose, lang }: TokenUsageDia
     : u.hint;
 
   return createPortal(
-    <div className="fixed inset-0 z-overlay flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={u.title}>
+    <div className="safe-overlay safe-overlay-4 fixed inset-0 z-overlay flex items-center justify-center" role="dialog" aria-modal="true" aria-label={u.title}>
       <div className="absolute inset-0 bg-black/45" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-modal w-full max-w-md max-h-[88dvh] overflow-y-auto bg-[var(--bg)] border border-[var(--border)] shadow-[var(--elev-md)]">
+      <div className="relative z-modal w-full max-w-md max-h-full overflow-y-auto bg-[var(--bg)] border border-[var(--border)] shadow-[var(--elev-md)]">
         {/* 头部 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>

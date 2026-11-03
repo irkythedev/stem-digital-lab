@@ -1078,7 +1078,6 @@ export default function PeriodicTable() {
                           loading="lazy"
                           draggable={false}
                           className="w-full h-full object-contain"
-                          style={{ display: heroFocus.n > 104 ? 'none' : 'block' }}
                           onError={(e) => {
                             const img = e.currentTarget as HTMLImageElement;
                             img.style.display = 'none';
@@ -1086,16 +1085,22 @@ export default function PeriodicTable() {
                             if (fb) fb.style.display = 'flex';
                           }}
                         />
+                        {/* 105–118 为示意图，非实物照片 */}
+                        {heroFocus.n >= 105 && (
+                          <span className="absolute inset-x-0 bottom-0 bg-black/65 py-0.5 text-center text-[0.5625rem] mono-font leading-none text-white/85 pointer-events-none">
+                            {isZh ? '示意图' : 'SCHEMATIC'}
+                          </span>
+                        )}
                         <div
                           key={`hero-fb-${heroFocus.n}`}
                           data-hero-fallback
                           className="absolute inset-0 flex-col items-center justify-center gap-0.5"
-                          style={{ display: heroFocus.n > 104 ? 'flex' : 'none' }}
+                          style={{ display: 'none' }}
                         >
                           <span className="text-lg font-bold mono-font leading-none" style={{ color: CAT_COLOR[heroFocus.cat].border }}>
                             {heroFocus.symbol}
                           </span>
-                          <span className="text-[0.625rem] mono-font text-[var(--muted)]">{isZh ? '无实物图' : 'no photo'}</span>
+                          <span className="text-[0.625rem] mono-font text-[var(--muted)]">{isZh ? '图片未加载' : 'image unavailable'}</span>
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">

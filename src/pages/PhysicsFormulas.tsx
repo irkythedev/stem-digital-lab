@@ -227,9 +227,9 @@ export default function PhysicsFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
+        <div className="safe-overlay fixed inset-0 z-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-md max-h-full flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.name.zh} ${selected.name.en}`}
@@ -348,8 +348,8 @@ export default function PhysicsFormulas() {
 
       {/* 配图放大层（点击遮罩只关放大层，不关详情卡） */}
       {zoomDiagram && selected?.diagram && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs" onClick={() => setZoomDiagram(false)} role="dialog" aria-modal="true" aria-label={lang === 'zh' ? '示意图放大' : 'Zoomed diagram'}>
-          <div className="relative max-w-xl w-full max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="safe-overlay safe-overlay-3 fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-xs" onClick={() => setZoomDiagram(false)} role="dialog" aria-modal="true" aria-label={lang === 'zh' ? '示意图放大' : 'Zoomed diagram'}>
+          <div className="relative max-w-xl w-full max-h-full flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="border border-[var(--border)] bg-white p-3 sm:p-4 flex items-center justify-center flex-1 overflow-hidden rounded-lg">
               <PhysicsDiagram type={selected.diagram.kind as never} className="w-full max-w-[460px] max-h-[60dvh] object-contain" />
             </div>

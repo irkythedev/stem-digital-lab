@@ -390,13 +390,13 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             {paperOpen &&
               createPortal(
                 <div
-                  className="fixed inset-0 z-overlay flex items-center justify-center p-4"
+                  className="safe-overlay safe-overlay-4 fixed inset-0 z-modal-top flex items-center justify-center"
                   role="dialog"
                   aria-modal="true"
                   aria-label={lang === 'zh' ? '导出错题卷' : 'Export paper'}
                 >
                   <div className="absolute inset-0 bg-black/45" onClick={() => setPaperOpen(false)} aria-hidden="true" />
-                  <div className="relative z-modal flex flex-col w-full max-w-sm max-h-[85dvh] bg-[var(--bg)] border border-[var(--border)] shadow-[var(--elev-md)]">
+                  <div className="relative z-modal flex flex-col w-full max-w-sm max-h-full bg-[var(--bg)] border border-[var(--border)] shadow-[var(--elev-md)]">
                     <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                       <h2 className="text-xs font-bold mono-font tracking-widest">
                         {lang === 'zh' ? '导出错题卷' : 'EXPORT PAPER'}

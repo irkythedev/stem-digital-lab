@@ -1008,8 +1008,10 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
   const cssSrc = readFileSync('src/index.css', 'utf8');
 
   test('错题卷导出弹窗：安全最大高度 + 内容区可滚 + 页脚不参与收缩', () => {
-    const card = panelSrc.match(/className="relative z-modal flex flex-col w-full max-w-sm max-h-\[85dvh\][^"]*"/);
-    assert.ok(card, '弹窗卡片必须显式声明 flex flex-col 与 max-h-[85dvh]——否则矮视口下顶底同时被裁且遮罩不可滚');
+    // 高度不再直接写 85dvh，而是 max-h-full：遮罩层的 safe-overlay 已经把
+    // 状态栏 / Home 指示条从内容盒里扣掉，卡片只能长到安全区之内。
+    const card = panelSrc.match(/className="relative z-modal flex flex-col w-full max-w-sm max-h-full[^"]*"/);
+    assert.ok(card, '弹窗卡片必须显式声明 flex flex-col 与 max-h-full（安全区由遮罩层扣除）——否则矮视口下顶底同时被裁');
     assert.ok(
       panelSrc.includes('flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3 space-y-3'),
       '弹窗内容区必须是 flex-1 min-h-0 且可滚动，操作项才不会被推出去',
@@ -1018,6 +1020,69 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
       /className="shrink-0 flex items-center gap-2 px-4 py-3 border-t border-\[var\(--border\)\]"/.test(panelSrc),
       '弹窗页脚必须 shrink-0（不参与收缩），保证「开始打印」常驻',
     );
+  });
+
+  test('PWA 安装态：全屏浮层统一扣除状态栏 / Home 指示条 / 横屏刘海安全区', () => {
+    // 病灶：viewport-fit=cover + black-translucent 后，p-2/p-4 的浮层会钻到状态栏
+    // （信号/电池）与 Home 指示条下面；元素周期表详情卡是唯一顶部锚定的浮层，首当其冲。
+    assert.ok(
+      /\.safe-overlay\s*\{[\s\S]*?env\(safe-area-inset-top[\s\S]*?env\(safe-area-inset-bottom/.test(cssSrc),
+      '.safe-overlay 必须同时扣除顶部状态栏与底部指示条安全区',
+    );
+    assert.ok(
+      /\.safe-overlay\s*\{[\s\S]*?safe-area-inset-left[\s\S]*?safe-area-inset-right/.test(cssSrc),
+      '.safe-overlay 横屏时必须同时避开左右刘海',
+    );
+
+    const sheet = readFileSync('src/components/elements/ElementDetailSheet.tsx', 'utf8');
+    assert.match(
+      sheet,
+      /className="safe-overlay fixed inset-0 z-overlay flex items-start justify-center/,
+      '元素详情卡遮罩必须使用 safe-overlay（顶部锚定浮层绝不能压到状态栏）',
+    );
+    assert.ok(
+      /max-h-full flex flex-col border border-\[var\(--border\)\]/.test(sheet),
+      '详情卡高度必须用 max-h-full 跟随遮罩的内容盒，而不是裸写 100dvh 把安全区算漏',
+    );
+
+    for (const file of [
+      'src/pages/MathFormulas.tsx',
+      'src/pages/PhysicsFormulas.tsx',
+      'src/pages/PhysicalConstants.tsx',
+      'src/components/ui/DailyQuote.tsx',
+      'src/components/ui/WelcomeDialog.tsx',
+      'src/components/ui/TokenUsageDialog.tsx',
+      'src/components/ui/LicenseDialog.tsx',
+      'src/components/feedback/OfflinePackPanel.tsx',
+      'src/labs/physics/circuit-bench/RepairConfirm.tsx',
+      'src/components/ai/panels/HistoryPanel.tsx',
+    ]) {
+      const src = readFileSync(file, 'utf8');
+      assert.ok(src.includes('safe-overlay'), `${file} 的居中浮层必须统一走 safe-overlay，避免漏掉系统 UI 安全区`);
+    }
+
+    const appSrc = readFileSync('src/App.tsx', 'utf8');
+    assert.ok(
+      /pl-\[env\(safe-area-inset-left,0px\)\][^"]*pr-\[env\(safe-area-inset-right,0px\)\]/.test(appSrc),
+      '应用主列必须为横屏刘海预留左右安全区，否则页头/正文会钻到刘海与圆角下面',
+    );
+    assert.ok(
+      /\[data-pseudo-fullscreen\][\s\S]*?safe-area-inset-top[\s\S]*?safe-area-inset-bottom/.test(cssSrc),
+      'iOS 伪全屏（无 Fullscreen API）也必须扣除状态栏与指示条',
+    );
+
+    for (const file of [
+      'src/labs/physics/circuit-bench/CircuitMonitor.tsx',
+      'src/labs/physics/circuit-bench/PresetBriefing.tsx',
+      'src/labs/physics/circuit-bench/MeasurementPanel.tsx',
+      'src/labs/physics/circuit-bench/ElementPalette.tsx',
+    ]) {
+      const src = readFileSync(file, 'utf8');
+      assert.ok(
+        src.includes('env(safe-area-inset-bottom,0px)'),
+        `${file} 的窄屏贴底面板必须抬到 Home 指示条之上`,
+      );
+    }
   });
 
   test('设置面板操作栏吸底常驻（sticky bottom-0 且带不透明底色）', () => {

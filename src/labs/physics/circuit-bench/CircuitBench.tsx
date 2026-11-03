@@ -1424,7 +1424,7 @@ export default function CircuitBench() {
                 ? // 52dvh 而不是 45dvh：检查器两整组控件实测 326px 高，45dvh（375×667 下
                   // 300px）会裁掉最后 28px，第二组的增减按钮必须再滚一次才点得到（审计 §2.5/§2.6）。
                   // 52dvh ≈ 347px，两组一屏放得下；FAB 与胶囊此时已让位。
-                  'max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-2 max-sm:z-sticky-layer max-sm:max-h-[52dvh] max-sm:items-stretch max-sm:overflow-y-auto'
+                  'max-sm:fixed max-sm:inset-x-2 max-sm:top-auto max-sm:bottom-[calc(0.5rem+env(safe-area-inset-bottom,0px))] max-sm:z-sticky-layer max-sm:max-h-[52dvh] max-sm:items-stretch max-sm:overflow-y-auto'
                 : ''
             }`}
           >

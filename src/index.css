@@ -1727,6 +1727,43 @@ html.dark .update-ring-track { stroke-opacity: 0.38; }
   }
 }
 
+/* ── 全屏浮层的安全区内边距（PWA 安装态）────────────────────────
+   安装到 iOS 主屏后，`viewport-fit=cover` + `black-translucent` 让页面铺到
+   状态栏与 Home 指示条下面。浮层若只写 p-2 / p-4，顶部会被信号/电池盖住，
+   底部按钮会压在指示条上；横屏时左右还会钻到刘海与圆角里。
+
+   .safe-overlay 在 @layer 之外声明，优先级高于 Tailwind 的 p-* 工具类，
+   因此可以直接替换原来的 p-*，一次管住四边：
+   · 上下 = 视觉留白 + 对应安全区（状态栏 / 指示条）；
+   · 左右 = max(视觉留白, 安全区)，横屏刘海自动生效、竖屏为 0 不影响版式。
+   --safe-pad 对应原 p-2（0.5rem）；带 -3 / -4 后缀的变体对应 p-3 / p-4，
+   sm 起统一升到 1rem，与原来的 sm:p-4 对齐。 */
+.safe-overlay {
+  --safe-pad: 0.5rem;
+  padding-top: calc(var(--safe-pad) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--safe-pad) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--safe-pad), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--safe-pad), env(safe-area-inset-right, 0px));
+}
+.safe-overlay-3 { --safe-pad: 0.75rem; }
+.safe-overlay-4 { --safe-pad: 1rem; }
+@media (min-width: 640px) {
+  .safe-overlay,
+  .safe-overlay-3,
+  .safe-overlay-4 { --safe-pad: 1rem; }
+}
+
+/* 伪全屏（iOS 没有 Fullscreen API，工作台自己 fixed 到视口）同样要躲开系统 UI：
+   顶部状态栏、底部 Home 指示条、横屏刘海。只在窄屏生效，与 max-sm 伪全屏同步。 */
+@media (max-width: 639px) {
+  [data-pseudo-fullscreen] {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+}
+
 /* ── 键盘焦点可见性（WCAG 2.4.7）───────────────────────────────
    全局 :focus-visible 环：键盘导航给清晰焦点，鼠标点击不出现（互不打扰）。
    本规则在 @layer 之外，优先级高于组件里的 focus:outline-none，故必定生效。 */

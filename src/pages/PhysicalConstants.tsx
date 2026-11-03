@@ -188,9 +188,9 @@ export default function PhysicalConstants() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
+        <div className="safe-overlay fixed inset-0 z-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-sm max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-sm max-h-full flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.symbol} ${selected.value}`}

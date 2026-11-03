@@ -120,7 +120,7 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
       {showWelcome && <WelcomeDialog onClose={closeWelcome} initialTab={welcomeTab} />}
       <div
         id="app-main"
-        className="min-h-dvh w-full flex flex-col justify-between py-4 sm:py-6 selection:bg-[var(--accent-light)] selection:text-[var(--fg)]"
+        className="min-h-dvh w-full flex flex-col justify-between py-4 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] sm:py-6 selection:bg-[var(--accent-light)] selection:text-[var(--fg)]"
       >
         <SkipLink />
         <Header

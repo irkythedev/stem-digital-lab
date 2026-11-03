@@ -389,7 +389,7 @@ export default function CircuitMonitor({
   return (
     <div
       data-drop-blocked=""
-      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-sticky-layer max-sm:max-h-[45dvh] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
+      className={`${anchor} flex w-64 max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)]/80 text-[var(--fg)] shadow-lg backdrop-blur-md max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-sticky-layer max-sm:max-h-[45dvh] max-sm:pb-[env(safe-area-inset-bottom,0px)] max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none max-sm:rounded-t-2xl`}
     >
       <div className="flex h-6 shrink-0 items-center gap-1.5 px-2">
         <Gauge className="h-3 w-3 shrink-0 text-[var(--muted)]" />

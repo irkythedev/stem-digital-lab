@@ -395,8 +395,9 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
   test('⑬ 详情卡顶部锚定：切 Tab 时弹窗头部与 Tab 栏绝对静止', () => {
     // 根因：外框与 overlay 原为 items-center + 高度随内容变化 → 垂直居中重算导致整框上下跳。
     // 改前实测（1280×1100）：面板 top 66 → 172 → 66，跳幅 106px = 高度差 212px 的一半。
-    const ov = pt.match(/className="fixed inset-0 z-overlay flex ([^"]+)"/);
+    const ov = pt.match(/className="([^"]*\bfixed inset-0 z-overlay flex [^"]*)"/);
     assert.ok(ov, '须能定位弹窗 overlay');
+    assert.match(ov[1], /safe-overlay/, 'overlay 须带 safe-overlay，安装态下避开状态栏 / Home 指示条');
     assert.match(ov[1], /items-start/, 'overlay 须顶部锚定（items-start），避免居中重算');
     assert.doesNotMatch(ov[1], /items-center/, 'overlay 不得垂直居中（内容高度变化会带动整框重排）');
     assert.match(ov[1], /overflow-y-auto/, 'overlay 须可滚动，兜底极矮视口');
@@ -404,10 +405,10 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     assert.ok(panel, '须能定位弹窗外框');
     assert.match(
       panel[1],
-      /max-h-\[calc\(100dvh-1rem\)\] sm:max-h-\[calc\(100dvh-2rem\)\]/,
-      '外框 max-h 须与 overlay 的 p-2/p-4 对齐（顶边固定、底边仍留同距）',
+      /max-h-full/,
+      '外框 max-h 须用 max-h-full 跟随 safe-overlay 的内容盒（已扣掉系统 UI 安全区）',
     );
-    assert.doesNotMatch(panel[1], /92dvh|88dvh/, '外框不得再用与 padding 脱钩的 92dvh / 88dvh');
+    assert.doesNotMatch(panel[1], /92dvh|88dvh/, '外框不得再用与安全区脱钩的 92dvh / 88dvh');
     assert.match(panel[1], /flex flex-col/, '外框须为纵向 flex，内容区才能独立滚动');
     assert.match(pt, /flex-1 overflow-y-auto[^"]*space-y-3/, '内容区须 flex-1 承载剩余高度（头部与 Tab 栏不动）');
   });
@@ -567,11 +568,12 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     assert.match(wd, /aria-selected=\{tab === v\}/, 'Tab 须带 aria-selected');
     // ② 弹性布局不变量：头 / Tab 栏 / 底栏常驻，内容区独立滚动
     //    高度上限用 dvh 而非 vh：移动端浏览器 UI 会伸缩，vh 会把底栏顶出屏幕
-    assert.match(wd, /h-\[85dvh\] sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（两页同高才能居中不跳位，PC 680px 免滚动）');
+    assert.match(wd, /h-\[85dvh\][^"]*sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（两页同高才能居中不跳位，PC 680px 免滚动）');
     const shrink0 = wd.match(/flex-shrink-0/g) ?? [];
     assert.ok(shrink0.length >= 3, `顶部条 / Tab 栏 / 底栏须 flex-shrink-0 常驻（实测 ${shrink0.length} 处）`);
     // 垂直居中：外框已定为固定高度（两页同高），故居中不会重解位置；此前 max-h 下居中会顶动头部 98px
-    assert.match(wd, /z-overlay flex items-center justify-center p-4/, 'overlay 须垂直居中');
+    assert.match(wd, /z-overlay flex items-center justify-center/, 'overlay 须垂直居中');
+    assert.match(wd, /safe-overlay safe-overlay-4/, 'overlay 须用 safe-overlay-4 扣除安装态安全区');
     assert.doesNotMatch(wd, /items-start justify-center overflow-y-auto p-4/, 'overlay 不得再顶部锚定');
     // min-h 取 12rem：更大就可能在矮视口挤掉底栏（与「底栏永不越界」的要求冲突）
     assert.match(wd, /flex-1 overflow-y-auto[^"]*min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 安全的 min-h');
@@ -611,7 +613,7 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
     // —— 手动切主题时会与站点脱节，故本文件禁用该变体（写法为 dark 前缀 + 冒号 + 工具类，中间无空格），一律走 var 令牌
     assert.doesNotMatch(wd, /dark:[^\s]/, '弹窗不得使用 dark 前缀变体（与手动主题切换脱节）');
     // ④c 定高弹性 + 去边框化 + 滚动安全
-    assert.match(wd, /h-\[85dvh\] sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（桌面 680px，超高视口由 max-h 收敛）');
+    assert.match(wd, /h-\[85dvh\][^"]*sm:h-\[680px\][^"]*flex flex-col/, '外框须为定高弹性约束（桌面 680px，超高视口由 max-h 收敛）');
     // 滚动条落在 px-1 的外侧留白里；内容留白放在内层 mx-4，与外框 px-5 对齐（20px）
     assert.match(wd, /flex-1 overflow-y-auto px-1 pb-6 pt-0 min-h-\[12rem\]/, '内容区须 flex-1 滚动 + 外侧留白容下滚动条');
     assert.match(wd, /<div className="mx-4 space-y-3">/, '内容留白须放内层并与外框对齐');

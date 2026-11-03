@@ -120,16 +120,18 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
     <>
       {selected && createPortal(
         <div
-          className="fixed inset-0 z-overlay flex items-start justify-center overflow-y-auto bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]"
+          className="safe-overlay fixed inset-0 z-overlay flex items-start justify-center overflow-y-auto bg-black/45 backdrop-blur-[1px]"
           onClick={() => setSelected(null)}
         >
           <div
-            /* 顶部锚定（Top-anchored）：外框顶边由 overlay 的 padding 固定（8 / 16px），
+            /* 顶部锚定（Top-anchored）：外框顶边由 overlay 的安全区内边距固定，
                高度随内容向下生长——两个 Tab 高度不一致时，弹窗头部与 Tab 控制栏**绝对静止**，
                绝不再因「垂直居中重算」整体上下跳（改前实测：1280×1100 下切 Tab 面板 top
-               66 → 172 → 66，跳幅 106px = 高度差 212px 的一半）。max-h 与 padding 对齐，
-               保证底边仍留出同样边距；overlay 自身 overflow-y-auto 兜底极矮视口。 */
-            className="relative w-full max-w-sm sm:max-w-md max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col border border-[var(--border)] bg-[var(--card-bg)] shadow-2xl rounded-xl overflow-hidden z-modal"
+               66 → 172 → 66，跳幅 106px = 高度差 212px 的一半）。
+               max-h-full 让卡片最高只能到 overlay 的**内容盒**：PWA 安装态下这块
+               内容盒已经扣掉状态栏与 Home 指示条，因此底边同样不会被系统 UI 压住；
+               overlay 自身 overflow-y-auto 兜底极矮视口。 */
+            className="relative w-full max-w-sm sm:max-w-md max-h-full flex flex-col border border-[var(--border)] bg-[var(--card-bg)] shadow-2xl rounded-xl overflow-hidden z-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -647,13 +649,13 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
               {/* 百科故事面板 */}
               {tab === 'story' && (
                 <div className="border border-[var(--border)] px-3 py-2.5 space-y-3 rounded-xs bg-[var(--card-bg)]/20">
-                  {/* 元素实物照片（images-of-elements，CC BY 3.0）：点击放大；无图显示占位 */}
+                  {/* 元素图片：1–104 为实物照片（images-of-elements，CC BY 3.0）；105–118 为本项目绘制示意图 */}
                   <div>
                     <div
-                      className={`relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden rounded-xs ${selected.n <= 104 ? 'cursor-zoom-in' : ''}`}
-                      onClick={() => selected.n <= 104 && setPhotoZoom(true)}
-                      role={selected.n <= 104 ? 'button' : undefined}
-                      aria-label={selected.n <= 104 ? (lang === 'zh' ? '放大实物照片' : 'Zoom element photo') : undefined}
+                      className="relative aspect-[4/3] w-full border border-[var(--border)] overflow-hidden rounded-xs cursor-zoom-in"
+                      onClick={() => setPhotoZoom(true)}
+                      role="button"
+                      aria-label={lang === 'zh' ? '放大图片' : 'Zoom image'}
                     >
                       <img
                         src={`/element-images/${selected.n}.jpg`}
@@ -662,13 +664,13 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
                         className="w-full h-full object-contain"
                         draggable={false}
                         onError={(e) => {
-                          // 加载失败（超铀无图/离线）：隐藏图片，显示占位
+                          // 加载失败（离线未下载/文件缺失）：隐藏图片，显示占位
                           (e.currentTarget as HTMLImageElement).style.display = 'none';
                           const fallback = e.currentTarget.parentElement?.querySelector('[data-photo-fallback]') as HTMLElement | null;
                           if (fallback) fallback.style.display = 'flex';
                         }}
                       />
-                      {/* 加载失败占位（超铀元素无实物照片） */}
+                      {/* 加载失败占位 */}
                       <div
                         className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none bg-[var(--card-bg)]"
                         style={{ display: 'none' }}
@@ -676,15 +678,15 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
                       >
                         <span className="text-5xl font-bold mono-font text-[var(--muted)] opacity-30">{selected.symbol}</span>
                         <span className="text-[0.625rem] serif-font text-[var(--muted)]">
-                          {lang === 'zh' ? '人工合成元素，暂无实物照片' : 'Synthetic element, no photo available'}
+                          {lang === 'zh' ? '图片未加载' : 'Image unavailable'}
                         </span>
                       </div>
                     </div>
                     <p className="mt-1 text-[0.625rem] serif-font text-[var(--muted)]">
                       {selected.n >= 105
                         ? lang === 'zh'
-                          ? '人工合成元素，暂无实物照片'
-                          : 'Synthetic element, no photo available'
+                          ? '示意图（人工合成元素，无实物照片）'
+                          : 'Illustration (synthetic element, no photo)'
                         : selected.n >= 97
                           ? lang === 'zh'
                             ? '示意图（超铀元素无实物照片）· © images-of-elements（CC BY 3.0）'
@@ -735,12 +737,12 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
       {/* 实物照片放大预览（全屏） */}
       {photoZoom && selected && createPortal(
         <div
-          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
+          className="safe-overlay safe-overlay-3 fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-xs"
           onClick={() => setPhotoZoom(false)}
           role="dialog"
           aria-label={`${selected.zh} ${selected.symbol}`}
         >
-          <div className="relative max-w-lg max-h-[92dvh] w-full flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-lg max-h-full w-full flex flex-col" onClick={(e) => e.stopPropagation()}>
             <img
               src={`/element-images/${selected.n}.jpg`}
               alt={`${selected.zh} ${selected.symbol}`}
@@ -750,6 +752,7 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
             <div className="mt-2 flex items-center justify-between px-1 shrink-0">
               <span className="text-xs mono-font text-white/80">
                 {selected.zh} {selected.symbol} · {selected.en}
+                {selected.n >= 105 ? (lang === 'zh' ? ' · 示意图' : ' · illustration') : ''}
               </span>
               <button
                 type="button"

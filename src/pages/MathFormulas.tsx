@@ -210,9 +210,9 @@ export default function MathFormulas() {
 
       {/* 详情卡 */}
       {selected && (
-        <div className="fixed inset-0 z-overlay flex items-center justify-center bg-black/45 p-2 sm:p-4 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
+        <div className="safe-overlay fixed inset-0 z-overlay flex items-center justify-center bg-black/45 backdrop-blur-[1px]" onClick={() => setSelected(null)}>
           <div
-            className="relative w-full max-w-md max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
+            className="relative w-full max-w-md max-h-full flex flex-col border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-lg)] rounded-xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-label={`${selected.name.zh} ${selected.name.en}`}
@@ -304,12 +304,12 @@ export default function MathFormulas() {
       {/* 配图放大预览（全屏） */}
       {zoomDiagram && selected?.diagram && (
         <div
-          className="fixed inset-0 z-modal flex items-center justify-center bg-black/80 p-3 sm:p-4 backdrop-blur-xs"
+          className="safe-overlay safe-overlay-3 fixed inset-0 z-modal flex items-center justify-center bg-black/80 backdrop-blur-xs"
           onClick={() => setZoomDiagram(false)}
           role="dialog"
           aria-label={`${selected.name.zh} ${selected.name.en}`}
         >
-          <div className="relative max-w-xl w-full max-h-[90dvh] flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="relative max-w-xl w-full max-h-full flex flex-col border border-[var(--border)] bg-[var(--bg)] p-3 sm:p-4 shadow-2xl rounded-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="border border-[var(--border)] bg-white p-3 sm:p-4 flex items-center justify-center flex-1 overflow-hidden rounded-lg">
               {selected.diagram.kind === 'pythagorean' || selected.diagram.kind === 'chord' || selected.diagram.kind === 'inscribed' || selected.diagram.kind === 'sector' ? (
                 <FormulaDiagram type={selected.diagram.kind} className="w-full max-w-[440px] max-h-[60dvh] object-contain" />

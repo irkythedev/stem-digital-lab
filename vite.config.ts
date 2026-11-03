@@ -291,8 +291,11 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        background_color: '#111210',
-        theme_color: '#111210',
+        // 启动画面 / Android 状态栏与默认主题保持一致：应用默认是浅色（--bg #fafafa），
+        // 沿用原来的 #111210 会在每次冷启动时先闪一帧深色再跳回浅色。深色模式由
+        // index.html 的双 theme-color 接管浏览器 UI；manifest 只有单一值，取默认浅色。
+        background_color: '#fafafa',
+        theme_color: '#fafafa',
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

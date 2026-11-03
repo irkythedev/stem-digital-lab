@@ -72,7 +72,7 @@ export default function RepairConfirm({ plan, zh, onConfirm, onCancel }: RepairC
 
   return createPortal(
     <div
-      className="fixed inset-0 z-overlay flex items-center justify-center p-4"
+      className="safe-overlay safe-overlay-4 fixed inset-0 z-overlay flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label={plan.title}

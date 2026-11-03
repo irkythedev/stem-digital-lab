@@ -56,13 +56,13 @@ export default function OfflinePackPanel({
 
   return createPortal(
     <div
-      className={`fixed inset-0 ${elevated ? 'z-modal-top' : 'z-overlay'} flex items-center justify-center p-4`}
+      className={`safe-overlay safe-overlay-4 fixed inset-0 ${elevated ? 'z-modal-top' : 'z-overlay'} flex items-center justify-center`}
       role="dialog"
       aria-modal="true"
       aria-label={c.title}
     >
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <div className="relative z-modal flex max-h-[85dvh] w-full max-w-md flex-col border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-2xl">
+      <div className="relative z-modal flex max-h-full w-full max-w-md flex-col border border-[var(--border)] bg-[var(--card-bg)] text-[var(--fg)] shadow-2xl">
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
           <h2 className="t-h2 flex items-center gap-2 font-bold tracking-widest">
             <HardDrive className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />

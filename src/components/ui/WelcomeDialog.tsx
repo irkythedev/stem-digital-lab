@@ -91,7 +91,7 @@ export default function WelcomeDialog({
   return createPortal(
     /* 垂直居中（items-center）。之所以现在可以居中：外框改用**定高** h-[85dvh] sm:h-[620px]，
        两页高度严格一致 → 切 Tab 时外框不重解位置（此前 max-h 下高度随内容变，居中会顶动头部 98px）。 */
-    <div className="fixed inset-0 z-overlay flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={t.brandName}>
+    <div className="safe-overlay safe-overlay-4 fixed inset-0 z-overlay flex items-center justify-center" role="dialog" aria-modal="true" aria-label={t.brandName}>
       {/* 遮罩（仅背景，不响应点击——只有「知道了」才关闭，防误触） */}
       <div
         className="absolute inset-0 bg-black/45"
@@ -101,7 +101,7 @@ export default function WelcomeDialog({
       {/* 卡片：定高弹性约束（手机 85dvh / 桌面 680px，超高视口自动收敛）——两页同高、居中不跳位；
           680 让「实验室概览」在 PC 上无需内部滚动即可完整呈现，移动端仍走 85dvh 不变 */}
       <div
-        className="relative z-modal w-full max-w-lg h-[85dvh] sm:h-[680px] sm:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]"
+        className="relative z-modal w-full max-w-lg h-[85dvh] max-h-full sm:h-[680px] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] text-[var(--fg)] shadow-[var(--elev-lg)]"
         style={reduceMotion ? undefined : { animation: 'welcome-rise-in 0.35s ease' }}
       >
         {/* 顶部条：flex-shrink-0 常驻 */}
@@ -396,8 +396,7 @@ export default function WelcomeDialog({
 
         {/* 底部操作栏：flex-shrink-0 常驻，小屏也不会被内容挤出可视区（单行布局，压低总高） */}
         <div
-          className="flex-shrink-0 flex items-center justify-between gap-3 border-t border-[var(--border)]/60 px-5 pt-3"
-          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+          className="flex-shrink-0 flex items-center justify-between gap-3 border-t border-[var(--border)]/60 px-5 pt-3 pb-3"
         >
           <label className="flex items-center gap-2 min-h-11 text-xs text-[var(--muted)] cursor-pointer select-none">
             <input
