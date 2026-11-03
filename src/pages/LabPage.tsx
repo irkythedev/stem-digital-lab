@@ -67,7 +67,7 @@ export default function LabPage() {
 
   if (!lab) {
     return (
-      <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+      <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
         <div className="mb-8">
           <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
             / lab / {canonicalLabId ?? 'unknown'}
@@ -95,7 +95,7 @@ export default function LabPage() {
     : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
-    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-block)] px-2 sm:mt-[var(--sp-block)] sm:px-6">
+    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6">
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to={subjects[lab.subjectId].path}>
         {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}

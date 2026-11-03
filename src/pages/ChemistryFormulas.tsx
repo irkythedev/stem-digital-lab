@@ -447,7 +447,7 @@ export default function ChemistryFormulas() {
   };
 
   return (
-    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
       <BackLink to="/subject/chemistry">{zh ? '返回化学' : 'Back to Chemistry'}</BackLink>
 
       <div className="mb-5">

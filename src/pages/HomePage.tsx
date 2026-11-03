@@ -118,7 +118,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
       {/* Brand Main Title Header（随机探索以页边注式小按钮缀于标题后） */}
       <div className="rise home-title mb-[var(--sp-block)] flex flex-col items-start max-w-2xl">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1.5 mb-2 sm:mb-4">

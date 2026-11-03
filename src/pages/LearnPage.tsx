@@ -62,7 +62,7 @@ export default function LearnPage() {
 
   if (!loader) {
     return (
-      <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+      <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
         <BackLink to="/">{t.backHome}</BackLink>
         <h1 className="t-h1 font-medium serif-font mt-2 text-[var(--fg)]">
           {t.underConstruction}
@@ -77,7 +77,7 @@ export default function LearnPage() {
   const backPath = LEARN_BACK_PATHS[contentId] ?? '/';
 
   return (
-    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-block)] px-2 sm:mt-[var(--sp-block)] sm:px-6">
+    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6">
       <BackLink to={backPath}>
         {zh ? '返回交互页' : 'Back to the interactive page'}
       </BackLink>

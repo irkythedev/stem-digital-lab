@@ -346,6 +346,9 @@ html.dark {
   --t-lead: clamp(0.9375rem, 1.1vw, 1.125rem); /* 15 → 18px */
   /* 宏观节奏（仅页面级） */
   --sp-block: clamp(2.5rem, 4vw, 3.5rem); /* 章节间距 40（移动，与现状一致）→ 56px（桌面） */
+  /* 页面首/末块到外壳分隔线的边距：移动端收到 24px，sm 起回到章节间距。
+     章节之间仍用 --sp-block，避免把整页节奏一起压紧。 */
+  --sp-edge: 1.5rem;
   /* 动效令牌 */
   --dur-fast: 120ms;
   --dur-base: 180ms;

@@ -722,7 +722,7 @@ export default function PeriodicTable() {
   };
 
   return (
-    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to="/subject/chemistry">{lang === 'zh' ? '返回化学' : 'Back to Chemistry'}</BackLink>
 

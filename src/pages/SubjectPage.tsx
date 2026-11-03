@@ -97,7 +97,7 @@ export default function SubjectPage() {
 
   if (!subject) {
     return (
-      <main className="grow shrink-0 flex flex-col items-center justify-center my-[var(--sp-block)] px-2 sm:px-6 text-center">
+      <main className="grow shrink-0 flex flex-col items-center justify-center my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6 text-center">
         <h1 className="text-2xl serif-font text-[var(--fg)] mb-4">{t.pageNotFound}</h1>
         <BackLink to="/">{t.backToHome}</BackLink>
       </main>
@@ -120,7 +120,7 @@ export default function SubjectPage() {
   ];
 
   return (
-    <main className="grow shrink-0 flex flex-col my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
       <BackLink to="/">{t.backHome}</BackLink>
 
       <div className="mb-10">
