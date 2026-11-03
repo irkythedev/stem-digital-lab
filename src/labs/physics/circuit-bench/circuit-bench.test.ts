@@ -74,7 +74,16 @@ import {
 import { buildMonitorModel, LIVE_CURRENT_A, monitorVerdict } from './circuit-bench-monitor';
 import { fitLinear, predict, reconcileProbeKey, toCsv } from './circuit-bench-fit';
 import { buildOptions, readProbe, type ProbeOption } from './circuit-bench-probes';
-import { FLOW_MIN_AMPS, computeWireFlows } from './circuit-bench-flow';
+import { FLOW_MIN_AMPS, computeWireFlows, flowArrow, flowStrokeWidth } from './circuit-bench-flow';
+import { PREVIEW_CORNER_RADIUS, PREVIEW_STUB, previewRoutePoints, previewWirePath } from './circuit-bench-preview';
+import { collectFaultIds } from './circuit-bench-faults';
+import {
+  LOCKED_REASON,
+  isLocked,
+  removeComponentIfUnlocked,
+  removeWireIfUnlocked,
+  replugIfUnlocked,
+} from './circuit-bench-lock';
 import { MATERIAL_RHO, T_AMBIENT, isOpen, materialOf, mergesTerminals, resistanceOf } from './circuit-bench-models';
 import {
   HISTORY_LIMIT,
@@ -144,6 +153,7 @@ import {
   buildWireJumps,
   buildWireRoutes,
   countWireIntersections,
+  wireCornerRadius,
   wireNetIds,
 } from './circuit-bench-render';
 import {
@@ -158,6 +168,7 @@ import { PhysicalBody, SchematicBody, WIRE_PALETTE, needleAngle, sleevePoints, s
 import {
   DEFAULT_VIEW_MODE,
   VIEW_MODES,
+  canvasBackgroundPatterns,
   nextViewMode,
   normalizeViewMode,
   viewModeLabel,
@@ -483,9 +494,12 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
 
   /* ── 预设与集成 ── */
 
-  test('circuit-bench: 8 个预设 id 完整且唯一', () => {
-    assert.equal(CIRCUIT_PRESETS.length, 8);
-    assert.deepEqual([...PRESET_IDS].sort(), ['bridge', 'free', 'fuse', 'iv', 'joule', 'ohm', 'rwire', 'sp']);
+  test('circuit-bench: 10 个预设 id 完整且唯一', () => {
+    assert.equal(CIRCUIT_PRESETS.length, 10);
+    assert.deepEqual(
+      [...PRESET_IDS].sort(),
+      ['bridge', 'diag', 'free', 'fuse', 'half', 'iv', 'joule', 'ohm', 'rwire', 'sp'],
+    );
   });
 
   test('circuit-bench: 每个预设都有中英双语与可执行步骤', () => {
@@ -507,7 +521,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     }
   });
 
-  test('circuit-bench 工作台: 八套预设可自由加载并往返切换', () => {
+  test('circuit-bench 工作台: 十套预设可自由加载并往返切换', () => {
     for (const p of CIRCUIT_PRESETS) {
       const st = instantiatePreset(p.id);
       assert.equal(st.v, 1, `${p.id} 状态版本`);
@@ -1521,9 +1535,9 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.equal(typeof wasmModule.bench_solve, 'function');
   });
 
-  test('circuit-bench: 8 套经典预设 WASM 与 TS 节点电压/支路电流相对误差 < 1e-5', () => {
+  test('circuit-bench: 10 套经典预设 WASM 与 TS 节点电压/支路电流相对误差 < 1e-5', () => {
     const mod = requireWasm();
-    assert.equal(PRESET_IDS.length, 8);
+    assert.equal(PRESET_IDS.length, 10);
     for (const id of PRESET_IDS) {
       const st = instantiatePreset(id);
       const ts = solveCircuit(st);
@@ -2518,13 +2532,13 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
    * 旧实现两处都错：①用 `current` 推流向 —— 电池支路的 `current` 是「内部 b→a」（放电），
    * 与所有非电源支路的 a→b 相反；②「取绝对值较大的那一端」当电流 —— 并联引线（电压表并在小
    * 灯泡两端）的并接端上元件电流会分流，于是恰好选中分流端。
-   * 8 套预设 49 根导线里，①错 14 根、②再错 11 根（互不重叠），合计 25 根流向画反。
+   * 当时那 8 套预设的 49 根导线里，①错 14 根、②再错 11 根（互不重叠），合计 25 根流向画反。
    *
    * 现在统一读 `currentAB`（正 = 电流从 a 端流入元件、由 b 端流出），并优先取**串联端**
    * （该接线柱上只有这一根导线，元件电流必然整根流过这根线）。于是同一根线的串联端必然同号，
    * 「零根画反」就是可判定的不变量。
    */
-  test('circuit-bench flow: 生产规则下 8 套预设 49 根导线零根画反、死支路与微安引线一律不画流动', () => {
+  test('circuit-bench flow: 生产规则下 10 套预设 61 根导线零根画反、死支路与微安引线一律不画流动', () => {
     // 被测对象就是画布用的那份实现（CircuitCanvas 只做 useMemo 包装），不再靠源码字符串猜行为。
     const wireDir = (terminal: 'a' | 'b', side: 'from' | 'to', value: number): number =>
       ((side === 'from') === (terminal === 'a') ? -1 : 1) * Math.sign(value || 1);
@@ -2639,11 +2653,13 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
         }
       }
     }
-    // 锁住被审计的语料：8 套预设共 49 根导线；33 根由串联端精确定流，14 根只能靠并接端
-    // （10 根电压表引线 + 4 根闭合开关合流线）或干脆是死支路（2 根短路线）。
-    assert.equal(total, 49, `8 套预设应共 49 根导线，实际 ${total} 根`);
-    assert.equal(determined, 33, `应由串联端精确定流的导线数变了（${determined}）；新增/改动预设需同步核对该不变式`);
-    assert.equal(backwards, 0, `${backwards}/49 根导线流向画反：${problems.slice(0, 3).join('；')}`);
+    // 锁住被审计的语料：10 套预设共 61 根导线；39 根由串联端精确定流，19 根只能靠并接端
+    // （10 根电压表引线 + 4 根闭合开关合流线 + 排故预设里电流表并在灯泡两端的 2 根、
+    //  电压表并在电流表两端的 2 根 + 1 根开关合流线），另外 3 根干脆是死支路
+    // （2 根短路线 + 补线预设里断开的那条支路的回线）。
+    assert.equal(total, 61, `10 套预设应共 61 根导线，实际 ${total} 根`);
+    assert.equal(determined, 39, `应由串联端精确定流的导线数变了（${determined}）；新增/改动预设需同步核对该不变式`);
+    assert.equal(backwards, 0, `${backwards}/61 根导线流向画反：${problems.slice(0, 3).join('；')}`);
     assert.equal(darkLive, 0, `${darkLive} 根有电流的导线没画流动层：${problems.slice(0, 3).join('；')}`);
     assert.equal(phantomStub, 0, `${phantomStub} 根死支路画了假电流：${problems.slice(0, 3).join('；')}`);
     assert.equal(phantomTiny, 0, `${phantomTiny} 根微安级引线被借了大电流：${problems.slice(0, 3).join('；')}`);
@@ -2791,7 +2807,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
       for (const l of again) assert.ok(!l.leader, `陈旧位置 +${shift}px 让 ${l.id} 拖出了引线`);
     }
 
-    // ② 8 套预设走一遍真实切换：电路图 ⇄ 仿真图，来回 3 轮。
+    // ② 10 套预设走一遍真实切换：电路图 ⇄ 仿真图，来回 3 轮。
     //    进得去也要出得来 —— 每一轮回到电路图时，标签与本体中心的距离不得比首帧更远。
     for (const id of PRESET_IDS) {
       const st = instantiatePreset(id);
@@ -2871,7 +2887,11 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     const canvas = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf-8');
     assert.ok(canvas.includes('computeWireFlows(state, result, routes)'), '流向层必须复用画布已算好的导线路径');
     assert.ok(canvas.includes('routes={routes}'), '标签层必须复用画布已算好的导线路径');
-    assert.match(canvas, /useMemo\(\(\) => buildWireRoutes\(state\), \[state\]\)/, '导线路径一帧只算一次');
+    assert.match(
+      canvas,
+      /useMemo\(\(\) => buildWireRoutes\(state, viewMode\), \[state, viewMode\]\)/,
+      '导线路径一帧只算一次，且随视图模式重算拐角',
+    );
   });
 
   test('circuit-bench fx: 电流流动层纯 CSS 驱动，且小电流与减动效下都不跑', () => {
@@ -4655,6 +4675,336 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(cooled.state.temp < T_AMBIENT + 1, `断电 120 s 后应回到环境温度，实测 ${cooled.state.temp} K`);
     assert.equal(cooled.state.heat, 0, `断电 120 s 后累计热应归零，实测 ${cooled.state.heat} J`);
   });
+  /* ── 交互增强回归（P0-1 / P0-2 / P0-3 / P1-2 / P1-4 / P2-3） ── */
+
+  /**
+   * P0-1：拉线预览必须和松手后的正式导线是**同一套几何**。
+   *
+   * 旧皮筋是一根 `<line>`：斜的，且终点就是手指，吸附那一刻整条线会跳成折线。
+   * 现在要求三点：①折线全程水平/竖直；②终点精确落在端子；③吸附时末段严格沿
+   * 目标端子法线出 `PREVIEW_STUB` 长的一小截——最后这条是「吸附即所见」的判据。
+   */
+  test('circuit-bench 拉线预览: 正交折线 + 吸附末段沿目标端子法线，且不再画斜线', () => {
+    const from = { x: 160, y: 430 };
+    const to = { x: 484, y: 150 };
+    // 从电源正极（法线朝下）拉向灯泡右柱（法线朝右，即进线要从右侧过来）。
+    const pts = previewRoutePoints(from, to, { x: 0, y: 1 }, { x: 1, y: 0 });
+    assert.ok(pts.length >= 3, `折线至少三点，实际 ${pts.length}`);
+    assert.deepEqual(pts[0], from, '起点必须是按住的那根柱子');
+    assert.deepEqual(pts[pts.length - 1], to, '终点必须精确落在候选端子上');
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      assert.ok(
+        Math.abs(a.x - b.x) < 1e-9 || Math.abs(a.y - b.y) < 1e-9,
+        `第 ${i} 段不是水平/竖直：${JSON.stringify([a, b])}`,
+      );
+    }
+    const prev = pts[pts.length - 2];
+    assert.equal(prev.y, to.y, '进线段必须与端子法线同向（水平进 a 柱）');
+    assert.equal(prev.x, to.x + PREVIEW_STUB, `进线段长度应等于预览短桩 ${PREVIEW_STUB}`);
+    // 悬空端（没有候选端子）：仍然正交，但不能凭空造出一个短桩方向。
+    const free = previewRoutePoints(from, { x: 500, y: 300 }, { x: 0, y: 1 }, { x: 0, y: 0 });
+    assert.deepEqual(free[free.length - 1], { x: 500, y: 300 });
+    for (let i = 1; i < free.length; i++) {
+      assert.ok(
+        Math.abs(free[i - 1].x - free[i].x) < 1e-9 || Math.abs(free[i - 1].y - free[i].y) < 1e-9,
+        `悬空端第 ${i} 段不是正交的`,
+      );
+    }
+    const d = previewWirePath(from, to, { x: 0, y: 1 }, { x: 1, y: 0 });
+    assert.ok(d.startsWith('M'), '预览必须是路径而不是折线元素');
+    assert.ok(d.includes('Q'), '拐角要走圆角，吸附前后线型不能突变');
+    // 源码层面：皮筋图层不许再出现直线元素。
+    const canvasSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf8');
+    assert.ok(canvasSrc.includes('previewWirePath('), '画布必须复用预览几何');
+    assert.ok(
+      !/data-wire-preview[\s\S]{0,600}<line/.test(canvasSrc),
+      '预览图层不得再画 <line>（那就是被替换掉的斜线皮筋）',
+    );
+  });
+
+  /**
+   * P0-2：磁吸候选端子的环。
+   *
+   * 环必须比「已选中的第一根柱子」更外一圈，且只画在**候选**那一只元件上；
+   * 脉冲交给 CSS，减动效下退回静态（颜色与虚线形态仍表达同一件事）。
+   */
+  test('circuit-bench 吸附: 候选端子画外扩虚线环，只作用于磁吸命中的那一只', () => {
+    const symbolSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitSymbols.tsx'), 'utf8');
+    assert.ok(symbolSrc.includes('candidateTerminal?:'), '候选端子必须是独立的 prop');
+    assert.ok(symbolSrc.includes("data-candidate={candidate ? t : undefined}"), '候选端要能被测试/读屏读到');
+    assert.ok(symbolSrc.includes('className="cb-pin-candidate"'), '候选环要有自己的类名');
+    assert.match(
+      symbolSrc,
+      /className="cb-pin-candidate"[\s\S]{0,400}r=\{terminalStyle\.radius \+ 5\}/,
+      '候选环必须比端子本体外扩 5 单位',
+    );
+    const canvasSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf8');
+    assert.ok(canvasSrc.includes('candidateTerminal={'), '画布要把候选端子传给符号');
+    assert.ok(
+      canvasSrc.includes('wirePreview?.target') && canvasSrc.includes('parseTerminalRef'),
+      '候选只来自当前磁吸目标',
+    );
+    // 磁吸本身仍有几何依据：靠近 l1:a 的点必须就近命中它。
+    const st = instantiatePreset('half');
+    const l1a = st.components.find((c) => c.id === 'l1')!;
+    const near = terminalPoint(l1a, 'a');
+    assert.equal(nearestTerminalRef(st.components, { x: near.x + 12, y: near.y }, 24)?.ref, 'l1:a');
+    const css = readFileSync(resolve('src/index.css'), 'utf8');
+    assert.ok(css.includes('.cb-pin-candidate'), '候选环的脉冲写在 index.css');
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,400}cb-pin-candidate/, '减动效下必须静态');
+  });
+
+  /**
+   * P0-3：告警要落到画布符号上，并且短路支路要能「顺藤摸瓜」。
+   *
+   * 排故预设里电流表并在灯泡两端 = 近似短路：电源与电流表是告警源，
+   * 串在同一条短路回路上的闭合开关也要一起标红（它确实在过 19.9 A），
+   * 而灯泡是受害者、不该被画成故障点。
+   */
+  test('circuit-bench 告警落点: 短路支路连带标红，灯泡不背锅；健康预设不画红框', () => {
+    const shorted = instantiatePreset('diag');
+    const result = solveCircuit(shorted);
+    assert.ok(result.warnings.some((w) => w.code === 'short-circuit'), '夹具必须是短路态');
+    assert.ok(result.warnings.some((w) => w.code === 'over-range'), '夹具必须是超量程态');
+    const ids = collectFaultIds(shorted, result);
+    assert.ok(ids.has('bat'), '电源必须标红');
+    assert.ok(ids.has('a1'), '并联在灯泡两端的电流表必须标红');
+    assert.ok(ids.has('sw'), '串在短路回路上的闭合开关要连带标红');
+    assert.ok(!ids.has('l1'), '被打短路的灯泡只是受害者，不该标红');
+    assert.equal(collectFaultIds(instantiatePreset('sp'), solveCircuit(instantiatePreset('sp'))).size, 0, '健康预设不该有红框');
+    // 断开开关 → 短路消失 → 红框全部撤掉（说明标红跟着仿真走，不是一次性贴纸）。
+    const opened = setSwitchClosed(shorted, 'sw', false);
+    assert.equal(collectFaultIds(opened, solveCircuit(opened)).size, 0);
+    // 画布与符号两层都要真的画出来。
+    const symbolSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitSymbols.tsx'), 'utf8');
+    assert.ok(symbolSrc.includes("data-fault={fault ? 'true' : undefined}"));
+    assert.ok(symbolSrc.includes('className="cb-fault-halo"'));
+    assert.ok(symbolSrc.includes('{fault && faultText ? <title>{faultText}</title> : null}'), '红框要带具体原因');
+    const css = readFileSync(resolve('src/index.css'), 'utf8');
+    assert.ok(css.includes('.cb-fault-halo'), '红框的呼吸写在 index.css');
+    assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,400}cb-fault-halo/, '减动效下必须静态');
+  });
+
+  /**
+   * P1-2：三档线宽 + 静态方向箭头。
+   *
+   * 减动效 / 截图 / 打印时虚线不滚，方向与大小只剩这两条线索；
+   * 死支路没有电流，`computeWireFlows` 直接不给它条目，于是也不会画箭头。
+   */
+  test('circuit-bench 流向: 线宽三档单调、箭头落在最长直段并朝向电流、死支路不画', () => {
+    assert.ok(flowStrokeWidth(0.1) < flowStrokeWidth(0.5), '小电流要比中电流细');
+    assert.ok(flowStrokeWidth(0.5) < flowStrokeWidth(1.2), '中电流要比大电流细');
+    assert.equal(flowStrokeWidth(0.149), 1.4);
+    assert.equal(flowStrokeWidth(0.8), 1.8);
+    assert.equal(flowStrokeWidth(0.801), 2.4);
+
+    const right = flowArrow([{ x: 0, y: 0 }, { x: 100, y: 0 }], 1);
+    assert.deepEqual(right, { x: 50, y: 0, angleDeg: 0, dir: 1 }, '向右的电流箭头朝右、落在中点');
+    assert.deepEqual(flowArrow([{ x: 0, y: 0 }, { x: 100, y: 0 }], -1), { x: 50, y: 0, angleDeg: 180, dir: -1 });
+    assert.deepEqual(flowArrow([{ x: 0, y: 0 }, { x: 0, y: 100 }], 1), { x: 0, y: 50, angleDeg: 90, dir: 1 });
+    // 取最长的一段：短的那截（10）不该成为箭头落点。
+    assert.deepEqual(flowArrow([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 200 }], 1), {
+      x: 10,
+      y: 100,
+      angleDeg: 90,
+      dir: 1,
+    });
+    assert.equal(flowArrow([{ x: 0, y: 0 }, { x: 12, y: 0 }], 1), null, '短于 20 的直段放不下箭头');
+
+    // 死支路：补线预设缺抽头，L₂ 那条回线没有电流，因此没有流向条目、也就没有箭头。
+    const half = instantiatePreset('half');
+    const flows = computeWireFlows(half, solveCircuit(half));
+    assert.ok(flows.get('w_3'), 'L₁ 支路的回线必须有流向');
+    assert.equal(flows.get('w_4'), undefined, 'L₂ 支路断着，回线不得有流向');
+    const canvasSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf8');
+    assert.ok(canvasSrc.includes('data-flow-arrow='), '箭头要带方向标记，供测试与读屏');
+    assert.ok(canvasSrc.includes('flowArrow(route.points, flow.dir)'), '箭头方向必须来自统一流向口径');
+    assert.ok(canvasSrc.includes('flowStrokeWidth(flow.amps)'), '线宽必须按电流分档');
+  });
+
+  /**
+   * P1-4：补线 / 排故预设的锁定契约。
+   *
+   * 锁只锁「破坏性」操作，且被拒绝时必须**返回原状态引用**——上层据此跳过 commit，
+   * 撤销栈里不会多出一步空改动。同时，在锁定元件的端子上拉新线必须照常成功：
+   * 补线练习的意义就是把线接到被锁的灯泡柱子上。
+   */
+  test('circuit-bench 预设锁: 锁定即原样返回不进撤销栈，但锁定端子上仍可接线', () => {
+    const half = instantiatePreset('half');
+    const lock = getPreset('half').lock!;
+    assert.ok(isLocked(lock, { kind: 'component', id: 'bat' }));
+    assert.ok(isLocked(lock, { kind: 'wire', id: 'w_1' }));
+    assert.equal(isLocked(lock, { kind: 'component', id: 'nope' }), false);
+
+    // ① 删除被锁元件 / 导线：同一个引用，历史里一个字都不多。
+    assert.equal(removeComponentIfUnlocked(lock, half, 'bat'), half);
+    assert.equal(removeWireIfUnlocked(lock, half, 'w_1'), half);
+    let history = createHistory(half);
+    const next = removeComponentIfUnlocked(lock, history.present, 'bat');
+    if (next !== history.present) history = commit(history, next);
+    assert.equal(canUndo(history), false, '被拒绝的删除不得压入撤销栈');
+
+    // ② 没锁的元件照删（排故预设只锁电源与灯泡）。
+    const diag = instantiatePreset('diag');
+    const diagLock = getPreset('diag').lock!;
+    assert.notEqual(removeComponentIfUnlocked(diagLock, diag, 'a1'), diag, '未锁定元件必须能删');
+
+    // ③ 改接被锁导线：拒绝且给出 locked 原因；未锁导线可以改接。
+    const blocked = replugIfUnlocked(lock, half, 'w_1', 'to', 'l2:b');
+    assert.equal(blocked.changed, false);
+    assert.equal(blocked.reason, LOCKED_REASON);
+    assert.equal(blocked.state, half, '被拒绝的改接同样要返回原引用');
+    const allowed = replugIfUnlocked(diagLock, diag, 'w_6', 'to', 'l1:b');
+    assert.equal(allowed.changed, true, '未锁导线要能改接到锁定元件的端子上');
+
+    // ④ 补线本身：往被锁的灯泡柱子上接新线必须成功，且补完两台灯都亮。
+    const fixed = addWire(half, 'l1:a', 'l2:a');
+    assert.equal(fixed.added, true, '锁定元件的端子必须仍然可以接线');
+    const settled = settleSimulation(fixed.state, 1.2).state;
+    const solved = solveCircuit(settled);
+    for (const id of ['l1', 'l2']) {
+      assert.ok(solved.elements[id].power > 0.5, `${id} 补线后应正常发光`);
+    }
+    assert.equal(solved.warnings.length, 0, `补线后不该再有告警：${solved.warnings.map((w) => w.code)}`);
+    assert.equal(countWireIntersections(fixed.state), 0, '补上的那根线不得与其他导线交叉');
+    assert.equal(buildWireJumps(fixed.state).length, 0, '补上的那根线不该产生跨线跳弧');
+  });
+
+  /**
+   * P1-4 / P2-3：预设清单与上层拦截的收口检查。
+   *
+   * 锁清单里写错一个 id 就永远不会生效（不报错、只是「点了删除真删了」），
+   * 所以逐个核对 id 必须真的存在于该预设的状态里；同时确认面板／键盘／右键菜单
+   * 三条删除路径都过同一道闸，拒绝时有 `role="status"` 的提示。
+   */
+  test('circuit-bench 预设: 两个诊断型预设有清单自洽的锁，删除路径统一过闸', () => {
+    assert.equal(PRESET_IDS.length, 10);
+    const half = getPreset('half');
+    const diag = getPreset('diag');
+    assert.equal(half.modeTag, 'repair');
+    assert.equal(diag.modeTag, 'diagnose');
+    for (const p of [half, diag]) {
+      const st = presetState(p.id);
+      const lock = p.lock!;
+      assert.ok(lock && (lock.components?.length ?? 0) > 0, `${p.id} 必须有锁定清单`);
+      const componentIds = new Set(st.components.map((c) => c.id));
+      const wireIds = new Set(st.wires.map((w) => w.id));
+      for (const id of lock.components ?? []) assert.ok(componentIds.has(id), `${p.id} 锁了不存在的元件 ${id}`);
+      for (const id of lock.wires ?? []) assert.ok(wireIds.has(id), `${p.id} 锁了不存在的导线 ${id}`);
+      // 排故预设必须留出可动的电表（学生要改接的就是它们）；补线预设反过来要全锁，
+      // 只留「接线」这一个自由度——两种模式对锁的期望不同，不能一刀切。
+      if (p.modeTag === 'diagnose') {
+        assert.ok((lock.components ?? []).length < st.components.length, `${p.id} 必须留出可改接的表`);
+      } else {
+        assert.equal((lock.components ?? []).length, st.components.length, `${p.id} 应锁住全部元件，只留接线`);
+      }
+    }
+    assert.deepEqual([...(half.lock!.wires ?? [])].sort(), ['w_1', 'w_2', 'w_3', 'w_4', 'w_5'], '补线练习锁的是现有 5 根线');
+    assert.equal(presetState('half').wires.length, 5, '缺的那根线不在状态里');
+    assert.equal(presetState('diag').wires.length, 7);
+
+    const benchSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitBench.tsx'), 'utf8');
+    assert.ok(benchSrc.includes('lockedIds={activeLock?.components ?? null}'), '画布要收到锁定清单');
+    assert.ok(
+      (benchSrc.match(/isLocked\(activeLock,/g) ?? []).length >= 4,
+      '删除元件 / 删除导线 / 拖动 / 改接四条路径都要过闸',
+    );
+    assert.ok(benchSrc.includes('removeWireIfUnlocked(activeLock, h.present, id)'), '检查器拆除导线也要走同一道闸');
+    assert.ok(benchSrc.includes('role="status"'), '拒绝提示要能被读屏念出来');
+    // 空点双击适配（P2-3）：空白分支里必须真的调 fitContent。
+    const canvasSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf8');
+    assert.match(
+      canvasSrc,
+      /isDoubleTap\(prevBlank\.sample, blankSample\)[\s\S]{0,400}fitContent\(\)/,
+      '空白区双击必须适配整幅图',
+    );
+    assert.ok(canvasSrc.includes('lastBlankTap'), '空白双击要用独立的手势记忆，不能和元件双击共用');
+  });
+
+  /**
+   * 视图制图语言：电路图 90° 直角 + 主次工程方格网，仿真图圆弧 + 圆点阵。
+   *
+   * 拐角与背景必须一起断言——它们是同一套「这个视图是什么」的表达，
+   * 只改一半就会出现「直角导线漂在点阵上」的杂交画面。
+   */
+  test('circuit-bench 视图制图: schematic 纯直角折线 + 工程网格，physical 圆角 + 点阵', () => {
+    assert.equal(wireCornerRadius('schematic'), 0, '电路图拐角半径必须为 0');
+    assert.equal(wireCornerRadius('physical'), 10, '仿真图保留圆弧拐角');
+    assert.equal(wireCornerRadius(undefined), 10, '未指定视图的旧调用保持原路径');
+    assert.equal(PREVIEW_CORNER_RADIUS.schematic, 0, '拖拽预览的电路图拐角必须同样为 0');
+    assert.equal(PREVIEW_CORNER_RADIUS.physical, 6, '拖拽预览的仿真图保留圆角');
+
+    // ohm 预设一定带拐角：先用它把「有拐角」这件事钉死，再扫全量预设。
+    const ohm = instantiatePreset('ohm');
+    const ohmSchematic = buildWireRoutes(ohm, 'schematic');
+    const ohmPhysical = buildWireRoutes(ohm, 'physical');
+    const cornered = ohmSchematic.findIndex((r) => r.points.length > 2);
+    assert.ok(cornered >= 0, 'ohm 预设应至少有一根需要拐弯的导线');
+    assert.ok(ohmPhysical[cornered].path.includes('Q'), '仿真图有拐角的导线必须走圆弧');
+    assert.ok(!/[QA]/.test(ohmSchematic[cornered].path), '电路图路径不得包含 Q/A 圆弧指令');
+
+    let sawCorner = false;
+    let sawStraight = false;
+    for (const id of PRESET_IDS) {
+      const st = instantiatePreset(id);
+      if (!st.wires.length) continue;
+      const schematic = buildWireRoutes(st, 'schematic');
+      const physical = buildWireRoutes(st, 'physical');
+      assert.equal(schematic.length, physical.length, `${id}: 两种视图的导线数量必须一致`);
+      for (let i = 0; i < schematic.length; i++) {
+        const sch = schematic[i];
+        // 拓扑与折点完全一致，只有 path 的拐角处理不同。
+        assert.deepEqual(sch.points, physical[i].points, `${id}: 切换视图不得改变走线`);
+        assert.ok(!/[QA]/.test(sch.path), `${id}: 电路图路径不得含圆弧指令：${sch.path}`);
+        assert.match(sch.path, /^[ML0-9.\-\s]+$/, `${id}: 电路图路径只允许 M/L 指令：${sch.path}`);
+        if (physical[i].path.includes('Q')) {
+          sawCorner = true;
+        } else {
+          // 没有拐角的导线在两种视图里本来就该是同一条 M/L 折线。
+          sawStraight = true;
+          assert.equal(sch.path, physical[i].path, `${id}: 无拐角时两种视图的路径应完全一致`);
+        }
+      }
+    }
+    assert.ok(sawCorner, '预设集里应至少有一根带拐角的导线');
+    assert.ok(sawStraight, '预设集里应至少有一根直线导线（用于确认两种视图的一致分支）');
+
+    // 拖拽预览跟随同一套拐角语言。
+    const from = { x: 160, y: 430 };
+    const to = { x: 484, y: 150 };
+    const schPreview = previewWirePath(from, to, { x: 0, y: 1 }, { x: 1, y: 0 }, PREVIEW_CORNER_RADIUS.schematic);
+    assert.ok(!/[QA]/.test(schPreview), '电路图拖拽预览不得出现圆弧');
+    assert.match(schPreview, /^[ML0-9.\-\s]+$/, '电路图拖拽预览只允许 M/L');
+    assert.ok(
+      previewWirePath(from, to, { x: 0, y: 1 }, { x: 1, y: 0 }, PREVIEW_CORNER_RADIUS.physical).includes('Q'),
+      '仿真图拖拽预览保留圆弧',
+    );
+
+    // 背景纹理：电路图主次双层工程网格，仿真图圆点阵。
+    assert.deepEqual([...canvasBackgroundPatterns('schematic')], ['cb-grid-minor', 'cb-grid-major']);
+    assert.deepEqual([...canvasBackgroundPatterns('physical')], ['cb-grid-dot']);
+
+    const canvasSrc = readFileSync(resolve('src/labs/physics/circuit-bench/CircuitCanvas.tsx'), 'utf8');
+    assert.ok(canvasSrc.includes('const GRID_MINOR_STEP = GRID;'), '小格步长必须严格取自吸附步长 GRID');
+    assert.ok(canvasSrc.includes('const GRID_MAJOR_STEP = GRID * 5;'), '主格必须是吸附步长的整数倍');
+    assert.match(canvasSrc, /<pattern id="cb-grid-minor" width=\{GRID_MINOR_STEP\}/, '应定义小格 pattern');
+    assert.match(canvasSrc, /<pattern id="cb-grid-major" width=\{GRID_MAJOR_STEP\}/, '应定义主格 pattern');
+    assert.match(canvasSrc, /<pattern id="cb-grid-dot"/, '应保留仿真图点阵 pattern');
+    assert.ok(canvasSrc.includes('strokeOpacity={0.35}'), '次网格必须低透明度，避免压过导线');
+    assert.ok(canvasSrc.includes('strokeOpacity={0.65}'), '主网格必须低透明度，避免压过导线');
+    assert.ok(
+      (canvasSrc.match(/stroke="var\(--border\)"/g) ?? []).length >= 2,
+      '两种网格线都必须使用 var(--border)',
+    );
+    assert.ok(canvasSrc.includes('data-cb-background={id}'), '背景层必须按视图模式选择 pattern');
+    assert.match(canvasSrc, /buildWireRoutes\(state, viewMode\)/, '画布必须按视图模式定型导线拐角');
+    assert.match(canvasSrc, /wireLinejoinFor\(viewMode\)/, '画布描边收口必须按视图模式切换');
+    assert.match(canvasSrc, /PREVIEW_CORNER_RADIUS\[viewMode\]/, '拖拽预览必须跟随视图模式');
+  });
+
+
 }
 
 /* ── 入口契约守卫 ── */

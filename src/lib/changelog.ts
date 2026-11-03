@@ -6,7 +6,7 @@
  * 对外展示用，语言贴近使用者而非开发者。
  */
 // 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.47.2';
+export const APP_VERSION = '0.47.3';
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.47.3',
+    date: '2026-11',
+    zh: [
+      '[新增] 电学工作台支持正交导线与工程网格两种视图，并加入引脚吸附、故障环、电流流向与诊断预设',
+      '[优化] 化学式与化合价页会在同一标签页内记住当前模式与所选元素、离子，刷新或返回不再回到默认速查',
+    ],
+    en: [
+      '[New] The circuit workbench now offers orthogonal wiring and an engineering grid, plus pin snap, fault rings, current flow and diagnostic presets',
+      '[Improved] The chemical-formula page keeps your mode, element and ion selection within the same tab, so a refresh or back navigation no longer resets it',
+    ],
+  },
   {
     version: '0.47.2',
     date: '2026-11',

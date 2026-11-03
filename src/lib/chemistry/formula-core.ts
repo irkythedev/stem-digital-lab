@@ -1092,6 +1092,10 @@ export interface ChemQueryState {
   symbol: string | null;
   /** 反推模式深链：预填化学式（保持原始 ASCII，便于输入框键盘编辑）。 */
   formula: string | null;
+  /**
+   * 来源标记（预留）：页面**不消费**该字段，保留仅为兼容可能存在的旧链接与未来埋点。
+   * 不要基于它分支业务逻辑；需要来源信息时另行设计可验证的契约。
+   */
   from: 'element' | null;
 }
 
@@ -1160,6 +1164,6 @@ export function chemistryQuery(state: Partial<ChemQueryState>): URLSearchParams 
   if (state.cation) search.set('cation', formatIonRef(state.cation));
   if (state.anion) search.set('anion', formatIonRef(state.anion));
   if (state.symbol) search.set('symbol', state.symbol);
-  if (state.from) search.set('from', state.from);
+  if (state.from) search.set('from', state.from); // 预留字段，见 ChemQueryState.from 注释
   return search;
 }

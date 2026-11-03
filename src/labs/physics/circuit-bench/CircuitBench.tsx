@@ -15,7 +15,7 @@
  * 推进；运行可暂停。只有热状态真的变了才提交快照，纯电阻电路不会每帧重渲染。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { Lock, X } from 'lucide-react';
 
 import { useApp } from '../../../lib/app-context';
 import { useAiContext } from '../../../lib/ai-context';
@@ -61,8 +61,6 @@ import {
   addComponent,
   addWire,
   moveComponent,
-  removeComponent,
-  removeWire,
   replugWire,
   rotateComponent,
   setSwitchClosed,
@@ -70,6 +68,13 @@ import {
   toggleSwitch,
   updateParams,
 } from './circuit-bench-state';
+import {
+  LOCKED_REASON,
+  isLocked,
+  removeComponentIfUnlocked,
+  removeWireIfUnlocked,
+  replugIfUnlocked,
+} from './circuit-bench-lock';
 import { snapDropPoint } from './circuit-bench-palette';
 import { findFreeSpot } from './circuit-bench-geometry';
 import {
@@ -161,6 +166,11 @@ export default function CircuitBench() {
 
   const [presetId, setPresetId] = useState('sp');
   const preset = getPreset(presetId);
+  /**
+   * 当前预设的锁定清单。补线 / 排故这类诊断型预设用它把「故障现场」钉住，
+   * 学生只能接线、不能把题目拆了；切到自由实验台后为 `null`，一切照旧。
+   */
+  const activeLock = preset.lock ?? null;
   const [history, setHistory] = useState<History<BenchState>>(() =>
     createHistory(instantiatePreset('sp')),
   );
@@ -176,6 +186,38 @@ export default function CircuitBench() {
   const [viewMode, setViewMode] = useState<CircuitViewMode>('schematic');
   const [running, setRunning] = useState(true);
   const [error, setError] = useState('');
+  /**
+   * 「这一下被预设锁住了」的提示。
+   *
+   * 与 `error` 分开：接线错误是一直成立的状态（换个接法才消失），
+   * 锁拒绝只是一次操作被挡回的反馈，2.4 s 后自己收掉，不该常驻。
+   */
+  const [lockHint, setLockHint] = useState('');
+  const lockHintTimer = useRef<number | null>(null);
+  /** 锁定拒绝的统一出口：不写状态、不碰历史，只亮一句会自己消失的提示。 */
+  const noteLocked = (target: 'component' | 'wire') => {
+    setLockHint(
+      zh
+        ? target === 'component'
+          ? '该元件在本预设中被锁定：不能删除、拖动或改接'
+          : '该导线在本预设中被锁定：不能删除或改接'
+        : target === 'component'
+          ? 'This part is locked in this preset: no deleting, moving or re-plugging'
+          : 'This wire is locked in this preset: no deleting or re-plugging',
+    );
+    if (lockHintTimer.current !== null) window.clearTimeout(lockHintTimer.current);
+    lockHintTimer.current = window.setTimeout(() => {
+      lockHintTimer.current = null;
+      setLockHint('');
+    }, 2400);
+  };
+  // 切预设 / 卸载时把待落地的定时器清掉，避免对已卸载的组件 setState。
+  useEffect(
+    () => () => {
+      if (lockHintTimer.current !== null) window.clearTimeout(lockHintTimer.current);
+    },
+    [],
+  );
   const [dataEpoch, setDataEpoch] = useState(0);
   const [fitSignal, setFitSignal] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
@@ -496,6 +538,7 @@ export default function CircuitBench() {
   /* ── 加载预设 / 清空：历史与记录都重新开始 ── */
   const pickPreset = (next: CircuitPreset) => {
     setPresetId(next.id);
+    setLockHint('');
     setHistory(createHistory(instantiatePreset(next.id)));
     setSelectedId(null);
     setSelectedWireId(null);
@@ -510,6 +553,7 @@ export default function CircuitBench() {
 
   const clearBench = () => {
     setPresetId('free');
+    setLockHint('');
     setHistory(createHistory(instantiatePreset('free')));
     setSelectedId(null);
     setSelectedWireId(null);
@@ -550,6 +594,12 @@ export default function CircuitBench() {
   };
 
   const onMove = (id: string, x: number, y: number) => {
+    // 锁定元件的拖动整段作废：`onMoveStart` 已经压了一个撤销点，
+    // 但 `onMove` 一次都不写 → `onMoveEnd` 的 settle 会把这个空点丢掉（不进撤销栈）。
+    if (isLocked(activeLock, { kind: 'component', id })) {
+      noteLocked('component');
+      return;
+    }
     setHistory((h) => replace(h, moveComponent(h.present, id, x, y)));
   };
 
@@ -618,8 +668,17 @@ export default function CircuitBench() {
    * 所以非 `moved` 的结果要顺手清掉选中，免得检查器继续显示一根幽灵导线。
    */
   const replug = (wireId: string, end: 'from' | 'to', target: string) => {
-    const out = replugWire(benchRef.current, wireId, end, target);
+    if (isLocked(activeLock, { kind: 'wire', id: wireId })) {
+      noteLocked('wire');
+      return;
+    }
+    const out = replugIfUnlocked(activeLock, benchRef.current, wireId, end, target);
     if (!out.changed) {
+      if (out.reason === LOCKED_REASON) {
+        // 双层防线：上面已经拦过一次，这里兜的是「锁清单在拖动过程中变了」的边角情况。
+        noteLocked('wire');
+        return;
+      }
       const zhMsg: Record<string, string> = {
         导线不存在: '这条导线已经不存在了',
         端子不存在: '端子不存在',
@@ -719,7 +778,14 @@ export default function CircuitBench() {
    * 避免三条路径里有一条忘了清选中态（或忘了关面板）。
    */
   const deleteElement = (id: string) => {
-    setHistory((h) => commit(h, removeComponent(h.present, id)));
+    if (isLocked(activeLock, { kind: 'component', id })) {
+      noteLocked('component');
+      setMenu(null);
+      return;
+    }
+    // 仍然走 `removeComponentIfUnlocked`：拦截逻辑只有一份，上面那次判定只是为了
+    // 先把提示说出来（`setHistory` 的 updater 里不能有副作用）。
+    setHistory((h) => commit(h, removeComponentIfUnlocked(activeLock, h.present, id)));
     setSelectedId((cur) => (cur === id ? null : cur));
     setInspectorOpen(false);
     setMenu(null);
@@ -727,7 +793,12 @@ export default function CircuitBench() {
 
   /** 删除一根导线；与 `deleteElement` 同一口径。 */
   const deleteWireById = (id: string) => {
-    setHistory((h) => commit(h, removeWire(h.present, id)));
+    if (isLocked(activeLock, { kind: 'wire', id })) {
+      noteLocked('wire');
+      setMenu(null);
+      return;
+    }
+    setHistory((h) => commit(h, removeWireIfUnlocked(activeLock, h.present, id)));
     setSelectedWireId((cur) => (cur === id ? null : cur));
     setMenu(null);
   };
@@ -1274,6 +1345,8 @@ export default function CircuitBench() {
             showValues={showValues}
             viewMode={viewMode}
             sceneKey={`${presetId}:${dataEpoch}`}
+            // 锁定只画一枚微锁，拦截在上面的 delete / move / replug 三处。
+            lockedIds={activeLock?.components ?? null}
             onSelect={(id) => {
               selectElement(id);
               // 选中别的元件时不再自动推开参数面板；但面板已经开着的话，
@@ -1368,7 +1441,12 @@ export default function CircuitBench() {
                 onRepair={repairOne}
                 onSelect={selectElement}
                 onRemoveWire={(id) => {
-                  setHistory((h) => commit(h, { ...h.present, wires: h.present.wires.filter((w) => w.id !== id) }));
+                  // 走同一道锁：检查器里的「拆除」不能绕过画布上的右键菜单。
+                  if (isLocked(activeLock, { kind: 'wire', id })) {
+                    noteLocked('wire');
+                    return;
+                  }
+                  setHistory((h) => commit(h, removeWireIfUnlocked(activeLock, h.present, id)));
                   selectWire(null);
                 }}
                 onClose={() => setInspectorOpen(false)}
@@ -1405,6 +1483,20 @@ export default function CircuitBench() {
             <div className="pointer-events-none absolute inset-x-2 top-2 z-sticky-layer mx-auto flex w-fit max-w-[80%] items-start gap-1.5 rounded-lg border border-[var(--danger)]/40 bg-[var(--card-bg)]/95 px-2 py-1.5 text-[10px] text-[var(--danger)] shadow-sm backdrop-blur-sm">
               <X className="mt-px h-3 w-3 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {/* 锁定拒绝提示：贴在报错条下面（两者可能同屏），中性色不用红——
+              被挡住不是「接线错了」，只是这道题不允许改这里。`role="status"`
+              保证读屏软件会把这句话念出来，而不是静默失败。 */}
+          {lockHint && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none absolute inset-x-2 top-11 z-sticky-layer mx-auto flex w-fit max-w-[80%] items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card-bg)]/95 px-2.5 py-1 text-[10px] text-[var(--muted)] shadow-sm backdrop-blur-sm"
+            >
+              <Lock className="h-3 w-3 shrink-0" />
+              <span>{lockHint}</span>
             </div>
           )}
 

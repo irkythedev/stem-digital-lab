@@ -935,14 +935,25 @@ function dedupePoints(pts: Pt[]): Pt[] {
   return out;
 }
 
-/** 圆角正交折线：把每个直角用二次贝塞尔切掉。 */
+/**
+ * 正交折线 → SVG path。
+ *
+ * `radius > 0` 时把每个直角用二次贝塞尔切掉（仿真图，模拟真实导线的弯曲）；
+ * `radius = 0` 时输出纯 `M`/`L` 的 90° 折线（电路图，教材制图规格：
+ * 横平竖直、直角拐弯），调用方的 `strokeLinejoin` 负责把尖角收干净。
+ */
 export function roundedWirePath(pts: Pt[], radius = 10): string {
   if (pts.length === 0) return '';
-  if (pts.length === 1) return `M${round(pts[0].x)} ${round(pts[0].y)}`;
-  if (pts.length === 2) {
-    return `M${round(pts[0].x)} ${round(pts[0].y)} L${round(pts[1].x)} ${round(pts[1].y)}`;
-  }
   let d = `M${round(pts[0].x)} ${round(pts[0].y)}`;
+  if (radius <= 0) {
+    // 直角模式：不做任何圆角切角，只连线段；不产生 Q/A 指令。
+    for (let i = 1; i < pts.length; i++) d += ` L${round(pts[i].x)} ${round(pts[i].y)}`;
+    return d;
+  }
+  if (pts.length === 1) return d;
+  if (pts.length === 2) {
+    return `${d} L${round(pts[1].x)} ${round(pts[1].y)}`;
+  }
   for (let i = 1; i < pts.length - 1; i++) {
     const prev = pts[i - 1];
     const p = pts[i];

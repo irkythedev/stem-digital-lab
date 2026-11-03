@@ -38,6 +38,25 @@ export interface CircuitSymbolProps {
    */
   glow?: boolean;
   pendingTerminal?: 'a' | 'b' | null;
+  /**
+   * 拉线预览的磁吸候选端子（本元件上的 `a` / `b`）。
+   *
+   * 与 `pendingTerminal` 的区别是「还没发生」：pending 是已经点下的第一根柱子，
+   * candidate 是手指拖到附近、松手就会接上的那根。候选必须比 pending 更显眼
+   * （更外一圈虚线环 + 柱子描边加粗），否则吸附的瞬间学生看不出「接的是哪一根」。
+   */
+  candidateTerminal?: 'a' | 'b' | null;
+  /** 告警落点：短路 / 超量程 / 烧毁等故障元件在画布上的红框。 */
+  fault?: boolean;
+  /**
+   * 红框的**具体原因**（如「电源电流 19.9 A，接近短路」）。
+   *
+   * 红框只说「这里有告警」，说不清是哪一条；指针停上去给一句原文，
+   * 学生才知道该改哪里。缺省不画 `<title>`，不悬停就没有多余节点。
+   */
+  faultText?: string;
+  /** 预设锁定的元件：右上角一枚极简微锁，提示「这个不能删也不能挪」。 */
+  locked?: boolean;
   terminalHitRadius?: number;
   /** 电路图 / 仿真图；只换本体画法，端子坐标与导线端点不变。 */
   viewMode?: CircuitViewMode;
@@ -69,6 +88,10 @@ export function CircuitSymbol({
   hovered = false,
   glow = false,
   pendingTerminal = null,
+  candidateTerminal = null,
+  fault = false,
+  faultText,
+  locked = false,
   terminalHitRadius = 9,
   viewMode = 'schematic',
   terminalsInteractive = true,
@@ -94,7 +117,19 @@ export function CircuitSymbol({
   const terminalStyle = strategy.terminal;
 
   return (
-    <g data-component-id={el.id} data-kind={el.kind} data-view-mode={viewMode} data-probe-glow={glow ? '' : undefined}>
+    <g
+      data-component-id={el.id}
+      data-kind={el.kind}
+      data-view-mode={viewMode}
+      data-probe-glow={glow ? '' : undefined}
+      // 故障与锁定都要能被无障碍树 / 测试读到：颜色圈是给眼睛的，
+      // data-* 是给读屏与回归用例的，两者同源同义。
+      data-fault={fault ? 'true' : undefined}
+      data-locked={locked ? 'true' : undefined}
+    >
+      {/* 原生 tooltip：红框只标位置，原因写成 `<title>` 由浏览器自己弹，
+          省掉一个自绘浮层（自绘浮层要处理边界翻转，还会挡住相邻元件）。 */}
+      {fault && faultText ? <title>{faultText}</title> : null}
       <g
         transform={`translate(${el.x} ${el.y}) rotate(${el.rotation})`}
         style={{ cursor: 'grab' }}
@@ -148,6 +183,24 @@ export function CircuitSymbol({
             pointerEvents="none"
           />
         )}
+        {fault && (
+          /* 故障红框：与选中环、微光环都错开距离（外扩 9），三者可以同时出现。
+             虚线而不是实线——它是一句「这里有告警」的批注，不是元件本体的轮廓；
+             呼吸动画只由 CSS 驱动，减动效下自动退回静态虚线（见 index.css）。 */
+          <rect
+            className="cb-fault-halo"
+            x={bodyBox.x0 - 9}
+            y={bodyBox.y0 - 9}
+            width={bodyBox.x1 - bodyBox.x0 + 18}
+            height={bodyBox.y1 - bodyBox.y0 + 18}
+            rx={10}
+            fill="none"
+            stroke="var(--danger)"
+            strokeWidth={1.6}
+            strokeDasharray="4 3"
+            pointerEvents="none"
+          />
+        )}
         <Body el={el} half={half} stroke={stroke} reading={reading} />
         {/* 本体命中底：符号本体里到处是镂空（开关的闸刀口、电阻的锯齿缝、
             灯泡玻璃泡之外的空档），手指点进缝里会直接穿到画布上变成「取消选中」，
@@ -190,11 +243,34 @@ export function CircuitSymbol({
             <line x1={9} y1={-9} x2={-9} y2={9} />
           </g>
         )}
+        {/* 预设锁定的微锁：只有「补线 / 排故」这类诊断型预设才用得上。
+            画在元件本体自己的坐标系里（跟着元件转），但锁身反向旋转保持正立——
+            背景：转 90° 的电池旁边挂一把躺倒的锁，读起来像另一只元件。
+            7×9 世界单位、纯 --muted，不抢本体也不挡标签。 */}
+        {locked && (
+          <g
+            data-lock-glyph=""
+            transform={`translate(${bodyBox.x1 + 1} ${bodyBox.y0 - 3}) rotate(${-el.rotation})`}
+            pointerEvents="none"
+            opacity={0.78}
+          >
+            <rect x={-3.5} y={-0.6} width={7} height={5.6} rx={1.1} fill="var(--muted)" />
+            <path
+              d="M -2.1 -0.6 v -1.7 a 2.1 2.1 0 0 1 4.2 0 v 1.7"
+              fill="none"
+              stroke="var(--muted)"
+              strokeWidth={1.1}
+              strokeLinecap="round"
+            />
+          </g>
+        )}
       </g>
 
       {(['a', 'b'] as const).map((t) => {
         const p = terminalPoint(el, t);
         const armed = pendingTerminal === t;
+        // 磁吸候选：手指拖到附近、松手就会接上的那根柱子。
+        const candidate = candidateTerminal === t;
         const polarity = terminalPolarity(el.kind, t);
         const postFill =
           polarity === '+'
@@ -218,7 +294,12 @@ export function CircuitSymbol({
         const normal = strategy.mode === 'physical' && load >= 2 ? terminalNormal(el, t) : null;
         const plugAngle = normal ? (Math.atan2(normal.y, normal.x) * 180) / Math.PI : 0;
         return (
-          <g key={t} data-terminal={t} data-polarity={polarity ?? 'none'}>
+          <g
+            key={t}
+            data-terminal={t}
+            data-polarity={polarity ?? 'none'}
+            data-candidate={candidate ? t : undefined}
+          >
             <circle
               cx={p.x}
               cy={p.y}
@@ -290,7 +371,7 @@ export function CircuitSymbol({
               r={terminalStyle.radius}
               fill={postFill}
               stroke={polarity ? 'var(--card-bg)' : armed ? 'var(--accent)' : 'var(--fg)'}
-              strokeWidth={polarity ? 1.3 : 1.2}
+              strokeWidth={candidate ? 1.8 : polarity ? 1.3 : 1.2}
               pointerEvents="none"
             />
             {terminalStyle.ring && (
@@ -313,6 +394,22 @@ export function CircuitSymbol({
                 stroke="var(--accent)"
                 strokeWidth={1.2}
                 opacity={0.7}
+                pointerEvents="none"
+              />
+            )}
+            {candidate && (
+              /* 候选环比「已按下」的 armed 环再外一圈（+5 对 +3.6），并且是虚线：
+                 一眼能分出「这根已经点下」与「这根松手就接上」。呼吸动画由 CSS
+                 驱动，减动效下自动退回静态虚线。 */
+              <circle
+                className="cb-pin-candidate"
+                cx={p.x}
+                cy={p.y}
+                r={terminalStyle.radius + 5}
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth={1.6}
+                strokeDasharray="3 2"
                 pointerEvents="none"
               />
             )}

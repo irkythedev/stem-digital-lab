@@ -31,3 +31,20 @@ export function viewModeLabel(mode: CircuitViewMode, zh: boolean): string {
   if (mode === 'physical') return zh ? '仿真图' : 'Simulation';
   return zh ? '电路图' : 'Circuit';
 }
+
+/**
+ * 画布背景 pattern 的 id 清单（按绘制顺序）。
+ *
+ * - `schematic`：主次双层工程方格网，基础小格与坐标吸附步长 `GRID` 对齐；
+ * - `physical`：实验台孔板质感的圆点阵。
+ *
+ * 背景纹理和导线拐角是同一件事的两面：电路图是工程制图，仿真图是实物实验。
+ */
+export const CANVAS_BACKGROUND_PATTERNS: Record<CircuitViewMode, readonly string[]> = {
+  schematic: ['cb-grid-minor', 'cb-grid-major'],
+  physical: ['cb-grid-dot'],
+};
+
+export function canvasBackgroundPatterns(mode: CircuitViewMode): readonly string[] {
+  return CANVAS_BACKGROUND_PATTERNS[mode];
+}

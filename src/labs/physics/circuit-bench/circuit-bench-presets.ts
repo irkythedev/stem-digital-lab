@@ -20,6 +20,7 @@
  * 学生仍可在自由实验台里任意改线；预设只是起点，不是锁死的动画。
  */
 import { createComponent, settleSimulation, type BenchState, type CircuitComponent } from './circuit-bench-core';
+import type { PresetLock } from './circuit-bench-lock';
 import { createEmptyState } from './circuit-bench-state';
 import type { ParamBag } from './circuit-bench-core';
 
@@ -36,6 +37,21 @@ export interface CircuitPreset {
   probes: { elementId: string; quantity: 'current' | 'voltage' | 'power' | 'resistance'; unit: string }[];
   /** 空白实验台没有预设电路 */
   blank?: boolean;
+  /**
+   * 诊断型预设的行为标签。
+   *
+   * `repair` = 故意缺一根线（补线练习）；`diagnose` = 故意接了错线（排故练习）。
+   * 两者都**不满足**「所有表都读正数、所有导线都干净」这类预设级断言——
+   * 那不是排版事故，而是这道题本身，所以测试按这个标签把它们放进另一组验收。
+   */
+  modeTag?: 'repair' | 'diagnose';
+  /**
+   * 锁定清单：诊断型预设里「不许删、不许拖、不许改接」的元件与导线。
+   *
+   * 只锁**破坏性**操作；在锁定元件的端子上继续接线永远允许（补线的意义就在这）。
+   * 判定与拦截在 `circuit-bench-lock.ts`，这里只存数据。
+   */
+  lock?: PresetLock;
 }
 
 type C = CircuitComponent;
@@ -255,6 +271,72 @@ const rwireState = stateOf(
 );
 
 
+/* ── 8. 补线练习：并联双支路缺一根线 ──
+ *
+ * 骨架仍是同一套教科书矩形（底边 → 右竖边 → 上横边 → 左竖边），
+ * 只是把「并联」做成**右竖边上的抽头**：干路先到 L₁ 的右柱，
+ * 再从同一根柱子竖直引到 L₂ 的右柱（x=562 那一小截就是并联的公共节点）。
+ * 这样两只灯泡的左柱都在同一列，两条回线在 y=150 与 y=172 两个高度汇回
+ * 开关 b 柱，全程无交叉、无共线重叠。
+ *
+ * 故意缺的是**抽头**（`l1:a → l2:a`）：L₂ 的右柱悬空，只剩一端接着，
+ * 学生要把它接回干路的同一个节点。缺抽头而不是缺回线，是因为悬空处就在
+ * 画面中间的空白里，一眼能看见「这根没接」。
+ */
+const halfState = stateOf(
+  [
+    // 3.8 V 与两只 3.8 V/1.14 W 的灯泡配套：并联后每只都落在额定功率之内，
+    // 预设一打开不会先亮一个「灯泡过载」的红框，补线练习的视觉重点是那根缺的线。
+    c('bat', 'battery', 160, 400, { emf: 3.8, r: 0.4 }, 90),
+    c('sw', 'switch', 160, 220, { closed: true }, 90),
+    c('a1', 'ammeter', 700, 150, { range: 3 }, 0),
+    c('l1', 'bulb', 520, 150, { ratedVoltage: 3.8, ratedPower: 1.14 }),
+    c('l2', 'bulb', 520, 300, { ratedVoltage: 3.8, ratedPower: 1.14 }),
+  ],
+  [
+    // 干路：电源正极 → 底边 → 右竖边 → 上横边 → 电流表红柱（a 在右，迎着来流）。
+    w('bat:a', 'a1:a', [{ x: 830, y: 448 }, { x: 830, y: 150 }]),
+    w('a1:b', 'l1:a'),
+    // 回线：两只灯泡的黑柱各走一条高度，在开关 b 柱的短桩处汇合。
+    w('l1:b', 'sw:b', [{ x: 160, y: 150 }]),
+    w('l2:b', 'sw:b', [{ x: 478, y: 172 }]),
+    w('sw:a', 'bat:b'),
+    // ↑ 故意**不**写 `l1:a → l2:a` 这根抽头：那是学生要补的那一根。
+  ],
+);
+
+/* ── 9. 排故练习：电表接法错了两处 ──
+ *
+ * 主回路只有电源、开关、灯泡三件；两只电表**都接错了**：
+ * - 电流表被并在灯泡两端（内阻 0.001 Ω，等于把灯泡短接）→ 干路电流飙到约 20 A，
+ *   触发短路 / 超量程告警，画布上该亮红框的正是电源与这只表；
+ * - 电压表被并在电流表两端（量程 3 V，读数约 0.02 V）→ 学生看到的「电压几乎为零」
+ *   就是第二处错误的线索：它量的是电流表，不是灯泡。
+ *
+ * 两只表都用「]」形短引线接在左侧干路上，两根引线的 x 与各自端子的短桩同列，
+ * 所以画面里是两条竖直的并联引线，不会出现台阶或斜线。
+ */
+const diagState = stateOf(
+  [
+    c('bat', 'battery', 160, 400, { emf: 6, r: 0.3 }, 90),
+    c('sw', 'switch', 160, 220, { closed: true }, 90),
+    c('l1', 'bulb', 460, 150, { ratedVoltage: 3.8, ratedPower: 1.14 }),
+    c('a1', 'ammeter', 460, 300, { range: 0.6, r: 0.001 }, 0),
+    c('v1', 'voltmeter', 460, 380, { range: 3, r: 1e6 }, 0),
+  ],
+  [
+    w('bat:a', 'l1:a', [{ x: 830, y: 448 }, { x: 830, y: 150 }]),
+    w('l1:b', 'sw:b', [{ x: 160, y: 150 }]),
+    w('sw:a', 'bat:b'),
+    // 错误一：电流表并联在灯泡两端（应串联进干路）。
+    w('l1:a', 'a1:a'),
+    w('l1:b', 'a1:b'),
+    // 错误二：电压表并联在电流表两端（应接在灯泡两端）。
+    w('a1:a', 'v1:a'),
+    w('a1:b', 'v1:b'),
+  ],
+);
+
 export const CIRCUIT_PRESETS: CircuitPreset[] = [
   {
     id: 'sp',
@@ -386,6 +468,60 @@ export const CIRCUIT_PRESETS: CircuitPreset[] = [
     ],
   },
   {
+    id: 'half',
+    modeTag: 'repair',
+    title: { zh: '补线：并联双支路', en: 'Missing Wire: Parallel Branch' },
+    subtitle: { zh: '两只灯泡并联，其中一条只接了一端', en: 'Two bulbs in parallel, one end still loose' },
+    grade: { zh: '苏科版 九上 · 电路初探', en: 'SJ · G9 circuits' },
+    objective: {
+      zh: '找出悬空的接线柱，把它接回干路的同一个节点，让两只灯泡同时发光。',
+      en: 'Find the loose terminal and wire it back to the same node so both bulbs light.',
+    },
+    principle: {
+      zh: '并联各支路两端电压相同；电流必须能沿一条完整的通路回到电源负极。',
+      en: 'Parallel branches share the same voltage, and current needs a complete path back to the source.',
+    },
+    steps: [
+      { zh: '先看两只灯泡的亮灭，判断哪一条支路没有构成回路。', en: 'Watch which bulb stays dark to find the broken branch.' },
+      { zh: '从悬空的接线柱拉一根线，接到干路上已经接好的那个柱子。', en: 'Drag a wire from the loose terminal to the matching node on the main line.' },
+      { zh: '闭合开关，比较干路电流与两支路电流。', en: 'Close the switch and compare main-line and branch currents.' },
+    ],
+    probes: [
+      { elementId: 'a1', quantity: 'current', unit: 'A' },
+      { elementId: 'l1', quantity: 'power', unit: 'W' },
+      { elementId: 'l2', quantity: 'power', unit: 'W' },
+    ],
+    // 补线练习只留「接线」这一个自由度：电源、开关、两只灯泡与现有导线全部锁定。
+    lock: { components: ['bat', 'sw', 'a1', 'l1', 'l2'], wires: ['w_1', 'w_2', 'w_3', 'w_4', 'w_5'] },
+  },
+  {
+    id: 'diag',
+    modeTag: 'diagnose',
+    title: { zh: '排故：电表接法', en: 'Troubleshoot: Meter Wiring' },
+    subtitle: { zh: '灯泡不亮，电流表读数却大得离谱', en: 'The bulb is dark but the ammeter is pegged' },
+    grade: { zh: '苏科版 九上 · 欧姆定律', en: 'SJ · G9 Ohm’s law' },
+    objective: {
+      zh: '找出两处电表接法错误：把电流表改成串联，把电压表接回灯泡两端。',
+      en: 'Find both meter-wiring errors: ammeter in series, voltmeter across the bulb.',
+    },
+    principle: {
+      zh: '电流表内阻极小，必须串联；电压表内阻极大，必须并联在被测元件两端。',
+      en: 'An ammeter has tiny resistance and goes in series; a voltmeter has huge resistance and goes in parallel with the load.',
+    },
+    steps: [
+      { zh: '先读电流表与灯泡亮度：电流表并在灯泡两端，等于把灯泡短接。', en: 'Compare the ammeter reading with bulb brightness: wired across the bulb it shorts it out.' },
+      { zh: '把电流表从灯泡两端拆下来，串进干路。', en: 'Take the ammeter off the bulb and put it in series with the main line.' },
+      { zh: '把电压表改接到灯泡两端，再读一次电压。', en: 'Move the voltmeter across the bulb and read the voltage again.' },
+    ],
+    probes: [
+      { elementId: 'a1', quantity: 'current', unit: 'A' },
+      { elementId: 'v1', quantity: 'voltage', unit: 'V' },
+      { elementId: 'l1', quantity: 'power', unit: 'W' },
+    ],
+    // 只锁「故障现场」本身：电源与灯泡不动，两只电表随学生改接。
+    lock: { components: ['bat', 'l1'] },
+  },
+  {
     id: 'free',
     title: { zh: '自由实验台', en: 'Free Bench' },
     subtitle: { zh: '空白画布：自己放元件、连导线、读数', en: 'Blank canvas: place parts, wire them, take readings' },
@@ -422,6 +558,10 @@ export function presetState(id: string): BenchState {
       return cloneBench(jouleState);
     case 'rwire':
       return cloneBench(rwireState);
+    case 'half':
+      return cloneBench(halfState);
+    case 'diag':
+      return cloneBench(diagState);
     default:
       return createEmptyState();
   }

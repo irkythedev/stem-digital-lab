@@ -4,9 +4,9 @@
  *
  * 电学实验台 · 渲染模型
  *
- * 把网表整理成「画布真正要画的东西」：带端口短桩的导线、圆角路径、汇合点。
- * 这一层不修改 BenchState，也不参与 MNA；后续 physical 视图可以复用同一份
- * 端子引用与导线拓扑，只替换符号和线材。
+ * 把网表整理成「画布真正要画的东西」：带端口短桩的导线、按视图模式定型的
+ * 拐角路径、汇合点。这一层不修改 BenchState，也不参与 MNA；schematic 与 physical
+ * 复用同一份端子引用与导线拓扑，只替换符号、线材与拐角半径。
  */
 import {
   parseTerminalRef,
@@ -53,6 +53,25 @@ export interface WireJunction {
 }
 
 /**
+ * 导线拐角半径（世界单位）——两种视图的制图语言在这里分岔：
+ *
+ * - `physical`（仿真图）：保留 10 单位圆角，读成真实导线的弯曲；
+ * - `schematic`（电路图）：半径为 0，输出「横平竖直、90° 直角」的折线，
+ *   与初中物理教材 / 中考作图题的规范一致。
+ *
+ * 未传视图模式时取 10，保持历史调用方（标签、流向等只关心 `points`）原有的
+ * 路径字符串不变。
+ */
+export const WIRE_CORNER_RADIUS: Record<CircuitViewMode, number> = {
+  schematic: 0,
+  physical: 10,
+};
+
+export function wireCornerRadius(viewMode?: CircuitViewMode): number {
+  return viewMode === 'schematic' ? 0 : WIRE_CORNER_RADIUS.physical;
+}
+
+/**
  * 生成所有可绘制导线；无效端点直接跳过，错误由状态层负责提示。
  *
  * 逐根按导线顺序布线的同时累积「已布线段」：后布的导线必须知道自己前面
@@ -61,7 +80,8 @@ export interface WireJunction {
  *
  * 元件包围盒整个状态只算一次：打分要对每个候选反复比对障碍。
  */
-export function buildWireRoutes(state: BenchState): WireRoute[] {
+export function buildWireRoutes(state: BenchState, viewMode?: CircuitViewMode): WireRoute[] {
+  const cornerRadius = wireCornerRadius(viewMode);
   const byId = new Map(state.components.map((c) => [c.id, c]));
   // 导线不能从元件身上穿过去；用所有本体的包围盒做绕行障碍。
   const boundsById = new Map<string, RouteObstacle>();
@@ -109,7 +129,7 @@ export function buildWireRoutes(state: BenchState): WireRoute[] {
       from,
       to,
       points,
-      path: roundedWirePath(points, 10),
+      path: roundedWirePath(points, cornerRadius),
     });
   }
   return routes;

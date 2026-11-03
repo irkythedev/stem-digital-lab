@@ -20,14 +20,17 @@ import {
 
 import { useApp } from '../../../lib/app-context';
 import { parseTerminalRef, type BenchState, type SolveResult } from './circuit-bench-core';
-import { FLOW_MIN_AMPS, computeWireFlows, flowDuration } from './circuit-bench-flow';
+import { collectFaultIds } from './circuit-bench-faults';
+import { FLOW_MIN_AMPS, computeWireFlows, flowArrow, flowDuration, flowStrokeWidth } from './circuit-bench-flow';
+import { PREVIEW_CORNER_RADIUS, previewWirePath } from './circuit-bench-preview';
 import { buildWireJunctions, buildWireJumps, buildWireRoutes } from './circuit-bench-render';
-import type { CircuitViewMode } from './circuit-bench-view';
+import { canvasBackgroundPatterns, type CircuitViewMode } from './circuit-bench-view';
 import CircuitLabels from './CircuitLabels';
 import { CircuitSymbol } from './CircuitSymbols';
 import { sleevePoints, strategyFor, wireColorAt, wireLabelAnchor } from './render';
 import { fitCanvasBox } from './workbench-layout';
 import {
+  GRID,
   MAX_SCALE,
   MIN_SCALE,
   WORLD_H,
@@ -39,6 +42,7 @@ import {
   localToWorldPoint,
   nearestTerminalRef,
   screenToWorld,
+  terminalNormal,
   snap,
   terminalPoint,
   wiperLocalX,
@@ -63,6 +67,21 @@ import {
 } from './circuit-bench-touch';
 
 export type CanvasTool = 'select' | 'wire';
+
+/**
+ * 拉线 / 拔线皮筋的几何状态。
+ *
+ * `normalA` / `normalB` 是两端端子的外法线：预览折线靠它们决定「从哪出、往哪进」。
+ * 悬空端用零向量表示「这一头还没确定方向」，几何层会退化成直角折线。
+ */
+export interface WirePreviewState {
+  ref: string;
+  from: Pt;
+  to: Pt;
+  normalA: Pt;
+  normalB: Pt;
+  target: string | null;
+}
 
 /**
  * 画布句柄：给「左侧元件坞 → 画布」的指针拖拽做屏幕 ↔ 世界坐标换算。
@@ -140,12 +159,41 @@ export interface CircuitCanvasProps {
   apiRef?: { current: CircuitCanvasHandle | null };
   /** 画布内熔毁徽章被点击：由上层的「更换新元件」处理（就近修复，不必开面板）。 */
   onRepairElement?: (id: string) => void;
+  /**
+   * 预设锁定清单（元件 id）：画布给这些元件画一枚微锁。
+   *
+   * 只负责**显示**——拒绝删除 / 改接的那道闸在上层（`circuit-bench-lock.ts`），
+   * 画布不参与状态决策，避免出现「画布以为锁了、状态层却照改」的两套真相。
+   */
+  lockedIds?: readonly string[] | null;
 }
 
 const DEFAULT_VIEW = fitView({ w: WORLD_W, h: WORLD_H });
 
+/** 零法线：拉线预览里「这一端还没有确定方向」的占位，让几何层退化成直角折线。 */
+const ZERO_PT: Pt = { x: 0, y: 0 };
+
 /** 线号牌半径：直径 14 世界单位，约等于一根 2.5 单位粗的导线上的一个 1.5 字号牌。 */
 const WIRE_LABEL_RADIUS = 7;
+
+/**
+ * 工程方格网的步长（世界单位）。
+ *
+ * 小格 = `GRID`（与 `snap()` 的吸附步长一致，保证元件中心、水平/垂直导线都
+ * 落在格线上）；每 5 小格一条主格线。两者都取吸附步长的整数倍，
+ * 所以网格不会和“已经吸到格点”的元件看起来错位。
+ */
+const GRID_MINOR_STEP = GRID;
+const GRID_MAJOR_STEP = GRID * 5;
+
+/**
+ * 导线拐角连接方式：电路图用 miter（方正的 90° 尖角），仿真图用 round
+ * （与圆弧拐角一致，读成真实导线的柔弯）。路径本身已由 `buildWireRoutes`
+ * 按视图定型，这里只负责描边端点的收口。
+ */
+function wireLinejoinFor(mode: CircuitViewMode): 'miter' | 'round' {
+  return mode === 'schematic' ? 'miter' : 'round';
+}
 
 /**
  * 画布内图例胶囊的纵向落点与尺寸（**用户坐标**，即 viewBox 坐标；横向由内容宽度居中算）。
@@ -248,6 +296,7 @@ export default function CircuitCanvas({
   highlightId = null,
   apiRef,
   onRepairElement,
+  lockedIds = null,
 }: CircuitCanvasProps) {
   const { lang } = useApp();
   const zh = lang === 'zh';
@@ -313,8 +362,26 @@ export default function CircuitCanvas({
     /** 磁吸命中的目标接线柱（`id:a`）；松手时用它成线。 */
     target: string | null;
   } | null>(null);
-  /** 皮筋预览：`ref` 是被按住的那根柱子（按下去就亮，不必等拉出阈值）。 */
-  const [wirePreview, setWirePreview] = useState<{ ref: string; from: Pt; to: Pt; target: string | null } | null>(null);
+  /**
+   * 皮筋预览：`ref` 是被按住的那根柱子（按下去就亮，不必等拉出阈值）。
+   *
+   * `normalA` / `normalB` 是两端端子的外法线，预览折线靠它们决定「从哪出、往哪进」；
+   * 悬空端（没有候选端子）用零向量，表示「这一头还没有确定的方向」。
+   */
+  const [wirePreview, setWirePreview] = useState<WirePreviewState | null>(null);
+  /**
+   * 指针压在哪根导线上。
+   *
+   * 导线只有 1.4–2 单位粗，又没有本体可以悬停，学生很难确认「我现在抓到的是不是
+   * 这条线」；悬停时把这一根的描边加粗半个像素、外圈补一层极淡的 accent 光晕，
+   * 按下之前就能确认目标。拉线 / 拔线期间关闭：那时候指针语义是「在选端子」。
+   */
+  const [hoveredWireId, setHoveredWireId] = useState<string | null>(null);
+  /**
+   * 空白区双击（适配画布）的上一击。与元件的 `lastTap` 分开存：
+   * 两者命中对象不同，共用一个 ref 会在「点空白 → 点元件」时被覆盖掉。
+   */
+  const lastBlankTap = useRef<{ sample: PointerSample; moved: boolean } | null>(null);
   /**
    * 导线端点手柄的拔插手势：另一端（`fixed`）钉在端子上不动，
    * 抓住的这一端跟着手指走，松手落到哪根柱子就改接成哪根。
@@ -324,13 +391,16 @@ export default function CircuitCanvas({
     end: 'from' | 'to';
     fixedRef: string;
     fixed: Pt;
+    /** 固定端端子的外法线：皮筋从这一头出来的方向，松手后与正式走线一致。 */
+    normalA: Pt;
     pointerId: number;
     start: PointerSample;
     active: boolean;
     target: string | null;
   } | null>(null);
 
-  const routes = useMemo(() => buildWireRoutes(state), [state]);
+  // 导线拐角随视图定型：电路图 90° 直角 / 仿真图圆弧；切换视图必须重算。
+  const routes = useMemo(() => buildWireRoutes(state, viewMode), [state, viewMode]);
   const junctions = useMemo(() => buildWireJunctions(state), [state]);
   // 复用上面这份 routes：跳线只用折点，重算一遍等于每次 state 变化付两遍全量路由。
   const jumps = useMemo(() => buildWireJumps(state, routes), [state, routes]);
@@ -365,6 +435,9 @@ export default function CircuitCanvas({
     return colors;
   }, [routes]);
   const strategy = strategyFor(viewMode);
+  /** 描边收口与背景纹理都按视图分档；路径的拐角半径已由 `buildWireRoutes` 定型。 */
+  const wireLinejoin = wireLinejoinFor(viewMode);
+  const backgroundPatterns = canvasBackgroundPatterns(viewMode);
 
   /**
    * 每条导线的电流（带符号）。推导（`currentAB` 统一符号 / 串联端优先 / 死支路不画）
@@ -372,6 +445,31 @@ export default function CircuitCanvas({
    * 复用上一行的 `routes`：满负载时 `buildWireRoutes` 单次 ~90 ms，重复算就是白花帧时间。
    */
   const flows = useMemo(() => computeWireFlows(state, result, routes), [state, result, routes]);
+  /**
+   * 告警落点：哪些元件该在画布上打红框。
+   *
+   * 取值口径（告警 id + 短路支路电流）全在 `circuit-bench-faults.ts` 里，
+   * 与监控看板读的是同一份 `result.warnings`，两边不会出现「看板说短路、画布没标记」。
+   */
+  const faultIds = useMemo(() => collectFaultIds(state, result), [state, result]);
+  /**
+   * 红框对应的告警原文（按元件聚合，多条用「；」连起来）。
+   *
+   * 与 `faultIds` 同源：`faultIds` 是「谁要画框」，这里是「框里的那句为什么」。
+   * 短路支路里没有独立告警的元件（电流超阈值的支路）拿不到文案，
+   * 它们的 `<title>` 就是空的——那正是「没有单独告警、只是被短路带热了」的如实反映。
+   */
+  const faultTexts = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const w of result?.warnings ?? []) {
+      const text = zh ? w.zh : w.en;
+      for (const id of w.elementIds ?? []) {
+        const prev = map.get(id);
+        map.set(id, prev ? `${prev}；${text}` : text);
+      }
+    }
+    return map;
+  }, [result, zh]);
 
   // 视图变换用的是 SVG 用户坐标（viewBox 0 0 1000 620），与 CSS 像素无关：
   // 画布盒子按世界比例等比内切，所以「可用画布」永远是 WORLD_W × WORLD_H。
@@ -671,7 +769,14 @@ export default function CircuitCanvas({
     const own = parsed ? stateRef.current.components.find((c) => c.id === parsed.id) : undefined;
     if (parsed && own) {
       const anchor = terminalPoint(own, parsed.terminal);
-      setWirePreview({ ref, from: anchor, to: anchor, target: null });
+      setWirePreview({
+        ref,
+        from: anchor,
+        to: anchor,
+        normalA: terminalNormal(own, parsed.terminal),
+        normalB: ZERO_PT,
+        target: null,
+      });
     }
   }, []);
 
@@ -687,17 +792,30 @@ export default function CircuitCanvas({
       fixedRef: string,
       e: { pointerId: number; timeStamp: number; clientX: number; clientY: number },
     ) => {
+      const fixedParsed = parseTerminalRef(fixedRef);
+      const fixedOwn = fixedParsed
+        ? stateRef.current.components.find((c) => c.id === fixedParsed.id)
+        : undefined;
+      const normalA = fixedParsed && fixedOwn ? terminalNormal(fixedOwn, fixedParsed.terminal) : ZERO_PT;
       replug.current = {
         wireId,
         end,
         fixedRef,
         fixed: anchor,
+        normalA,
         pointerId: e.pointerId,
         start: { t: e.timeStamp, x: e.clientX, y: e.clientY },
         active: false,
         target: null,
       };
-      setWirePreview({ ref: fixedRef, from: anchor, to: anchor, target: null });
+      setWirePreview({
+        ref: fixedRef,
+        from: anchor,
+        to: anchor,
+        normalA,
+        normalB: ZERO_PT,
+        target: null,
+      });
     },
     [],
   );
@@ -729,6 +847,19 @@ export default function CircuitCanvas({
         cancelLongPress();
         startWireDrag(near.ref, e);
         svgRef.current?.setPointerCapture?.(e.pointerId);
+        return;
+      }
+      // 空白区双击 = 适配整幅图（P2-3）。与元件双击共用同一套「<350ms + <24px」判定，
+      // 且要求上一击**没有拖动过**——平移之后紧接着的一下不该被读成双击。
+      // 双击的第二下不再登记平移：适配已经改了视图，沿用旧 tx/ty 当基准会跳一下。
+      const blankSample: PointerSample = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+      const prevBlank = lastBlankTap.current;
+      const fitTap = !!prevBlank && !prevBlank.moved && isDoubleTap(prevBlank.sample, blankSample);
+      lastBlankTap.current = fitTap ? null : { sample: blankSample, moved: false };
+      if (fitTap) {
+        cancelLongPress();
+        pan.current = null;
+        fitContent();
         return;
       }
       pan.current = { start: p, tx: viewRef.current.tx, ty: viewRef.current.ty, moved: false };
@@ -766,7 +897,19 @@ export default function CircuitCanvas({
         wd.from,
       );
       wd.target = hit?.ref ?? null;
-      setWirePreview({ ref: wd.from, from, to: hit?.point ?? world, target: wd.target });
+      // 磁吸命中时取目标端子的外法线：皮筋末段要沿它进线，松手后才不跳。
+      const hitParsed = hit ? parseTerminalRef(hit.ref) : null;
+      const hitEl = hitParsed
+        ? stateRef.current.components.find((c) => c.id === hitParsed.id)
+        : undefined;
+      setWirePreview({
+        ref: wd.from,
+        from,
+        to: hit?.point ?? world,
+        normalA: src && srcEl ? terminalNormal(srcEl, src.terminal) : ZERO_PT,
+        normalB: hitParsed && hitEl ? terminalNormal(hitEl, hitParsed.terminal) : ZERO_PT,
+        target: wd.target,
+      });
       return;
     }
 
@@ -784,7 +927,18 @@ export default function CircuitCanvas({
         rp.fixedRef,
       );
       rp.target = hit?.ref ?? null;
-      setWirePreview({ ref: rp.fixedRef, from: rp.fixed, to: hit?.point ?? world, target: rp.target });
+      const hitParsed = hit ? parseTerminalRef(hit.ref) : null;
+      const hitEl = hitParsed
+        ? stateRef.current.components.find((c) => c.id === hitParsed.id)
+        : undefined;
+      setWirePreview({
+        ref: rp.fixedRef,
+        from: rp.fixed,
+        to: hit?.point ?? world,
+        normalA: rp.normalA,
+        normalB: hitParsed && hitEl ? terminalNormal(hitEl, hitParsed.terminal) : ZERO_PT,
+        target: rp.target,
+      });
       return;
     }
 
@@ -833,6 +987,8 @@ export default function CircuitCanvas({
       const dy = q.y - p.start.y;
       if (!p.moved && Math.hypot(dx, dy) < 3) return;
       p.moved = true;
+      // 这一下是平移，不是轻点：别让紧随其后的第二下被当成「双击适配」。
+      if (lastBlankTap.current) lastBlankTap.current.moved = true;
       setView((v) => ({ ...v, tx: p.tx + dx, ty: p.ty + dy }));
     }
   };
@@ -1000,6 +1156,9 @@ export default function CircuitCanvas({
   /** 待接端子与新连线拖拽的起点：两者都要在图上把那个柱子画成「已选中」。 */
   const armedRef = wirePreview?.ref ?? pendingTerminal;
   const armedParsed = armedRef ? parseTerminalRef(armedRef) : null;
+  /** 磁吸命中的目标端子：只给那一只元件传候选，其余元件的柱子不受影响。 */
+  const candidateParsed = wirePreview?.target ? parseTerminalRef(wirePreview.target) : null;
+  const lockedSet = lockedIds ? new Set(lockedIds) : null;
 
   // 画布铺满整个槽位：SVG 用 viewBox + 默认 meet 等比内切，点阵网格画在一张
   // 远大于世界的背景矩形上，因此容器左右不会再出现空白条。
@@ -1030,20 +1189,50 @@ export default function CircuitCanvas({
         }}
       >
         <defs>
-          <pattern id="cb-grid" width="10" height="10" patternUnits="userSpaceOnUse">
+          {/* 仿真图：实验台孔板质感的圆点阵 */}
+          <pattern id="cb-grid-dot" width={GRID_MINOR_STEP} height={GRID_MINOR_STEP} patternUnits="userSpaceOnUse">
             <circle cx="1" cy="1" r="0.85" fill="var(--border)" opacity="0.6" />
+          </pattern>
+          {/*
+            电路图：主次双层工程方格网。
+            小格严格等于吸附步长 GRID（10 世界单位），主格每 5 小格一条。
+            两条线都只用 var(--border) + 低透明度：亮/暗主题下都不会与
+            纯黑/纯前景色的导线粘连，背景永远退到导线后面。
+          */}
+          <pattern id="cb-grid-minor" width={GRID_MINOR_STEP} height={GRID_MINOR_STEP} patternUnits="userSpaceOnUse">
+            <path
+              d={`M ${GRID_MINOR_STEP} 0 L 0 0 0 ${GRID_MINOR_STEP}`}
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth={0.6}
+              strokeOpacity={0.35}
+            />
+          </pattern>
+          <pattern id="cb-grid-major" width={GRID_MAJOR_STEP} height={GRID_MAJOR_STEP} patternUnits="userSpaceOnUse">
+            <path
+              d={`M ${GRID_MAJOR_STEP} 0 L 0 0 0 ${GRID_MAJOR_STEP}`}
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth={0.9}
+              strokeOpacity={0.65}
+            />
           </pattern>
         </defs>
 
-        {/* 全幅点阵：不受世界矩形裁剪，随视图平移缩放，覆盖整个容器 */}
+        {/* 全幅背景：不受世界矩形裁剪，随视图平移缩放，覆盖整个容器。
+            纹理按视图分档——仿真图圆点阵 / 电路图主次工程方格网。 */}
         <g transform={`translate(${view.tx} ${view.ty}) scale(${view.scale})`} aria-hidden>
-          <rect
-            x={-WORLD_W * 8}
-            y={-WORLD_H * 8}
-            width={WORLD_W * 17}
-            height={WORLD_H * 17}
-            fill="url(#cb-grid)"
-          />
+          {backgroundPatterns.map((id) => (
+            <rect
+              key={id}
+              data-cb-background={id}
+              x={-WORLD_W * 8}
+              y={-WORLD_H * 8}
+              width={WORLD_W * 17}
+              height={WORLD_H * 17}
+              fill={`url(#${id})`}
+            />
+          ))}
         </g>
 
         <g
@@ -1059,10 +1248,17 @@ export default function CircuitCanvas({
           {routes.map((route, index) => {
             const style = strategy.wireStyle(index);
             const active = selectedWireId === route.wire.id;
+            // 悬停高亮与「已选中」是两档：选中用虚线强调，悬停只加粗 + 一圈极淡的光晕。
+            const hot = hoveredWireId === route.wire.id;
             return (
               <g
                 key={route.wire.id}
                 data-wire-id={route.wire.id}
+                onPointerEnter={() => {
+                  // 拉线期间指针语义是「在挑端子」，别同时亮导线。
+                  if (!wirePreview) setHoveredWireId(route.wire.id);
+                }}
+                onPointerLeave={() => setHoveredWireId((id) => (id === route.wire.id ? null : id))}
                 onPointerDown={(e) => {
                   if (tool !== 'select') return;
                   e.stopPropagation();
@@ -1074,6 +1270,22 @@ export default function CircuitCanvas({
                 }}
                 style={{ cursor: tool === 'select' ? 'pointer' : undefined }}
               >
+                {hot && (
+                  /* 悬停光晕：比选中态淡得多的一圈加宽描边。
+                     导线本体只有 1.4–2 单位粗，直接加粗会改变电路图的线宽语言，
+                     所以改成「外圈低透明度 + 本体 0.8 单位」两件事一起做。 */
+                  <path
+                    d={route.path}
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeOpacity={0.18}
+                    strokeWidth={style.strokeWidth + 4}
+                    strokeLinecap="round"
+                    strokeLinejoin={wireLinejoin}
+                    vectorEffect="non-scaling-stroke"
+                    pointerEvents="none"
+                  />
+                )}
                 {/* 加宽透明命中区：细导线也能点中 */}
                 <path d={route.path} fill="none" stroke="transparent" strokeWidth={14} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
                 {style.casing && (
@@ -1084,7 +1296,7 @@ export default function CircuitCanvas({
                     strokeOpacity={style.casing.strokeOpacity}
                     strokeWidth={style.casing.strokeWidth}
                     strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeLinejoin={wireLinejoin}
                     vectorEffect="non-scaling-stroke"
                   />
                 )}
@@ -1093,9 +1305,9 @@ export default function CircuitCanvas({
                   fill="none"
                   stroke={style.stroke}
                   strokeOpacity={style.strokeOpacity}
-                  strokeWidth={style.strokeWidth}
+                  strokeWidth={hot ? style.strokeWidth + 0.8 : style.strokeWidth}
                   strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinejoin={wireLinejoin}
                   vectorEffect="non-scaling-stroke"
                 />
                 {viewMode === 'physical' && (() => {
@@ -1103,25 +1315,41 @@ export default function CircuitCanvas({
                   if (!flow || flow.amps < FLOW_MIN_AMPS) return null;
                   // 流动层：半透明亮色虚线压在导线之上，纯 CSS 关键帧滚动 dashoffset，
                   // 电流越大周期越短；方向取反即可让「从正极流向负极」跟着电流符号走。
+                  //
+                  // 两条**静态**通道（减动效 / 截图 / 打印时虚线不滚，全靠它们）：
+                  // - 线宽三档（`flowStrokeWidth`）：看得出现在这条支路「弱 / 中 / 强」；
+                  // - 方向箭头（`flowArrow`）：落在最长直段中点，朝向真实电流方向。
+                  const arrow = flowArrow(route.points, flow.dir);
                   return (
-                    <path
-                      className="cb-current-flow"
-                      d={route.path}
-                      fill="none"
-                      stroke="var(--cb-flow, #ffd166)"
-                      strokeOpacity={0.85}
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeDasharray="6 6"
-                      vectorEffect="non-scaling-stroke"
-                      pointerEvents="none"
-                      style={{
-                        animationDuration: `${flowDuration(flow.amps)}s`,
-                        animationDirection: flow.dir < 0 ? 'reverse' : 'normal',
-                        opacity: flow.amps >= 0.05 ? 1 : 0.7,
-                      }}
-                    />
+                    <g pointerEvents="none">
+                      <path
+                        className="cb-current-flow"
+                        d={route.path}
+                        fill="none"
+                        stroke="var(--cb-flow, #ffd166)"
+                        strokeOpacity={0.85}
+                        strokeWidth={flowStrokeWidth(flow.amps)}
+                        strokeLinecap="round"
+                        strokeLinejoin={wireLinejoin}
+                        strokeDasharray="6 6"
+                        vectorEffect="non-scaling-stroke"
+                        style={{
+                          animationDuration: `${flowDuration(flow.amps)}s`,
+                          animationDirection: flow.dir < 0 ? 'reverse' : 'normal',
+                          opacity: flow.amps >= 0.05 ? 1 : 0.7,
+                        }}
+                      />
+                      {arrow && (
+                        <path
+                          className="cb-flow-arrow"
+                          data-flow-arrow={flow.dir < 0 ? 'reverse' : 'forward'}
+                          d="M -2.6 -3.6 L 4.4 0 L -2.6 3.6 Z"
+                          transform={`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angleDeg})`}
+                          fill="var(--cb-flow, #ffd166)"
+                          stroke="none"
+                        />
+                      )}
+                    </g>
                   );
                 })()}
                 {active && (
@@ -1131,7 +1359,7 @@ export default function CircuitCanvas({
                     stroke="var(--accent)"
                     strokeWidth={2.5}
                     strokeLinecap="round"
-                    strokeLinejoin="round"
+                    strokeLinejoin={wireLinejoin}
                     strokeDasharray="4 3"
                     vectorEffect="non-scaling-stroke"
                   />
@@ -1222,6 +1450,12 @@ export default function CircuitCanvas({
                   hovered={hoveredId === el.id}
                   glow={highlightId === el.id}
                   pendingTerminal={pending}
+                  candidateTerminal={
+                    candidateParsed && candidateParsed.id === el.id ? candidateParsed.terminal : null
+                  }
+                  fault={faultIds.has(el.id)}
+                  faultText={faultTexts.get(el.id)}
+                  locked={lockedSet?.has(el.id) ?? false}
                   terminalHitRadius={terminalHitRadius}
                   // 本体热区在窄屏/触屏上按当前缩放外扩；桌面这两个值等于关闭。
                   pxPerWorld={pxPerWorld}
@@ -1316,32 +1550,10 @@ export default function CircuitCanvas({
               ));
             })()}
 
-          {/* 连线皮筋：从起点接线柱拉向手指；进入目标柱子磁吸圈时端点吸过去并高亮目标 */}
-          {wirePreview && (
-            <g pointerEvents="none">
-              <line
-                x1={wirePreview.from.x}
-                y1={wirePreview.from.y}
-                x2={wirePreview.to.x}
-                y2={wirePreview.to.y}
-                stroke="var(--accent)"
-                strokeWidth={1.8}
-                strokeDasharray="6 4"
-                strokeLinecap="round"
-              />
-              <circle cx={wirePreview.from.x} cy={wirePreview.from.y} r={4} fill="var(--accent)" />
-              {wirePreview.target && (
-                <circle
-                  cx={wirePreview.to.x}
-                  cy={wirePreview.to.y}
-                  r={7.5}
-                  fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth={1.6}
-                />
-              )}
-            </g>
-          )}
+          {/* 连线皮筋：从起点接线柱拉向手指；进入目标柱子磁吸圈时端点吸过去并高亮目标。
+              几何走**正式路由**（正交折线 + 圆角），不再是一根斜线：
+              吸附那一刻看到的进线方向，就是松手后正式导线会走的方向。 */}
+          {wirePreview && <WirePreviewLayer preview={wirePreview} viewMode={viewMode} />}
 
         </g>
 
@@ -1494,5 +1706,53 @@ export default function CircuitCanvas({
       </div>
 
     </div>
+  );
+}
+
+/**
+ * 连线皮筋图层。
+ *
+ * 抽成独立组件只为让 `useMemo` 的依赖是 6 个标量：皮筋每帧都会重算，
+ * 依赖写成对象的话，`wirePreview` 每次 `setState` 都是新对象，缓存等于没有。
+ */
+function WirePreviewLayer({
+  preview,
+  viewMode = 'schematic',
+}: {
+  preview: WirePreviewState;
+  /** 电路图直角 / 仿真图圆角：拖拽预览与松手后的正式导线必须同一种拐角。 */
+  viewMode?: CircuitViewMode;
+}) {
+  const { from, to, normalA, normalB, target } = preview;
+  const radius = PREVIEW_CORNER_RADIUS[viewMode];
+  const d = useMemo(
+    () => previewWirePath(from, to, normalA, normalB, radius),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [from.x, from.y, to.x, to.y, normalA.x, normalA.y, normalB.x, normalB.y, radius],
+  );
+  return (
+    <g data-wire-preview="" pointerEvents="none">
+      <path
+        d={d}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth={1.8}
+        strokeDasharray="6 4"
+        strokeLinecap="round"
+        strokeLinejoin={wireLinejoinFor(viewMode)}
+      />
+      <circle cx={from.x} cy={from.y} r={4} fill="var(--accent)" />
+      {target && (
+        <circle
+          data-wire-target=""
+          cx={to.x}
+          cy={to.y}
+          r={7.5}
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={1.6}
+        />
+      )}
+    </g>
   );
 }

@@ -20,6 +20,7 @@
  *   会把大电流「借」给这条死线（实测 `fuse` 预设两根短路线凭空显示 0.487 A）。
  */
 import type { BenchState, CircuitComponent, SolveResult } from './circuit-bench-core';
+import type { Pt } from './circuit-bench-geometry';
 import { isOpen, mergesTerminals } from './circuit-bench-models';
 import { buildWireRoutes, type WireRoute } from './circuit-bench-render';
 
@@ -33,6 +34,75 @@ export function flowDuration(amps: number): number {
   if (i >= 0.2) return 0.62;
   if (i >= 0.05) return 0.9;
   return 1.35;
+}
+
+/**
+ * 流动虚线的线宽三档：**粗细本身就是第二条电流通道**。
+ *
+ * 减动效、静态截图、打印试卷这三种场景里虚线不滚动，方向与大小只剩下
+ * 「线有多粗」和静态箭头两个线索。0.15 A / 0.8 A 的断点取自预设集的实测分布：
+ * 电压表引线（µA 级）、待机支路（0.05–0.15 A）、灯泡/电热丝（0.3–0.8 A）、
+ * 短路与并联干路（>1 A）各自落在不同档，画面上能一眼分出「弱 / 中 / 强」。
+ */
+export function flowStrokeWidth(amps: number): number {
+  const i = Math.abs(amps);
+  if (i < 0.15) return 1.4;
+  if (i <= 0.8) return 1.8;
+  return 2.4;
+}
+
+/** 静态方向箭头：贴着最长直段的中点，朝向电流真实流向。 */
+export interface FlowArrow {
+  /** 箭头落点（最长直段的中点，世界坐标）。 */
+  x: number;
+  y: number;
+  /** 箭头朝向（度，SVG 的 rotate 口径：0 = 向右，顺时针为正）。 */
+  angleDeg: number;
+  /** 与 `flow.dir` 一致：+1 沿导线路径 from→to，-1 反向。 */
+  dir: 1 | -1;
+}
+
+/**
+ * 箭头至少要有一段多长的直段才画：太短的话箭头会比线段本身还长，
+ * 看上去像导线末端的一个墨点，而不是方向标记。
+ */
+export const FLOW_ARROW_MIN_SEGMENT = 20;
+
+/**
+ * 在导线上找一个画静态方向箭头的位置。
+ *
+ * 取**最长直段的中点**而不是路径中点：圆角折线的路径中点在拐弯处，
+ * 箭头的朝向在那里是模糊的；最长直段上的切向明确，箭头也不会被圆角切到。
+ * 整根线都由短段拼成（< 20 世界单位）时返回 null，宁可不画也不画一个读不出方向的箭头。
+ */
+export function flowArrow(points: readonly Pt[], dir: 1 | -1): FlowArrow | null {
+  let best: { x: number; y: number; ux: number; uy: number; len: number } | null = null;
+  for (let i = 1; i < points.length; i++) {
+    const p = points[i - 1];
+    const q = points[i];
+    const len = Math.hypot(q.x - p.x, q.y - p.y);
+    if (!(len > 0)) continue;
+    if (best && len <= best.len) continue;
+    best = {
+      x: (p.x + q.x) / 2,
+      y: (p.y + q.y) / 2,
+      ux: (q.x - p.x) / len,
+      uy: (q.y - p.y) / len,
+      len,
+    };
+  }
+  if (!best || best.len < FLOW_ARROW_MIN_SEGMENT) return null;
+  const ux = best.ux * dir;
+  const uy = best.uy * dir;
+  // 归一化到 [0, 360)：`rotate(-180)` 与 `rotate(180)` 画出来一样，但属性字符串必须
+  // 唯一——否则同一根线在两次渲染之间会「数值变了、画面没变」，白触发一次 DOM 写入。
+  const raw = (Math.atan2(uy, ux) * 180) / Math.PI;
+  return {
+    x: best.x,
+    y: best.y,
+    angleDeg: ((raw % 360) + 360) % 360,
+    dir,
+  };
 }
 
 export interface WireFlow {

@@ -1945,3 +1945,26 @@ textarea {
 .btn-solid:hover {
   opacity: 0.9;
 }
+
+/* ── 电学实验台 · 告警环与候选端子（P0-2 / P0-3） ──────────────────────
+   两条脉冲都只动描边透明度与线宽：不改几何、不触发布局，
+   由合成线程跑；`prefers-reduced-motion` 下直接退回静态，
+   颜色（危险红 / 强调色）与虚线形态本身已经把话说清楚了。 */
+.cb-fault-halo {
+  animation: cb-fault-halo 1.6s ease-in-out infinite;
+}
+@keyframes cb-fault-halo {
+  0%, 100% { stroke-opacity: 0.95; }
+  50% { stroke-opacity: 0.42; }
+}
+.cb-pin-candidate {
+  animation: cb-pin-candidate 1.1s ease-in-out infinite;
+}
+@keyframes cb-pin-candidate {
+  0%, 100% { stroke-opacity: 0.9; stroke-width: 1.6; }
+  50% { stroke-opacity: 0.45; stroke-width: 2.4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-fault-halo,
+  .cb-pin-candidate { animation: none; }
+}

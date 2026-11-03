@@ -10,11 +10,16 @@
  *   - solver    反推：由化学式与目标和求化合价，含 NH₄NO₃ / Fe₃O₄ 特例；
  *   - practice  练习：固定题库、精确错因、错题进入站点错题本。
  *
- * 所有计算走 src/lib/chemistry/formula-core.ts（纯 TS，无 WASM），
- * URL 查询串持久化模式与选择，支持周期表深链与刷新恢复。
+ * 所有计算走 src/lib/chemistry/formula-core.ts（纯 TS，无 WASM）。
+ *
+ * URL 契约（2026-11 改造）：
+ *   - 页内点选元素、切标签、选离子全部只走 React 内存态，**绝不回写 URL**；
+ *   - 外部深链（周期表跳转、元素详情、错题集回跳等）只消费一次，
+ *     随即把地址栏后缀静默清空（replace，不新增历史条目）；
+ *   - 同一标签页内的刷新恢复由 sessionStorage 快照承担，见 chem-session-state.ts。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -54,7 +59,6 @@ import {
   PRACTICE_CATEGORY_LABEL,
   PRACTICE_CATEGORY_ORDER,
   PRACTICE_QUESTIONS,
-  chemistryQuery,
   crossValence,
   isFormulaError,
   massFraction,
@@ -70,10 +74,15 @@ import {
   normalizeFormulaCase,
   AMBIGUOUS_PAIRS,
   type ChemMode,
+  type ChemQueryState,
   type IonRef,
   type PracticeCategory,
   type PracticeQuestion,
 } from '../lib/chemistry/formula-core';
+import {
+  loadChemSessionState,
+  saveChemSessionState,
+} from '../lib/chemistry/chem-session-state';
 import {
   ION_GROUPS,
   TEXTBOOK_MASSES,
@@ -163,8 +172,33 @@ export default function ChemistryFormulas() {
   );
   usePageMeta(pageMeta);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initial = useMemo(() => parseChemistryQuery(searchParams), []); // 只读首屏参数
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // 首帧一次性读取：外部深链优先；无入参时恢复同一标签页内的学习上下文。
+  // 之后任何带参进入都由下方 consume effect 统一处理，URL 不再驱动内部状态。
+  const initial = useMemo(() => {
+    if (location.search) {
+      const fromUrl = parseChemistryQuery(new URLSearchParams(location.search));
+      return {
+        mode: fromUrl.mode,
+        symbol: fromUrl.symbol,
+        cation: fromUrl.cation,
+        anion: fromUrl.anion,
+        solverFormula: fromUrl.formula ?? 'Fe2O3',
+      };
+    }
+    return (
+      loadChemSessionState() ?? {
+        mode: 'reference' as ChemMode,
+        symbol: null,
+        cation: null,
+        anion: null,
+        solverFormula: 'Fe2O3',
+      }
+    );
+    // 有意只取首帧：后续入参交给 consume effect，避免与 URL 焚毁互相触发。
+  }, []);
   const initialState = useMemo(() => {
     if (initial.cation || initial.anion) {
       return { cation: initial.cation, anion: initial.anion };
@@ -178,7 +212,7 @@ export default function ChemistryFormulas() {
   const [cation, setCation] = useState<IonRef | null>(initialState.cation);
   const [anion, setAnion] = useState<IonRef | null>(initialState.anion);
   const [query, setQuery] = useState('');
-  const [solverFormula, setSolverFormula] = useState(initial.formula ?? 'Fe2O3');
+  const [solverFormula, setSolverFormula] = useState(initial.solverFormula);
   const [solverTarget, setSolverTarget] = useState('Fe');
   // 大小写歧义备选（如 co 默认 CO，可一键切换为金属钴 Co）。
   const [caseAlt, setCaseAlt] = useState<string | null>(null);
@@ -189,9 +223,9 @@ export default function ChemistryFormulas() {
   const [variantQuestion, setVariantQuestion] = useState<PracticeQuestion | null>(null);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   // 原地元素详情抽屉：点击化学式里的元素或速查卡片时设置，避免整页跳走丢失上下文。
-  // 深链进入速查（?symbol=Fe）时直接弹出该元素详情。
+  // 只有外部深链（?mode=reference&symbol=Fe）才自动弹出；会话恢复不弹，免得打断。
   const [activeDetailElement, setActiveDetailElement] = useState<string | null>(
-    initial.mode === 'reference' ? initial.symbol ?? null : null,
+    location.search && initial.mode === 'reference' ? initial.symbol ?? null : null,
   );
   // 速查页原子团 Chip：点击就地展开「价态 + 经典化合物」，与元素卡片一致。
   const [activeIonFormula, setActiveIonFormula] = useState<string | null>(null);
@@ -228,10 +262,50 @@ export default function ChemistryFormulas() {
     }
   };
 
-  // URL 同步：刷新恢复、可分享、可被周期表深链打开。
+  /**
+   * 把一份外部入参应用到页面状态。首帧之外的同路由带参跳转（如页内详情抽屉里
+   * 「在建构器中打开」）也走这里，保证与 URL 解析共用同一套校验。
+   */
+  const applyQuery = useCallback((q: ChemQueryState) => {
+    setMode(q.mode);
+    setSymbol(q.symbol);
+    if (q.cation || q.anion) {
+      setCation(q.cation);
+      setAnion(q.anion);
+    } else if (q.symbol) {
+      const pair = preselectFromSymbol(q.symbol);
+      setCation(pair?.cation ?? null);
+      setAnion(pair?.anion ?? null);
+    } else {
+      setCation(null);
+      setAnion(null);
+    }
+    if (q.formula) setSolverFormula(q.formula);
+    setActiveDetailElement(q.mode === 'reference' ? q.symbol ?? null : null);
+    setActiveIonFormula(null);
+    setCaseAlt(null);
+  }, []);
+
+  /**
+   * 外部入参「阅后即焚」：首帧与任意一次同路由带参进入都只消费一次。
+   * 用 location.key 而不是 location.search 作哨兵——带参进入同一路径时组件不会重挂载，
+   * 只看挂载会漏掉页内详情抽屉的跳转。焚毁用 replace，不新增历史条目。
+   */
+  const consumedKey = useRef<string | null>(null);
   useEffect(() => {
-    setSearchParams(chemistryQuery({ mode, cation, anion, symbol }), { replace: true });
-  }, [mode, cation, anion, symbol, setSearchParams]);
+    if (!location.search || consumedKey.current === location.key) return;
+    consumedKey.current = location.key;
+    applyQuery(parseChemistryQuery(new URLSearchParams(location.search)));
+    navigate(
+      { pathname: location.pathname, search: '', hash: location.hash },
+      { replace: true, state: location.state },
+    );
+  }, [location, navigate, applyQuery]);
+
+  /** 会话内快照：只服务刷新 / 同标签页返回，绝不回写地址栏。 */
+  useEffect(() => {
+    saveChemSessionState({ mode, symbol, cation, anion, solverFormula });
+  }, [mode, symbol, cation, anion, solverFormula]);
 
   const builderResult = useMemo(() => {
     if (!cation || !anion) return null;
@@ -404,7 +478,7 @@ export default function ChemistryFormulas() {
         </p>
       </div>
 
-      {/* 模式切换：分段按钮，状态写入 URL */}
+      {/* 模式切换：分段按钮，纯内存态（不回写 URL） */}
       <div
         role="tablist"
         aria-label={zh ? '功能模式' : 'Modes'}
