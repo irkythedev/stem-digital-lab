@@ -1244,6 +1244,105 @@ input[type="range"]::-moz-range-thumb:active {
   .footer-works:focus-within .footer-works-badge { transform: none; }
 }
 
+/* 页脚围棋入口（GoPortalBadge）：3×3 局部棋形，7s 一轮。
+   0–28% 叫吃（白 1 气，气位呼吸）→ 28–34% 黑落最后一气 → 34–44% 白子收紧提走
+   → 44–78% 提子留白 → 78–91% 收起黑子、白子复位 → 91–100% 回到叫吃形。
+   只动 opacity / transform，交给合成线程；组件里没有任何定时器。
+   静态兜底（减动效 / 动画被禁用）＝ 0% 那一帧的「叫吃」形，不是空棋盘。 */
+.go-badge-art {
+  display: block;
+  overflow: visible;
+  transition: transform 0.2s ease;
+}
+.go-badge:hover .go-badge-art,
+.go-badge:focus-visible .go-badge-art { transform: translateY(-1px); }
+/* 20px 显示时 viewBox 缩到 0.625 倍，1 unit 的线只剩半像素、几乎看不见；
+   non-scaling-stroke 让网格线固定落在 1 个物理像素上，「局部棋盘」才立得住。
+   只给网格线加：描边不随缩放时是「向外长」的，白子的环会比黑子大一圈，
+   棋子大小就不齐了——所以圆的描边宽度改用 viewBox 单位（见组件里的 strokeWidth）。 */
+.go-badge-grid line { vector-effect: non-scaling-stroke; }
+.go-badge-grid { transition: stroke-opacity 0.2s ease; }
+.go-badge:hover .go-badge-grid,
+.go-badge:focus-visible .go-badge-grid { stroke-opacity: 0.8; }
+
+/* 尚未上线（GO_PORTAL_URL 为空）：棋形照跑，但不伪装成可点链接——
+   不位移、不亮网格、不出现指针，触屏也不留透明热区。 */
+.go-badge.is-pending { cursor: default; }
+.go-badge.is-pending:hover .go-badge-art,
+.go-badge.is-pending:focus-within .go-badge-art { transform: none; }
+.go-badge.is-pending:hover .go-badge-grid { stroke-opacity: 0.5; }
+
+.go-badge-white,
+.go-badge-drop,
+.go-badge-ripple,
+.go-badge-liberty-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* 白子：居中被围，最后一气被填后收小淡出 */
+.go-badge-white { animation: go-badge-white 7s linear infinite; }
+@keyframes go-badge-white {
+  0%, 34% { opacity: 1; transform: scale(1); }
+  44% { opacity: 0; transform: scale(0.5); }
+  86% { opacity: 0; transform: scale(0.5); }
+  96%, 100% { opacity: 1; transform: scale(1); }
+}
+
+/* 气位环：前 28% 可见，黑子落下后熄灭，复局时随白子一起回来 */
+.go-badge-liberty { opacity: 1; animation: go-badge-liberty 7s linear infinite; }
+@keyframes go-badge-liberty {
+  0%, 26% { opacity: 1; }
+  32%, 87% { opacity: 0; }
+  97%, 100% { opacity: 1; }
+}
+.go-badge-liberty-pulse {
+  opacity: 0.42;
+  animation: go-badge-breath 1.75s ease-in-out infinite;
+}
+@keyframes go-badge-breath {
+  0%, 100% { opacity: 0.26; transform: scale(0.85); }
+  50% { opacity: 0.62; transform: scale(1.12); }
+}
+
+/* 收紧的黑子：28–34% 落下，78–91% 收起 */
+.go-badge-drop {
+  opacity: 0;
+  animation: go-badge-drop 7s linear infinite;
+}
+@keyframes go-badge-drop {
+  0%, 27% { opacity: 0; transform: scale(1.45); }
+  34%, 82% { opacity: 1; transform: scale(1); }
+  91%, 100% { opacity: 0; transform: scale(1.45); }
+}
+
+/* 落子涟漪：只在这一颗子落下时扩散一次 */
+.go-badge-ripple {
+  opacity: 0;
+  animation: go-badge-ripple 7s linear infinite;
+}
+@keyframes go-badge-ripple {
+  0%, 28% { opacity: 0; transform: scale(0.5); }
+  31% { opacity: 0.5; transform: scale(0.7); }
+  40% { opacity: 0; transform: scale(1.7); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+/* 减动效：停在静态叫吃形（白子可见、黑子未落），保留颜色变化 */
+@media (prefers-reduced-motion: reduce) {
+  .go-badge-art,
+  .go-badge-grid,
+  .go-badge-white,
+  .go-badge-drop,
+  .go-badge-ripple,
+  .go-badge-liberty,
+  .go-badge-liberty-pulse { animation: none; transition: none; }
+  .go-badge:hover .go-badge-art,
+  .go-badge:focus-visible .go-badge-art { transform: none; }
+  .go-badge-white,
+  .go-badge-liberty-pulse { transform: none; }
+}
+
 /* 每日科学「翻一翻」图标：每次点击翻转一圈（一次性，非循环） */
 @keyframes daily-flip {
   from { transform: rotate(0deg); }

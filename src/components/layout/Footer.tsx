@@ -13,6 +13,7 @@ import ShareDialog from '../feedback/ShareDialog';
 import InstallAppButton from '../feedback/InstallAppButton';
 import LicenseDialog from '../ui/LicenseDialog';
 import ExternalLinkConfirm from '../ui/ExternalLinkConfirm';
+import GoPortalBadge from './GoPortalBadge';
 
 export default function Footer() {
   const { t } = useApp();
@@ -219,6 +220,8 @@ export default function Footer() {
             <path d={GITHUB_PATH} />
           </svg>
         </ExternalLinkConfirm>
+        {/* 围棋项目入口：外链项目归到这一组，动态棋形只在 20px 的徽标里跑 */}
+        <GoPortalBadge />
       </div>
       </div>
       {showLicense && <LicenseDialog onClose={() => setShowLicense(false)} />}
