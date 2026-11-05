@@ -149,7 +149,7 @@ export default function ShareDialog({ url, onClose, title, text, anchored = fals
 
       {/* 按钮：仅支持 Web Share API 的浏览器显示「分享」主按钮，其余直接用「复制链接」 */}
       <div className="flex flex-col gap-2">
-        {typeof navigator !== 'undefined' && navigator.share && (
+        {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
           <button
             type="button"
             onClick={handleNativeShare}

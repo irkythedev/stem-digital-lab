@@ -18,7 +18,7 @@
  *   （sessionStorage 记录）。发布窗口内新旧资源错配时，页面不会再被自动无限硬刷。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { APP_VERSION } from './changelog';
+import { APP_VERSION } from './app-version';
 import { AUDIO_CACHE, DIAGRAM_CACHE, PHOTO_CACHE } from './offline-media';
 import { isVersionNewer } from './version-compare';
 import {
@@ -30,10 +30,10 @@ import {
 
 export type { UpdatePhase, UpdateProgress };
 
-const CHECK_MS = 8000;        // reg.update() 检查的最长等待
-const INSTALL_MS = 8000;      // 新 worker 安装完成的最长等待
-const ACTIVATE_MS = 4000;     // 发出 SKIP_WAITING 后等 controllerchange 的硬上限
-const HARD_DEADLINE_MS = 20000; // 整个流程的绝对上限
+const CHECK_MS = 20000;       // reg.update() 检查的最长等待（慢网下放宽）
+const INSTALL_MS = 60000;     // 新 worker 安装完成的最长等待（首装/慢网可能几十秒）
+const ACTIVATE_MS = 15000;    // 发出 SKIP_WAITING 后等 controllerchange 的硬上限
+const HARD_DEADLINE_MS = 120000; // 整个流程的绝对上限
 /** 预缓存条目计数的采样间隔：安装期计数单调增长，120ms 足以让弧看起来连续 */
 const PROGRESS_POLL_MS = 120;
 
@@ -246,7 +246,14 @@ export function useAppUpdate() {
       await hardResetAndReload((done, total) => setProgress({ done, total }));
     };
 
-    deadline = window.setTimeout(() => { void hardReset(); }, HARD_DEADLINE_MS);
+    /** 超时/慢网：只提示重试，绝不自动清缓存。用户再点一次即可继续。 */
+    const giveUp = () => {
+      settle();
+      setPhase('idle');
+      runningRef.current = false;
+    };
+
+    deadline = window.setTimeout(() => { giveUp(); }, HARD_DEADLINE_MS);
 
     try {
       if (!('serviceWorker' in navigator)) {
@@ -286,7 +293,7 @@ export function useAppUpdate() {
             window.setTimeout(() => resolve('timeout'), CHECK_MS);
           }),
         ]);
-        if (outcome === 'timeout') { await hardReset(); return; }
+        if (outcome === 'timeout') { giveUp(); return; }
         worker = reg.installing ?? reg.waiting ?? null;
       }
 
@@ -296,32 +303,33 @@ export function useAppUpdate() {
 
       if (worker.state === 'redundant') { await hardReset(); return; }
 
-      // 4) 等安装完成（8s 上限）
+      // 4) 等安装完成（60s 上限）
       if (worker.state !== 'installed' && worker.state !== 'activated') {
         setPhase('downloading');
         // 采样在 checking 阶段就开好了（基准必须是安装前状态），这里只是确保在跑
         void trackPrecache();
-        const installed = await new Promise<boolean>((resolve) => {
+        const installed = await new Promise<'ok' | 'redundant' | 'timeout'>((resolve) => {
           let timer = 0;
           const onChange = () => {
             if (worker!.state === 'installed' || worker!.state === 'activated') {
               window.clearTimeout(timer);
               worker!.removeEventListener('statechange', onChange);
-              resolve(true);
+              resolve('ok');
             } else if (worker!.state === 'redundant') {
               window.clearTimeout(timer);
               worker!.removeEventListener('statechange', onChange);
-              resolve(false);
+              resolve('redundant');
             }
           };
           timer = window.setTimeout(() => {
             worker!.removeEventListener('statechange', onChange);
-            resolve(false);
+            resolve('timeout');
           }, INSTALL_MS);
           worker!.addEventListener('statechange', onChange);
           onChange();
         });
-        if (!installed) { await hardReset(); return; }
+        if (installed === 'timeout') { giveUp(); return; }
+        if (installed === 'redundant') { await hardReset(); return; }
         // 安装结束即停表：接下来是 activating（无分母，走扫动弧），不再需要采样
         stopPoll();
       }
@@ -330,8 +338,8 @@ export function useAppUpdate() {
       setPhase('activating');
       try { worker.postMessage({ type: 'SKIP_WAITING' }); } catch { /* ignore */ }
 
-      // 6) 4s 内仍未 controllerchange → 清缓存注销 + 硬跳
-      activationTimer = window.setTimeout(() => { void hardReset(); }, ACTIVATE_MS);
+      // 6) 15s 内仍未 controllerchange → 交回空闲态让用户重试，不再清缓存硬跳
+      activationTimer = window.setTimeout(() => { giveUp(); }, ACTIVATE_MS);
     } catch {
       await hardReset();
     }

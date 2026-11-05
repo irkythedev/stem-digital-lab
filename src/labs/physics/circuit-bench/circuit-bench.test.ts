@@ -2692,7 +2692,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(!readingReversed('resistor', solveCircuit(backward).elements.r), '电阻没有接反这回事');
 
     // 表针严格绑在带符号读数上：正读数右偏（CSS 正角＝顺时针＝屏幕右），负读数左偏。
-    const range = meterGears('ammeter')[0] ?? 0.6;
+    const range = meterGears('ammeter')?.[0] ?? 0.6;
     assert.ok(needleAngle(fwd, 'currentAB', range) > 0);
     assert.ok(needleAngle(rev, 'currentAB', range) < 0);
     assert.equal(needleAngle(rev, 'currentAB', range), -needleAngle(fwd, 'currentAB', range));

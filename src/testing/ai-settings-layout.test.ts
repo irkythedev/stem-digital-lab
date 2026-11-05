@@ -36,6 +36,19 @@ export function registerAiSettingsLayoutTests(test: TestFn): void {
     assert.match(ai, /移动端抽屉|ai-sheet inset-x-0/, '移动端抽屉保高不受影响');
   });
 
+  test('拖拽/缩放：桌面三向可调、键盘可达、手机抓手下滑关闭', () => {
+    assert.match(ai, /beginDrag\('width'/, '右边缘须能调宽');
+    assert.match(ai, /beginDrag\('bottom'/, '底边须能调高');
+    assert.match(ai, /beginDrag\('corner'/, '右下角须能同时调宽高');
+    assert.match(ai, /role="separator"/, '缩放手柄须有 separator 语义');
+    assert.match(ai, /aria-orientation="vertical"/, '宽度手柄须声明方向');
+    assert.match(ai, /onHandleKeyDown\('both'\)/, '角落手柄须支持键盘');
+    assert.match(ai, /const resetPanelGeometry/, '须有几何复位入口');
+    assert.match(ai, /lastTitleTapRef/, '双击复位须用指针事件自行判定（触摸端没有稳定 dblclick）');
+    assert.match(ai, /const beginSheetDrag/, '手机抽屉须有下滑关闭抓手');
+    assert.match(ai, /height > 0 \? \{ height: maxPanelHeight\(height\) \}/, '拖过高度后须按固定高度渲染，否则内容短时拖动没有反馈');
+  });
+
   test('思考强度 = 整体分段滑槽，且不再用符号点表达选中', () => {
     assert.match(
       ai,

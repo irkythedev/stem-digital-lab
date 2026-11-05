@@ -6,7 +6,7 @@
  * Header 与 WelcomeDialog 共用；fetch 失败（离线/网络异常）静默忽略，不打扰用户。
  */
 import { useEffect, useState } from 'react';
-import { APP_VERSION } from './changelog';
+import { APP_VERSION } from './app-version';
 import { isVersionNewer } from './version-compare';
 
 export function useVersionCheck(): { hasUpdate: boolean } {

@@ -198,7 +198,7 @@ export default function Circuits() {
   const [styleId, setStyleId] = useState<CircuitStyleId>('series2');
   // 电路元件公式浮层：hover/focus 元件显示公式+代入+原理
   const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
-  const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
+  const showTip = (e: { currentTarget: SVGGElement }, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
     const r = e.currentTarget.getBoundingClientRect();
     setTip({ x: r.left + r.width / 2, y: r.top + r.height / 2, ...t });
   };

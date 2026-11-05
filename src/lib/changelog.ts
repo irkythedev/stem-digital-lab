@@ -5,8 +5,8 @@
  * 版本历史（面向用户的更新记录，非技术性）。
  * 对外展示用，语言贴近使用者而非开发者。
  */
-// 应用版本号（与 package.json 同步维护）
-export const APP_VERSION = '0.47.7';
+import { APP_VERSION } from './app-version';
+export { APP_VERSION };
 
 export interface ChangelogEntry {
   version: string;
@@ -17,6 +17,18 @@ export interface ChangelogEntry {
 
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: '0.47.8',
+    date: '2026-11',
+    zh: [
+      '[优化] 首屏主包拆分为按需加载，打开与更新更快；补充站点安全响应头',
+      '[优化] AI 助手面板支持拖拽/缩放（桌面与触摸），双击复位；移动端底部抽屉可下滑关闭',
+    ],
+    en: [
+      '[Improved] The first-load bundle is split for on-demand loading, so opening and updating are faster; added security response headers',
+      '[Improved] The AI panel can be dragged and resized on desktop and touch, resets on double-tap, and the mobile sheet closes with a swipe down',
+    ],
+  },
   {
     version: '0.47.7',
     date: '2026-11',

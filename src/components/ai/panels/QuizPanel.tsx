@@ -11,6 +11,7 @@
  */
 
 import { memo } from 'react';
+import type { QuizQuestion } from '../../../lib/ai-quiz';
 import { type QuizAngle, type QuizQType } from '../../../lib/ai-config';
 import AnswerRich, { InlineAnswer } from '../AnswerRich';
 import { Mark } from './panel-shared';
@@ -27,7 +28,7 @@ export interface QuizPanelState {
   quizFillInput: any;
   quizIdx: any;
   quizLoading: any;
-  quizQ: any;
+  quizQ: QuizQuestion | null;
   quizQuestions: any;
   quizSelected: any;
   quizSetup: any;

@@ -10,17 +10,17 @@ import { AppProvider, useApp } from './lib/app-context';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import FeedbackFab from './components/feedback/FeedbackFab';
-import AiAssistant from './components/ai/AiAssistant';
 import WelcomeDialog from './components/ui/WelcomeDialog';
 import WechatShareOverlay from './components/share/WechatShareOverlay';
 import AppErrorBoundary from './components/AppErrorBoundary';
-import { AiProvider } from './lib/ai-context';
+import { AiProvider, useAiContext } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
 import { installFeedbackAutoFlush } from './lib/feedback-auto-flush';
 /**
  * 路由页面一律按需加载：主入口只保留应用外壳（导航、AI 助手、反馈）。
  * 页面自带的 GEO JSON 与重型组件因此落在各自 chunk，不会撑大首屏主包。
  */
+const AiAssistant = lazy(() => import('./components/ai/AiAssistant'));
 const HomePage = lazy(() => import('./pages/HomePage'));
 const SubjectPage = lazy(() => import('./pages/SubjectPage'));
 const LabPage = lazy(() => import('./pages/LabPage'));
@@ -34,6 +34,21 @@ const ChemistryFormulas = lazy(() => import('./pages/ChemistryFormulas'));
 const LicensePage = lazy(() => import('./pages/LicensePage'));
 const TtsTestPage = lazy(() => import('./pages/TtsTestPage'));
 const LearnPage = lazy(() => import('./pages/LearnPage'));
+
+/** AI 面板按需加载：首次打开后再挂载，并保持挂载以保留同页会话与滚动位置。 */
+function AiPanelHost() {
+  const { open } = useAiContext();
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    if (open) setSeen(true);
+  }, [open]);
+  if (!seen) return null;
+  return (
+    <Suspense fallback={null}>
+      <AiAssistant />
+    </Suspense>
+  );
+}
 
 /** 无障碍跳转链接：键盘用户 Tab 到第一个焦点即可跳过导航直达内容（仅聚焦时可见） */
 function SkipLink() {
@@ -164,7 +179,7 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
         <Footer />
         <WechatShareOverlay />
         <FeedbackFab />
-        <AiAssistant />
+        <AiPanelHost />
       </div>
       </AiProvider>
     </AppProvider>

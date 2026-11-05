@@ -8,10 +8,10 @@
 
 <p>
   <a href="LICENSE"><img src="public/badges/license.svg" alt="License: AGPL-3.0"></a>
-  <img src="public/badges/version.svg" alt="Version v0.47.7">
+  <img src="public/badges/version.svg" alt="Version v0.47.8">
   <img src="public/badges/core.svg" alt="Core: C++17 / WebAssembly">
   <img src="public/badges/frontend.svg" alt="Frontend: React 19 + TypeScript">
-  <img src="public/badges/tests.svg" alt="762 tests passing">
+  <img src="public/badges/tests.svg" alt="774 tests passing">
 </p>
 
 <p>
@@ -42,13 +42,13 @@
 
 | 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
 | :--- | :--- | :--- |
-| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 770 项单测门禁 |
+| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 774 项单测门禁 |
 
 无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
 
 <!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
      15 实验 + 6 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 5 个固定路由查表工具，smoke 计数守卫会核对）
-     770 passed     ← npm test 实测（48 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
+     774 passed     ← npm test 实测（48 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
                       新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，tools/check-readme-stats.mjs 会与实测比对）
      C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
      React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
@@ -170,7 +170,7 @@ npm test           # 运行全部测试（无需任何服务）
 
 提交前另跑 `npm run lint`（即 `tsc --noEmit`）做类型检查，它不包含在 `npm test` 里。
 
-内置测试套件 **770 项全绿**（48 条测试命令：`src/smoke.test.ts` 171 项 + 其余命令 599 项；其中 `src/latex-speech.golden.test.ts` 已含在上述 48 条内，钉住 **436 条逐字快照**，快照单独统计、不计入 770），约 1 分钟内完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
+内置测试套件 **774 项全绿**（48 条测试命令：`src/smoke.test.ts` 174 项 + 其余命令 600 项；其中 `src/latex-speech.golden.test.ts` 已含在上述 48 条内，钉住 **436 条逐字快照**，快照单独统计、不计入 774），约 1 分钟内完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
 - **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
@@ -406,7 +406,7 @@ npm test           # Run the whole suite (no service required)
 
 Before committing, also run `npm run lint` (`tsc --noEmit`) for type checking; it is not part of `npm test`.
 
-The built-in suite runs **770 cases, all green** (48 test commands: 171 in `src/smoke.test.ts` plus 599 across the rest, including `src/latex-speech.golden.test.ts` (one of the 48 commands), which pins **436 verbatim snapshots** counted separately from the 770), in about a minute, and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
+The built-in suite runs **774 cases, all green** (48 test commands: 174 in `src/smoke.test.ts` plus 600 across the rest, including `src/latex-speech.golden.test.ts` (one of the 48 commands), which pins **436 verbatim snapshots** counted separately from the 774), in about a minute, and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
 - **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;

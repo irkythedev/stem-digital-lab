@@ -385,7 +385,7 @@ async function main() {
       test('WASM 模块的 10 个导出齐全（与 EMSCRIPTEN_BINDINGS 逐名一致）', () => {
         assert.ok(wasm, wasmError || '未知载入失败');
         for (const spec of OP_TABLE) {
-          const fn = (wasm as unknown as Record<string, unknown>)[spec.op];
+          const fn: unknown = (wasm as unknown as Record<string, unknown>)[spec.op];
           assert.equal(typeof fn, 'function', `WASM 缺导出 ${spec.op}`);
         }
         assert.equal(OP_TABLE.length, 10, `对拍表应恰好 10 个导出，实测 ${OP_TABLE.length}`);

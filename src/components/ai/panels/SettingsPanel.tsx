@@ -10,8 +10,9 @@
  * memo 导出：state 由父级按值 memo、actions 走 useStable（身份恒定）→ 父组件无关的 setState 不再触发本面板重渲。
  */
 
-import { memo } from 'react';
-import { AI_PROVIDERS, providerLabel, type AiProvider, type ThinkingEffort, type ThinkingNote } from '../../../lib/ai-config';
+import { memo, type Dispatch, type SetStateAction } from 'react';
+import { AI_PROVIDERS, providerLabel, type AiProvider, type ThinkingEffort, type ThinkingNote, type ThinkingPlan } from '../../../lib/ai-config';
+import type { LocalVoice } from '../../../lib/tts-config';
 import { clearTokenUsage } from '../../../lib/token-usage';
 import { type TtsConfig } from '../../../lib/tts-config';
 import { resetTtsStatus } from '../../../lib/tts-status';
@@ -98,8 +99,8 @@ export interface SettingsPanelState {
   extraParamsValid: boolean;
   fetching: any;
   formMatchesSaved: any;
-  groupedVoices: any;
-  liveModels: any;
+  groupedVoices: { zh: LocalVoice[]; en: LocalVoice[] };
+  liveModels: string[];
   maxTokensText: any;
   model: any;
   modelMenuOpen: any;
@@ -114,7 +115,7 @@ export interface SettingsPanelState {
   showTtsKey: any;
   testResult: any;
   testing: any;
-  thinkingPlan: any;
+  thinkingPlan: ThinkingPlan | null;
   tokenUsageTotalCount: any;
   ttsCfg: any;
   ttsPreview: any;
@@ -130,15 +131,15 @@ export interface SettingsPanelActions {
   selectProvider: (id: string) => void;
   setApiKey: any;
   setCustomUrl: any;
-  setExtraParamsOpen: any;
+  setExtraParamsOpen: Dispatch<SetStateAction<boolean>>;
   setExtraParamsText: any;
   setMaxTokensText: any;
-  setModel: any;
-  setModelMenuOpen: any;
+  setModel: (m: string) => void;
+  setModelMenuOpen: Dispatch<SetStateAction<boolean>>;
   setSettingsTab: any;
-  setShowKey: any;
+  setShowKey: Dispatch<SetStateAction<boolean>>;
   setShowTokenUsage: any;
-  setShowTtsKey: any;
+  setShowTtsKey: Dispatch<SetStateAction<boolean>>;
   setThinkingEffort: any;
   setView: any;
   testConnection: () => Promise<void>;

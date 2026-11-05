@@ -16,7 +16,7 @@
  *  - 定高弹性：max-h-[85dvh] sm:max-h-[620px]，头/栏/底 flex-shrink-0 常驻，中间 flex-1 滚动
  *  - Esc 关闭 + 焦点落在主按钮；prefers-reduced-motion 无动画
  */
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Atom, Calculator, Compass, GraduationCap, Library, Lightbulb, Mail, MonitorSmartphone, Printer, Shapes, Sparkles, X } from 'lucide-react';
 import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
@@ -26,9 +26,9 @@ import { useEscapeKey } from '../../lib/use-escape-key';
 import { useFocusReturn } from '../../lib/use-focus-return';
 import SubjectIcon from './SubjectIcon';
 import LicenseDialog from './LicenseDialog';
-import VersionDialog from '../feedback/VersionDialog';
+const VersionDialog = lazy(() => import('../feedback/VersionDialog'));
 import ExternalLinkConfirm from './ExternalLinkConfirm';
-import { APP_VERSION } from '../../lib/changelog';
+import { APP_VERSION } from '../../lib/app-version';
 import { useVersionCheck } from '../../lib/use-version-check';
 
 /** 欢迎弹窗的两个分区 */
@@ -420,7 +420,7 @@ export default function WelcomeDialog({
       </div>
       {/* elevated：这两层是「模态里再开模态」，不抬到宿主卡片之上就整层被盖住 */}
       {showLicense && <LicenseDialog elevated onClose={() => setShowLicense(false)} />}
-      {showVersion && <VersionDialog elevated onClose={() => setShowVersion(false)} />}
+      {showVersion && <Suspense fallback={null}><VersionDialog elevated onClose={() => setShowVersion(false)} /></Suspense>}
     </div>,
     document.body,
   );

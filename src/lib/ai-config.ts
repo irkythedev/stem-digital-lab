@@ -280,6 +280,23 @@ function taskThinkingEffort(
 
 const STORAGE_KEY = 'stem-ai-config';
 
+/**
+ * 是否已经同意过 AI 使用须知。
+ * 与 loadAiConfig 分开：后者要求「Key / 端点 / 模型 / 同意」四项齐全，
+ * 未填 Key 时也会返回 null；顶栏需要一个只表达「同意与否」的独立信号。
+ */
+export function readAiConsent(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as Partial<AiConfig>;
+    return parsed?.agreed === true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadAiConfig(): AiConfig | null {
   if (typeof window === 'undefined') return null;
   try {

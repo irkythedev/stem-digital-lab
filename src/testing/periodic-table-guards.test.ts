@@ -774,8 +774,12 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
         /<\/button>\s*\{!isOffline && shownStatus !== 'unconfigured' && \(\s*<button/,
         '角标须是图标按钮的**兄弟**按钮（嵌套 <button> 非法），且未配置时不得渲染',
       );
-      // 未配置不渲染角标：没配置不是故障，不该占一个告警色小点
-      assert.match(hd, /shownStatus !== 'unconfigured' && \(/, '未配置须整块不渲染角标');
+      // 未配置不渲染**连通性**角标：没配置不是故障，不该占一个告警色小点。
+      // 例外：未同意须知与「已同意但没填 Key」都属于「AI 还没准备好」，
+      // 共用一个灰点；区别只在提示语与点击后的落点，不再各自一套。
+      assert.match(hd, /shownStatus !== 'unconfigured' && \(/, '未配置须整块不渲染连通性角标');
+      assert.match(hd, /const needsConsent = !readAiConsent\(\)/, '未同意须知须有独立状态');
+      assert.match(hd, /shownStatus === 'unconfigured' && \(/, '未同意须知与未配置须共享一个灰点');
       // F1：角标要有 title（桌面悬停即得一句话；此前只有 aria-label，桌面零提示）
       assert.match(hd, /title=\{`\$\{HEALTH_TITLE\[shownStatus\]\[lang\]\} · \$\{aiCheckedAtLabel/, '角标须有动态 title（状态 + 上次检测）');
       // F2：标准 Badge —— 16×16 盒贴在字形右上角（压住一角），旧的「抬到 -26px 悬空」不得回归

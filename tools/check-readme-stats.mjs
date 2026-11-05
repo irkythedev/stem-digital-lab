@@ -38,6 +38,7 @@ const testsSvg = readFileSync(join(ROOT, 'public', 'badges', 'tests.svg'), 'utf8
 /** 每个数字都必须能取到：缺了就说明文案改了形状，守卫不能装作通过。 */
 const SLOTS = [
   ['首屏徽章', /(\d+)\s+passed/, (m) => m[1], testsSvg],
+  ['首屏徽章 alt', /alt="(\d+)\s+tests passing"/, (m) => m[1], readme],
   ['三栏表', /(\d+) 项单测门禁/, (m) => m[1], readme],
   ['口径注释', /(\d+) passed\s+←\s+npm test 实测/, (m) => m[1], readme],
   ['中文正文', /\*\*(\d+) 项全绿\*\*/, (m) => m[1], readme],

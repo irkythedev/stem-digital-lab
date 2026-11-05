@@ -89,9 +89,9 @@ const isBi = (v: unknown): v is Bi =>
  * 更严格的字数/证据/表格门禁在 tools/check-geo-assets.ts。
  */
 export function parseLabContent(raw: unknown, source: string): LabContent {
-  const fail = (path: string): never => {
+  function fail(path: string): never {
     throw new Error(`[lab-content] ${source} 缺少或写错字段：${path}`);
-  };
+  }
   if (typeof raw !== 'object' || raw === null) fail('<root>');
   const c = raw as Partial<LabContent>;
 
@@ -99,20 +99,30 @@ export function parseLabContent(raw: unknown, source: string): LabContent {
   if (typeof c.canonical !== 'string' || !/^https:\/\//.test(c.canonical)) fail('canonical');
   if (!isBi(c.name)) fail('name');
   if (!Array.isArray(c.aliases) || !c.aliases.every(isBi)) fail('aliases');
-  if (!Array.isArray(c.curriculum) || c.curriculum.length === 0) fail('curriculum');
-  for (const [i, entry] of c.curriculum.entries()) {
+  const curriculum = c.curriculum;
+  if (!Array.isArray(curriculum)) fail('curriculum');
+  if (curriculum.length === 0) fail('curriculum');
+  for (const [i, entry] of curriculum.entries()) {
     if (!isBi(entry.edition) || !isBi(entry.grade) || !isBi(entry.chapter)) fail(`curriculum[${i}]`);
   }
   if (!isBi(c.summary)) fail('summary');
   if (!c.answer || !isBi(c.answer.what) || !isBi(c.answer.observe) || !isBi(c.answer.grade)) fail('answer');
-  if (!Array.isArray(c.facts) || c.facts.length === 0) fail('facts');
-  for (const [i, f] of c.facts.entries()) {
+  const facts = c.facts;
+  if (!Array.isArray(facts)) fail('facts');
+  if (facts.length === 0) fail('facts');
+  for (const [i, f] of facts.entries()) {
     if (!isBi(f.key) || !isBi(f.value) || !isBi(f.evidence)) fail(`facts[${i}]`);
     if (!['A', 'B', 'C', 'D'].includes(f.tier)) fail(`facts[${i}].tier`);
   }
-  if (!c.dataTable || !isBi(c.dataTable.caption)) fail('dataTable.caption');
-  if (!Array.isArray(c.dataTable.columns) || c.dataTable.columns.length === 0) fail('dataTable.columns');
-  if (!Array.isArray(c.dataTable.rows) || c.dataTable.rows.length === 0) fail('dataTable.rows');
+  const dataTable = c.dataTable;
+  if (!dataTable) fail('dataTable.caption');
+  if (!isBi(dataTable.caption)) fail('dataTable.caption');
+  const columns = dataTable.columns;
+  if (!Array.isArray(columns)) fail('dataTable.columns');
+  if (columns.length === 0) fail('dataTable.columns');
+  const rows = dataTable.rows;
+  if (!Array.isArray(rows)) fail('dataTable.rows');
+  if (rows.length === 0) fail('dataTable.rows');
   if (!Array.isArray(c.steps) || c.steps.length === 0 || !c.steps.every(isBi)) fail('steps');
   if (!Array.isArray(c.misconceptions) || !c.misconceptions.every((m) => isBi(m.claim) && isBi(m.correction))) {
     fail('misconceptions');

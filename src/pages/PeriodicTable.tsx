@@ -524,7 +524,7 @@ export default function PeriodicTable() {
       u.onstart = () => {
         setSpeakState('playing');
         // 降级分支同样设置兜底复位（个别设备语音合成不触发 onend）
-        window.clearTimeout(speakTimeout.current);
+        if (speakTimeout.current !== null) window.clearTimeout(speakTimeout.current);
         speakTimeout.current = window.setTimeout(() => setSpeakState('idle'), 4000);
       };
       u.onend = () => {
@@ -540,7 +540,7 @@ export default function PeriodicTable() {
     tryPlay(`/audio/${e.n}${voiceSuffix(voiceRef.current)}.mp3`);
     // 兜底：个别环境 onended 不触发（微信 X5 等），按音频时长估算后复位
     // MP3 均约 1.8s，此处取 4s 确保结束状态可靠复位
-    window.clearTimeout(speakTimeout.current);
+    if (speakTimeout.current !== null) window.clearTimeout(speakTimeout.current);
     speakTimeout.current = window.setTimeout(() => setSpeakState('idle'), 4000);
   };
 

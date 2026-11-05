@@ -10,9 +10,11 @@
  * memo 导出：state 由父级按值 memo、actions 走 useStable（身份恒定）→ 父组件无关的 setState 不再触发本面板重渲。
  */
 
-import { memo } from 'react';
-import { relativeTime } from '../../../lib/ai-history';
+import { memo, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { relativeTime, type AiHistoryEntry } from '../../../lib/ai-history';
 import { type PaperBlankLevel, type PaperSortMode } from '../../../lib/quiz-paper';
+import type { QuizHistoryEntry } from '../../../lib/quiz-history';
+import type { QuizOverview } from '../../../lib/quiz-summary';
 import AnswerRich, { InlineAnswer } from '../AnswerRich';
 import { Mark } from './panel-shared';
 import QuizPaperPrint from '../QuizPaperPrint';
@@ -35,11 +37,11 @@ export interface HistoryPanelState {
   hasQuizFilter: boolean;
   histPage: any;
   histPageCount: number;
-  histSubjects: any;
-  histTopics: any;
+  histSubjects: string[];
+  histTopics: string[];
   historyTab: any;
-  pagedHistory: any;
-  pagedQuizHistory: any;
+  pagedHistory: AiHistoryEntry[];
+  pagedQuizHistory: Array<QuizHistoryEntry & { repeatCount: number }>;
   paperData: any;
   paperOpen: any;
   paperOpts: any;
@@ -55,14 +57,14 @@ export interface HistoryPanelState {
   storageUsage: any;
   quizExpandedId: any;
   quizHistoryData: any;
-  quizOverview: any;
+  quizOverview: QuizOverview;
   quizOverviewOpen: any;
   quizPage: any;
   quizPageCount: number;
   quizScope: any;
   quizStatsData: any;
   quizSubjFilter: any;
-  quizSubjects: any;
+  quizSubjects: string[];
   quizSummaryConfirm: any;
   quizSummaryError: any;
   quizSummaryLoading: any;
@@ -70,7 +72,7 @@ export interface HistoryPanelState {
   quizSummaryText: any;
   quizTopicFilter: any;
   quizTopicMenuOpen: any;
-  quizTopics: any;
+  quizTopics: string[];
   subjFilter: any;
   topicFilter: any;
   topicMenuOpen: any;
@@ -87,26 +89,26 @@ export interface HistoryPanelActions {
   copyAnswer: (id: string, text: string) => Promise<void>;
   exportPaper: (preview: boolean) => void;
   gotoHistoryPath: (path: string) => void;
-  renderSpeakControls: (text: string, topic?: string) => Element;
+  renderSpeakControls: (text: string, topic?: string) => ReactNode;
   retryWrongQuestion: () => void;
   runQuizSummary: () => Promise<void>;
   setExpandedHistId: any;
-  setHistPage: any;
+  setHistPage: Dispatch<SetStateAction<number>>;
   setHistoryTab: any;
   setPaperOpen: any;
-  setPaperOpts: any;
+  setPaperOpts: Dispatch<SetStateAction<{ includeAnswers: boolean; blankLevel: PaperBlankLevel; sortMode: PaperSortMode }>>;
   setPaperPreview: any;
   setQuizExpandedId: any;
-  setQuizOverviewOpen: any;
-  setQuizPage: any;
+  setQuizOverviewOpen: Dispatch<SetStateAction<boolean>>;
+  setQuizPage: Dispatch<SetStateAction<number>>;
   setQuizScope: any;
   setQuizSubjFilter: any;
   setQuizSummaryConfirm: any;
   setQuizTopicFilter: any;
-  setQuizTopicMenuOpen: any;
+  setQuizTopicMenuOpen: Dispatch<SetStateAction<boolean>>;
   setSubjFilter: any;
   setTopicFilter: any;
-  setTopicMenuOpen: any;
+  setTopicMenuOpen: Dispatch<SetStateAction<boolean>>;
   setView: any;
 }
 

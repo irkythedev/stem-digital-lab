@@ -5,7 +5,7 @@
  * 顶部导航栏：品牌标识 + 语言切换 + 主题切换。
  * 从原 App.tsx 抽出，状态改由全局 useApp() 提供。
  */
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle, RotateCw } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
@@ -22,12 +22,12 @@ import {
   useAiStatus,
   verifyAiStatus,
 } from '../../lib/ai-status';
-import { loadAiConfig } from '../../lib/ai-config';
-import { APP_VERSION } from '../../lib/changelog';
+import { loadAiConfig, readAiConsent } from '../../lib/ai-config';
+import { APP_VERSION } from '../../lib/app-version';
 import { useAppUpdate } from '../../lib/use-app-update';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { ringStateFor, type RingState } from '../../lib/update-progress';
-import VersionDialog from '../feedback/VersionDialog';
+const VersionDialog = lazy(() => import('../feedback/VersionDialog'));
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import type { ThemeMode } from '../../lib/app-context';
@@ -194,6 +194,21 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const expiredConclusion = checkedStale && (aiStatus.status === 'valid' || aiStatus.status === 'invalid');
   const shownStatus: AiStatus = expiredConclusion ? 'configured' : aiStatus.status;
   const aiLabel = AI_STATUS_LABEL[shownStatus][lang].replace('{model}', aiStatus.model);
+  /**
+   * 未同意使用须知是**配置闸门**，不是连通性结论：它不进五态状态机（那五态描述的是
+   * 「配置/端点/模型通不通」），但顶栏必须给出可见状态——否则首访用户看到的图标
+   * 与「已同意但没填 Key」完全一样，都是没有任何点。
+   */
+  const needsConsent = !readAiConsent();
+  /**
+   * 未同意须知与未配置共用同一个「灰点」：两者都是「AI 还没准备好」，
+   * 区别只在提示语与点击后的落点（须知页 / 设置页）。连通性角标仍只管五态。
+   */
+  const aiEntryLabel = shownStatus === 'unconfigured'
+    ? (needsConsent
+        ? (lang === 'zh' ? 'AI 助手（需先同意使用须知）' : 'AI Assistant (accept the terms first)')
+        : AI_STATUS_LABEL.unconfigured[lang])
+    : aiLabel;
   /**
    * 过期判定是渲染期纯函数：没有重渲染就不会重算，标签页一直开着便会停在旧结论上。
    * 所以只补一个**一次性到点定时器**（不是轮询）：在 checkedAt + TTL 那一刻让这一帧重新求值。
@@ -400,8 +415,8 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           <button
             type="button"
             onClick={() => setAiOpen(!aiOpen)}
-            aria-label={isOffline ? t.offlineAi.hint : aiLabel}
-            title={isOffline ? t.offlineAi.hint : aiLabel}
+            aria-label={isOffline ? t.offlineAi.hint : aiEntryLabel}
+            title={isOffline ? t.offlineAi.hint : aiEntryLabel}
             className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-[var(--accent-light)] transition-colors tap-area ${isOffline ? 'text-[var(--muted)]' : 'text-[var(--fg)]'}`}
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -431,6 +446,20 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
               ) : (
                 <span className={`h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] translate-x-[1px] -translate-y-[2px] ${AI_STATUS_DOT[shownStatus]}`} aria-hidden="true" />
               )}
+            </button>
+          )}
+          {/* 未同意须知 / 未配置共用一个实心灰点（确定状态，不是「未知」）。
+              点击都打开 AI 面板：未同意时停在须知页，已同意但没填 Key 时停在设置页。
+              与上面的连通性角标互斥：shownStatus 为 unconfigured 时不会走那块。 */}
+          {!isOffline && shownStatus === 'unconfigured' && (
+            <button
+              type="button"
+              onClick={() => setAiOpen(true)}
+              aria-label={`${aiEntryLabel} — ${lang === 'zh' ? (needsConsent ? '打开并阅读须知' : '打开并完成配置') : (needsConsent ? 'open the terms' : 'open settings')}`}
+              title={aiEntryLabel}
+              className="absolute right-0 top-0 z-10 grid h-4 w-4 place-items-center rounded-full"
+            >
+              <span className="h-1.5 w-1.5 rounded-full ring-2 ring-[var(--bg)] bg-[var(--muted)] translate-x-[1px] -translate-y-[2px]" aria-hidden="true" />
             </button>
           )}
 
@@ -574,7 +603,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         )}
       </div>
       </div>
-      {showVersion && <VersionDialog onClose={() => setShowVersion(false)} />}
+      {showVersion && <Suspense fallback={null}><VersionDialog onClose={() => setShowVersion(false)} /></Suspense>}
       {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
     </header>
   );

@@ -15,7 +15,7 @@
  * 套件中其余用例依赖 `readFileSync` 源码扫描（`read('src/...')`，依赖当前工作
  * 目录）或 React 组件模块（`InteractiveCircle.tsx` / `CoordPlane.tsx` 及其
  * `app-context`），按约束保留在 smoke.test.ts 原位；拆分依据见
- * docs/testing/math-stability-extraction-batch-3.md 第 2-3 节。
+ * 内部分批迁移记录第 2-3 节。
  *
  * 用例名、断言、期望值与迁移前 smoke.test.ts 逐字一致；套件名由入口提供，
  * 与迁移前同名（拆分后 smoke 与新入口各持有该套件的不同用例）。

@@ -56,7 +56,7 @@
  *      picked the first option used to score full marks).
  *  15. the user-facing changelog stays presentation-grade: no emoji at all, a capped
  *      number of items for the current release, and no implementation units or technical
- *      nouns leaking into reader-facing text (those belong in docs/changelog-internal.md).
+ *      nouns leaking into reader-facing text (those belong in the internal changelog ledger).
  *  16. the element detail card keeps a continuous exploration flow and a textbook-exact
  *      micro view: previous/next element navigation (disabled at #1 and #118, mirrored by
  *      the arrow keys), K/L/M/N shell badges driven by the shells array (outermost shell
@@ -108,6 +108,7 @@
  * Run: npx tsx src/smoke.test.ts
  */
 import { strict as assert } from 'node:assert';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { labs, labMap, labsForSubject, isToolLab } from './lib/labs';
 import { translations } from './lib/i18n';
@@ -1459,7 +1460,7 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
       first.zh.length >= 2 && first.zh.length <= 4,
       `首条（当前版本）条目数须收口在 2–4 条，避免把开发清单倒给使用者：实测 ${first.zh.length} 条`,
     );
-    // 面向用户的文案里不得出现实现单位与技术名词（它们只属于 docs/changelog-internal.md）
+    // 面向用户的文案里不得出现实现单位与技术名词（它们只属于内部变更台账）
     const MECH = /\b(px|rem|SVG|DOM|CSS|React|Tailwind|localStorage|sessionStorage|commit|refactor|SHA|API|WASM)\b/i;
     for (const line of [...first.zh, ...first.en]) {
       assert.doesNotMatch(line, MECH, `用户向条目不得夹带实现细节：${line.slice(0, 48)}…`);
@@ -2575,6 +2576,57 @@ describe('物理教学边界守卫（电表量程 / 透镜超程 / 测力计插�
 /* ── 电学工作台 M1 已拆为独立入口 ──
  * 见 src/labs/physics/circuit-bench/circuit-bench.entry.test.ts：它有自己的 harness
  * 实例与 runAll()，不要在 smoke 里再次注册，否则同一批用例会被执行两遍。 */
+
+/* ── 部署契约：缓存与安全头必须与 edgeone.json 同源，且 CSP 哈希不能漂移 ── */
+
+describe('部署契约（edgeone.json 的缓存策略与安全响应头）', () => {
+  const conf = JSON.parse(readFileSync('edgeone.json', 'utf8')) as {
+    headers: { source: string; headers: { key: string; value: string }[] }[];
+  };
+  const valueOf = (source: string, key: string): string =>
+    conf.headers
+      .find((r) => r.source === source)
+      ?.headers.find((h) => h.key.toLowerCase() === key.toLowerCase())?.value ?? '';
+
+  test('带内容哈希的 /assets/* 长缓存，HTML / SW 回源校验，version.json 不缓存', () => {
+    const assets = valueOf('/assets/*', 'Cache-Control');
+    assert.match(assets, /max-age=31536000/, '/assets/* 应长缓存：文件名已带内容哈希');
+    assert.match(assets, /immutable/, '/assets/* 应声明 immutable');
+    assert.match(valueOf('/index.html', 'Cache-Control'), /no-cache|no-store/, 'index.html 不得被缓存');
+    assert.match(valueOf('/sw.js', 'Cache-Control'), /no-cache|no-store/, 'sw.js 不得被缓存');
+    assert.equal(valueOf('/version.json', 'Cache-Control'), 'no-store', 'version.json 必须 no-store');
+  });
+
+  test('CSP 的内联脚本哈希与 index.html 实际内容一致', () => {
+    const html = readFileSync('index.html', 'utf8');
+    const parts = html.split('<script>');
+    assert.equal(parts.length, 2, 'index.html 应只有一个裸 <script>（首屏主题脚本）');
+    const body = parts[1].split('</script>')[0];
+    const hash = 'sha256-' + createHash('sha256').update(body, 'utf8').digest('base64');
+    const csp = valueOf('/*', 'Content-Security-Policy');
+    assert.ok(csp.includes(hash), `CSP 缺少与 index.html 一致的内联脚本哈希；应加入 ${hash}`);
+  });
+
+  test('安全头齐全，CSP 保留 wasm 权限并放行页脚外域图标', () => {
+    const csp = valueOf('/*', 'Content-Security-Policy');
+    for (const needle of ["default-src 'self'", "object-src 'none'", "frame-ancestors 'none'", "base-uri 'self'"]) {
+      assert.ok(csp.includes(needle), `CSP 缺少 ${needle}`);
+    }
+    // Emscripten embind 在模块初始化阶段调用 new Function；缺 'unsafe-eval' 会让两个 wasm
+    // 模块静默回退 JS（页面不报错，但 C++ 求解核消失）。这是有意保留，不得被“收紧”误删。
+    assert.ok(csp.includes("'unsafe-eval'"), "CSP 必须保留 'unsafe-eval'（embind 依赖）");
+    assert.ok(csp.includes("'wasm-unsafe-eval'"), "CSP 必须保留 'wasm-unsafe-eval'");
+    const i18n = readFileSync('src/lib/i18n.ts', 'utf8');
+    const iconHosts = [...i18n.matchAll(/icon: 'https:\/\/([^/']+)/g)].map((m) => m[1]);
+    assert.ok(iconHosts.length > 0, '未从 i18n 读到外域图标，检查正则是否失效');
+    for (const host of new Set(iconHosts)) {
+      assert.ok(csp.includes(`https://${host}`), `CSP img-src 未放行外域图标：${host}`);
+    }
+    assert.equal(valueOf('/*', 'X-Content-Type-Options'), 'nosniff');
+    assert.equal(valueOf('/*', 'X-Frame-Options'), 'DENY');
+    assert.match(valueOf('/*', 'Referrer-Policy'), /strict-origin/);
+  });
+});
 
 /* ── 执行入口：所有用例注册完毕后才开始跑 ── */
 

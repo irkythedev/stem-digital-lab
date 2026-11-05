@@ -13,7 +13,7 @@
  * - 自动注入当前页面知识（AiContext）到系统提示词，避免 AI 自由发挥；
  * - 免责声明常驻：AI 生成内容仅供参考，请以教材和老师讲解为准。
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowDown, ChevronDown, ChevronUp, ChevronsDown, GraduationCap, History, Lightbulb, Minus, Pause, Play, RotateCcw, Settings, ShieldCheck, Sparkles, Square, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
@@ -925,7 +925,7 @@ export default function AiAssistant() {
     }
   });
 
-  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；200–960px）
+  // 面板高度（右下角斜拉调整；0 = 内容自适应；localStorage 记忆 UI 偏好；280–960px）
   const [height, setHeight] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     try {
@@ -933,12 +933,24 @@ export default function AiAssistant() {
       const h = raw ? parseInt(raw, 10) : 0;
       // 0 = 没有记忆：不设显式上限，交给外层视口上限兜底（旧写法把 0 夹成 200，会裁掉页脚）
       if (!Number.isFinite(h) || h <= 0) return 0;
-      // 记忆值同样是 200–960（与 maxPanelHeight 对齐，否则拖到 960 下次加载会被截回 720）
-      return Math.min(960, Math.max(200, h));
+      // 记忆值同样是 280–960（与 maxPanelHeight 对齐，否则拖到 960 下次加载会被截回 720）
+      return Math.min(960, Math.max(280, h));
     } catch {
       return 0;
     }
   });
+  // 视口变化（窗口缩放 / 旋转 / 软键盘）：只触发一次重渲染，
+  // 位置与尺寸的夹取都在渲染期完成，避免面板停在旧视口外。
+  const [, bumpViewport] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const onResize = () => bumpViewport();
+    window.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
+  }, []);
   // 最小化（收起为胶囊）：UI 偏好，localStorage 记忆；移动端不启用
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false;
@@ -957,13 +969,16 @@ export default function AiAssistant() {
   };
   // 拖拽是否真的移动过（胶囊上「点击还原」与「拖动」靠它区分）
   const dragMovedRef = useRef(false);
+  // 标题栏双击复位：记录上一次按下的时间与「上一次是否只是点击」
+  const lastTitleTapRef = useRef(0);
+  const lastTitleMovedRef = useRef(false);
   const heightRef = useRef(0);
   useEffect(() => { heightRef.current = height; }, [height]);
   // ── 拖拽 / 缩放：拖拽期间只写 DOM（不触发 React 重渲染、不逐帧回流），松手时单次结算 ──
   // 三个把手共用一份拖拽状态；pointermove 只更新「最近一次指针坐标」，真正的样式写入放在 rAF 帧里，
   // 因此一帧内无论收到多少 pointermove 都只写一次样式，也不会触发任何 setState。
   const dragStateRef = useRef<{
-    kind: 'title' | 'width' | 'corner';
+    kind: 'title' | 'width' | 'corner' | 'bottom';
     startX: number; startY: number;
     startW: number; startH: number;
     baseLeft: number; baseTop: number;
@@ -989,7 +1004,7 @@ export default function AiAssistant() {
   });
   /** 尺寸上限：既服从用户记忆值，也不超过视口（否则面板底部会沉到屏幕外） */
   // 上限交给视口（原 720 硬顶在 1080p 上白白少给 288px）；留 960 只作超大屏的阅读行数约束
-  const maxPanelHeight = (want: number) => Math.max(200, Math.min(960, want, window.innerHeight - 72));
+  const maxPanelHeight = (want: number) => Math.max(280, Math.min(960, want, window.innerHeight - 72));
   const maxPanelWidth = (want: number) => Math.max(280, Math.min(720, want, window.innerWidth - 16));
 
   /** 纯 DOM 写入：拖拽期间唯一改样式的地方（不碰 React state） */
@@ -1007,11 +1022,15 @@ export default function AiAssistant() {
       return;
     }
 
-    st.curW = maxPanelWidth(st.startW + dx);
-    el.style.width = st.curW + 'px';
-    if (st.kind === 'corner') {
+    if (st.kind !== 'bottom') {
+      st.curW = maxPanelWidth(st.startW + dx);
+      el.style.width = st.curW + 'px';
+    }
+    if (st.kind === 'corner' || st.kind === 'bottom') {
       st.curH = maxPanelHeight(st.startH + dy);
-      el.style.maxHeight = st.curH + 'px';
+      // 拖高度时先让开 62dvh 的保底 min-height，否则面板会被顶回去，手感像「拖不动」
+      el.style.minHeight = '0px';
+      el.style.height = st.curH + 'px';
     }
   };
 
@@ -1027,7 +1046,7 @@ export default function AiAssistant() {
     });
   };
 
-  const beginDrag = (kind: 'title' | 'width' | 'corner', e: React.PointerEvent) => {
+  const beginDrag = (kind: 'title' | 'width' | 'corner' | 'bottom', e: React.PointerEvent) => {
     if (isMobile) return; // 移动端是底部抽屉，位置/尺寸都由 CSS 决定，不接受拖拽
     // 标题栏里还有设置/历史/关闭按钮：从按钮上按下时既不拖窗口、也不设置指针捕获——
     // 捕获一旦落在标题栏上，按钮的 click 会被吞掉（表现为「点了没反应」）
@@ -1038,6 +1057,16 @@ export default function AiAssistant() {
         // 只有「命中的按钮不是拖拽面本身」才让位：标题栏里的三个按钮会被命中 → 不拖；
         // 胶囊按钮本体就是拖拽面（其内部的图标/文字也在它里面）→ 照常拖
         if (hit && hit !== e.currentTarget) return;
+      }
+      // 双击 / 双指点按复位：第二次按下距上一次 <320ms，且上一次没有拖动过。
+      // 用指针事件自己判定，不依赖 dblclick —— 触摸端不会稳定派发 dblclick。
+      const now = Date.now();
+      const isDoubleTap = now - lastTitleTapRef.current < 320 && !lastTitleMovedRef.current;
+      lastTitleTapRef.current = now;
+      lastTitleMovedRef.current = false;
+      if (isDoubleTap) {
+        resetPanelGeometry();
+        return;
       }
     }
     const el = panelRef.current;
@@ -1082,6 +1111,7 @@ export default function AiAssistant() {
     if (st.rafId !== null) { window.cancelAnimationFrame(st.rafId); st.rafId = null; }
 
     if (st.kind === 'title') {
+      lastTitleMovedRef.current = dragMovedRef.current;
       const target = clampPos(st.baseLeft + (st.lastX - st.startX), st.baseTop + (st.lastY - st.startY));
       // 先落到 left/top 再清 transform：视觉上连续，避免 React 重渲染前闪一下旧位置
       el.style.left = target.x + 'px';
@@ -1094,10 +1124,13 @@ export default function AiAssistant() {
     }
 
     // 宽度/高度：把最终值固化到内联样式（与即将写入的 state 一致，避免交回 React 时跳一下）
-    el.style.width = st.curW + 'px';
-    if (st.kind === 'corner') { el.style.maxHeight = st.curH + 'px'; }
-    setWidth(st.curW);
-    if (st.kind === 'corner') setHeight(st.curH);
+    if (st.kind !== 'bottom') el.style.width = st.curW + 'px';
+    if (st.kind === 'corner' || st.kind === 'bottom') {
+      el.style.minHeight = '';
+      el.style.height = st.curH + 'px';
+      setHeight(st.curH);
+    }
+    if (st.kind !== 'bottom') setWidth(st.curW);
 
     // 变大后右边缘可能越界：只在用户已有自定义位置时同步左移，默认右对齐无需处理
     const prev = posRef.current;
@@ -1113,8 +1146,8 @@ export default function AiAssistant() {
       }
     }
     try {
-      window.localStorage.setItem('stem-ai-width', String(st.curW));
-      if (st.kind === 'corner') window.localStorage.setItem('stem-ai-height', String(st.curH));
+      if (st.kind !== 'bottom') window.localStorage.setItem('stem-ai-width', String(st.curW));
+      if (st.kind === 'corner' || st.kind === 'bottom') window.localStorage.setItem('stem-ai-height', String(st.curH));
     } catch { /* 静默 */ }
   };
 
@@ -1122,6 +1155,98 @@ export default function AiAssistant() {
   const endDragOrUnlock = () => {
     if (dragStateRef.current) endDrag();
     else releaseDragSelectionLock();
+  };
+  /** 双击标题栏复位：位置、宽、高一起回到默认，并清掉拖拽留下的内联样式 */
+  const resetPanelGeometry = () => {
+    const el = panelRef.current;
+    if (el) {
+      el.style.left = '';
+      el.style.top = '';
+      el.style.right = '';
+      el.style.width = '';
+      el.style.height = '';
+      el.style.minHeight = '';
+      el.style.maxHeight = '';
+      el.style.transform = '';
+    }
+    setPos(null);
+    setWidth(384);
+    setHeight(0);
+    try {
+      window.localStorage.removeItem('stem-ai-pos');
+      window.localStorage.removeItem('stem-ai-width');
+      window.localStorage.removeItem('stem-ai-height');
+    } catch { /* 静默 */ }
+  };
+
+  /** 键盘调整：把手聚焦后方向键微调（Shift 加速），与指针拖拽写同一份 state */
+  const nudgePanel = (dw: number, dh: number) => {
+    const el = panelRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const nextW = maxPanelWidth(rect.width + dw);
+    const nextH = maxPanelHeight((height > 0 ? height : rect.height) + dh);
+    el.style.width = '';
+    el.style.height = '';
+    el.style.minHeight = '';
+    el.style.maxHeight = '';
+    try {
+      if (dw !== 0) { setWidth(nextW); window.localStorage.setItem('stem-ai-width', String(nextW)); }
+      if (dh !== 0) { setHeight(nextH); window.localStorage.setItem('stem-ai-height', String(nextH)); }
+    } catch { /* 静默 */ }
+  };
+
+  const onHandleKeyDown = (axis: 'w' | 'h' | 'both') => (e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 32 : 8;
+    let dw = 0;
+    let dh = 0;
+    if (axis !== 'h') {
+      if (e.key === 'ArrowLeft') dw = -step;
+      else if (e.key === 'ArrowRight') dw = step;
+    }
+    if (axis !== 'w') {
+      if (e.key === 'ArrowUp') dh = -step;
+      else if (e.key === 'ArrowDown') dh = step;
+    }
+    if (dw === 0 && dh === 0) return;
+    e.preventDefault();
+    nudgePanel(dw, dh);
+  };
+
+  // ── 手机底部抽屉：顶部抓手下滑关闭（拖动距离超过 96px 才关闭，避免误触） ──
+  const sheetDragRef = useRef<{ startY: number; dy: number } | null>(null);
+  const sheetTimerRef = useRef<number | null>(null);
+  useEffect(() => () => { if (sheetTimerRef.current !== null) window.clearTimeout(sheetTimerRef.current); }, []);
+  const beginSheetDrag = (e: React.PointerEvent) => {
+    if (!isMobile) return;
+    e.preventDefault();
+    sheetDragRef.current = { startY: e.clientY, dy: 0 };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    const el = panelRef.current;
+    if (el) el.style.transition = 'none';
+  };
+  const moveSheetDrag = (e: React.PointerEvent) => {
+    const st = sheetDragRef.current;
+    if (!st) return;
+    st.dy = Math.max(0, e.clientY - st.startY);
+    const el = panelRef.current;
+    if (el) el.style.transform = `translate3d(0, ${st.dy}px, 0)`;
+  };
+  const endSheetDrag = () => {
+    const st = sheetDragRef.current;
+    if (!st) return;
+    sheetDragRef.current = null;
+    const el = panelRef.current;
+    if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+    const close = st.dy > 96;
+    el.style.transition = reduce ? 'none' : 'transform 180ms cubic-bezier(0.22, 1, 0.36, 1)';
+    el.style.transform = close ? 'translate3d(0, 100%, 0)' : '';
+    sheetTimerRef.current = window.setTimeout(() => {
+      el.style.transition = '';
+      el.style.transform = '';
+      if (close) closePanel();
+    }, reduce ? 0 : close ? 180 : 200);
   };
 
   // 拖拽中若有其它原因触发重渲染（例如回答流式更新），React 会按旧 state 覆写内联样式；
@@ -1477,11 +1602,11 @@ export default function AiAssistant() {
       // 持久化到本地（纯浏览器 localStorage，上限 100 条；仅存最终完整回答）
       saveHistory({
         path: location.pathname + location.search,
-        subject: pageSubject(location.pathname, lang),
-        topic: aiCtx.topic ?? pageSubject(location.pathname, lang),
+        subject: pageSubject(location.pathname, lang) ?? '',
+        topic: (aiCtx.topic ?? pageSubject(location.pathname, lang)) ?? '',
         question: q,
         answer: body,
-        model: config.model,
+        model: config.model ?? '',
       });
       setPersistHistory(listHistory());
       // 思考草稿只留内存（本回合问答对为键；最多 20 轮、每轮截 4000 字），供历史气泡回看，不落盘
@@ -1516,11 +1641,11 @@ export default function AiAssistant() {
         setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: kept }]);
         saveHistory({
           path: location.pathname + location.search,
-          subject: pageSubject(location.pathname, lang),
-          topic: aiCtx.topic ?? pageSubject(location.pathname, lang),
+          subject: pageSubject(location.pathname, lang) ?? '',
+          topic: (aiCtx.topic ?? pageSubject(location.pathname, lang)) ?? '',
           question: q,
           answer: kept,
-          model: config.model,
+          model: config.model ?? '',
         });
         setPersistHistory(listHistory());
         setAnswer(''); // 已入历史：清空当前轮，避免同一内容在历史区与当前轮显示两遍
@@ -1790,8 +1915,9 @@ export default function AiAssistant() {
                   ? {}
                   : {
                       width: Math.min(width, typeof window !== 'undefined' ? window.innerWidth - 16 : width),
-                      // 记忆值作为「上限」而非写死高度：内容不足时面板收缩，超出时滚动、页脚始终贴底
-                      ...(height > 0 && view === 'chat' ? { maxHeight: maxPanelHeight(height) } : {}),
+                      // 用户拖过高度后按固定高度渲染：内容超出时内部滚动、页脚仍贴底；
+                      // 没拖过（0）则继续按内容自适应，表单视图也不会留死区。
+                      ...(height > 0 ? { height: maxPanelHeight(height) } : {}),
                     }),
                 ...(safePos ? { left: safePos.x, top: safePos.y } : { top: '3.5rem', right: '1rem' }),
               }
@@ -1800,6 +1926,20 @@ export default function AiAssistant() {
         role="dialog"
         aria-label="AI assistant"
       >
+      {isMobile && (
+        /* 手机抽屉抓手：下滑超过 96px 关闭，不足则回弹；纯触摸手势，不占键盘焦点 */
+        <div
+          className="flex h-5 shrink-0 touch-none cursor-grab items-center justify-center active:cursor-grabbing"
+          onPointerDown={beginSheetDrag}
+          onPointerMove={moveSheetDrag}
+          onPointerUp={endSheetDrag}
+          onPointerCancel={endSheetDrag}
+          onLostPointerCapture={endSheetDrag}
+          aria-hidden="true"
+        >
+          <span className="h-1 w-9 rounded-full bg-[var(--border)]" />
+        </div>
+      )}
       {collapsed && !isMobile ? (
         /* ── 收起态：32px 胶囊（点击还原 / 可拖动 / 流式回答不中断） ── */
         <button
@@ -1819,27 +1959,61 @@ export default function AiAssistant() {
         </button>
       ) : (
       <>
-      {/* 宽度拖拽把手（右侧边缘；移动端隐藏，全宽卡片无需缩放） */}
+      {/* 宽度把手（右侧边缘；12px 命中带，移动端隐藏——抽屉由 CSS 定宽） */}
       <div
-        className={`absolute right-0 top-0 bottom-4 w-1.5 cursor-ew-resize touch-none z-10 hover:bg-[var(--fg)]/10 transition-colors${isMobile ? ' hidden' : ''}`}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={lang === 'zh' ? '调整宽度' : 'Resize width'}
+        aria-valuenow={Math.round(width)}
+        aria-valuemin={280}
+        aria-valuemax={720}
+        tabIndex={isMobile ? -1 : 0}
+        onKeyDown={onHandleKeyDown('w')}
+        className={`group absolute right-0 top-3 bottom-6 w-2.5 cursor-ew-resize touch-none z-20 outline-none focus-visible:bg-[var(--accent-light)]${isMobile ? ' hidden' : ''}`}
         onPointerDown={(e) => beginDrag('width', e)}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onLostPointerCapture={endDragOrUnlock}
-        title={lang === 'zh' ? '拖拽调整宽度' : 'Drag to resize'}
-      />
-      {/* 右下角斜拉把手（同时调宽高；移动端隐藏） */}
+        title={lang === 'zh' ? '拖拽调整宽度（方向键可微调）' : 'Drag to resize (arrow keys to nudge)'}
+      >
+        <span className="pointer-events-none absolute right-0.5 top-1/2 h-8 w-0.5 -translate-y-1/2 rounded-full bg-[var(--border)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
+      </div>
+      {/* 高度把手（底边；与右下角同一套高度语义） */}
       <div
-        className={`absolute right-0 bottom-0 w-4 h-4 cursor-nwse-resize touch-none z-20 flex items-end justify-end${isMobile ? ' hidden' : ''}`}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label={lang === 'zh' ? '调整高度' : 'Resize height'}
+        aria-valuenow={height > 0 ? Math.round(height) : undefined}
+        aria-valuemin={280}
+        aria-valuemax={960}
+        tabIndex={isMobile ? -1 : 0}
+        onKeyDown={onHandleKeyDown('h')}
+        className={`group absolute left-3 right-6 bottom-0 h-3 cursor-ns-resize touch-none z-20 outline-none focus-visible:bg-[var(--accent-light)]${isMobile ? ' hidden' : ''}`}
+        onPointerDown={(e) => beginDrag('bottom', e)}
+        onPointerMove={onDragMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDragOrUnlock}
+        title={lang === 'zh' ? '拖拽调整高度（方向键可微调）' : 'Drag to resize (arrow keys to nudge)'}
+      >
+        <span className="pointer-events-none absolute bottom-0.5 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-[var(--border)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
+      </div>
+      {/* 右下角斜拉把手（同时调宽高；24px 命中带，视觉只留一个小折角） */}
+      <div
+        role="separator"
+        aria-label={lang === 'zh' ? '调整宽高' : 'Resize'}
+        tabIndex={isMobile ? -1 : 0}
+        onKeyDown={onHandleKeyDown('both')}
+        className={`group absolute right-0 bottom-0 w-6 h-6 cursor-nwse-resize touch-none z-30 flex items-end justify-end p-1 outline-none focus-visible:bg-[var(--accent-light)] rounded-br-2xl${isMobile ? ' hidden' : ''}`}
         onPointerDown={(e) => beginDrag('corner', e)}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onLostPointerCapture={endDragOrUnlock}
-        title={lang === 'zh' ? '斜拉调整宽高' : 'Drag corner to resize'}
+        title={lang === 'zh' ? '斜拉调整宽高（方向键可微调）' : 'Drag corner to resize (arrow keys to nudge)'}
       >
-        <span className="w-2 h-2 border-r border-b border-[var(--muted)]" aria-hidden="true" />
+        <span className="h-2 w-2 rounded-br-[2px] border-r-2 border-b-2 border-[var(--muted)] opacity-70 group-hover:opacity-100" aria-hidden="true" />
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (
@@ -1861,6 +2035,7 @@ export default function AiAssistant() {
           移动端是 rounded-t-xl 的贴底抽屉，别在这里给更大的半径。 */}
       <div
         className={`${isMobile ? '' : 'rounded-t-2xl '}flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] cursor-move touch-none select-none shrink-0`}
+        title={lang === 'zh' ? '拖动移动 · 双击复位' : 'Drag to move · double-click to reset'}
         onPointerDown={(e) => beginDrag('title', e)}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}

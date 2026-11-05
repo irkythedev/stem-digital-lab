@@ -328,7 +328,7 @@ export default function Ohm() {
   }, []);
   // 电路元件公式浮层：hover/focus 元件显示公式+代入+原理
   const [tip, setTip] = useState<{ x: number; y: number; formula: string; substitution: string; principle: string; name?: string } | null>(null);
-  const showTip = (e: MouseEvent<SVGGElement>, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
+  const showTip = (e: { currentTarget: SVGGElement }, t: Omit<NonNullable<typeof tip>, 'x' | 'y'>) => {
     const r = e.currentTarget.getBoundingClientRect();
     setTip({ x: r.left + r.width / 2, y: r.top + r.height / 2, ...t });
   };
@@ -1187,7 +1187,7 @@ export default function Ohm() {
                   ).map(({ value: v, label }) => {
                     // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
                     // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
-                    const vv = v as typeof conclusion.q1;
+                    const vv = v as NonNullable<typeof conclusion.q1>;
                     const selected = conclusion.q1 === vv;
                     const correct = correctKeys.q1.includes(vv);
                     const showFeedback = conclusion.q1 !== null;
@@ -1224,7 +1224,7 @@ export default function Ohm() {
                   ).map(({ value: v, label }) => {
                     // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
                     // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
-                    const vv = v as typeof conclusion.q2;
+                    const vv = v as NonNullable<typeof conclusion.q2>;
                     const selected = conclusion.q2 === vv;
                     const correct = correctKeys.q2.includes(vv);
                     const showFeedback = conclusion.q2 !== null;
@@ -1261,7 +1261,7 @@ export default function Ohm() {
                   ).map(({ value: v, label }) => {
                     // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
                     // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
-                    const vv = v as typeof conclusion.q3;
+                    const vv = v as NonNullable<typeof conclusion.q3>;
                     const selected = conclusion.q3 === vv;
                     const correct = correctKeys.q3.includes(vv);
                     const showFeedback = conclusion.q3 !== null;
@@ -1298,7 +1298,7 @@ export default function Ohm() {
                   ).map(({ value: v, label }) => {
                     // 选项值经 opts() 收敛为 string，此处收回状态的字面量联合；
                     // 判对改用 includes：多选（如 q4 的两个等价表达式）也能正确判对
-                    const vv = v as typeof conclusion.q4;
+                    const vv = v as NonNullable<typeof conclusion.q4>;
                     const selected = conclusion.q4 === vv;
                     const correct = correctKeys.q4.includes(vv);
                     const showFeedback = conclusion.q4 !== null;

@@ -13,7 +13,7 @@
  * 收录范围：只放**不依赖引擎初始化、DOM、localStorage、全局 setup 或模块级共享
  * 状态**的纯计算用例。依赖 `loadOhmEngine` 的 stem-engine 门面对拍、依赖 React
  * 组件模块与源码扫描的题库守卫，仍留在 smoke.test.ts 原位（原因见
- * docs/testing/math-pure-tests-extraction-batch-2.md 第 2 节）。
+ * 内部分批迁移记录第 2 节）。
  *
  * 用例名、断言、期望值与迁移前 smoke.test.ts 逐字一致；套件名由入口提供。
  */
