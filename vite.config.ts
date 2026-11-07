@@ -14,6 +14,7 @@ import {
 } from './src/lib/offline-media';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PKG = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')) as { version: string };
 
 /**
  * 构建结束钩子：在 dist/ 生成 version.json（版本号 + 构建时间戳）。
@@ -24,9 +25,9 @@ function versionJson(): Plugin {
   return {
     name: 'write-version-json',
     closeBundle() {
-      const pkg = JSON.parse(readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8'));
+      // 复用配置加载时读到的版本号，避免低 fd 环境下 closeBundle 再开文件（EdgeOne 曾 EMFILE）
       const out = path.resolve(__dirname, 'dist/version.json');
-      writeFileSync(out, JSON.stringify({ version: pkg.version, builtAt: Date.now() }, null, 2));
+      writeFileSync(out, JSON.stringify({ version: PKG.version, builtAt: Date.now() }, null, 2));
     },
   };
 }
@@ -282,6 +283,8 @@ export default defineConfig({
     writeOfflineManifest(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
+      filename: `sw-${PKG.version}.js`,
       includeAssets: ['icon.svg', 'icon-dark.svg'],
       manifest: {
         name: '数理化数字实验室',
@@ -313,6 +316,8 @@ export default defineConfig({
         // 预缓存只留 woff2，省掉约 800KB 的重复字体（离线公式排版仍完整）。
         globIgnores: [
           '**/version.json',
+          '**/sw.js',
+          '**/sw-*.js',
           '**/audio/*.mp3',
           '**/KaTeX_*.woff',
           '**/KaTeX_*.ttf',
@@ -383,7 +388,10 @@ export default defineConfig({
       },
     }),
   ],
-  build: {},
+  build: {
+    // EdgeOne 构建容器 fd 限额较低：限制 Rollup 并发开文件数，避免 EMFILE
+    rollupOptions: { maxParallelFileOps: 8 },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

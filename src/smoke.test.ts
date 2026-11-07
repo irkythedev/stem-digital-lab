@@ -2478,6 +2478,9 @@ describe('公共工具与 AI 链路守卫', () => {
     const panel = read('src/components/ai/AiAssistant.tsx');
     assert.match(panel, /max-w-\[95%\] min-w-0 break-words/, 'AI 回答气泡缺 break-words（长 token 会溢出）');
     assert.match(panel, /max-h-\[min\(85dvh/, 'AI 面板缺 85dvh 高度上限');
+    // 右下角拖拽把手：class 不能紧贴 `${...}`，否则 Tailwind 扫不到 rounded-br-2xl，圆角会变直角
+    assert.ok(!/rounded-br-2xl\$\{/.test(panel), '圆角 class 被模板变量截断，Tailwind 不会生成');
+    assert.match(panel, /rounded-br-2xl/, '右下角把手缺少与面板一致的 16px 圆角');
   });
 
   test('全站界面零 ✓/✗ 判分字形（smoke 自身除外）', () => {
@@ -2594,7 +2597,29 @@ describe('部署契约（edgeone.json 的缓存策略与安全响应头）', () 
     assert.match(assets, /immutable/, '/assets/* 应声明 immutable');
     assert.match(valueOf('/index.html', 'Cache-Control'), /no-cache|no-store/, 'index.html 不得被缓存');
     assert.match(valueOf('/sw.js', 'Cache-Control'), /no-cache|no-store/, 'sw.js 不得被缓存');
+    assert.match(valueOf('/sw-*.js', 'Cache-Control'), /no-cache|no-store/, '版本化 sw-*.js 不得被缓存');
     assert.equal(valueOf('/version.json', 'Cache-Control'), 'no-store', 'version.json 必须 no-store');
+  });
+
+  test('Service Worker 文件名与 APP_VERSION 严格联动', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+    const appVersion = readFileSync('src/lib/app-version.ts', 'utf8');
+    assert.ok(appVersion.includes(`APP_VERSION = '${pkg.version}'`), 'app-version.ts 必须与 package.json 同版本');
+    const swUrlSrc = readFileSync('src/lib/sw-url.ts', 'utf8');
+    assert.ok(swUrlSrc.includes('`/sw-${version}.js`'), 'SW URL 必须是 /sw-<version>.js');
+    const vite = readFileSync('vite.config.ts', 'utf8');
+    assert.ok(vite.includes('filename: `sw-${PKG.version}.js`'), '构建产物 SW 文件名必须版本化');
+    const register = readFileSync('src/lib/register-sw.ts', 'utf8');
+    assert.ok(register.includes('scope: \'/\''), '注册必须显式 scope: /');
+    assert.ok(register.includes('swUrlFor(APP_VERSION)'), '首装注册当前版本 SW');
+  });
+
+  test('更新失败不自动 hardReset（只回 idle 重试）', () => {
+    const hook = readFileSync('src/lib/use-app-update.ts', 'utf8');
+    assert.ok(!/await\s+hardReset\(\)/.test(hook), '更新流程不得自动 hardReset');
+    assert.ok(!/MIN_CLEAR_MS/.test(hook), '清理态不得再有写死的人工延迟');
+    assert.ok(hook.includes('probeSwExists'), '必须有带时间戳的 SW 探针');
+    assert.ok(hook.includes('swUrlFor(remote)'), '更新必须注册远端版本的 SW URL');
   });
 
   test('CSP 的内联脚本哈希与 index.html 实际内容一致', () => {

@@ -14,7 +14,7 @@ export function useVersionCheck(): { hasUpdate: boolean } {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/version.json', { cache: 'no-store' })
+    fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!cancelled && d && typeof d.version === 'string' && isVersionNewer(d.version, APP_VERSION)) {

@@ -375,18 +375,16 @@ export function registerAppShellResilienceTests(test: TestFn): void {
       '分母来自 sw.js 的新清单（不是当前缓存条目数）');
   });
 
-  test('update clearing: the inner arc is shown long enough to be perceived', () => {
+  test('update failure: returns to idle without clearing caches', () => {
     const hook = readSrc('src/lib/use-app-update.ts', 'utf8');
-    const declared = /const MIN_CLEAR_MS = (\d+)/.exec(hook);
-    assert.ok(declared, '清理态必须有最短可见时长常量');
-    const min = Number(declared[1]);
-    // 真机实测硬重置只要 ~56ms：不留最低时长，内芯反向短弧一帧都撑不住。
-    assert.ok(min >= 400 && min <= 800, `最短可见时长应在 400–800ms，实际 ${min}ms`);
-    assert.match(hook, /if \(total > 0\) \{[\s\S]{0,200}MIN_CLEAR_MS - \(Date\.now\(\) - startedAt\)/,
-      '只补足差额，删除本身已经更久时不再追加等待；没有条目可清时不伪造停顿');
-    const floorAt = hook.indexOf('MIN_CLEAR_MS - (Date.now() - startedAt)');
-    const replaceAt = hook.indexOf('window.location.replace');
-    assert.ok(floorAt > 0 && replaceAt > floorAt, '等待必须发生在硬跳转之前');
+    // 自动 hardReset 已移除：更新异常只回 idle，绝不主动清空用户缓存
+    assert.doesNotMatch(hook, /await\s+hardReset\(\)/, '更新失败不得自动 hardReset');
+    assert.match(hook, /const giveUp = \(\) => \{[\s\S]{0,80}setPhase\('idle'\)/,
+      '失败路径必须回到 idle 让用户重试');
+    assert.match(hook, /probeSwExists\(remote\)/, '拿不到 worker 前先用带时间戳的探针确认目标 SW');
+    assert.match(hook, /const ACTIVATE_MS = (\d+)/, '激活超时常量必须存在');
+    const activate = Number(/const ACTIVATE_MS = (\d+)/.exec(hook)![1]);
+    assert.ok(activate >= 30000, `激活超时不应低于 30s，实际 ${activate}ms`);
   });
 
   test('first paint: the blocking head script picks the theme before any style runs', () => {

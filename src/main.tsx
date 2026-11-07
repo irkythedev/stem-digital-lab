@@ -7,7 +7,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { registerSW } from 'virtual:pwa-register';
+import { registerAppSW } from './lib/register-sw';
 import { installPreloadRecovery } from './lib/preload-recovery';
 import 'katex/dist/katex.min.css';
 import App from './App.tsx';
@@ -70,8 +70,8 @@ navigator.serviceWorker?.addEventListener('controllerchange', () => {
   window.setTimeout(() => window.location.reload(), UPDATE_DONE_HOLD_MS);
 });
 
-// 注册 Service Worker（PWA 离线可用 + 可安装）
-registerSW({ immediate: true, onNeedReload: () => { /* 统一交给上面的 controllerchange */ } });
+// 注册版本化 Service Worker（PWA 离线可用 + 可安装）
+registerAppSW();
 
 const rootEl = document.getElementById('root')!;
 // 预渲染快照：静态 HTML 已在 #root 内写好正文，而 createRoot 会清空 #root；

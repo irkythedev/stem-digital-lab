@@ -2005,7 +2005,7 @@ export default function AiAssistant() {
         aria-label={lang === 'zh' ? '调整宽高' : 'Resize'}
         tabIndex={isMobile ? -1 : 0}
         onKeyDown={onHandleKeyDown('both')}
-        className={`group absolute right-0 bottom-0 w-6 h-6 cursor-nwse-resize touch-none z-30 flex items-end justify-end p-1 outline-none focus-visible:bg-[var(--accent-light)] rounded-br-2xl${isMobile ? ' hidden' : ''}`}
+        className={`${isMobile ? 'hidden' : ''} group absolute right-0 bottom-0 w-6 h-6 cursor-nwse-resize touch-none z-30 flex items-end justify-end p-1 outline-none focus-visible:bg-[var(--accent-light)] rounded-br-2xl`}
         onPointerDown={(e) => beginDrag('corner', e)}
         onPointerMove={onDragMove}
         onPointerUp={endDrag}
@@ -2013,7 +2013,14 @@ export default function AiAssistant() {
         onLostPointerCapture={endDragOrUnlock}
         title={lang === 'zh' ? '斜拉调整宽高（方向键可微调）' : 'Drag corner to resize (arrow keys to nudge)'}
       >
-        <span className="h-2 w-2 rounded-br-[2px] border-r-2 border-b-2 border-[var(--muted)] opacity-70 group-hover:opacity-100" aria-hidden="true" />
+        <svg
+          viewBox="0 0 12 12"
+          className="h-3 w-3 shrink-0 text-[var(--muted)] opacity-70 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          aria-hidden="true"
+        >
+          {/* 两条圆头斜线，沿圆角方向画，避免旧 L 形折角看起来像直角 */}
+          <path d="M10.5 1.5 L1.5 10.5 M10.5 6 L6 10.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
       </div>
       {/* 保存成功 toast：面板顶部浮条 */}
       {savedToast && (

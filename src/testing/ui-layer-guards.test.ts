@@ -49,9 +49,9 @@ export function registerUiLayerGuardsTests(test: TestFn): void {
   });
 
   test('硬重置只清应用外壳缓存：离线教学包（照片/音频/架构图）必须保留', () => {
-    const keys = ['workbox-precache-v2-https://x/', 'element-photos', 'element-audio', 'architecture-assets', 'some-other'];
+    const keys = ['workbox-precache-v2-https://x/', 'element-photos', 'element-audio', 'architecture-assets', 'architecture-page', 'some-other'];
     const cleared = selectShellCachesToClear(keys);
-    assert.deepEqual(cleared, ['workbox-precache-v2-https://x/', 'some-other']);
+    assert.deepEqual(cleared, ['workbox-precache-v2-https://x/', 'architecture-page']);
     for (const pack of ['element-photos', 'element-audio', 'architecture-assets']) {
       assert.ok(!cleared.includes(pack), `${pack} 是用户花流量下好的离线包，更新前端不该删它`);
     }

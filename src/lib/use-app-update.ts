@@ -5,22 +5,23 @@
  * 应用更新状态机（顶栏更新徽章专用）。
  *
  *   idle → checking → downloading → activating → reloading
- *                     ↘ 任一环节超时 → clearing → 带版本号硬跳转
+ *                     ↘ 慢网/异常 → idle（提示重试，绝不清缓存）
  *
  * 设计要点：
- * - 「有新版本」只由远端 version.json 判定；挂载、回到前台、恢复联网时各查一次。
- * - 刷新动作仍由 main.tsx 的 controllerchange 唯一负责；本 hook 的成功路径不自行
- *   reload，只在超时 / 无在途 worker 时执行硬兜底，避免两个刷新驱动抢跑。
- * - 旧实现「reg.update() 后没有新 worker 就直接 reload」会在旧 SW 仍控制页面时
- *   用旧 precache 应答导航 —— 刷新后还是旧版、绿点复现，这就是「点几次才生效」
- *   的根因。这里该分支被硬兜底替代。
- * - 防死循环守卫：同一标签页会话内，对同一个远端版本号最多硬重置一次
- *   （sessionStorage 记录）。发布窗口内新旧资源错配时，页面不会再被自动无限硬刷。
+ * - 「有新版本」只由远端 version.json 判定（带时间戳，穿透边缘缓存）；
+ *   挂载、回到前台、恢复联网时各查一次。
+ * - SW 文件名按版本生成（`sw-<version>.js`）；更新时先探测目标版本的 SW 是否存在，
+ *   再显式 `register(swUrlFor(remoteVersion), { scope: '/' })`。版本变化即 URL 变化，
+ *   边缘缓存不会再把旧 `sw.js` 喂回来。
+ * - 刷新动作仍由 main.tsx 的 controllerchange 唯一负责；本 hook 不自行 reload。
+ * - 失败（更新检查抛错 / 拿不到 worker / 安装或激活超时）一律回到 idle，让用户重试；
+ *   自动 `hardReset()` 已移除，只有显式故障恢复能力 `hardResetAndReload()` 保留。
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_VERSION } from './app-version';
 import { AUDIO_CACHE, DIAGRAM_CACHE, PHOTO_CACHE } from './offline-media';
 import { isVersionNewer } from './version-compare';
+import { swUrlFor } from './sw-url';
 import {
   countCachedEntries,
   parsePrecacheManifest,
@@ -30,57 +31,30 @@ import {
 
 export type { UpdatePhase, UpdateProgress };
 
-const CHECK_MS = 20000;       // reg.update() 检查的最长等待（慢网下放宽）
+const CHECK_MS = 20000;       // 更新检查的最长等待（慢网下放宽）
 const INSTALL_MS = 60000;     // 新 worker 安装完成的最长等待（首装/慢网可能几十秒）
-const ACTIVATE_MS = 15000;    // 发出 SKIP_WAITING 后等 controllerchange 的硬上限
+const ACTIVATE_MS = 45000;    // 发出 SKIP_WAITING 后等 controllerchange 的上限
 const HARD_DEADLINE_MS = 120000; // 整个流程的绝对上限
 /** 预缓存条目计数的采样间隔：安装期计数单调增长，120ms 足以让弧看起来连续 */
 const PROGRESS_POLL_MS = 120;
 
-/** 硬重置的「已执行版本」标记：同一会话同一远端版本只允许一次 */
-const HARD_RESET_KEY = 'stem_hard_reset_ver';
-
-/** 清理态的最短可见时长。
- *
- *  真机实测：注销 1 个注册 + 删除 1 个缓存只花 ~56ms，随后立刻 location.replace ——
- *  内芯反向短弧连一帧都撑不住，用户看到的是「点了更新，页面白一下」，清理与下载
- *  在观感上根本没分开。450ms 够看清「正在清掉旧缓存」，也不至于让兜底路径像卡住；
- *  删除本身就超过这个时长时不再追加等待（总量恒为注册数 + 缓存数，通常 2–4）。 */
-const MIN_CLEAR_MS = 450;
-
-/** 记录本次硬重置；返回 false 表示该远端版本本次会话已经硬重置过，需要放弃自动循环 */
-function claimHardReset(remoteVersion: string): boolean {
-  try {
-    if (window.sessionStorage.getItem(HARD_RESET_KEY) === remoteVersion) return false;
-    window.sessionStorage.setItem(HARD_RESET_KEY, remoteVersion);
-    return true;
-  } catch {
-    // 隐私模式 / 存储被禁用：无法持久化守卫，按「允许一次」处理
-    return true;
-  }
-}
-
-/** 硬重置只清「应用外壳」的缓存。
- *
- *  离线教学包（元素照片 / 元素音频 / 架构图）是用户主动下载、可能花了几百 MB 流量的内容，
- *  和「换一版前端」没有关系。旧实现删掉 `caches.keys()` 里的全部缓存，用户只是想更新，
- *  下载好的离线包却一起没了 —— 而且删完还要重新下载。 */
+/** 离线教学包（元素照片 / 元素音频 / 架构图）是用户主动下载的内容，更新前端不该删。 */
 const PACK_CACHES = new Set<string>([PHOTO_CACHE, AUDIO_CACHE, DIAGRAM_CACHE]);
 
-/** 纯函数：给定当前全部缓存名，返回本次硬重置该删的那些（离线包保留）。 */
+/** 只清「应用外壳」缓存：Workbox precache 与架构页缓存；离线教学包一律保留。 */
 export function selectShellCachesToClear(keys: readonly string[]): string[] {
-  return keys.filter((k) => !PACK_CACHES.has(k));
+  return keys.filter(
+    (k) => !PACK_CACHES.has(k) && (k.startsWith('workbox-precache') || k.startsWith('architecture-page')),
+  );
 }
 
-/** 清缓存 + 注销 SW + 带版本号硬跳转；三步都不依赖旧 SW 配合。
+/** 故障恢复（仅用户显式触发）：注销 SW + 精准清 precache + 带版本号硬跳。
  *
- *  `onProgress` 给出这一步的真值（单位同样是**条目**：一个注册 + 一个缓存各算一条）。
- *  逐个删而不是 Promise.all：并发的删除只会让弧一次性跳到满，等于没有进度。 */
+ *  这是兜底能力，更新流程不会再自动调用它。
+ */
 export async function hardResetAndReload(
   onProgress?: (done: number, total: number) => void,
 ): Promise<void> {
-  /** 清理计时起点：等待的只是「不满最短可见时长的那一截」 */
-  const startedAt = Date.now();
   let regs: readonly ServiceWorkerRegistration[] = [];
   try {
     regs = await navigator.serviceWorker.getRegistrations();
@@ -106,17 +80,35 @@ export async function hardResetAndReload(
     onProgress?.(done, total);
   }
 
-  // 留出最短可见时长再跳转：没有条目可清（total 为 0）时不伪造这段停顿
-  if (total > 0) {
-    const remaining = MIN_CLEAR_MS - (Date.now() - startedAt);
-    if (remaining > 0) {
-      await new Promise<void>((resolve) => { window.setTimeout(resolve, remaining); });
-    }
-  }
-
   const url = new URL(window.location.href);
   url.searchParams.set('_v', String(Date.now()));
   window.location.replace(url.toString());
+}
+
+/** 带时间戳读取远端版本号：边缘与浏览器都必须回源，避免拿到陈旧 version.json。 */
+export async function fetchRemoteVersion(): Promise<string | null> {
+  try {
+    const r = await fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return null;
+    const d = (await r.json()) as { version?: unknown };
+    return typeof d.version === 'string' ? d.version : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 探测目标版本的 SW 文件是否存在（带时间戳，穿透边缘缓存）。 */
+export async function probeSwExists(version: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${swUrlFor(version)}?_t=${Date.now()}`, { cache: 'no-store' });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => { window.setTimeout(resolve, ms); });
 }
 
 export function useAppUpdate() {
@@ -128,7 +120,7 @@ export function useAppUpdate() {
   const remoteVersionRef = useRef('');
   const ccBoundRef = useRef(false);
   const pollRef = useRef(0);
-  /** trackPrecache 幂等守卫：一次点击只开一表（checking 阶段先开，downloading 复用） */
+  /** trackPrecache 幂等守卫：一次点击只开一表 */
   const trackingRef = useRef(false);
 
   /** 停表：阶段切换与流程结束都必须调，否则页面加载完还在每 120ms 开一次 cache */
@@ -140,16 +132,15 @@ export function useAppUpdate() {
   }, []);
 
   /**
-   * 预缓存条目进度。真值边界见 update-progress.ts 抬头：
-   * 分母取 sw.js 里的**新清单**，逐条按 URL + revision 对齐已写入的缓存条目。
-   * 拿不到清单或没有 caches（隐私模式）就什么都不做 —— 环会保持扫动弧，不编造进度。
+   * 预缓存条目进度。分母取**目标版本** SW 里的新清单，
+   * 逐条按 URL + revision 对齐已写入的缓存条目。
    */
-  const trackPrecache = useCallback(async () => {
+  const trackPrecache = useCallback(async (version: string) => {
     if (typeof caches === 'undefined') return;
-    if (trackingRef.current) return; // 幂等：点一次只开一表
+    if (trackingRef.current) return;
     trackingRef.current = true;
     try {
-      const res = await fetch('/sw.js', { cache: 'no-store' });
+      const res = await fetch(`${swUrlFor(version)}?_t=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) return;
       const entries = parsePrecacheManifest(await res.text());
       if (entries.length === 0) return;
@@ -175,12 +166,11 @@ export function useAppUpdate() {
     } catch { /* 清单拿不到：保持 null，走扫动弧 */ }
   }, [stopPoll]);
 
-  // 检测：挂载 + 回到前台 + 恢复联网时各查一次（旧 hook 只查一次，
-  // 标签页长期挂着时永远看不到之后发布的版本）
+  // 检测：挂载 + 回到前台 + 恢复联网时各查一次
   useEffect(() => {
     let cancelled = false;
     const check = () => {
-      fetch('/version.json', { cache: 'no-store' })
+      fetch(`/version.json?_t=${Date.now()}`, { cache: 'no-store' })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
           if (cancelled || !d || typeof d.version !== 'string') return;
@@ -202,8 +192,6 @@ export function useAppUpdate() {
 
   const applyUpdate = useCallback(async () => {
     if (runningRef.current) return; // 防连点
-    // 徽章只该在「远端确实更新」时点亮。万一状态已过期（远端回滚 / 边缘给了旧清单），
-    // 这里再确认一次方向：为一版更旧的远端版本去注销 SW、删缓存，只会白清一次本机。
     const known = remoteVersionRef.current;
     if (known && !isVersionNewer(known, APP_VERSION)) {
       setHasUpdate(false);
@@ -213,13 +201,9 @@ export function useAppUpdate() {
     runningRef.current = true;
     setPhase('checking');
     setProgress(null);
-    /* 采样必须在 reg.update() 之前开表：update() 返回时新 worker 往往已经在装，
-       晚开表会让基准吃掉前半段进度，弧一起手就接近满（实测 160ms 内 0→87%）。 */
     trackingRef.current = false;
-    void trackPrecache();
 
     let settled = false;
-    let resetting = false;
     let deadline = 0;
     let activationTimer = 0;
 
@@ -231,22 +215,7 @@ export function useAppUpdate() {
       window.clearTimeout(activationTimer);
     };
 
-    const hardReset = async () => {
-      if (resetting) return; // watchdog 与失败分支可能同时到达
-      resetting = true;
-      settle();
-      // 防死循环：同一会话对同一远端版本只硬重置一次
-      const remote = remoteVersionRef.current || 'unknown';
-      if (!claimHardReset(remote)) {
-        setPhase('idle');
-        runningRef.current = false;
-        return;
-      }
-      setPhase('clearing');
-      await hardResetAndReload((done, total) => setProgress({ done, total }));
-    };
-
-    /** 超时/慢网：只提示重试，绝不自动清缓存。用户再点一次即可继续。 */
+    /** 慢网/异常：只回 idle 提示重试，绝不清缓存。 */
     const giveUp = () => {
       settle();
       setPhase('idle');
@@ -256,10 +225,7 @@ export function useAppUpdate() {
     deadline = window.setTimeout(() => { giveUp(); }, HARD_DEADLINE_MS);
 
     try {
-      if (!('serviceWorker' in navigator)) {
-        await hardReset();
-        return;
-      }
+      if (!('serviceWorker' in navigator)) { giveUp(); return; }
 
       // 接管成功：main.tsx 的 controllerchange 会刷新页面；这里只更新文案
       if (!ccBoundRef.current) {
@@ -275,39 +241,33 @@ export function useAppUpdate() {
         );
       }
 
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (!reg) {
-        // 连注册都没有 → 当前页面本就没有 SW 缓存，直接带版本号刷新
-        await hardReset();
+      const remote = remoteVersionRef.current || (await fetchRemoteVersion()) || '';
+      remoteVersionRef.current = remote;
+      if (!remote || !isVersionNewer(remote, APP_VERSION)) {
+        setHasUpdate(false);
+        giveUp();
         return;
       }
 
-      // 1) 上次点击已留下 installing / waiting，直接续跑
-      let worker: ServiceWorker | null = reg.installing ?? reg.waiting ?? null;
+      // 目标版本 SW 不存在（部署窗口/边缘未就绪）：按网络慢处理，重试即可
+      if (!(await probeSwExists(remote))) { giveUp(); return; }
 
-      // 2) 没有在途 worker → 主动触发一次更新检查
-      if (!worker) {
-        const outcome = await Promise.race([
-          reg.update().then(() => 'ok' as const).catch(() => 'error' as const),
-          new Promise<'timeout'>((resolve) => {
-            window.setTimeout(() => resolve('timeout'), CHECK_MS);
-          }),
-        ]);
-        if (outcome === 'timeout') { giveUp(); return; }
+      void trackPrecache(remote);
+
+      // 显式注册目标版本的 SW；版本变化 = URL 变化，边缘缓存无法再喂旧条目
+      const reg = await navigator.serviceWorker.register(swUrlFor(remote), { scope: '/' });
+      let worker: ServiceWorker | null = reg.installing ?? reg.waiting ?? null;
+      for (let i = 0; i < 20 && !worker; i += 1) {
+        await sleep(100);
         worker = reg.installing ?? reg.waiting ?? null;
       }
+      if (!worker) { giveUp(); return; }
+      if (worker.state === 'redundant') { giveUp(); return; }
 
-      // 3) 远端 version.json 说新版、SW 却说没有更新：旧控制器仍会用旧
-      //    precache 应答导航，普通 reload 100% 还是旧版 → 必须硬兜底
-      if (!worker) { await hardReset(); return; }
-
-      if (worker.state === 'redundant') { await hardReset(); return; }
-
-      // 4) 等安装完成（60s 上限）
+      // 等安装完成（60s 上限）
       if (worker.state !== 'installed' && worker.state !== 'activated') {
         setPhase('downloading');
-        // 采样在 checking 阶段就开好了（基准必须是安装前状态），这里只是确保在跑
-        void trackPrecache();
+        void trackPrecache(remote);
         const installed = await new Promise<'ok' | 'redundant' | 'timeout'>((resolve) => {
           let timer = 0;
           const onChange = () => {
@@ -328,20 +288,18 @@ export function useAppUpdate() {
           worker!.addEventListener('statechange', onChange);
           onChange();
         });
-        if (installed === 'timeout') { giveUp(); return; }
-        if (installed === 'redundant') { await hardReset(); return; }
-        // 安装结束即停表：接下来是 activating（无分母，走扫动弧），不再需要采样
+        if (installed !== 'ok') { giveUp(); return; }
         stopPoll();
       }
 
-      // 5) 请求接管（生成的 SW 自带 skipWaiting；对 waiting 型 SW 同样有效）
+      // 请求接管（生成的 SW 自带 skipWaiting；对 waiting 型 SW 同样有效）
       setPhase('activating');
       try { worker.postMessage({ type: 'SKIP_WAITING' }); } catch { /* ignore */ }
 
-      // 6) 15s 内仍未 controllerchange → 交回空闲态让用户重试，不再清缓存硬跳
+      // 激活上限：45s；超时仅回 idle，让用户重试，不清缓存
       activationTimer = window.setTimeout(() => { giveUp(); }, ACTIVATE_MS);
     } catch {
-      await hardReset();
+      giveUp();
     }
   }, []);
 

@@ -51,7 +51,7 @@ async function probeReachable(): Promise<boolean> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PRELOAD_PROBE_TIMEOUT_MS);
   try {
-    const res = await fetch(PROBE_URL, { cache: 'no-store', signal: controller.signal });
+    const res = await fetch(`${PROBE_URL}?_t=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
     return res.ok;
   } catch {
     return false;

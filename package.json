@@ -1,17 +1,22 @@
 {
   "name": "stem-digital-lab",
   "private": true,
-  "version": "0.47.8",
+  "version": "0.47.9",
   "description": "基于初中 7-9 年级课程大纲的数学、物理、化学数字实验与探究平台",
   "license": "AGPL-3.0",
   "author": "Ricky <king4g@yeah.net>",
-  "repository": { "type": "git", "url": "git+https://gitee.com/K4Ricky2Win/stem-digital-lab.git" },
-  "bugs": { "url": "https://gitee.com/K4Ricky2Win/stem-digital-lab/issues/new/choose" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitee.com/K4Ricky2Win/stem-digital-lab.git"
+  },
+  "bugs": {
+    "url": "https://gitee.com/K4Ricky2Win/stem-digital-lab/issues/new/choose"
+  },
   "homepage": "https://stem.irky.dev",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "node tools/gen-readme-badges.mjs && vite build && tsx tools/build-static.ts",
+    "build": "ulimit -n 4096 2>/dev/null || true; node tools/gen-readme-badges.mjs && vite build && node tools/copy-sw-alias.mjs && tsx tools/build-static.ts",
     "badges": "node tools/gen-readme-badges.mjs",
     "build:wasm": "bash tools/build-wasm.sh",
     "preview": "vite preview",
