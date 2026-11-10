@@ -24,7 +24,7 @@ import {
 } from '../../lib/ai-status';
 import { loadAiConfig, readAiConsent } from '../../lib/ai-config';
 import { APP_VERSION } from '../../lib/app-version';
-import { useAppUpdate } from '../../lib/use-app-update';
+import { useAppUpdate, type UpdatePhase } from '../../lib/use-app-update';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { ringStateFor, type RingState } from '../../lib/update-progress';
 const VersionDialog = lazy(() => import('../feedback/VersionDialog'));
@@ -58,6 +58,20 @@ const UPDATE_RING_INNER_C = 2 * Math.PI * UPDATE_RING_INNER_R;
 /** 完成态的对勾：落在 18 单位视口正中，描边 1.9（满环 stroke 2.2）保证 14px 下也清楚 */
 const UPDATE_CHECK_PATH = 'M5.3 9.15 L7.7 11.55 L12.5 6.45';
 
+/** 更新阶段文案（Header 版本徽章与 WelcomeDialog 版本行共用）。 */
+export function updatePhaseText(phase: UpdatePhase, lang: 'zh' | 'en'): string {
+  const zh = lang === 'zh';
+  switch (phase) {
+    case 'checking': return zh ? '正在检查新版本…' : 'Checking for updates…';
+    case 'downloading': return zh ? '正在下载新版本…' : 'Downloading the new version…';
+    case 'activating': return zh ? '正在激活新版本…' : 'Activating the new version…';
+    case 'clearing': return zh ? '正在清理旧缓存…' : 'Clearing the old cache…';
+    case 'reloading': return zh ? '正在刷新…' : 'Reloading…';
+    case 'failed': return zh ? '新版本资源同步中，请稍后重试' : 'Update package syncing, please try again shortly';
+    default: return '';
+  }
+}
+
 /**
  * 更新徽章的可视部分。两个入口共用一份：
  *   - 顶栏版本号右侧的徽章（≥sm 可见）
@@ -68,7 +82,7 @@ const UPDATE_CHECK_PATH = 'M5.3 9.15 L7.7 11.55 L12.5 6.45';
  * 忙时圆盘让位给空心环，弧长＝已落实的预缓存条目比例；
  * 没有分母的阶段（checking / activating）只走一段扫动弧，绝不按时长插值。
  */
-function UpdateBadgeVisual({
+export function UpdateBadgeVisual({
   ring,
   arrowClass,
   arrowStroke,
@@ -233,14 +247,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const { hasUpdate, phase, progress, applyUpdate, busy } = useAppUpdate();
   /** 徽章形态：idle 静态箭头 / 下载 determinate 弧 / 清理弧+内芯 / 完成满环+对勾 / 其余扫动弧 */
   const ring = ringStateFor(phase, progress);
-  const phaseText =
-    phase === 'checking' ? (lang === 'zh' ? '正在检查新版本…' : 'Checking for updates…')
-      : phase === 'downloading' ? (lang === 'zh' ? '正在下载新版本…' : 'Downloading the new version…')
-        : phase === 'activating' ? (lang === 'zh' ? '正在激活新版本…' : 'Activating the new version…')
-          : phase === 'clearing' ? (lang === 'zh' ? '正在清理旧缓存…' : 'Clearing the old cache…')
-            : phase === 'reloading' ? (lang === 'zh' ? '正在刷新…' : 'Reloading…')
-              : phase === 'failed' ? (lang === 'zh' ? '新版本资源同步中，请稍后重试' : 'Update package syncing, please try again shortly')
-                : '';
+  const phaseText = updatePhaseText(phase, lang);
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];

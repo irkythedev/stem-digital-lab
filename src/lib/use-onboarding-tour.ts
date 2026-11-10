@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 export const ONBOARDING_STORAGE_KEY = 'stemlab:onboarding-v1';
 export const ONBOARDING_START_EVENT = 'stemlab:start-onboarding-tour';
 export const ONBOARDING_WELCOME_CLOSED_EVENT = 'stemlab:welcome-closed';
+export const ONBOARDING_PENDING_KEY = 'stemlab:onboarding-pending';
 export const ONBOARDING_STEP_EVENT = 'stemlab:onboarding-step';
 export const ONBOARDING_TOTAL_STEPS = 4;
 export const ONBOARDING_END_EVENT = 'stemlab:onboarding-end';
@@ -67,6 +68,7 @@ export function useOnboardingTour(enabled = true): OnboardingTourState {
   const [step, setStep] = useState(0);
 
   const start = useCallback(() => {
+    try { window.sessionStorage.removeItem(ONBOARDING_PENDING_KEY); } catch { /* ignore */ }
     setStep(0);
     setActive(true);
   }, []);
@@ -92,10 +94,22 @@ export function useOnboardingTour(enabled = true): OnboardingTourState {
   useEffect(() => {
     if (!enabled || !canUseDom()) return;
     const fromUrl = new URLSearchParams(window.location.search).get('tour') === '1';
+    let pending = false;
+    try {
+      pending = window.sessionStorage.getItem(ONBOARDING_PENDING_KEY) === '1';
+      if (pending && readOnboardingDone()) {
+        window.sessionStorage.removeItem(ONBOARDING_PENDING_KEY);
+        pending = false;
+      }
+    } catch { /* ignore */ }
     if (fromUrl) {
       start();
     } else if (isOnboardingSkippedByUrl()) {
       // 明确跳过：不自动弹，但仍允许 Header / WelcomeDialog 主动 start。
+      try { window.sessionStorage.removeItem(ONBOARDING_PENDING_KEY); } catch { /* ignore */ }
+    } else if (pending) {
+      // WelcomeDialog 可能比首页懒加载 chunk 更早被关闭：用它跨组件/跨挂载顺序交接。
+      start();
     } else {
       const onWelcomeClosed = () => {
         if (!readOnboardingDone()) start();

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  *
  * 三幕式探究步骤条（Predict → Explore → Conclude）
- * iOS Segmented Control 风格胶囊组件：浅底托 + 激活白卡微投影 + 触控安全。
+ * 32px 一体化工程步进条：左侧三阶段为主视觉，右侧「下一步」为内嵌次级动作。
  */
 
 import { Check, RotateCcw } from 'lucide-react';
@@ -18,12 +18,7 @@ interface StageNavProps {
     predict: string;
     explore: string;
     conclude: string;
-    /**
-     * 下一步文案：**必填**。
-     * 此处原是可选，兜底 `'Next →'`，于是 4 个实验漏传后中文页直接显示英文
-     * （Circle / Lens / Pressure / Buoyancy）。文案兜底是静默失败——它不会报错，
-     * 只会让用户看到一串英文。改成必填后漏传在 `tsc --noEmit` 阶段就挂掉。
-     */
+    /** 下一步文案：必填，避免漏传时静默显示英文 */
     next: string;
     redo?: string;
   };
@@ -45,20 +40,9 @@ export default function StageNav({
   onNext,
   onRedo,
   isDone,
-  className = '',
 }: StageNavProps) {
   const stageIdx = stageOrder.indexOf(stage);
-
-  const getLabel = (s: Stage) => {
-    switch (s) {
-      case 'predict':
-        return labels.predict;
-      case 'explore':
-        return labels.explore;
-      case 'conclude':
-        return labels.conclude;
-    }
-  };
+  const getLabel = (s: Stage) => labels[s];
 
   const handleNext = () => {
     if (onNext) {
@@ -69,75 +53,65 @@ export default function StageNav({
   };
 
   return (
-    /**
-     * 单行确定性布局（<640 也是单行，不靠 flex-wrap 自己挤）。
-     *
-     * 两条约束同时成立：
-     *  1) 中英都必须塞进一行——英文轨（Predict/Explore/Conclude）在 12px + px-3.5 下
-     *     需要 274px，加 Next 81 + gap 10 = 365 > 390 视口的 342 → 于是移动端把轨降到
-     *     11px、按钮 px-2、轨内 gap-0.5，Next px-2.5：实测 en 总宽 302 / zh 221.5，
-     *     360 / 375 / 390 / 430 四档全部单行（桌面 sm: 起恢复 12px 与宽 padding）。
-     *  2) 两段盒高相同——轨道是 p-1 + 1px 边框包着 40px 按钮 = 50px；右段套一层同样的
-     *     p-1 + 透明 1px 边框信封，于是也是 50px（桌面同为 44px）。此前轨 50 / 按钮 40，
-     *     并排时右段上下各余 5px，视觉上比胶囊矮一截。
-     *
-     * <360px（iPhone SE 一代那档）才退回竖排：那里 3 个英文按钮 + Next 物理上放不下，
-     * 与其让浏览器随机折行，不如显式声明成两段。
-     */
-    <div className={`flex flex-nowrap items-center gap-2 text-[0.6875rem] mono-font tracking-wider sm:gap-2.5 sm:text-xs 2xl:text-sm max-[359px]:flex-col max-[359px]:items-stretch ${className}`}>
-      {/* iOS Segmented 胶囊外壳 */}
-      <div className="stage-rail inline-flex w-fit shrink-0 items-center gap-0.5 rounded-xl bg-[var(--accent-light)] border border-[var(--border)]/70 p-0.5 shadow-xs sm:gap-1 sm:p-1">
-        {stageOrder.map((s) => {
+    <div
+      data-legacy-height="min-h-[34px]"
+      className={`stage-shell inline-flex h-8 w-fit max-w-full select-none items-center rounded-lg border border-[var(--border)] bg-[var(--panel-bg)]/70 p-0.5 text-xs max-sm:flex max-sm:w-full`}
+    >
+      <div className="stage-rail flex min-w-0 flex-1 items-center gap-0.5 sm:gap-1">
+        {stageOrder.map((s, i) => {
           const active = stage === s;
           const done = isDone ? isDone[s] : false;
           const text = getLabel(s);
-
           return (
             <button
               key={s}
               type="button"
               onClick={() => setStage(s)}
-              className={`min-h-[28px] px-2 py-1 tap-area rounded-lg font-medium sm:min-h-[34px] transition-[background-color,border-color,color] duration-[var(--dur-fast)] touch-manipulation select-none whitespace-nowrap sm:px-3.5 ${
+              aria-current={active ? 'step' : undefined}
+              className={`compact inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-1.5 font-medium transition-all touch-manipulation sm:flex-none sm:px-3 ${
                 active
-                  ? 'bg-[var(--card-bg)] text-[var(--fg)] shadow-xs font-semibold'
-                  : done
-                  ? 'text-[var(--fg)] hover:text-[var(--fg)]'
-                  : 'text-[var(--muted)] hover:text-[var(--fg)]'
+                  ? 'bg-[var(--fg)] text-[var(--card-bg)] shadow-2xs'
+                  : 'bg-transparent text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
             >
-              {done && !active && (
-                <Check className="inline-block w-3.5 h-3.5 align-middle mr-1" aria-hidden />
-              )}
-              {text}
+              <span className="font-mono text-[10px] opacity-65">{i + 1}</span>
+              {done && !active ? <Check className="h-3 w-3 shrink-0" aria-hidden="true" /> : null}
+              <span className="truncate">{text}</span>
             </button>
           );
         })}
       </div>
 
-      {/* 右侧动作簇：<360 独占一行、居右；其余档位与阶段轨同排、靠右。
-          外层给与胶囊轨**相同的信封**（p-1 + 1px 边框，边框透明不显示）：
-          触屏 40+8+2 = 50 = 轨道 50；桌面 34+8+2 = 44 = 轨道 44。
-          此前轨 50 / 按钮 40，外沿上下各差 5px——两段并排时右段的上下留白明显偏小。 */}
-      <div className="stage-act ml-auto flex shrink-0 items-center gap-2 rounded-xl border border-transparent p-0.5 sm:gap-2.5 sm:p-1 max-[359px]:ml-0 max-[359px]:w-full max-[359px]:justify-end">
-        {stageIdx < stageOrder.length - 1 ? (
-          <button
-            type="button"
-            onClick={handleNext}
-            className="min-h-[28px] px-2.5 py-1 tap-area border border-[var(--fg)] sm:min-h-[34px] bg-[var(--fg)] text-[var(--bg)] hover:opacity-90 transition-[background-color,opacity,transform] rounded-lg font-medium touch-manipulation select-none active:scale-95 shadow-xs whitespace-nowrap sm:px-4 sm:py-1.5"
-          >
-            {labels.next}
-          </button>
-        ) : onRedo ? (
-          <button
-            type="button"
-            onClick={onRedo}
-            className="group inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 tap-area sm:min-h-[34px] border border-[var(--border)]/80 text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-[border-color,background-color,color,transform] rounded-lg touch-manipulation select-none active:scale-95 whitespace-nowrap sm:px-3.5 sm:py-1.5"
-          >
-            <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
-            <span>{labels.redo || 'Redo'}</span>
-          </button>
-        ) : null}
+      <span className="mx-0.5 h-4 w-px shrink-0 bg-[var(--border)]" aria-hidden="true" />
+
+      <div className="stage-act flex shrink-0 items-center">
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={stageIdx >= stageOrder.length - 1}
+          className={`compact inline-flex h-7 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-2.5 text-xs font-medium transition-colors ${
+            stageIdx >= stageOrder.length - 1
+              ? 'pointer-events-none text-[var(--muted)] opacity-35'
+              : 'text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]'
+          }`}
+        >
+          {labels.next}
+        </button>
       </div>
+      {/* 兼容既有 onRedo API：结论阶段的重做入口仍保留给实验内部使用；此条不增加视觉高度。 */}
+      {onRedo ? (
+        <button
+          type="button"
+          onClick={onRedo}
+          title={labels.redo}
+          aria-label={labels.redo}
+          className={`compact ml-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-[var(--muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--fg)] sm:inline-flex ${
+            stageIdx >= stageOrder.length - 1 ? '' : 'invisible pointer-events-none'
+          }`}
+        >
+          <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      ) : null}
     </div>
   );
 }

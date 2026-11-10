@@ -6,7 +6,8 @@
  * 依据路由参数 /lab/:labId 从实验注册表读取实验并渲染其组件；
  * 未注册 / 未知的 labId 渲染建设中占位。
  */
-import { useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { ChevronLeft } from 'lucide-react';
 import BackLink from '../components/layout/BackLink';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useApp } from '../lib/app-context';
@@ -107,7 +108,41 @@ export default function LabPage() {
 
   return (
     <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
-      <div className={fullCanvasLab ? 'lg:hidden' : ''}>
+      {/* 数学全画布实验：移动端两行紧凑头部（导航+标题+工具 / 32px 步进条） */}
+      {fullCanvasLab && (
+        <div className="lg:hidden">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Link
+              to={subjects[lab.subjectId].path}
+              aria-label={lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
+              className="compact inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </Link>
+            <span className="h-4 w-px shrink-0 bg-[var(--border)]" aria-hidden="true" />
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[var(--fg)]">
+              <lab.icon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <h1 className="min-w-0 flex-1 truncate text-base font-semibold serif-font text-[var(--fg)]">
+              {lab.name[lang]}
+            </h1>
+            <span className="shrink-0 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px] mono-font text-[var(--muted)]">
+              {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              <ShareInline
+                title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+                text={lang === 'zh'
+                  ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                  : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+              />
+              <AskAiButton labId={lab.id} question={pageAiQuestion} />
+              <AskQuizButton />
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={fullCanvasLab ? 'hidden' : ''}>
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to={subjects[lab.subjectId].path}>
         {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}

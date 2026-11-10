@@ -709,7 +709,7 @@ export default function PolygonPi() {
         {/* 右列：边数控制 + 三幕 */}
         <div className={`contents lg:block lg:h-full lg:min-h-0 lg:min-w-0 lg:space-y-4 lg:overflow-y-auto`} style={stage === 'predict' ? { display: 'none' } : undefined}>
           <div className="min-w-0 order-2 lg:order-none">
-          <ParamDock
+          <ParamDock disabled={stage === 'predict'}
             title={t.paramDock}
             closeLabel={t.paramDockClose}
             anchorRef={canvasRef}

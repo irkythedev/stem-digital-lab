@@ -16,7 +16,7 @@ import AppErrorBoundary from './components/AppErrorBoundary';
 import { AiProvider, useAiContext } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
 import { installFeedbackAutoFlush } from './lib/feedback-auto-flush';
-import { ONBOARDING_START_EVENT, ONBOARDING_WELCOME_CLOSED_EVENT } from './lib/use-onboarding-tour';
+import { ONBOARDING_PENDING_KEY, ONBOARDING_START_EVENT, ONBOARDING_WELCOME_CLOSED_EVENT } from './lib/use-onboarding-tour';
 /**
  * 路由页面一律按需加载：主入口只保留应用外壳（导航、AI 助手、反馈）。
  * 页面自带的 GEO JSON 与重型组件因此落在各自 chunk，不会撑大首屏主包。
@@ -135,6 +135,10 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
     }
     setShowWelcome(false);
     try {
+      if (location.pathname === '/') {
+        // 首页懒加载 chunk 可能晚于欢迎弹窗挂载；先落一个 session 标记，确保事件即使早到也不丢。
+        window.sessionStorage.setItem(ONBOARDING_PENDING_KEY, '1');
+      }
       window.dispatchEvent(new Event(ONBOARDING_WELCOME_CLOSED_EVENT));
     } catch {
       // SSR / 隐私模式静默

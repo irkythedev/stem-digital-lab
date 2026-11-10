@@ -18,6 +18,22 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.2',
+    date: '2026-11',
+    zh: [
+      '[优化] 移动端实验界面更紧凑，操作更顺手',
+      '[优化] 新手引导与欢迎页衔接更顺畅',
+      '[优化] 更新提示与版本信息展示更一致，状态更清楚',
+      '[优化] 若干实验与交互细节优化，整体更稳定',
+    ],
+    en: [
+      '[Improved] A more compact mobile lab experience with smoother controls',
+      '[Improved] Smoother handoff between the first-visit guide and welcome dialog',
+      '[Improved] Clearer and more consistent update and version status',
+      '[Improved] Several lab and interaction details refined for overall stability',
+    ],
+  },
+  {
     version: '0.50.1',
     date: '2026-11',
     zh: [

@@ -953,7 +953,7 @@ export default function Quadratic() {
       </div>
       <div className="grid items-start gap-5 lg:contents lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}
-        <div ref={planeRef} className={`flex flex-col space-y-3 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'}`}>
+        <div ref={planeRef} className={`flex flex-col space-y-3 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
           <div
             ref={canvasRef}
             className="relative overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] lg:h-full lg:border-0 lg:bg-transparent"
@@ -964,7 +964,7 @@ export default function Quadratic() {
             onPointerCancel={onCanvasPointerUp}
           >
             {/* 画布顶栏：解析式 + 基准图例 + 辅助线 + 手动视口控制；桌面内嵌为画布角标，避免额外占高 */}
-            <div data-lab-toolbar="true" className={`flex flex-col gap-1 border-b border-[var(--border)] px-3 py-1 lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:flex lg:h-10 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-2 lg:rounded-none lg:border-0 lg:border-b lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:py-0 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
+            <div data-lab-toolbar="true" className={`flex flex-col gap-1 border-b border-[var(--border)] px-3 py-1 lg:absolute lg:inset-x-0 lg:top-0 lg:z-20 lg:flex lg:h-10 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between lg:gap-2 lg:rounded-none lg:border-0 lg:border-b lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:py-0 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? '!hidden lg:!hidden' : ''}`}>
               <div className="flex w-full min-w-0 items-baseline gap-x-2 gap-y-0.5 overflow-hidden lg:flex-1">
                 <span className="hidden shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font sm:inline lg:hidden">
                   // {t.readout}
@@ -1024,7 +1024,7 @@ export default function Quadratic() {
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
               </div>
             ) : null}
-            <div className={`${stage === 'predict' && !revealed ? 'hidden lg:block' : 'block'} lg:absolute lg:inset-x-0 lg:top-10 lg:bottom-11 lg:h-auto`}>
+            <div className={`${stage === 'predict' && !revealed ? 'hidden' : 'block'} lg:absolute lg:inset-x-0 lg:top-10 lg:bottom-11 lg:h-auto`}>
               <CoordPlane
                 curves={stage === 'predict' && !revealed ? [] : curves}
                 markers={stage === 'predict' && !revealed ? [] : (showGuides ? markers : [])}
@@ -1052,7 +1052,7 @@ export default function Quadratic() {
             {/* 画布底栏：猜想顶点单行条（不单独占卡） */}
             {Math.abs(eff.a) > 1e-9 && stage !== 'conclude' && (
               <div
-                className={`flex min-h-[44px] flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border)] px-3 py-0.5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:h-11 lg:z-20 lg:rounded-none lg:border-0 lg:border-t lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}
+                className={`flex min-h-[44px] flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border)] px-3 py-0.5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:h-11 lg:z-20 lg:rounded-none lg:border-0 lg:border-t lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? 'hidden' : ''}`}
                 title={guessValid ? `h: ${f2(guessHNum as number)} / ${f2(vAxis)} / ${signed(dGuessH)}; k: ${f2(guessKNum as number)} / ${f2(vPeak)} / ${signed(dGuessK)}` : t.guessHint}
               >
                 <div className="flex shrink-0 items-baseline gap-2">
@@ -1119,7 +1119,7 @@ export default function Quadratic() {
         {/* 右列：参数 + 三幕 */}
         <div className="flex flex-col space-y-4 lg:contents">
           {/* 参数卡：窄屏收进底部抽屉，桌面变右侧悬浮控制台 */}
-          <div className={`${inspectorOpen && stage !== 'predict' && stage !== 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:flex lg:w-[330px] lg:flex-col lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:shadow-none' : 'lg:hidden'}`}>
+          <div className={`${stage === 'predict' ? 'hidden' : inspectorOpen && stage !== 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:flex lg:w-[330px] lg:flex-col lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:shadow-none' : 'lg:hidden'}`}>
           <div className="hidden items-center justify-between border-b border-[var(--border)] pb-2 lg:flex">
             <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
             <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
@@ -1127,7 +1127,7 @@ export default function Quadratic() {
               <span>{lang === 'zh' ? '收起' : 'Collapse'}</span>
             </button>
           </div>
-          <ParamDock
+          <ParamDock disabled={stage === 'predict'}
             title={t.paramDock}
             closeLabel={t.paramDockClose}
             anchorRef={planeRef}
@@ -1327,7 +1327,7 @@ export default function Quadratic() {
           }`}>
           {/* 幕1 预测 */}
           {stage === 'predict' && (
-            <div className="border border-[var(--border)] p-4 space-y-4 lg:max-h-[calc(100%-2rem)] lg:w-full lg:max-w-xl lg:overflow-y-auto lg:rounded-2xl lg:border lg:bg-[var(--card-bg)]/95 lg:p-6 lg:shadow-lg lg:backdrop-blur-md">
+            <div className="border border-[var(--border)] bg-[var(--card-bg)] p-4 space-y-4 lg:max-h-[calc(100%-2rem)] lg:w-full lg:max-w-xl lg:overflow-y-auto lg:rounded-2xl lg:border lg:bg-[var(--card-bg)]/95 lg:p-6 lg:shadow-lg lg:backdrop-blur-md">
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.predictTitle}
               </h3>

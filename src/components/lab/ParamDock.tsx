@@ -25,9 +25,11 @@ interface ParamDockProps {
   closeLabel: string;
   /** 下拉收起的阈值（px） */
   dismissPx?: number;
+  /** 预测阶段不挂载参数抽屉（连 portal 胶囊也不渲染） */
+  disabled?: boolean;
 }
 
-export default function ParamDock({ children, summary, anchorRef, title, closeLabel, dismissPx = 80 }: ParamDockProps) {
+export default function ParamDock({ children, summary, anchorRef, title, closeLabel, dismissPx = 80, disabled = false }: ParamDockProps) {
   const dock = useParamDock();
   const [dragDy, setDragDy] = useState(0);
   const drag = useRef<{ y: number; dy: number } | null>(null);
@@ -36,10 +38,11 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
   // 挂载标记：让 CSS 只给「装了参数抽屉」的实验页补底部安全区。
   // 用 <html> 类而不是给每个实验页加 pb-* —— 未装抽屉的 14 个实验必须零改动。
   useEffect(() => {
+    if (disabled) return;
     const cls = document.documentElement.classList;
     cls.add('param-dock-mounted');
     return () => cls.remove('param-dock-mounted');
-  }, []);
+  }, [disabled]);
 
   // 展开期间：反馈气泡淡出（CSS 按 html 类名控制）
   useEffect(() => {
@@ -67,6 +70,8 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
     const top = anchorRef.current.getBoundingClientRect().top + window.scrollY - 12;
     window.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
   }, [dock.state, anchorRef]);
+
+  if (disabled) return null;
 
   // 桌面：原样平铺，零额外节点
   if (dock.state === 'hidden') return <>{children}</>;

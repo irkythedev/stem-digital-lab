@@ -29,7 +29,9 @@ import LicenseDialog from './LicenseDialog';
 const VersionDialog = lazy(() => import('../feedback/VersionDialog'));
 import ExternalLinkConfirm from './ExternalLinkConfirm';
 import { APP_VERSION } from '../../lib/app-version';
-import { useVersionCheck } from '../../lib/use-version-check';
+import { useAppUpdate } from '../../lib/use-app-update';
+import { ringStateFor } from '../../lib/update-progress';
+import { UpdateBadgeVisual, updatePhaseText } from '../layout/Header';
 
 /** 欢迎弹窗的两个分区 */
 type WelcomeTab = 'overview' | 'guide';
@@ -55,7 +57,9 @@ export default function WelcomeDialog({
   const [showLicense, setShowLicense] = useState(false);
   // 版本历史弹窗 + 更新检测（与 Header 共用 hook）
   const [showVersion, setShowVersion] = useState(false);
-  const { hasUpdate } = useVersionCheck();
+  const { hasUpdate, phase, progress, applyUpdate, busy } = useAppUpdate();
+  const ring = ringStateFor(phase, progress);
+  const phaseText = updatePhaseText(phase, lang);
   const [dontShow, setDontShow] = useState(false);
   // 其他作品：点击后先确认（简介 + 提示），用户决定是否跳转外部站点
   const [pendingWork, setPendingWork] = useState<{ name: string; url: string; icon: string; desc?: string } | null>(null);
@@ -112,19 +116,37 @@ export default function WelcomeDialog({
           <div className="min-w-0">
             <h2 className="t-h2 font-bold mono-font tracking-widest">
               {t.brandName}
-              {/* 版本号 + 更新提示（点击查看版本历史，与 Header 一致） */}
-              <button
-                type="button"
-                onClick={() => setShowVersion(true)}
-                title={t.versionTitle.replace('{version}', APP_VERSION)}
-                aria-label={t.versionAria}
-                className="tap-pad-10 ml-2 inline-flex items-center gap-1 text-[0.625rem] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] align-middle transition-colors"
-              >
-                v{APP_VERSION}
+              {/* 版本号 + 更新提示（与 Header 共用 UpdateBadgeVisual / useAppUpdate 状态机） */}
+              <span className="ml-2 inline-flex items-center gap-1 align-middle">
+                <button
+                  type="button"
+                  onClick={() => setShowVersion(true)}
+                  title={t.versionTitle.replace('{version}', APP_VERSION)}
+                  aria-label={t.versionAria}
+                  className="tap-pad-10 inline-flex items-center text-[0.625rem] mono-font font-normal text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                >
+                  v{APP_VERSION}
+                </button>
                 {hasUpdate && (
-                  <span className="block w-1.5 h-1.5 rounded-full bg-[var(--success)] update-dot" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={() => { void applyUpdate(); }}
+                    disabled={busy}
+                    title={phase === 'idle' ? t.updateAvailable : phaseText}
+                    aria-label={phase === 'idle' ? t.updateAvailable : phaseText}
+                    className="relative flex h-7 w-7 items-center justify-center rounded-full disabled:cursor-progress"
+                  >
+                    <span className="relative block h-3.5 w-3.5 lg:h-[18px] lg:w-[18px]">
+                      <UpdateBadgeVisual ring={ring} arrowClass="h-2 w-2 lg:h-2.5 lg:w-2.5" arrowStroke={2.2} />
+                    </span>
+                  </button>
                 )}
-              </button>
+              </span>
+              {phase !== 'idle' && (
+                <span role="status" aria-live="polite" data-update-phase={phase} className="sr-only">
+                  {phaseText}
+                </span>
+              )}
             </h2>
             <p className="mt-1 text-[0.625rem] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
               <span>{t.welcomeTag}</span>
@@ -434,7 +456,7 @@ export default function WelcomeDialog({
       </div>
       {/* elevated：这两层是「模态里再开模态」，不抬到宿主卡片之上就整层被盖住 */}
       {showLicense && <LicenseDialog elevated onClose={() => setShowLicense(false)} />}
-      {showVersion && <Suspense fallback={null}><VersionDialog elevated onClose={() => setShowVersion(false)} /></Suspense>}
+      {showVersion && <Suspense fallback={null}><VersionDialog elevated onClose={() => setShowVersion(false)} hasUpdate={hasUpdate} updateBusy={busy} onUpdate={() => { setShowVersion(false); void applyUpdate(); }} /></Suspense>}
     </div>,
     document.body,
   );
