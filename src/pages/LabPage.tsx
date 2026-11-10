@@ -19,6 +19,8 @@ import ShareInline from '../components/share/ShareInline';
 import AskAiButton from '../components/ai/AskAiButton';
 import AskQuizButton from '../components/ai/AskQuizButton';
 import { usePageMeta, learningResourceLd } from '../lib/use-page-meta';
+import { unlockBetaLabs } from '../lib/use-beta-labs';
+import BetaBadge from '../components/lab/BetaBadge';
 
 export default function LabPage() {
   const { labId } = useParams<{ labId: string }>();
@@ -65,6 +67,11 @@ export default function LabPage() {
     return () => setAiCtx({});
   }, [lab, setAiCtx]);
 
+  // Beta 深链不拦截：直接访问新增实验时自动解锁，返回学科页后仍能看到该实验。
+  useEffect(() => {
+    if (lab?.beta) unlockBetaLabs();
+  }, [lab?.beta]);
+
   if (!lab) {
     return (
       <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
@@ -86,6 +93,10 @@ export default function LabPage() {
   }
 
   const Lab = lab.component;
+  // 四个新几何实验走 100vh 手眼同屏：压缩页头并隐藏通用“建议流程”段，
+  // 阶段提示仍由 StageNav 承担，不丢流程信息。
+  const compactLab = ['construction', 'congruence', 'similarity', 'polygon-pi', 'circle', 'quadratic', 'linear', 'inverse'].includes(lab.id);
+  const fullCanvasLab = ['quadratic', 'linear', 'inverse', 'circle', 'congruence', 'similarity', 'polygon-pi', 'construction'].includes(lab.id);
   // 页头右侧状态徽标（可选）：工作台的 C++ / JS 计算核标识走标准动作簇末尾。
   const HeaderBadge = lab.headerBadge;
 
@@ -95,23 +106,25 @@ export default function LabPage() {
     : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
-    <main className="grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6">
+    <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
+      <div className={fullCanvasLab ? 'lg:hidden' : ''}>
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to={subjects[lab.subjectId].path}>
         {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
       </BackLink>
 
-      <div className="rise mb-3 sm:mb-8">
+      <div className={`rise ${compactLab ? 'mb-1 sm:mb-2' : 'mb-3 sm:mb-8'}`}>
         {/* 第一行：图标 + 标题 + 年级眉标。
             眉标带 whitespace-nowrap（.t-eyebrow 里也有同名声明），永不被逐字拆开。 */}
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 shrink-0 flex items-center justify-center text-[var(--fg)]">
             <lab.icon className="w-10 h-10" />
           </div>
-          <div className="flex min-w-0 flex-col items-start leading-tight">
-            <h1 className="t-h1 font-medium serif-font text-[var(--fg)]">
+          <div className="flex min-w-0 flex-1 flex-col items-start leading-tight">
+            <h1 className="t-h1 w-full min-w-0 font-medium serif-font text-[var(--fg)]">
               {lab.name[lang]}
-              <span className="t-eyebrow ml-3 text-[var(--muted)] mono-font align-middle whitespace-nowrap">
+              {lab.beta && <BetaBadge className="ml-2 align-middle" />}
+              <span className="t-eyebrow lab-eyebrow ml-3 text-[var(--muted)] mono-font align-middle whitespace-nowrap">
                 {lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}
               </span>
             </h1>
@@ -139,11 +152,12 @@ export default function LabPage() {
           )}
         </div>
       </div>
+      </div>
 
       {/* 建议流程：移动端 my-2（桌面保持 mb-5、无上边距），避免这句话上下各多出一段留白。
           工具台（meta.kind === 'tool'）没有三幕式阶段，不能继续提示「先预测…最后完成结论」——
           那句话会把自由工作台重新说成步骤锁定的实验。此处换成工具台自己的引导。 */}
-      <p className="mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5">
+      <p className={`mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5 ${compactLab ? 'hidden' : ''}`}>
         {lab.meta?.kind === 'tool'
           ? lang === 'zh'
             ? '自由工作台：加载预设或从空白开始，随时接线、读表、记录数据。所有操作都可撤销。'

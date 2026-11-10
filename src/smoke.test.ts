@@ -110,7 +110,8 @@
 import { strict as assert } from 'node:assert';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { labs, labMap, labsForSubject, isToolLab } from './lib/labs';
+import { spawnSync } from 'node:child_process';
+import { labs, labMap, labsForSubject, isToolLab, betaLabsForSubject, visibleLabsForSubject } from './lib/labs';
 import { translations } from './lib/i18n';
 import { planTasks, formatSize, type PackManifest } from './lib/offline-pack';
 import {
@@ -200,8 +201,8 @@ import { describe, test, setup, runAll } from './testing/harness';
 /* ── Lab registration ── */
 
 describe('Lab registration', () => {
-  test('has 16 registered labs', () => {
-    assert.equal(labs.length, 16);
+  test('has 20 registered labs', () => {
+    assert.equal(labs.length, 20);
   });
 
   test('every lab has required fields', () => {
@@ -225,9 +226,18 @@ describe('Lab registration', () => {
   });
 
   test('labsForSubject returns correct counts', () => {
-    assert.equal(labsForSubject('math').length, 4);
+    assert.equal(labsForSubject('math').length, 8);
     assert.equal(labsForSubject('physics').length, 8);
     assert.equal(labsForSubject('chemistry').length, 4);
+  });
+
+  test('beta labs are flagged and filtered from the default math list', () => {
+    const beta = betaLabsForSubject('math');
+    assert.equal(beta.length, 4);
+    assert.deepEqual(new Set(beta.map((lab) => lab.id)), new Set(['congruence', 'similarity', 'polygon-pi', 'construction']));
+    assert.equal(visibleLabsForSubject('math', false).length, 4);
+    assert.equal(visibleLabsForSubject('math', true).length, 8);
+    assert.ok(visibleLabsForSubject('math', false).every((lab) => !lab.beta));
   });
 
   test('no duplicate lab ids', () => {
@@ -299,7 +309,7 @@ describe('Physics model: lens formula', () => {
 });
 
 /* ── 数学纯函数「二次函数采样」已拆为独立入口 ──
- * 见 src/labs/math/math-pure.entry.test.ts：它有自己的 harness 实例与 runAll()，
+ * 见 src/testing/suites/math/math-pure.test.ts：它通过独立的 runEntry 入口运行（独立 harness 实例与 runAll()），
  * 不要在 smoke 里再次注册，否则同一批用例会被执行两遍。
  * 注意：本文件第 221 行的 quadraticY / sampleQuadratic 导入仍被下方
  * stem-engine 门面对拍用例使用，不要一并删除。 */
@@ -540,8 +550,8 @@ describe('Chemistry model: titration pH', () => {
 /* ── Chemistry labs: 学科硬伤防退化 ── */
 
 // 「Chemistry labs: academic hard-fault regressions」已整体拆为独立入口（29 个用例）：
-// src/labs/chemistry/chemistry-labs-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/（含 ✓/✗ 字面量，放进 src/labs 会被全站字形守卫判红）；
+// src/testing/suites/chemistry/chemistry-labs-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/chemistry/（含 ✓/✗ 字面量，放进 src/labs 会被全站字形守卫判红）；
 // 其 repoPath() 从模块位置推导仓库根，不再依赖 process.cwd()。
 
 /* ── MicroAnimation: 微观反应内核 ── */
@@ -621,26 +631,15 @@ describe('MicroAnimation: microscopic reaction kernel', () => {
 /* ── LaTeX → TTS 口语转换 ── */
 
 // 「LaTeX → TTS speech conversion」已整体拆为独立入口（30 个用例）：
-// src/lib/latex-speech.entry.test.ts。不要在此重新注册。
+// src/testing/suites/speech/latex-speech.test.ts。不要在此重新注册。
 // 逐字快照另见 src/latex-speech.golden.test.ts（109 输入 × 4 配置），两者互补。
 
-/* ── AI Q&A history (localStorage persistence) ── */
+/* ── 本地存储契约（问答历史 / 考考你历史 / 反馈队列） ── */
 
-// 「AI Q&A history (localStorage persistence)」已整体拆为独立入口（5 个用例）：
-// src/lib/ai-history-storage.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-history-storage.test.ts（用例内装假 window，finally 还原）。
-
-/* ── Feedback queue (localStorage cap + remove) ── */
-
-// 「Feedback queue (localStorage persistence)」已整体拆为独立入口（3 个用例）：
-// src/lib/feedback-queue-storage.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/feedback-queue-storage.test.ts（假 window + 假 fetch，finally 还原）。
-
-/* ── Quiz history (localStorage cap + wrong filter) ── */
-
-// 「Quiz history (localStorage persistence)」已整体拆为独立入口（5 个用例）：
-// src/lib/quiz-history-storage.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/quiz-history-storage.test.ts（用例内装假 window，finally 还原）。
+// 三套 storage 用例已合并为参数化契约套件（26 个用例）：
+// src/testing/suites/storage/contract.test.ts。不要在此重新注册。
+// 用例在 contract.suite.ts，用 fixtures/storage.ts 的 installStorage() 装假 window；
+// 配额/脏数据/裁剪等分支由参数表达（反馈队列那组还会替换 globalThis.fetch，finally 还原）。
 
 /* ── Quiz batch parser (parseQuizBatch) ── */
 
@@ -757,16 +756,16 @@ describe('Fill-in question parsing & grading', () => {
 // qh() 现由 src/testing/quiz-summary-fixtures.ts 提供（函数体逐字未改）。
 
 // 「Quiz summary — 错误类型归类」已整体拆为独立入口（4 个用例）：
-// src/lib/quiz-summary-error-kinds.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/quiz-summary-error-kinds.test.ts。
+// src/testing/suites/quiz/quiz-summary-error-kinds.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/quiz/quiz-summary-error-kinds.suite.ts。
 
 // 「Quiz summary — 科目与薄弱知识点」已整体拆为独立入口（3 个用例）：
-// src/lib/quiz-summary-overview.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/quiz-summary-overview.test.ts。
+// src/testing/suites/quiz/quiz-summary-overview.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/quiz/quiz-summary-overview.suite.ts。
 
 // 「Quiz summary — 趋势与 AI 输入」已整体拆为独立入口（9 个用例）：
-// src/lib/quiz-summary-trend.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/quiz-summary-trend.test.ts；样本构造器 qh() 见 quiz-summary-fixtures。
+// src/testing/suites/quiz/quiz-summary-trend.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/quiz/quiz-summary-trend.suite.ts；样本构造器 qh() 见 quiz-summary-fixtures。
 
 /* ── token 用量累计统计（localStorage，按模型 × 日期分桶） ── */
 
@@ -836,20 +835,20 @@ describe('Token usage (localStorage persistence)', () => {
 /* ── Feedback push path（异步：一次提交只推一条 / 不丢记录 / 重试上限） ── */
 
 // 「Feedback push path (one push per submission)」已整体拆为独立入口（7 个用例，全 async）：
-// src/lib/feedback-push-path.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/feedback-push-path.test.ts；队列状态由模块级变量驱动，
+// src/testing/suites/shell/feedback-push-path.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/shell/feedback-push-path.suite.ts；队列状态由模块级变量驱动，
 // 用例顺序即语义，入口内必须串行（harness runAll() 逐个 await，已满足）。
 
 
 // 「AI prompt contracts」已整体拆为独立入口（20 个用例）：
-// src/lib/ai-prompt-contracts.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-prompt-contracts.test.ts；原文件级助手 Q() 与样本 RAW_OK
+// src/testing/suites/ai/ai-prompt-contracts.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-prompt-contracts.suite.ts；原文件级助手 Q() 与样本 RAW_OK
 // 只被该套件使用，已随块搬走（此处不再保留死代码）。
 
 
 // 「AI thinking stream (display only)」已整体拆为独立入口（6 个用例，含 2 个 async）：
-// src/lib/ai-thinking-stream.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-thinking-stream.test.ts；原文件级常量 T_OPEN / T_CLOSE
+// src/testing/suites/ai/ai-thinking-stream.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-thinking-stream.suite.ts；原文件级常量 T_OPEN / T_CLOSE
 // 仅该套件使用，已随块搬走（此处不再保留死代码）。
 
 /* ── 原子结构示意图：电子层点数不得截断（科学事实优先于观感） ── */
@@ -914,22 +913,22 @@ describe('原子结构示意图 · 电子层点数（真实电子数，不截断
 /* ── AI 思考强度档位：逐模型能力表，档位必须真正互不相同 ── */
 
 // 「AI 思考强度档位（逐模型能力表；教学伦理：只调思考深度，不改提示词约束）」已整体拆为
-// 独立入口（10 个用例，含 1 个 async）：src/lib/ai-thinking-tiers.entry.test.ts。
-// 注册模块在 src/testing/ai-thinking-tiers.test.ts（零文件读取）。
+// 独立入口（10 个用例，含 1 个 async）：src/testing/suites/ai/ai-thinking-tiers.test.ts。
+// 注册模块在 src/testing/suites/ai/ai-thinking-tiers.suite.ts（零文件读取）。
 
 
 /* ── 思考参数下发：请求体与界面留痕共用唯一出口 resolveThinkingDispatch ── */
 
 // 「思考参数下发 · 留痕与实发同源（resolveThinkingDispatch）」已整体拆为独立入口（5 个用例）：
-// src/lib/ai-thinking-dispatch.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-thinking-dispatch.test.ts（1 处读源码 + readAiPanel 走 ai-panel-source）。
+// src/testing/suites/ai/ai-thinking-dispatch.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-thinking-dispatch.suite.ts（1 处读源码 + readAiPanel 走 ai-panel-source）。
 
 
 /* ── 输出上限与空正文：思考型模型的思考不得把正文预算挤成空白 ── */
 
 // 「输出上限与空正文（P0 防御：思考型模型 / 本地端点）」已整体拆为独立入口（10 个用例）：
-// src/lib/ai-output-limits.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-output-limits.test.ts（2 处读源码 + readAiPanel 走 ai-panel-source）。
+// src/testing/suites/ai/ai-output-limits.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-output-limits.suite.ts（2 处读源码 + readAiPanel 走 ai-panel-source）。
 
 
 /* ── AI 配置：Key 按服务商隔离（换服务商不得沿用上一家的 Key） ── */
@@ -1119,7 +1118,7 @@ describe('浮层高度边界（操作栏不得被内容挤出视口）', () => {
     assert.ok(/raw < 120 \? 0/.test(mainSrc), 'iOS 地址栏收展造成的几十像素差不得被当成键盘（阈值兜底）');
     assert.ok(
       panelSrc.includes('bottom-[var(--kb,0px)]') &&
-        panelSrc.includes('max-h-[min(85dvh,var(--vvh,100dvh))]'),
+        panelSrc.includes('max-h-[min(92dvh,var(--vvh,100dvh))]'),
       '移动端抽屉必须以 --kb 抬高、以 --vvh 限高，否则键盘弹起会盖住吸底操作栏与输入框',
     );
   });
@@ -1177,12 +1176,33 @@ describe('触屏命中区（hover:none + pointer:coarse）', () => {
   });
 });
 
+/* ── 窄屏参数抽屉：超屏参数卡必须收进底部抽屉，而不是把画布挤出首屏 ── */
+
+describe('移动端参数抽屉（ParamDock）', () => {
+  test('新接入的几何实验带画布锚点、摘要与中英文文案；割圆术读数表不被压扁', () => {
+    for (const file of ['Similarity', 'PolygonPi', 'Congruence']) {
+      const p = `src/labs/math/${file}.tsx`;
+      const src = readFileSync(p, 'utf8');
+      assert.match(src, /import ParamDock from '\.\.\/\.\.\/components\/lab\/ParamDock'/, `${p} 未引入 ParamDock`);
+      assert.match(src, /const canvasRef = useRef<HTMLDivElement>\(null\)/, `${p} 缺少画布锚点 canvasRef`);
+      assert.match(src, /<ParamDock[\s\S]{0,200}?anchorRef=\{canvasRef\}/, `${p} 的 ParamDock 未绑定画布锚点（展开抽屉时画布不会回到视口顶部）`);
+      assert.match(src, /<ParamDock[\s\S]{0,300}?summary=\{/, `${p} 的 ParamDock 缺少收起态摘要`);
+      assert.match(src, /paramDock: '/, `${p} 缺少 paramDock 文案`);
+      assert.match(src, /paramDockClose: '/, `${p} 缺少 paramDockClose 文案`);
+      // 中文 + 英文各一份，避免只补了一边
+      assert.equal((src.match(/paramDock: '/g) || []).length, 2, `${p} 的 paramDock 文案应中英各一份`);
+    }
+    // 375px 下四列表格会挤成一条缝：给最小宽度 + 外层横向滚动
+    assert.match(readFileSync('src/labs/math/PolygonPi.tsx', 'utf8'), /min-w-\[18rem\]/, '割圆术读数表缺少最小宽度');
+  });
+});
+
 
 /* ── 元素详情卡：相邻元素连续探索流 + 微观结构工效 ── */
 
 // 「元素详情卡：相邻导航 / 电子层胶囊 / 微粒看板」已整体拆为独立入口（8 个用例）：
-// src/pages/periodic-detail-card.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/periodic-detail-card.test.ts（1 处读源码走 repoPath）。
+// src/testing/suites/pages/periodic-detail-card.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/pages/periodic-detail-card.suite.ts（1 处读源码走 repoPath）。
 
 
 /* ── 计数口径：对外文案必须与注册表真值一致（曾出现「15 实验 / 16 实验」「4 工具 / 5 工具」两套数并存） ── */
@@ -1194,25 +1214,29 @@ describe('计数口径（注册表真值 ↔ 对外文案）', () => {
   const LOOKUP_TOOLS = 5;
   const TOOL_TOTAL = LOOKUP_TOOLS + toolLabs;
 
-  test('注册表真值：15 个常规实验 + 6 个工具（5 查表 + 1 工具台）', () => {
-    assert.equal(regularLabs, 15, `常规实验数变了就须同步全站文案：实测 ${regularLabs}`);
+  test('注册表真值：19 个常规实验 + 6 个工具（5 查表 + 1 工具台）', () => {
+    assert.equal(regularLabs, 19, `常规实验数变了就须同步全站文案：实测 ${regularLabs}`);
     assert.equal(toolLabs, 1, `工具台数变了就须同步全站文案：实测 ${toolLabs}`);
-    assert.equal(regularLabs + TOOL_TOTAL, 21, '可互动页面总数（实验 + 工具）应仍为 21');
+    assert.equal(regularLabs + TOOL_TOTAL, 25, '可互动页面总数（实验 + 工具）应仍为 25');
   });
 
   const SURFACES: [string, string[]][] = [
-    ['index.html', ['15 个交互实验', '6 个工具']],
-    ['README.md', ['15 个交互实验 + 6 个工具', '15 interactive labs + 6 tools', 'All 15 labs and all 6 tool pages']],
-    ['src/lib/use-page-meta.ts', ['15 个交互实验 + 6 个工具']],
-    ['vite.config.ts', ['15 个交互实验 + 6 个工具']],
-    ['src/lib/i18n.ts', ['15 个实验都按', 'All 15 labs run']],
+    ['index.html', ['19 个交互实验', '6 个工具']],
+    ['README.md', ['19 个交互实验 + 6 个工具', '19 interactive labs + 6 tools', 'All 19 labs and all 6 tool pages']],
+    ['src/lib/use-page-meta.ts', ['19 个交互实验 + 6 个工具']],
+    ['vite.config.ts', ['19 个交互实验 + 6 个工具']],
+    ['src/lib/i18n.ts', ['19 个实验都按', 'All 19 labs run']],
   ];
 
   const STALE = [
     '16 个交互实验',
+    '15 个交互实验',
     '4 个查表工具',
     '16 个实验',
+    '15 个实验',
     '16 interactive labs',
+    '15 interactive labs',
+    'All 15 labs',
     '4 lookup tools',
     '4 tool pages',
     '4 个工具页',
@@ -1245,6 +1269,40 @@ describe('计数口径（注册表真值 ↔ 对外文案）', () => {
         assert.ok(src.includes(needle), `${file} 缺少现行计数口径「${needle}」`);
       }
     }
+  });
+
+  test('实验页不再自渲染引导语；Guide 与架构页口径一致且产物同步', () => {
+    // D-1/D-2：引导语的唯一出处是 LabPage。实验内既不得渲染 t.prompt，
+    // 也不得保留无人引用的顶层 prompt 死键——死键正是下一次重复渲染的温床。
+    const labFiles: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const q = `${dir}/${e.name}`;
+        if (e.isDirectory()) walk(q);
+        else if (/\.tsx$/.test(e.name) && !/\.test\.tsx$/.test(e.name)) labFiles.push(q);
+      }
+    };
+    ['src/labs/math', 'src/labs/physics', 'src/labs/chemistry'].forEach(walk);
+    assert.ok(labFiles.length >= 19, `实验文件数偏少：${labFiles.length}`);
+    for (const f of labFiles) {
+      const src = readFileSync(f, 'utf8');
+      assert.doesNotMatch(src, /\bt\.prompt\b/, `${f} 仍在渲染 t.prompt（引导语唯一出处是 LabPage）`);
+      assert.doesNotMatch(src, /^ {4}prompt: ['"]/m, `${f} 仍保留无人引用的顶层 prompt 死键`);
+    }
+
+    // C-2：工具页共 6 个（电学工作台 + 5 个查表工具），Guide 不得再写「四个」。
+    const guide = readFileSync('src/pages/GuidePage.tsx', 'utf8');
+    assert.doesNotMatch(guide, /四个查表工具|four lookup tools/, 'Guide 工具页计数仍是旧的「四个查表工具」');
+    assert.ok(guide.includes('六个工具页（电学工作台与五个查表工具）'), 'Guide 中文须写明六个工具页');
+    assert.ok(guide.includes('six tool pages (the circuit workbench and five lookup tools)'), 'Guide 英文须写明六个工具页');
+
+    // C-1：公开架构页的口径必须与现行实验室数量一致。
+    // 与架构源文件的同步、脱敏规则由内网专用检查负责（公网树没有这些源文件）。
+    const publicArch = 'public/architecture.html';
+    const publicArchSrc = readFileSync(publicArch, 'utf8');
+    assert.ok(publicArchSrc.includes('19 实验 + 6 工具'), `${publicArch} 缺少现行口径「19 实验 + 6 工具」`);
+    assert.doesNotMatch(publicArchSrc, /15 实验 \+ [56] 工具/, `${publicArch} 仍含旧口径「15 实验 + ? 工具」`);
+    assert.ok(publicArchSrc.includes('19 labs + 6 tools'), `${publicArch} 缺少英文口径「19 labs + 6 tools」`);
   });
 });
 
@@ -1488,14 +1546,14 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
 /* ── 错题卷组卷（纯函数）：分节 / 连续编号 / 答案形态 / 留白 ── */
 
 // 「错题卷组卷（buildQuizPaper）」已整体拆为独立入口（13 个用例）：
-// src/lib/quiz-paper.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/quiz-paper.test.ts（纯逻辑，零文件读取）。
+// src/testing/suites/quiz/quiz-paper.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/quiz/quiz-paper.suite.ts（纯逻辑，零文件读取）。
 
 /* 执行入口已移到文件末尾：全部 describe / test 注册完成后由 runAll() 统一执行。 */
 
 // 「触屏热区 · 反向对抗守护（v0.35.0）」已整体拆为独立入口（7 个用例）：
-// src/components/layout/touch-target-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/touch-target-guards.test.ts（12 处读源码走 repoPath）。
+// src/testing/suites/ui/touch-target-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ui/touch-target-guards.suite.ts（12 处读源码走 repoPath）。
 
 
 
@@ -1690,7 +1748,7 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     roots.forEach(walk);
     const paired = files.filter((f) => readFileSync(f, 'utf8').includes('<AskAiButton'));
     // 断言改写说明：实验页的入口已统一收口到 LabPage 的标题行（与 4 个工具页策略一致），
-    // 15 个实验不再各写一份——原断言「须覆盖全部实验与工具页、≥19 个文件」锁的正是被替换掉的结构。
+    // 各实验不再各写一份——原断言「须覆盖全部实验与工具页、≥19 个文件」锁的正是被替换掉的结构。
     // 新契约保留「凡有问 AI 必成对挂载考考你」的意图，并**反向禁止实验内自带入口**：
     // 历史上周期表就是因为页头与自己各挂一份，才出现两个「考考你」并排。
     assert.ok(paired.includes('src/pages/LabPage.tsx'), '实验页入口须由 LabPage 统一挂载');
@@ -1765,7 +1823,7 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
 
   test('中断保全与首包超时：停止后成果入历史与上下文，20s 首包闸，reader 收口', () => {
     const ai = readAiPanel();
-    assert.match(ai, /const kept = markStopped\(accText, lang\)/, '中断时须用已收正文生成可保留内容');
+    assert.match(ai, /const kept = markStopped\(stripThinkingFromHistory\(accText\), lang\)/, '中断时须用已收正文生成可保留内容，并先清洗思考残留');
     assert.match(ai, /lastExchange\.current = \{ user: q, assistant: kept \}/, '中断的那一轮也要写进追问上下文，否则「继续问」接不上');
     assert.match(ai, /answer: kept,/, '中断的内容须落盘到本地历史');
     const cfg = readFileSync('src/lib/ai-config.ts', 'utf8');
@@ -1947,8 +2005,8 @@ function webpSize(buf: Buffer): { w: number; h: number } | null {
 /* ── token 用量堆叠柱聚合（纯函数：日历回填 / 共同 y 轴 / before 排除 / 分色上限） ── */
 
 // 「Token usage stacked bars (buildDailyBars)」已整体拆为独立入口（6 个用例）：
-// src/lib/token-usage-bars.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/token-usage-bars.test.ts（纯逻辑，零文件读取）。
+// src/testing/suites/ui/token-usage-bars.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ui/token-usage-bars.suite.ts（纯逻辑，零文件读取）。
 
 describe('Token usage retention (90 天 FIFO)', () => {
   test('保留窗口常量与实现一致：只留最近 90 天（含今天），before 永久保留', () => {
@@ -1997,20 +2055,20 @@ describe('Token usage retention (90 天 FIFO)', () => {
 });
 
 // 「Token usage chart source guards (零第三方图表依赖)」已整体拆为独立入口（9 个用例）：
-// src/components/ui/token-usage-chart.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/token-usage-chart.test.ts（3 处读源码 + readAiPanel 走 ai-panel-source）。
+// src/testing/suites/ui/token-usage-chart.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ui/token-usage-chart.suite.ts（3 处读源码 + readAiPanel 走 ai-panel-source）。
 
 /* ── AI 设置面板：高度自适应与控件质感（本轮精修守卫） ── */
 
 // 「AI settings panel layout & control polish」已整体拆为独立入口（5 个用例）：
-// src/components/ai/ai-settings-layout.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-settings-layout.test.ts；readAiPanel() 改由 src/testing/ai-panel-source.ts 提供。
+// src/testing/suites/ai/ai-settings-layout.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-settings-layout.suite.ts；readAiPanel() 改由 src/testing/ai-panel-source.ts 提供。
 
 /* ── AI 次级控件：视觉实体与触控热区解耦（去臃肿精修守卫） ── */
 
 // 「AI 次级控件：视觉实体 ≤28px 且触屏热区由 tap-area 承托」已整体拆为独立入口（5 个用例）：
-// src/components/ai/ai-secondary-controls.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ai-secondary-controls.test.ts；readAiPanel() 走 ai-panel-source。
+// src/testing/suites/ai/ai-secondary-controls.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/ai/ai-secondary-controls.suite.ts；readAiPanel() 走 ai-panel-source。
 
 describe('主标题真字重宋体与品牌字体子集', () => {
   const css = readFileSync('src/index.css', 'utf8');
@@ -2060,16 +2118,16 @@ describe('主标题真字重宋体与品牌字体子集', () => {
 });
 
 // 「使用说明页信息层级重构（视频以下三层结构）」已整体拆为独立入口（10 个用例）：
-// src/pages/guide-page-layers.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/guide-page-layers.test.ts（1 处读源码走 repoPath）。
+// src/testing/suites/pages/guide-page-layers.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/pages/guide-page-layers.suite.ts（1 处读源码走 repoPath）。
 
 // 「化学模块高危边界加固（动画连续性 / 量程钳位 / 题库认知平衡）」已整体拆为独立入口（6 个用例）：
-// src/labs/chemistry/chemistry-high-risk-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/chemistry-high-risk-guards.test.ts（5 处读源码走 repoPath）。
+// src/testing/suites/chemistry/chemistry-high-risk-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/chemistry/chemistry-high-risk-guards.suite.ts（5 处读源码走 repoPath）。
 
 // 「周期表：离线包行内化 / 展台去硬包裹 / 3D 空间模型」已整体拆为独立入口（17 个用例）：
-// src/pages/periodic-table-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/periodic-table-guards.test.ts；其 repoPath() 从模块位置推导仓库根，
+// src/testing/suites/pages/periodic-table-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/pages/periodic-table-guards.suite.ts；其 repoPath() 从模块位置推导仓库根，
 // 不再依赖 process.cwd()。其中 21 处读源码改走 readSrc()，2 处「必须不存在」的反向断言走
 // repoTarget()（repoPath 会校验存在性，反向断言用它会报错，语义正好相反）。
 
@@ -2091,7 +2149,7 @@ describe('Physics 力学核：阿基米德原理与弹簧测力计', () => {
     assert.equal(buoyantForce(1200, 0), 0);
   });
 
-  test('V排 饱和：完全浸没后继续下沉，浮力不再增大（「深度不影响浮力」考点）', () => {
+  test('V排 饱和：完全浸没后继续下沉，浮力不再增大（「完全浸没后深度不影响浮力」考点）', () => {
     // 关键不变式：vSub ≥ 1 时 V排 恒为物体自身体积
     for (const rho of [800, 1000, 1200]) {
       const full = buoyantForce(rho, 1);
@@ -2204,8 +2262,8 @@ describe('Physics 力学核：固体压强 p = F/S', () => {
 });
 
 // 「Physics 电学核：欧姆定律与分压口径」已整体拆为独立入口（6 个用例）：
-// src/labs/physics/ohm-core-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/ohm-core-guards.test.ts（纯逻辑，零文件读取）；
+// src/testing/suites/physics/ohm-core-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/physics/ohm-core-guards.suite.ts（纯逻辑，零文件读取）；
 // 走 ohm-core 真源，不经 WASM 门面，故与引擎状态无关。
 
 describe('Physics 电学核：串并联电流电压分配', () => {
@@ -2400,7 +2458,7 @@ describe('Physics 电学门面（应用真实调用点）：边界兜底与采�
 
   // 「门面源码守卫：NaN 兜底 + 非有限归一 + 索引乘法循环 + 头注释警示」已拆为独立入口
   // （源码守卫，路径基准改为从模块位置推导）：
-  // src/labs/physics/stem-engine-source-guards.entry.test.ts。不要在此重新注册。
+  // src/testing/suites/physics/stem-engine-source-guards.test.ts。不要在此重新注册。
   // 本套件其余用例依赖 loadOhmEngine() 之后的引擎指针状态，保留原位。
 });
 
@@ -2477,7 +2535,7 @@ describe('公共工具与 AI 链路守卫', () => {
     assert.match(kd, /max-width: 100%/, '.katex-display 缺 max-width');
     const panel = read('src/components/ai/AiAssistant.tsx');
     assert.match(panel, /max-w-\[95%\] min-w-0 break-words/, 'AI 回答气泡缺 break-words（长 token 会溢出）');
-    assert.match(panel, /max-h-\[min\(85dvh/, 'AI 面板缺 85dvh 高度上限');
+    assert.match(panel, /max-h-\[min\(92dvh/, 'AI 面板缺 85dvh 高度上限');
     // 右下角拖拽把手：class 不能紧贴 `${...}`，否则 Tailwind 扫不到 rounded-br-2xl，圆角会变直角
     assert.ok(!/rounded-br-2xl\$\{/.test(panel), '圆角 class 被模板变量截断，Tailwind 不会生成');
     assert.match(panel, /rounded-br-2xl/, '右下角把手缺少与面板一致的 16px 圆角');
@@ -2500,12 +2558,12 @@ describe('公共工具与 AI 链路守卫', () => {
 });
 
 // 「数学模块数值稳定性与题库守卫」剩余 3 个用例已整体拆为独立入口：
-// src/labs/math/math-numeric-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/math-numeric-guards.test.ts（1 处读源码走 repoPath）。
+// src/testing/suites/math/math-numeric-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/math/math-numeric-guards.suite.ts（1 处读源码走 repoPath）。
 
 // 「滑动变阻器『一上一下』结构与直角走线守卫」已整体拆为独立入口（6 个用例）：
-// src/labs/physics/rheostat-topology-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/rheostat-topology-guards.test.ts（1 处读源码走 repoPath）。
+// src/testing/suites/physics/rheostat-topology-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/physics/rheostat-topology-guards.suite.ts（1 处读源码走 repoPath）。
 
 describe('物理教学边界守卫（电表量程 / 透镜超程 / 测力计插值 / 触控热区 / 浮力分辨率）', () => {
   const read = (path: string) => readFileSync(path, 'utf8');
@@ -2572,8 +2630,8 @@ describe('物理教学边界守卫（电表量程 / 透镜超程 / 测力计插�
 });
 
 // 「物理题库守卫」已整体拆为独立入口（7 个用例）：
-// src/labs/physics/physics-question-bank-guards.entry.test.ts。不要在此重新注册。
-// 注册模块在 src/testing/physics-question-bank-guards.test.ts（2 处读源码走 repoPath）。
+// src/testing/suites/physics/physics-question-bank-guards.test.ts。不要在此重新注册。
+// 注册模块在 src/testing/suites/physics/physics-question-bank-guards.suite.ts（2 处读源码走 repoPath）。
 
 
 /* ── 电学工作台 M1 已拆为独立入口 ──

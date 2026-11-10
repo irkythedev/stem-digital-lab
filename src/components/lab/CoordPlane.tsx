@@ -23,6 +23,11 @@ export interface CoordCurve {
   dashed?: boolean;
   /** 图例文字，如 "y = 1/x" */
   label?: string;
+  /**
+   * 是否参与自动 y 范围计算（默认 true）。
+   * 基准残影设 false：它只作参照，不能把主曲线压扁。
+   */
+  affectsRange?: boolean;
 }
 
 /**
@@ -34,8 +39,8 @@ export interface CoordCurve {
 export interface CoordMarker {
   key: string;
   /** noLine：与该方向坐标轴重合时不重复画虚线（反比例的 x=0 / y=0 就是坐标轴本身） */
-  vline?: { x: number; label?: string; color?: string; noLine?: boolean };
-  hline?: { y: number; label?: string; color?: string; noLine?: boolean };
+  vline?: { x: number; label?: string; color?: string; noLine?: boolean; labelPlace?: 'top' | 'bottom' };
+  hline?: { y: number; label?: string; color?: string; noLine?: boolean; labelPlace?: 'left' | 'right' };
   /**
    * place：点标注相对特征点的落位。
    * - 'above' / 'below'：显式指定（顶点、x 轴交点按开口方向传，避免文字被抛物线穿过）
@@ -54,10 +59,58 @@ export interface CoordMarker {
   };
 }
 
+/**
+ * 声明式几何叠加层（数学坐标）：斜率阶梯、|k| 矩形、对称点连线、直角标记等。
+ * 与 CoordMarker 的分工：marker 是「轴/特征点」语义，overlay 是「任意图元」语义。
+ * 所有颜色走 CSS 变量；不传 color 时用 --accent。
+ */
+export type CoordOverlay =
+  | {
+      kind: 'segment';
+      x1: number; y1: number; x2: number; y2: number;
+      color?: string; width?: number; dash?: string; opacity?: number;
+    }
+  | {
+      kind: 'polyline';
+      points: [number, number][];
+      close?: boolean;
+      color?: string; width?: number; dash?: string;
+      fill?: string; fillOpacity?: number; opacity?: number;
+    }
+  | {
+      kind: 'rect';
+      x: number; y: number; w: number; h: number;
+      color?: string; width?: number; dash?: string;
+      fill?: string; fillOpacity?: number; opacity?: number;
+    }
+  | {
+      kind: 'label';
+      x: number; y: number; text: string;
+      color?: string; size?: number;
+      place?: 'above' | 'below' | 'left' | 'right';
+      opacity?: number;
+    }
+  | {
+      kind: 'rightAngle';
+      x: number; y: number;
+      /** 两条边的数学方向（不需要归一化，渲染时按屏幕像素归一化） */
+      ux: number; uy: number; vx: number; vy: number;
+      size?: number; color?: string; opacity?: number;
+    }
+  | {
+      kind: 'arc';
+      cx: number; cy: number; r: number;
+      /** 弧度，数学坐标（逆时针为正） */
+      from: number; to: number;
+      color?: string; width?: number; opacity?: number;
+    };
+
 interface CoordPlaneProps {
   curves: CoordCurve[];
   /** 标注层（对称轴/渐近线/顶点等），随参数实时移动 */
   markers?: CoordMarker[];
+  /** 几何叠加层（斜率阶梯、面积矩形、对称连线等） */
+  overlays?: CoordOverlay[];
   xMin?: number;
   xMax?: number;
   yMin?: number;
@@ -67,10 +120,39 @@ interface CoordPlaneProps {
   xLabel?: string;
   /** Y 轴名称标签（如 "I/A"），不传则不显示 */
   yLabel?: string;
+  /** 函数实验大画布：覆盖默认 max-h-[450px] */
+  maxHeightClass?: string;
+  /** false 时去掉自带边框，由外层画布卡统一包边 */
+  framed?: boolean;
+  /** 可选 viewBox 宽度；Quadratic 用 600 宽幅画布，其他调用保持 520 */
+  viewWidth?: number;
+  viewHeight?: number;
+  /** 全画布工作台：让 SVG 高度撑满父级舞台 */
+  fillContainer?: boolean;
+  /** 数学原点在绘图区中的横向占比；用于右侧悬浮面板展开时把原点移到左侧净空区中心 */
+  originXRatio?: number;
+  /** 满铺画布：网格/坐标轴尽量贴到视觉边界 */
+  bleed?: boolean;
+  /** 是否在 SVG 右上角绘制图例；全画布工具栏已显示时关闭 */
+  showLegend?: boolean;
+  /** 是否把绘图内容裁剪到画布内部（全画布实验开启） */
+  clipContent?: boolean;
+  /** 1:1 等比例正方形网格：按实际画布宽高自动校准 x 视窗跨度 */
+  squareGrid?: boolean;
+  /** 纸墨无界画板：固定像素比例尺 + 画布中心，无外框、无 padding */
+  sheetMode?: boolean;
+  /** 实验内原生平移缩放（桌面 squareGrid 用） */
+  interactiveView?: boolean;
+  zoomCommand?: { factor: number; reset?: boolean; nonce: number };
+  /** 可选：可拖拽的曲线上的点（用于 Inverse 的 P 探针）。 */
+  draggablePoint?: { x: number; y: number; onDrag: (x: number, y: number) => void };
+  pixelsPerUnit?: number;
+  centerX?: number;
+  centerY?: number;
 }
 
-const W = 520;
-const H = 380;
+const DEFAULT_W = 520;
+const DEFAULT_H = 380;
 const PAD = { top: 20, right: 20, bottom: 28, left: 34 };
 /** 插值动画时长（ms） */
 const INTERP_MS = 350;
@@ -86,6 +168,7 @@ function AnimatedPolyline({
   stroke,
   width,
   dash,
+  opacity,
   drawOnMount,
 }: {
   /** React key（map 内使用） */
@@ -96,6 +179,7 @@ function AnimatedPolyline({
   stroke: string;
   width: number;
   dash?: string;
+  opacity?: number;
   drawOnMount?: boolean;
 }) {
   const [display, setDisplay] = useState<[number, number][]>(mathPoints);
@@ -170,6 +254,7 @@ function AnimatedPolyline({
       stroke={stroke}
       strokeWidth={width}
       strokeDasharray={dash}
+      strokeOpacity={opacity}
     />
   );
 }
@@ -220,14 +305,56 @@ const clamp = (v: number, lo: number, hi: number): number => Math.min(Math.max(v
 export default function CoordPlane({
   curves,
   markers = [],
-  xMin = -5,
-  xMax = 5,
+  overlays = [],
+  xMin: inputXMin = -5,
+  xMax: inputXMax = 5,
   yMin,
   yMax,
   ariaLabel = 'coordinate plane',
   xLabel,
   yLabel,
+  maxHeightClass = 'max-h-[450px]',
+  framed = true,
+  viewWidth = DEFAULT_W,
+  viewHeight = DEFAULT_H,
+  fillContainer = false,
+  originXRatio,
+  bleed = false,
+  showLegend = true,
+  clipContent = false,
+  squareGrid = false,
+  sheetMode = false,
+  interactiveView = false,
+  zoomCommand,
+  draggablePoint,
+  pixelsPerUnit = 64,
+  centerX = 0,
+  centerY = 0,
 }: CoordPlaneProps) {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [measured, setMeasured] = useState({ width: 0, height: 0 });
+  const [nav, setNav] = useState({ cx: 0, cy: 0, zoom: 1 });
+  const navDragRef = useRef<{ x: number; y: number; cx: number; cy: number; sx: number; sy: number } | null>(null);
+  const pointDragRef = useRef(false);
+  useEffect(() => {
+    if (!squareGrid && !sheetMode) return;
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setMeasured({ width: Math.round(r.width), height: Math.round(r.height) });
+    });
+    ro.observe(el);
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) setMeasured({ width: Math.round(r.width), height: Math.round(r.height) });
+    return () => ro.disconnect();
+  }, [squareGrid, sheetMode]);
+  const W = (squareGrid || sheetMode) && measured.width > 0 ? measured.width : viewWidth;
+  const H = (squareGrid || sheetMode) && measured.height > 0 ? measured.height : viewHeight;
+  const BLEED_PAD = { top: 4, right: 4, bottom: 8, left: 8 };
+  const pad = sheetMode ? { top: 0, right: 0, bottom: 0, left: 0 } : bleed ? BLEED_PAD : PAD;
+  const sheetScale = Math.max(8, pixelsPerUnit);
+  const rawSpanX = inputXMax - inputXMin;
   // 记录上一次目标曲线的 y 范围（动画 from），用于动画期间联合适配防止越界
   const prevAutoRange = useRef<{ min: number; max: number } | null>(null);
   // 自动 y 范围：覆盖所有曲线（points 或 segments）并留边（不强制对称）
@@ -241,6 +368,7 @@ export default function CoordPlane({
     }
   };
   for (const c of curves) {
+    if (c.affectsRange === false) continue;
     eachPoint(c, (y) => {
       if (y < autoYMin) autoYMin = y;
       if (y > autoYMax) autoYMax = y;
@@ -259,18 +387,47 @@ export default function CoordPlane({
   const padY = Math.max((mergeMax - mergeMin) * 0.12, 0.6);
   let effYMin = yMin ?? Math.floor(mergeMin - padY - 0.5);
   let effYMax = yMax ?? Math.ceil(mergeMax + padY);
+  if (sheetMode) {
+    effYMin = centerY - H / (2 * sheetScale);
+    effYMax = centerY + H / (2 * sheetScale);
+  } else if (interactiveView) {
+    const baseYMin = yMin ?? effYMin;
+    const baseYMax = yMax ?? effYMax;
+    const cy = (baseYMin + baseYMax) / 2 + nav.cy;
+    const ys = Math.max(0.1, (baseYMax - baseYMin) / nav.zoom);
+    effYMin = cy - ys / 2;
+    effYMax = cy + ys / 2;
+  }
   // commit 后把本次目标曲线范围记为下一次动画的 from
   useEffect(() => {
     prevAutoRange.current = { min: autoYMin, max: autoYMax };
   });
 
-  const plotW = W - PAD.left - PAD.right;
-  const plotH = H - PAD.top - PAD.bottom;
+  // 1:1：横向跨度 = 纵向跨度 × 实际画布宽高比；保留原 x 视窗中心，避免跳轴。
+  const xCenter = sheetMode ? centerX : (inputXMin + inputXMax) / 2 + (interactiveView ? nav.cx : 0);
+  const xSpan = sheetMode ? W / sheetScale : squareGrid ? (effYMax - effYMin) * (W / H) : rawSpanX;
+  const xMin = sheetMode
+    ? xCenter - xSpan / 2
+    : squareGrid
+      ? xCenter - xSpan / 2
+      : originXRatio == null
+        ? inputXMin
+        : -originXRatio * rawSpanX;
+  const xMax = sheetMode
+    ? xCenter + xSpan / 2
+    : squareGrid
+      ? xCenter + xSpan / 2
+      : originXRatio == null
+        ? inputXMax
+        : (1 - originXRatio) * rawSpanX;
+
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
 
   /* ---------- 网格双层化（教材坐标纸）：细网格 8~10 格 + 主网格带数字 ---------- */
   const xRange = xMax - xMin;
-  const fineX = fineStep(xRange);
-  const fineY = fineStep(effYMax - effYMin);
+  const fineX = sheetMode ? 0.2 : squareGrid ? 1 : fineStep(xRange);
+  const fineY = sheetMode ? 0.2 : squareGrid ? 1 : fineStep(effYMax - effYMin);
 
   /** 区间内主网格能落下的刻度条数（含两端） */
   const ticksBetween = (lo: number, hi: number, step: number): number =>
@@ -293,19 +450,22 @@ export default function CoordPlane({
     }
   }
 
-  const sx = (x: number) => PAD.left + ((x - xMin) / (xMax - xMin)) * plotW;
-  const sy = (y: number) => PAD.top + ((effYMax - y) / (effYMax - effYMin)) * plotH;
+  const sx = (x: number) => pad.left + ((x - xMin) / (xMax - xMin)) * plotW;
+  const sy = (y: number) => pad.top + ((effYMax - y) / (effYMax - effYMin)) * plotH;
+  /** 数学单位 → 屏幕像素的横/纵比例（直角符号必须在屏幕空间归一化） */
+  const scaleX = plotW / (xMax - xMin);
+  const scaleY = plotH / (effYMax - effYMin);
 
   // y 轴刻度（主网格，带数字）
   const yRange = effYMax - effYMin;
-  const yTick = majorStepFor(yRange, fineY);
+  const yTick = sheetMode ? 1 : squareGrid ? 2 : majorStepFor(yRange, fineY);
   const yTicks: number[] = [];
   for (let v = Math.ceil(effYMin / yTick - 1e-9) * yTick; v <= effYMax + 1e-9; v += yTick) {
     yTicks.push(Math.abs(v) < 1e-9 ? 0 : v);
   }
 
   // x 轴刻度（主网格，带数字）：1/2/5 自适应，范围大时自动放大步长，避免标签重叠
-  const xTick = majorStepFor(xRange, fineX);
+  const xTick = sheetMode ? 1 : squareGrid ? 2 : majorStepFor(xRange, fineX);
   const xTicks: number[] = [];
   for (let v = Math.ceil(xMin / xTick - 1e-9) * xTick; v <= xMax + 1e-9; v += xTick) {
     xTicks.push(Math.abs(v) < 1e-9 ? 0 : v);
@@ -327,34 +487,33 @@ export default function CoordPlane({
   };
   const fineXs = fineTicksOf(xMin, xMax, fineX, xTick);
   const fineYs = fineTicksOf(effYMin, effYMax, fineY, yTick);
+  // 1:1 方格纸的第三层：0.5 单位微网格（只在平方格模式启用），让一个大格呈现“4×4 小方格本”的精度。
+  const microXs = squareGrid ? fineTicksOf(xMin, xMax, 0.5, 1) : [];
+  const microYs = squareGrid ? fineTicksOf(effYMin, effYMax, 0.5, 1) : [];
 
   const zeroX = sx(0);
   const zeroY = sy(0);
 
   /* ---------- 文字落位（A3 贴轴 / A2 光晕）：全部夹进画布，绝不越界 ---------- */
-  const tickFont = 11;
-  const xTickY = clamp(zeroY + 15, PAD.top + 12, H - 6); // 贴 x 轴下方，而不是钉在画布底边
-  const yTickX = Math.max(zeroX - 6, PAD.left - 6);      // 贴 y 轴左侧，轴在左边时退回 PAD 内
-  const xNameX = W - 4;                                   // x 轴名放在轴线右端外侧
-  // 轴在下半区（物理/化学的 I-U、pH-V 图，轴就是底边）时，刻度数字正好压在轴下方那一行，
-  // 轴名再放同一行会与末端刻度重叠（实测中和反应 '50' 与 'V / mL' 交叠 13×2px）。
-  // 故：轴在下半区 → 轴名移到轴线上方内侧；轴在中间/上方（数学三实验）→ 保持轴下方。
-  const axisLow = zeroY > (PAD.top + (H - PAD.bottom)) / 2;
-  const xNameY = clamp(axisLow ? zeroY - 6 : zeroY + 4, PAD.top + 12, H - 8);
-  const yNameX = Math.min(zeroX + 5, W - 12);             // y 轴名放在轴线上端上方
-  const yNameY = Math.max(PAD.top - 8, 12);
+  const tickFont = sheetMode ? 11 : bleed ? 12 : 11;
+  const xTickY = clamp(zeroY + 15, pad.top + 12, H - 6); // 贴 x 轴下方，而不是钉在画布底边
+  const yTickX = Math.max(zeroX - 6, pad.left - 6);      // 贴 y 轴左侧，轴在左边时退回 PAD 内
+  const xNameX = W - 16;
+  const xNameY = clamp(zeroY + 18, pad.top + 12, H - 8);
+  const yNameX = clamp(zeroX + 14, pad.left + 4, W - 12);
+  const yNameY = 18;
 
   /** 特征点是否落在绘图区内（越界整条不画，避免半截虚线与画布外标签，P10） */
-  const inPlotX = (px: number): boolean => px >= PAD.left - 0.5 && px <= W - PAD.right + 0.5;
-  const inPlotY = (py: number): boolean => py >= PAD.top - 0.5 && py <= H - PAD.bottom + 0.5;
+  const inPlotX = (px: number): boolean => px >= pad.left - 0.5 && px <= W - pad.right + 0.5;
+  const inPlotY = (py: number): boolean => py >= pad.top - 0.5 && py <= H - pad.bottom + 0.5;
 
   /* ---------- 图例（A5）：真 <line> 线型 + 动态底板 + 移到右上角 ---------- */
   const legendW = Math.max(
     120,
     ...curves.map((c) => estTextW(mathMinus(c.label ?? ''), tickFont) + 34),
   );
-  const legendX = W - PAD.right - legendW;
-  const legendY = PAD.top + 2;
+  const legendX = W - pad.right - legendW;
+  const legendY = pad.top + 2;
   const legendH = curves.length * 16 + 8;
 
   // 标注层首次挂载淡入
@@ -364,36 +523,272 @@ export default function CoordPlane({
     return () => clearTimeout(t);
   }, []);
 
+  const overlayColor = (c?: string) => c ?? 'var(--accent)';
+
+  /** 只画「图形」类 overlay；label 单独在曲线之后画，避免被曲线压住 */
+  const renderOverlayShape = (o: CoordOverlay, i: number) => {
+    if (o.kind === 'label') return null;
+    const key = `ov${i}`;
+    if (o.kind === 'segment') {
+      return (
+        <line
+          key={key}
+          x1={sx(o.x1)} y1={sy(o.y1)} x2={sx(o.x2)} y2={sy(o.y2)}
+          stroke={overlayColor(o.color)} strokeWidth={o.width ?? 1.2}
+          strokeDasharray={o.dash} opacity={o.opacity ?? 1}
+        />
+      );
+    }
+    if (o.kind === 'polyline') {
+      const pts = o.close && o.points.length > 2 ? [...o.points, o.points[0]] : o.points;
+      return (
+        <polyline
+          key={key}
+          points={pts.map(([x, y]) => `${sx(x)},${sy(y)}`).join(' ')}
+          fill={o.fill ?? 'none'} fillOpacity={o.fillOpacity ?? 1}
+          stroke={o.color ? overlayColor(o.color) : o.fill ? 'none' : overlayColor()}
+          strokeWidth={o.width ?? 1.2} strokeDasharray={o.dash}
+          opacity={o.opacity ?? 1} strokeLinejoin="round"
+        />
+      );
+    }
+    if (o.kind === 'rect') {
+      const rx = Math.min(o.x, o.x + o.w);
+      const ry = Math.min(o.y, o.y + o.h);
+      const rw = Math.abs(o.w);
+      const rh = Math.abs(o.h);
+      return (
+        <rect
+          key={key}
+          x={sx(rx)} y={sy(ry + rh)} width={rw * scaleX} height={rh * scaleY}
+          fill={o.fill ?? 'none'} fillOpacity={o.fillOpacity ?? 1}
+          stroke={o.width === 0 ? 'none' : overlayColor(o.color)}
+          strokeWidth={o.width ?? 1.2} strokeDasharray={o.dash}
+          opacity={o.opacity ?? 1}
+        />
+      );
+    }
+    if (o.kind === 'rightAngle') {
+      // 关键：先映射到屏幕像素增量，再在像素空间归一化，最后乘像素 size。
+      // 否则自动量程下 scaleX ≠ scaleY，直角会被拉成菱形。
+      const ux = o.ux * scaleX;
+      const uy = -o.uy * scaleY;
+      const vx = o.vx * scaleX;
+      const vy = -o.vy * scaleY;
+      const ul = Math.hypot(ux, uy) || 1;
+      const vl = Math.hypot(vx, vy) || 1;
+      const size = o.size ?? 8;
+      const px = sx(o.x);
+      const py = sy(o.y);
+      const p1 = `${px + (ux / ul) * size},${py + (uy / ul) * size}`;
+      const p2 = `${px + (ux / ul) * size + (vx / vl) * size},${py + (uy / ul) * size + (vy / vl) * size}`;
+      const p3 = `${px + (vx / vl) * size},${py + (vy / vl) * size}`;
+      return (
+        <polyline
+          key={key} points={`${p1} ${p2} ${p3}`} fill="none"
+          stroke={overlayColor(o.color)} strokeWidth={1.2} opacity={o.opacity ?? 1}
+        />
+      );
+    }
+    // arc：用 24 段折线，避免 SVG A 命令的 sweep 方向坑
+    const n = 24;
+    const pts: string[] = [];
+    for (let k = 0; k <= n; k++) {
+      const t = o.from + ((o.to - o.from) * k) / n;
+      pts.push(`${sx(o.cx + o.r * Math.cos(t))},${sy(o.cy + o.r * Math.sin(t))}`);
+    }
+    return (
+      <polyline
+        key={key} points={pts.join(' ')} fill="none"
+        stroke={overlayColor(o.color)} strokeWidth={o.width ?? 1.4}
+        opacity={o.opacity ?? 1} strokeLinecap="round"
+      />
+    );
+  };
+
+  const renderOverlayLabel = (o: CoordOverlay, i: number) => {
+    if (o.kind !== 'label') return null;
+    const px = sx(o.x);
+    const py = sy(o.y);
+    const place = o.place ?? 'above';
+    let tx = px;
+    let ty = py;
+    let anchor: 'start' | 'middle' | 'end' = 'middle';
+    if (place === 'above') ty -= 9;
+    else if (place === 'below') ty += 16;
+    else if (place === 'left') {
+      tx -= 8;
+      anchor = 'end';
+    } else {
+      tx += 8;
+      anchor = 'start';
+    }
+    const size = o.size ?? 11;
+    const w = estTextW(o.text, size);
+    const minX = pad.left + 2 + (anchor === 'end' ? w : anchor === 'middle' ? w / 2 : 0);
+    const maxX = W - pad.right - 2 - (anchor === 'start' ? w : anchor === 'middle' ? w / 2 : 0);
+    tx = clamp(tx, minX, Math.max(minX, maxX));
+    ty = clamp(ty, pad.top + 10, H - pad.bottom - 2);
+    return (
+      <text
+        key={`ovl${i}`} x={tx} y={ty} textAnchor={anchor}
+        fontSize={size} fontWeight="500" fill={overlayColor(o.color)}
+        fontFamily="var(--f-mono)" opacity={o.opacity ?? 1} {...TEXT_HALO}
+      >
+        {o.text}
+      </text>
+    );
+  };
+
+  useEffect(() => {
+    if (!interactiveView || sheetMode) return;
+    const el = svgRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setNav((v) => ({ ...v, zoom: Math.min(2.6, Math.max(0.5, v.zoom * (e.deltaY < 0 ? 1.08 : 0.92))) }));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [interactiveView, sheetMode]);
+  useEffect(() => {
+    if (!interactiveView || !zoomCommand) return;
+    if (zoomCommand.reset) setNav({ cx: 0, cy: 0, zoom: 1 });
+    else setNav((v) => ({ ...v, zoom: Math.min(2.6, Math.max(0.5, v.zoom * zoomCommand.factor)) }));
+  }, [interactiveView, zoomCommand?.nonce]);
+
+  const onNavPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (!interactiveView || sheetMode || (e.target as Element).closest('button,input,a')) return;
+    if (draggablePoint) {
+      const svg = svgRef.current;
+      const ctm = svg?.getScreenCTM?.();
+      if (svg && ctm) {
+        const p = svg.createSVGPoint();
+        p.x = sx(draggablePoint.x);
+        p.y = sy(draggablePoint.y);
+        const screen = p.matrixTransform(ctm);
+        if (Math.hypot(e.clientX - screen.x, e.clientY - screen.y) < 24) {
+          pointDragRef.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
+    }
+    navDragRef.current = { x: e.clientX, y: e.clientY, cx: nav.cx, cy: nav.cy, sx: W / Math.max(1e-9, xMax - xMin), sy: H / Math.max(1e-9, effYMax - effYMin) };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onNavPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (pointDragRef.current && draggablePoint) {
+      const svg = svgRef.current;
+      const ctm = svg?.getScreenCTM?.();
+      if (svg && ctm) {
+        const pt = svg.createSVGPoint();
+        pt.x = e.clientX; pt.y = e.clientY;
+        const p = pt.matrixTransform(ctm.inverse());
+        const x = xMin + ((p.x - pad.left) / Math.max(1e-9, plotW)) * (xMax - xMin);
+        const y = effYMax - ((p.y - pad.top) / Math.max(1e-9, plotH)) * (effYMax - effYMin);
+        draggablePoint.onDrag(x, y);
+        return;
+      }
+    }
+    const d = navDragRef.current;
+    if (!d || !(e.buttons & 1)) return;
+    setNav((v) => ({ ...v, cx: d.cx - (e.clientX - d.x) / d.sx, cy: d.cy + (e.clientY - d.y) / d.sy }));
+  };
+  const onNavPointerUp = () => { navDragRef.current = null; pointDragRef.current = false; };
+  const onPointPointerDown = (e: React.PointerEvent<SVGCircleElement>) => {
+    if (!draggablePoint) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pointDragRef.current = true;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointPointerMove = (e: React.PointerEvent<SVGCircleElement>) => {
+    if (!pointDragRef.current || !draggablePoint) return;
+    const svg = svgRef.current;
+    if (!svg) return;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return;
+    const p = pt.matrixTransform(ctm.inverse());
+    const x = xMin + ((p.x - pad.left) / Math.max(1e-9, plotW)) * (xMax - xMin);
+    const y = effYMax - ((p.y - pad.top) / Math.max(1e-9, plotH)) * (effYMax - effYMin);
+    draggablePoint.onDrag(x, y);
+  };
+  const onPointPointerUp = () => { pointDragRef.current = false; };
+
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
-      className="w-full h-auto max-h-[450px] border border-[var(--border)] bg-[var(--card-bg)]"
+      className={`w-full h-auto ${maxHeightClass} ${framed ? 'border border-[var(--border)]' : ''} bg-[var(--card-bg)]`}
       role="img"
       aria-label={ariaLabel}
+      onPointerDown={interactiveView ? onNavPointerDown : undefined}
+      onPointerMove={interactiveView ? onNavPointerMove : undefined}
+      onPointerUp={interactiveView ? onNavPointerUp : undefined}
+      onPointerCancel={interactiveView ? onNavPointerUp : undefined}
+      onDoubleClick={interactiveView ? () => setNav({ cx: 0, cy: 0, zoom: 1 }) : undefined}
+      style={interactiveView ? { touchAction: 'none' } : undefined}
     >
-      {/* 细网格（不标数字，8~10 格）：0.5px、55% 不透明度，才不抢曲线 */}
+      {clipContent && (
+        <defs>
+          <clipPath id={`${ariaLabel.replace(/[^a-zA-Z0-9_-]/g, '')}-clip`}>
+            <rect x="0" y="0" width={W} height={H - pad.bottom} />
+          </clipPath>
+        </defs>
+      )}
+      <g clipPath={clipContent ? `url(#${ariaLabel.replace(/[^a-zA-Z0-9_-]/g, '')}-clip)` : undefined}>
+      {/* 微网格（0.5 单位）：极浅，像方格本内小格；只在小格模式出现 */}
+      {microYs.map((v) => (
+        <line
+          key={`my${v}`}
+          x1={pad.left}
+          y1={sy(v)}
+          x2={W - pad.right}
+          y2={sy(v)}
+          stroke="var(--border)"
+          strokeWidth="0.45"
+          strokeOpacity="0.34"
+        />
+      ))}
+      {microXs.map((v) => (
+        <line
+          key={`mx${v}`}
+          x1={sx(v)}
+          y1={pad.top}
+          x2={sx(v)}
+          y2={H - pad.bottom}
+          stroke="var(--border)"
+          strokeWidth="0.45"
+          strokeOpacity="0.34"
+        />
+      ))}
+
+      {/* 细网格（不标数字，1 单位）：稍深于微网格，仍不抢曲线 */}
       {fineYs.map((v) => (
         <line
           key={`fy${v}`}
-          x1={PAD.left}
+          x1={pad.left}
           y1={sy(v)}
-          x2={W - PAD.right}
+          x2={W - pad.right}
           y2={sy(v)}
-          stroke="var(--border)"
-          strokeWidth="0.5"
-          strokeOpacity="0.45"
+          stroke={sheetMode ? 'var(--fg)' : 'var(--border)'}
+          strokeWidth={sheetMode ? 1 : 0.55}
+          strokeOpacity={sheetMode ? 0.04 : 0.62}
         />
       ))}
       {fineXs.map((v) => (
         <line
           key={`fx${v}`}
           x1={sx(v)}
-          y1={PAD.top}
+          y1={pad.top}
           x2={sx(v)}
-          y2={H - PAD.bottom}
-          stroke="var(--border)"
-          strokeWidth="0.5"
-          strokeOpacity="0.45"
+          y2={H - pad.bottom}
+          stroke={sheetMode ? 'var(--fg)' : 'var(--border)'}
+          strokeWidth={sheetMode ? 1 : 0.55}
+          strokeOpacity={sheetMode ? 0.04 : 0.62}
         />
       ))}
 
@@ -402,12 +797,13 @@ export default function CoordPlane({
         v === 0 ? null : (
           <line
             key={`gy${v}`}
-            x1={PAD.left}
+            x1={pad.left}
             y1={sy(v)}
-            x2={W - PAD.right}
+            x2={W - pad.right}
             y2={sy(v)}
-            stroke="var(--border)"
-            strokeWidth="0.9"
+            stroke={sheetMode ? 'var(--fg)' : 'var(--border)'}
+            strokeWidth={sheetMode ? 1 : 0.9}
+            strokeOpacity={sheetMode ? 0.1 : 1}
           />
         ),
       )}
@@ -416,23 +812,41 @@ export default function CoordPlane({
           <line
             key={`gx${v}`}
             x1={sx(v)}
-            y1={PAD.top}
+            y1={pad.top}
             x2={sx(v)}
-            y2={H - PAD.bottom}
-            stroke="var(--border)"
-            strokeWidth="0.9"
+            y2={H - pad.bottom}
+            stroke={sheetMode ? 'var(--fg)' : 'var(--border)'}
+            strokeWidth={sheetMode ? 1 : 0.9}
+            strokeOpacity={sheetMode ? 0.1 : 1}
           />
         ),
       )}
 
-      {/* 坐标轴 */}
-      <line x1={PAD.left} y1={zeroY} x2={W - PAD.right} y2={zeroY} stroke="var(--fg)" strokeWidth="1" />
-      <line x1={zeroX} y1={PAD.top} x2={zeroX} y2={H - PAD.bottom} stroke="var(--fg)" strokeWidth="1" />
+      {/* 坐标轴（带正方向箭头；与端点标签留出安全距离） */}
+      <line x1={pad.left} y1={zeroY} x2={W - 10} y2={zeroY} stroke="var(--fg)" strokeWidth="1" strokeOpacity={sheetMode ? 0.45 : 1} />
+      <line x1={zeroX} y1={H - pad.bottom} x2={zeroX} y2={10} stroke="var(--fg)" strokeWidth="1" strokeOpacity={sheetMode ? 0.45 : 1} />
+      <polygon points={`${W - 8},${zeroY} ${W - 17},${zeroY - 4.5} ${W - 17},${zeroY + 4.5}`} fill="var(--fg)" />
+      <polygon points={`${zeroX},8 ${zeroX - 4.5},17 ${zeroX + 4.5},17`} fill="var(--fg)" />
+      {draggablePoint && (
+        <circle
+          cx={sx(draggablePoint.x)} cy={sy(draggablePoint.y)} r={16}
+          fill="transparent" stroke="transparent"
+          style={{ cursor: 'grab', touchAction: 'none' }}
+          onPointerDown={onPointPointerDown}
+          onPointerMove={onPointPointerMove}
+          onPointerUp={onPointPointerUp}
+          onPointerCancel={onPointPointerUp}
+        />
+      )}
+
+      {/* 几何叠加层（图形）：画在曲线之前，填充不会把主曲线染色 */}
+      {overlays.map(renderOverlayShape)}
 
       {/* 曲线（第一个为主曲线：实线 + 描画动画；其余虚线弱化，无描画） */}
       {curves.map((c, i) => {
         const stroke = i === 0 ? 'var(--fg)' : 'var(--muted)';
-        const width = i === 0 ? 1.5 : 1;
+        const width = i === 0 ? (sheetMode ? 2.2 : 1.5) : (sheetMode ? 1.5 : 1);
+        const curveOpacity = sheetMode && i > 0 ? 0.45 : undefined;
         const dash: string | undefined = c.dashed || i > 0 ? '5 4' : undefined;
         const segs = c.segments ?? (c.points ? [c.points] : []);
         return (
@@ -446,12 +860,16 @@ export default function CoordPlane({
                 stroke={stroke}
                 width={width}
                 dash={dash}
+                opacity={curveOpacity}
                 drawOnMount={i === 0 && si === 0}
               />
             ))}
           </g>
         );
       })}
+
+      {/* 几何叠加层（文字）：画在曲线之后，避免被曲线切穿 */}
+      {overlays.map(renderOverlayLabel)}
 
       {/* 标注层（对称轴/渐近线/顶点/截距）：越界整条不画，文字带光晕 + 按开口方向避让 */}
       {markers.length > 0 && (
@@ -471,7 +889,7 @@ export default function CoordPlane({
               const py = sy(m.dot.y);
               const txt = mathMinus(m.dot.label ?? '');
               const w = estTextW(txt, 12);
-              const wantAbove = m.dot.place === 'above' || (m.dot.place !== 'below' && py - 22 >= PAD.top);
+              const wantAbove = m.dot.place === 'above' || (m.dot.place !== 'below' && py - 22 >= pad.top);
               // 横向：显式 side 优先；未指定时默认右，若右侧会顶出画布则翻到左
               const wantRight = m.dot.side !== 'left' && px + 8 + w <= W - 4;
               const flipLeft = m.dot.side === 'left' || !wantRight;
@@ -486,7 +904,7 @@ export default function CoordPlane({
                   <>
                     {!m.vline.noLine && (
                       <line
-                        x1={vpx} y1={PAD.top} x2={vpx} y2={H - PAD.bottom}
+                        x1={vpx} y1={pad.top} x2={vpx} y2={H - pad.bottom}
                         stroke={color(m.vline.color)} strokeWidth="1" strokeDasharray="5 4"
                       />
                     )}
@@ -494,8 +912,8 @@ export default function CoordPlane({
                       <text
                         /* 与坐标轴重合的「渐近线」类标注（noLine）落到轴的**下端**，
                            把上端留给 y 轴名，两个标签才不会在同一处叠成一团 */
-                        x={clamp(vpx + 4, PAD.left + 2, W - PAD.right - 4 - estTextW(mathMinus(m.vline.label)))}
-                        y={m.vline.noLine ? H - PAD.bottom - 8 : PAD.top + 12}
+                        x={clamp(vpx + 4, pad.left + 2, W - pad.right - 4 - estTextW(mathMinus(m.vline.label)))}
+                        y={m.vline.noLine || m.vline.labelPlace === 'bottom' ? H - pad.bottom - 36 : pad.top + 12}
                         fontSize="11" fontWeight="500"
                         fill={color(m.vline.color)} fontFamily="var(--f-mono)"
                         {...TEXT_HALO}
@@ -509,15 +927,15 @@ export default function CoordPlane({
                   <>
                     {!m.hline.noLine && (
                       <line
-                        x1={PAD.left} y1={hpy} x2={W - PAD.right} y2={hpy}
+                        x1={pad.left} y1={hpy} x2={W - pad.right} y2={hpy}
                         stroke={color(m.hline.color)} strokeWidth="1" strokeDasharray="5 4"
                       />
                     )}
                     {m.hline.label != null && (
                       <text
-                        x={W - PAD.right - 4}
+                        x={m.hline.labelPlace === 'left' ? pad.left + 4 : W - pad.right - 4}
                         y={hpy - 6}
-                        textAnchor="end"
+                        textAnchor={m.hline.labelPlace === 'left' ? 'start' : 'end'}
                         fontSize="11" fontWeight="500"
                         fill={color(m.hline.color)} fontFamily="var(--f-mono)"
                         {...TEXT_HALO}
@@ -548,11 +966,13 @@ export default function CoordPlane({
 
       {/* 刻度标签与原点**最后画**：曲线会贴近坐标轴（反比例双曲线尤其），先画数字会被曲线压住；
           文字带光晕，压在最上层时任何线条都不会切穿笔画 */}
-      {xTicks.map((v) =>
-        v === 0 ? null : (
+      {xTicks.map((v) => {
+        const px = sx(v);
+        if (v === 0 || px < 30 || px > W - 30) return null;
+        return (
           <text
             key={`tx${v}`}
-            x={clamp(sx(v), PAD.left + 6, W - PAD.right - 2)}
+            x={clamp(px, pad.left + 6, W - pad.right - 2)}
             y={xTickY}
             textAnchor="middle"
             fontSize={tickFont}
@@ -562,14 +982,16 @@ export default function CoordPlane({
           >
             {mathMinus(v)}
           </text>
-        ),
-      )}
-      {yTicks.map((v) =>
-        v === 0 ? null : (
+        );
+      })}
+      {yTicks.map((v) => {
+        const py = sy(v);
+        if (v === 0 || py < 30 || py > H - 30) return null;
+        return (
           <text
             key={`ty${v}`}
             x={yTickX}
-            y={clamp(sy(v) + 4, PAD.top + 10, H - PAD.bottom - 2)}
+            y={clamp(py + 4, pad.top + 10, H - pad.bottom - 2)}
             textAnchor="end"
             fontSize={tickFont}
             fill="var(--muted)"
@@ -578,14 +1000,14 @@ export default function CoordPlane({
           >
             {mathMinus(v)}
           </text>
-        ),
-      )}
+        );
+      })}
 
       {/* 原点 0：仍在轴交点左下，但夹进画布 */}
       <text
-        x={clamp(zeroX - 9, PAD.left + 4, W - PAD.right - 4)}
-        y={clamp(zeroY + 17, PAD.top + 12, H - 6)}
-        textAnchor="middle"
+        x={clamp(zeroX - 8, pad.left + 4, W - pad.right - 4)}
+        y={clamp(zeroY + 15, pad.top + 12, H - 6)}
+        textAnchor="end"
         fontSize={tickFont}
         fill="var(--muted)"
         fontFamily="var(--f-mono)"
@@ -594,8 +1016,8 @@ export default function CoordPlane({
         0
       </text>
 
-      {/* 图例（A5）：真 <line> 线型 + 动态底板 + 右上角（避开顶点标注常见的左侧落点） */}
-      {curves.length > 0 && (
+      {/* 图例（A5）：真 <line> 线型 + 动态底板 + 右上角；全画布工具栏可关闭 */}
+      {showLegend && curves.length > 0 && (
         <g fontFamily="var(--f-mono)" fontSize={tickFont}>
           <rect
             x={legendX}
@@ -634,8 +1056,9 @@ export default function CoordPlane({
         <text
           x={xNameX}
           y={xNameY}
-          textAnchor="end"
+          textAnchor="middle"
           fontSize="12"
+          fontStyle="italic"
           fontWeight="500"
           fill="var(--fg)"
           fontFamily="var(--f-mono)"
@@ -650,6 +1073,7 @@ export default function CoordPlane({
           y={yNameY}
           textAnchor="start"
           fontSize="12"
+          fontStyle="italic"
           fontWeight="500"
           fill="var(--fg)"
           fontFamily="var(--f-mono)"
@@ -658,6 +1082,7 @@ export default function CoordPlane({
           {yLabel}
         </text>
       )}
+      </g>
     </svg>
   );
 }

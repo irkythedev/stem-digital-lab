@@ -16,7 +16,7 @@ import { compactChemicalSpacing } from '../../lib/chem-text';
 /** 块级公式：$$...$$ 或 \[...\]（可跨行） */
 const BLOCK_RE = /(\$\$[\s\S]+?\$\$|\\{1,2}\[[\s\S]+?\\{1,2}\])/g;
 /** 行内 token：\(...\)、$...$、**加粗**（交替出现） */
-const INLINE_RE = /(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$|\*\*[^*\n]+\*\*)/g;
+const INLINE_RE = /(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$|\*\*[^*\n]+\*\*|\\{1,2}frac\{[^{}]*\}\{[^{}]*\}|\\{1,2}(?:mathrm|text|textrm|mbox)\{(?:[^{}]|\{[^{}]*\})*\})/g;
 /** 把提取出的公式正文归一化：AI 常把 \\frac 写成 \\\\frac（双反斜杠），KaTeX 会当换行处理而原样泄漏 frac。 */
 function normalizeFormulaTex(tex: string): string {
   return tex.replace(/\\\\/g, '\\');
@@ -35,6 +35,10 @@ function renderInline(text: string, keyBase: number): ReactNode[] {
       }
       if (p.startsWith('$') && p.endsWith('$') && p.length > 2) {
         out.push(<Formula key={keyBase * 1000 + i} className="ai-answer-katex" tex={p.slice(1, -1)} />);
+        return;
+      }
+      if (/^\\{1,2}(?:mathrm|text|textrm|mbox|frac)\{/.test(p)) {
+        out.push(<Formula key={keyBase * 1000 + i} className="ai-answer-katex" tex={normalizeFormulaTex(p)} />);
         return;
       }
       if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
@@ -188,7 +192,7 @@ const SUP: Record<string, string> = {
  */
 export function prettyScripts(text: string): string {
   return text
-    .split(/(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$)/g)
+    .split(/(\\{1,2}\([\s\S]*?\\{1,2}\)|\$[^$\n]+?\$|\\{1,2}(?:mathrm|text|textrm|mbox)\{(?:[^{}]|\{[^{}]*\})*\})/g)
     .map((seg, i) => {
       if (i % 2 === 1) return seg;                     // 公式片段：原样
       return seg.replace(/\^\{?([0-9n+\-]+)\}?/g, (_m, g1: string) =>

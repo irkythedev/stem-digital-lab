@@ -18,6 +18,70 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.1',
+    date: '2026-11',
+    zh: [
+      '[优化] AI 助教体验优化：回答与设置流程更顺畅',
+      '[优化] 设置面板与用量信息展示优化，查看和调整更方便',
+      '[优化] 若干界面细节与显示问题修复，整体更稳定',
+      '[优化] 其他常规维护与体验优化',
+    ],
+    en: [
+      '[Improved] AI assistant experience: smoother answers and setup flow',
+      '[Improved] Settings and usage information are clearer and easier to adjust',
+      '[Improved] Several UI details and display issues fixed for overall stability',
+      '[Improved] Routine maintenance and experience polish',
+    ],
+  },
+  {
+    version: '0.50.0',
+    date: '2026-11',
+    zh: [
+      '[新增] 首次访问新手引导：四步聚光灯带你认识学科与实验选择、预测-探索-结论、AI 助教与工具栏、更多作品，可跳过或随时重看',
+      '[优化] AI 助教按探究阶段启发：探索阶段只给线索、不提前泄露本页目标结论，页面预置问题也已去剧透',
+      '[优化] AI 公式与复制体验：分式统一按 LaTeX 规范输出，兼容裸分式写法，复制内容中的公式与上下标更可读',
+      '[优化] 物理内容校对：浮力与深度关系、公式速查易错点、每日科学文案按教材口径统一',
+    ],
+    en: [
+      '[New] First-visit onboarding: a four-step spotlight tour covering subject/lab selection, Predict–Explore–Conclude, the AI assistant and toolbar, and More by Ricky; skippable and replayable',
+      '[Improved] Stage-aware AI hints: exploration gets clues without spoiling the target conclusion, and preset page questions are de-spoiled',
+      '[Improved] Better AI formula and copy output: fractions use LaTeX notation consistently, bare fraction syntax is supported, and copied formulas/subscripts stay readable',
+      '[Improved] Physics content review: buoyancy/depth wording, formula-sheet pitfalls and Daily Science copy aligned with textbook conventions',
+    ],
+  },
+  {
+    version: '0.49.0',
+    date: '2026-11',
+    zh: [
+      '[新增] 新增 Beta 实验预览开关：全等、相似、割圆术、尺规四个进阶几何实验可在学科页一键展开，支持深链直达与状态持久记忆',
+      '[新增] AI 助手回答支持一键复制，自动把公式与上下标转成可读文本',
+      '[优化] AI 分科回答贴合初中课标规范（化合价/初中符号边界），思考过程更精炼；化学式在问答中支持行内 LaTeX 显示',
+      '[优化] 实验画布工具条与移动端参数区更紧凑，窄屏下读数与按钮不再挤占画布',
+    ],
+    en: [
+      '[New] Beta lab preview: the four advanced geometry labs (congruence, similarity, circle-cutting for π, construction) expand from the subject page, with deep-link access and persisted state',
+      '[New] Copy any AI answer in one click — formulas and subscripts are converted into readable text',
+      '[Improved] AI answers follow middle-school curriculum conventions (valence/charge and grade-appropriate symbols), with more concise reasoning; chemical formulas support inline LaTeX rendering',
+      '[Improved] Canvas toolbars and mobile parameter panels are more compact, so readouts and buttons no longer crowd the canvas',
+    ],
+  },
+  {
+    version: '0.48.0',
+    date: '2026-11',
+    zh: [
+      '[优化] 架构底座升级与几何实验内核灰度：几何实验迁入共享画布与灰度框架，默认不改变现有学科页展示',
+      '[新增] 几何实验的画布内演示控制栏：可分步推演、连播与步进切换，随时「我来试试」接管',
+      '[优化] 二次函数支持一般式与顶点式无损切换，新增基准抛物线对照与对称点配对；一次函数加入斜率阶梯，反比例函数加入 |k| 面积探针',
+      '[优化] 新实验接入移动端底部参数抽屉与尺规触屏准星，窄屏读数表更紧凑',
+    ],
+    en: [
+      '[Improved] Architecture base upgrade and geometry-lab kernel soft launch: geometry labs move onto the shared canvas and soft-launch framework without changing the existing subject-page exposure',
+      '[New] An in-canvas demo bar for the geometry labs: step through, switch between auto and step modes, and take over at any time',
+      '[Improved] Quadratic functions switch losslessly between general and vertex form, with a base-parabola reference and symmetry pairs; linear functions gain a slope staircase and inverse functions an |k| area probe',
+      '[Improved] The new labs use the mobile parameter drawer and a touch crosshair for construction, with a tighter narrow-screen readout',
+    ],
+  },
+  {
     version: '0.47.9',
     date: '2026-11',
     zh: [

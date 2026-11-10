@@ -46,7 +46,6 @@ export function wireColor(react: ReactCard, polished: boolean): string {
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '实验现象', reset: '重置',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
@@ -104,7 +103,6 @@ const copy = {
     concludeQ3AgCuAl: 'Ag > Cu > Al',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Observations', reset: 'Reset',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
@@ -337,11 +335,18 @@ export default function MetalActivity() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('metal-activity', { stage, react, done, polished });
+    setLabState('metal-activity', {
+      stage,
+      react,
+      done,
+      polished,
+      observedColor: react === 'al-cuso4' ? 'blue-fades' : 'turns-blue',
+      bubbles: false,
+    });
   }, [stage, react, done, polished]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('metal-activity', lang === 'zh' ? '请讲解金属活动性顺序，以及为什么铝能置换铜、铜能置换银' : 'Explain the metal activity series and why Al displaces Cu and Cu displaces Ag');
+    setPageQuestion('metal-activity', lang === 'zh' ? '把打磨后的铝丝放入硫酸铜、铜丝放入硝酸银时，你观察到什么现象？这反映金属活动性什么规律？' : 'What do you observe when polished Al is dipped in copper sulfate and Cu in silver nitrate? What does this show about the metal activity series?');
   }, [lang]);
 
   return (

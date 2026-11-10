@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ── 统一全站过渡：把 Tailwind 的默认时长/缓动改接到本项目的动效令牌 ──
-   这样 15 个实验与所有组件里的 transition-* 工具类自动统一，
+   这样 19 个实验与所有组件里的 transition-* 工具类自动统一，
    不再出现 0.15 / 0.18 / 0.2 / 0.3s 与四种缓动混用的情况。 */
 @theme {
   --default-transition-duration: 180ms;
@@ -108,6 +108,9 @@
      不能拿 --accent 顶替——--accent 的语义是「主操作」（浅色黑、深色白），
      它当不了蓝；硬塞进去角标会变成一块黑白方块。 */
   --tech-blue: #4d6bfe;
+  /* 角标实心底：白字在 #4d6bfe 上只有 4.33:1（低于 AA 4.5 正文阈值），
+     压深一档到 #3f5be8 后约 5.2:1。--tech-blue 本身保留给「信息点」等非文本用途。 */
+  --tech-blue-strong: #3f5be8;
   /* 角标悬停时的光晕：低透明度同色，避免用 hex 把 alpha 写死在 tsx 里 */
   --tech-blue-glow: rgba(77, 107, 254, 0.4);
   /* 轻量浮层（页脚作品集提示）：两套都是深底，中性边框做边界，
@@ -431,9 +434,21 @@ html.dark {
   /* 眉标永远是**单个短令牌**（「8-9 年级」「物理」），不允许折行。
      它是 h1 的行内兄弟，一旦允许断行，CJK 会逐字断（「8-9 年」+「级」甩到下一行、
      与标题右侧的动作簇并排），英文则断在连字符处（「Grades 8-」/「9」）——
-     同一处版式随语言漂移，且「级」会孤零零落在最左边。实测 15 个实验 × 中英
+     同一处版式随语言漂移，且「级」会孤零零落在最左边。当时 15 个实验 × 中英
      共 30 处命中。令牌本身短，nowrap 不会撑破容器（390px 下最右 356.4 < 366）。 */
   white-space: nowrap;
+}
+
+/* 实验页 h1 内的年级眉标：< 360px 允许换到第二行。
+   父级 items-start 会让 h1 走 shrink-to-fit，320 下长英文标题 + nowrap 眉标会顶出
+   容器（quadratic/linear/circle/circuit-bench/buoyancy 实测 +3~+31px）。
+   h1 现已 w-full min-w-0，这里再让眉标在极窄屏断成独立一行。详见审计 Important-2。 */
+@media (max-width: 359.98px) {
+  .lab-eyebrow {
+    display: block;
+    margin-left: 0;
+    white-space: normal;
+  }
 }
 
 html {
@@ -706,10 +721,35 @@ body {
     position: absolute;
     inset: -8px -2px;
   }
+  /* AI 顶栏并排图标（Settings / History / Minimize / Close）：视觉盒仍 28×28，
+     只上下各扩 6px → 40px 命中；左右不扩，避免与紧邻的分隔线/兄弟按钮互抢点击。
+     详见移动端 UI 审计 Important-3。 */
+  .tap-header-icon { position: relative; }
+  .tap-header-icon::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -6px;
+    bottom: -6px;
+  }
+  /* 设置页「获取模型 / 测试连接」这类并排小动作按钮：视觉盒保持 34px（max-sm:min-h-[34px]），
+     上下各补 4px → 42px 命中；左右仅补 2px（行内 gap-1.5=6px，两两相加 4px 仍不相交）。 */
+  .tap-ai-row { position: relative; }
+  .tap-ai-row::after {
+    content: '';
+    position: absolute;
+    inset: -4px -2px;
+  }
   /* 吸底操作栏：44 → 36（实心大黑块在 390 下过重；36 仍高于 32 档地板） */
   .tap-primary.tap-ai-primary {
     min-height: 2.25rem;
   }
+
+  /* 页脚「其他作品」浮层提示：触屏永远用 aria-label 兜底，这里直接移出布局。
+     它默认 opacity:0，但仍参与 scrollWidth 计算——360~414 视口下会把根元素撑宽 18px，
+     连带所有 position:fixed 层（FAB / AI 抽屉 / 弹窗）跟着右移。详见审计 Important-1。 */
+  .footer-works-tip { display: none; }
 }
 
 /* ── 主操作命中区地板（≥40px，适配希沃/平板/手机）──────────────────────────
@@ -1180,7 +1220,7 @@ input[type="range"]::-moz-range-thumb:active {
 .footer-works-glyph { transition: transform 0.2s ease; }
 .footer-works-badge {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  background: var(--tech-blue);
+  background: var(--tech-blue-strong);
   box-shadow: 0 0 0 0 var(--tech-blue-glow);
 }
 .footer-works:hover .footer-works-glyph,
@@ -1232,6 +1272,13 @@ input[type="range"]::-moz-range-thumb:active {
 }
 .footer-works:hover .footer-works-tip,
 .footer-works:focus-within .footer-works-tip { opacity: 1; transform: translate(-50%, 0); }
+
+/* 极窄视口（≤479）直接移出布局：浮层默认 opacity:0 但仍参与 scrollWidth 计算，
+   360~414 下会把根元素撑宽 18px，连带所有 position:fixed 层（FAB / AI 抽屉 / 弹窗）
+   跟着右移。触屏由下方 media 兜底，这里再覆盖桌面窄窗口。详见审计 Important-1。 */
+@media (max-width: 479.98px) {
+  .footer-works-tip { display: none; }
+}
 
 /* 减少动效：只保留颜色变化，位移与缩放一律取消 */
 @media (prefers-reduced-motion: reduce) {
@@ -2106,4 +2153,35 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .cb-fault-halo,
   .cb-pin-candidate { animation: none; }
+}
+
+/* ── 自动演示（P0）───────────────────────────────────────────────
+   demo-poly-in：割圆术 n 翻倍时新多边形轻缩放淡入；
+   demo-pulse：新交点/新顶点的扩散环。
+   两者都只做一次性微动效；时间轴本身由 useAutoTimeline 的 rAF 驱动。
+   减动效下直接静态，避免与全局 1ms 兜底叠加出闪帧。 */
+@keyframes demo-poly-in {
+  from { opacity: 0.92; transform: scale(0.985); }
+  to   { opacity: 1;    transform: scale(1); }
+}
+.demo-poly-in {
+  animation: demo-poly-in 220ms var(--ease-out) both;
+  transform-box: view-box;
+  transform-origin: center;
+}
+
+@keyframes demo-pulse {
+  0%   { opacity: 0.8; transform: scale(0.7); }
+  70%  { opacity: 0.25; transform: scale(1.25); }
+  100% { opacity: 0;   transform: scale(1.25); }
+}
+.demo-pulse {
+  animation: demo-pulse 700ms var(--ease-out) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-poly-in,
+  .demo-pulse { animation: none; }
 }

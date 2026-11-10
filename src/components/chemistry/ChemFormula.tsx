@@ -21,6 +21,7 @@
  */
 import { useMemo, useState, type ReactNode } from 'react';
 import { elementBySymbol, type ElementCategory } from '../../lib/elements';
+import Formula from '../ui/Formula';
 import { CAT_COLOR, CAT_ZH, CAT_EN } from '../../lib/element-categories';
 
 export interface ChemFormulaProps {
@@ -234,6 +235,15 @@ function isFormulaLike(token: string): boolean {
   return /^[A-Z(]/.test(token) || /^\d+[A-Z]/.test(token); // 元素/左括号开头，或「系数+元素」
 }
 
+/** 问题行/标题里的行内 LaTeX：AI 会输出 `\(\mathrm{Ca(NO_3)_2}\)` 这类片段。 */
+const LATEX_INLINE = /\\+\[[\s\S]*?\\+\]|\\+\([\s\S]*?\\+\)|\$[^$\n]+?\$|\\+(?:mathrm|text|textrm|mbox)\{(?:[^{}]|\{[^{}]*\})*\}/g;
+
+function latexBody(raw: string): string {
+  if (raw.startsWith('$$')) return raw.slice(2, -2);
+  if (raw.startsWith('$')) return raw.slice(1, -1);
+  return raw.replace(/^\\+\[/, '').replace(/\\+\]$/, '').replace(/^\\+\(/, '').replace(/\\+\)$/, '').replace(/\\\\/g, '\\');
+}
+
 /**
  * 内联化学式文本：把叙述里夹带的 `Fe2O3` / `(NH4)2SO4` / `SO4` 就地渲染成
  * 带规范 `<sub>` 的样式，并支持元素分类目标态/悬停微光（不渲染链接，避免与按钮嵌套）。
@@ -255,22 +265,38 @@ export function FormulaText({
   // 流式打字或父组件高频重渲染时 text 不变 → 直接复用上次的节点，正则零重复运行。
   const parts = useMemo<ReactNode[]>(() => {
     const acc: ReactNode[] = [];
-    let last = 0;
     let key = 0;
-    for (const m of text.matchAll(FORMULA_RUN)) {
-      const token = m[0];
+
+    /** 普通文本段：保留原有 ASCII 化学式 tokenization；不影响中文和普通英文。 */
+    const appendPlain = (plain: string) => {
+      if (!plain) return;
+      let last = 0;
+      for (const m of plain.matchAll(FORMULA_RUN)) {
+        const token = m[0];
+        const idx = m.index ?? 0;
+        if (!isFormulaLike(token)) continue;
+        if (idx > last) acc.push(plain.slice(last, idx));
+        acc.push(
+          // 内联化学式沿用上下文字形家族（不强制 mono），让「Fe₂O₃ 中的 Fe」与中文同族、基线平滑。
+          <span key={key++} className="tabular-nums whitespace-nowrap">
+            {renderDecorated(token, { targetSymbol, hovered, lang, setHovered })}
+          </span>,
+        );
+        last = idx + token.length;
+      }
+      if (last < plain.length) acc.push(plain.slice(last));
+    };
+
+    // 先切出行内 LaTeX（\(...\) / $...$ / \[...\]），再对其余文本做化学式 tokenization。
+    // 这样 AI 问题里的 `\(\mathrm{Ca(NO_3)_2}\)` 不会被 FORMULA_RUN 当成普通字母串漏掉。
+    let last = 0;
+    for (const m of text.matchAll(LATEX_INLINE)) {
       const idx = m.index ?? 0;
-      if (!isFormulaLike(token)) continue;
-      if (idx > last) acc.push(text.slice(last, idx));
-      acc.push(
-        // 内联化学式沿用上下文字形家族（不强制 mono），让「Fe₂O₃ 中的 Fe」与中文同族、基线平滑。
-        <span key={key++} className="tabular-nums whitespace-nowrap">
-          {renderDecorated(token, { targetSymbol, hovered, lang, setHovered })}
-        </span>,
-      );
-      last = idx + token.length;
+      appendPlain(text.slice(last, idx));
+      acc.push(<Formula key={`latex-${key++}`} tex={latexBody(m[0])} className="ai-question-katex" />);
+      last = idx + m[0].length;
     }
-    if (last < text.length) acc.push(text.slice(last));
+    appendPlain(text.slice(last));
     return acc;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, targetSymbol, lang, hovered]);

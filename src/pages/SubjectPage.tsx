@@ -12,13 +12,16 @@ import BackLink from '../components/layout/BackLink';
 import { Calculator, Gauge, Sigma } from 'lucide-react';
 import { useApp } from '../lib/app-context';
 import { subjects, type SubjectId } from '../lib/subjects';
-import { labCategories, regularLabsForSubject, toolsForSubject, labHref } from '../lib/labs';
+import { labCategories, regularLabsForSubject, betaLabsForSubject, visibleLabsForSubject, toolsForSubject, labHref } from '../lib/labs';
 import StatusTag from '../components/ui/StatusTag';
 import SubjectHeading from '../components/layout/SubjectHeading';
 import { FormulaIcon, PeriodicTableIcon } from '../components/ui/LabIcon';
 import { EngineChip } from '../components/lab/EngineBadge';
 import { getEngineTooltip } from '../components/lab/engine-copy';
 import { usePageMeta } from '../lib/use-page-meta';
+import { useBetaLabs } from '../lib/use-beta-labs';
+import BetaToggleChip from '../components/lab/BetaToggleChip';
+import BetaBadge from '../components/lab/BetaBadge';
 
 /** 卡片外壳：细描边 + 圆角 + 卡面底色（跟随深浅色令牌）；悬停轻微上浮并点亮边框 */
 const CARD_CLS =
@@ -105,8 +108,11 @@ export default function SubjectPage() {
   }
 
   const meta = t.subjects[subject.id];
-  // 常规实验网格只放三幕式实验；专业工具台（meta.kind === 'tool'）归入「// 工具」栏
-  const labList = regularLabsForSubject(subject.id);
+  const { showBeta, setShowBeta } = useBetaLabs();
+  // 常规实验网格只放三幕式实验；专业工具台（meta.kind === 'tool'）归入「// 工具」栏。
+  // 新增几何实验默认隐藏，开启 Beta 预览后展开。
+  const labList = visibleLabsForSubject(subject.id, showBeta);
+  const betaLabs = betaLabsForSubject(subject.id);
   const categories = labCategories[subject.id] ?? [];
   const tools: ToolCard[] = [
     ...toolsForSubject(subject.id).map((lab) => ({
@@ -142,9 +148,7 @@ export default function SubjectPage() {
               <Link key={tool.to} to={tool.to} className={CARD_CLS}>
                 <div className="flex items-start justify-between gap-3">
                   <tool.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />
-                  <span className={tool.pro ? `${BADGE_CLS} border-[var(--fg)] text-[var(--fg)]` : BADGE_CLS}>
-                    {tool.pro ? 'BETA' : lang === 'zh' ? '查表' : 'LOOKUP'}
-                  </span>
+                  {tool.pro ? <BetaBadge /> : <span className={BADGE_CLS}>{lang === 'zh' ? '查表' : 'LOOKUP'}</span>}
                 </div>
                 <h3 className="mt-3 text-base font-semibold tracking-wide text-[var(--fg)] serif-font">
                   {tool.name[lang]}
@@ -162,11 +166,21 @@ export default function SubjectPage() {
 
       {/* 实验列表（来自注册表，未注册科目显示建设中占位） */}
       <section className="mb-8">
-        <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font mb-4">
-          // {t.labs}
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold tracking-widest text-[var(--fg)] mono-font">
+            // {t.labs}
+          </h2>
+          {betaLabs.length > 0 && (
+            <BetaToggleChip
+              showBeta={showBeta}
+              onChange={setShowBeta}
+              count={betaLabs.length}
+              lang={lang === 'en' ? 'en' : 'zh'}
+            />
+          )}
+        </div>
         {labList.length ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {labList.map((lab) => {
               const badge = lab.meta;
               const cat = categories.find((c) => c.id === lab.category);
@@ -176,6 +190,7 @@ export default function SubjectPage() {
                   <div className="flex items-start justify-between gap-3">
                     <lab.icon className="w-5 h-5 shrink-0 text-[var(--muted)] transition-colors duration-[var(--dur-base)] group-hover:text-[var(--fg)]" />
                     <span className="flex flex-wrap items-center justify-end gap-1.5">
+                      {lab.beta && showBeta && <BetaBadge />}
                       {badge?.core && (
                         <EngineChip kind="wasm" title={getEngineTooltip('wasm', 'formulas', lang)} />
                       )}

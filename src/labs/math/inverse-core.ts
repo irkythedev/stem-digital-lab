@@ -42,16 +42,33 @@ export function inverseY(k: number, x: number): number {
  * - `pos`：右支 x 从 0.15 升到 4。
  * k = 0 时无定义（不是函数）→ 返回两个空段，不画任何曲线。
  */
-export function sampleInverse(k: number): [number, number][][] {
+export function sampleInverse(k: number, xMin = SAMPLE_MIN, xMax = SAMPLE_MAX): [number, number][][] {
   if (k === 0) return [[], []];
   const neg: [number, number][] = [];
   const pos: [number, number][] = [];
-  const n = Math.round((SAMPLE_MAX - INVERSE_GAP) / SAMPLE_STEP);
-  for (let i = 0; i <= n; i++) {
-    const x = INVERSE_GAP + i * SAMPLE_STEP;
-    // 左支点序与旧实现一致（同为升序的 −4 → −0.15）
-    neg.push([SAMPLE_MIN + i * SAMPLE_STEP, inverseY(k, SAMPLE_MIN + i * SAMPLE_STEP)]);
+  const step = SAMPLE_STEP;
+  const negN = Math.max(1, Math.round((Math.abs(xMin) - INVERSE_GAP) / step));
+  const posN = Math.max(1, Math.round((xMax - INVERSE_GAP) / step));
+  for (let i = 0; i <= negN; i++) {
+    const x = xMin + (i * ((Math.abs(xMin) - INVERSE_GAP) / negN));
+    neg.push([x, inverseY(k, x)]);
+  }
+  for (let i = 0; i <= posN; i++) {
+    const x = INVERSE_GAP + (i * ((xMax - INVERSE_GAP) / posN));
     pos.push([x, inverseY(k, x)]);
   }
   return [neg, pos];
+}
+
+/**
+ * 探针 P(x, k/x) 与两轴围成的矩形面积：恒为 |k|（x ≠ 0）。
+ * 数学上 trivial，但它是「面积不变性」的单一事实源：组件、测试、AI 读数共用。
+ */
+export function inverseRectArea(k: number, x: number): number {
+  return x === 0 ? NaN : Math.abs(k);
+}
+
+/** 同一探针与 x 轴围成的直角三角形面积：恒为 |k| / 2 */
+export function inverseTriangleArea(k: number, x: number): number {
+  return x === 0 ? NaN : Math.abs(k) / 2;
 }

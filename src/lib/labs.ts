@@ -19,12 +19,12 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 import type { SubjectId } from './subjects';
 import type { LabIconProps } from '../components/ui/LabIcon';
-import { ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, CircuitBenchIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
+import { SimilarityIcon, PolygonIcon, ConstructionIcon, TriangleIcon, ParabolaIcon, HyperbolaIcon, OhmIcon, NeutralizationIcon, LinearIcon, CircuitsIcon, CircuitBenchIcon, LensIcon, CircleIcon, MassIcon, BuoyancyIcon, LeverIcon, PressureIcon, PulleyIcon, ElectrolysisIcon, MetalIcon } from '../components/ui/LabIcon';
 import CircuitEngineBadge from '../labs/physics/circuit-bench/CircuitEngineBadge';
 
 /**
  * 实验组件一律按路由懒加载：
- *   - 主入口只保留注册表元信息，不再带上 16 个实验的代码与各页 GEO JSON；
+ *   - 主入口只保留注册表元信息，不再带上各实验的代码与各页 GEO JSON；
  *   - 每个实验（含它自己 content/ 下的 JSON）落在独立 chunk，进入实验页才下载。
  * 注册表只读取元信息（名称/图标/描述），组件字段只有 LabPage 真正渲染时才会求值。
  */
@@ -37,6 +37,10 @@ const CircuitBench = lazy(() => import('../labs/physics/circuit-bench/CircuitBen
 const Neutralization = lazy(() => import('../labs/chemistry/Neutralization'));
 const Lens = lazy(() => import('../labs/physics/Lens'));
 const Circle = lazy(() => import('../labs/math/Circle'));
+const Congruence = lazy(() => import('../labs/math/Congruence'));
+const Similarity = lazy(() => import('../labs/math/Similarity'));
+const PolygonPi = lazy(() => import('../labs/math/PolygonPi'));
+const Construction = lazy(() => import('../labs/math/Construction'));
 const MassConservation = lazy(() => import('../labs/chemistry/MassConservation'));
 const Buoyancy = lazy(() => import('../labs/physics/Buoyancy'));
 const Lever = lazy(() => import('../labs/physics/Lever'));
@@ -45,10 +49,6 @@ const Pulley = lazy(() => import('../labs/physics/Pulley'));
 const Electrolysis = lazy(() => import('../labs/chemistry/Electrolysis'));
 const MetalActivity = lazy(() => import('../labs/chemistry/MetalActivity'));
 
-/**
- * 科目页卡片的徽标元信息（可选字段：缺省则该徽标不渲染）。
- * 全部取值来自各实验源码头注释的教材定位与实验自身的核心公式，不含推测内容。
- */
 export interface LabCardMeta {
   /** 教材定位（第 5 项为章节） */
   grade: { zh: string; en: string };
@@ -92,6 +92,8 @@ export interface LabMeta {
   category: LabCategoryId;
   /** 科目页卡片徽标（教材 / 核心公式 / C++ 核）；缺省时卡片退化为「标题 + 描述」 */
   meta?: LabCardMeta;
+  /** 新增实验灰度标记：学科页默认隐藏，开启 Beta 预览后展示 */
+  beta?: boolean;
 }
 
 /** 领域分类 id：函数/几何（数学）、电学/力学/光学（物理）、物质变化/金属与酸碱（化学） */
@@ -127,7 +129,7 @@ export const labs: LabMeta[] = [
     subjectId: 'math',
     name: { zh: '二次函数', en: 'Quadratic Functions' },
     description: { zh: '探究 a、b、c 对抛物线开口与位置的影响', en: 'Explore how a, b, c shape the parabola' },
-    aiKnowledge: '实验目的：探究二次函数 y=ax²+bx+c 中 a、b、c 三个参数对抛物线的影响。操作要点：拖动滑块分别改变 a、b、c，观察图像变化；可切换顶点式平移演示（y=x² → y=(x-1)² → y=(x-1)²+2）。关键规律：a 决定开口方向与宽窄（a>0 开口向上、|a| 越大开口越窄）；b 影响对称轴位置（对称轴 x=-b/2a）；c 决定与 y 轴交点 (0,c)。考点：配方法化顶点式、顶点坐标公式、对称轴。',
+    aiKnowledge: '实验目的：探究二次函数 y=ax²+bx+c 中 a、b、c 三个参数对抛物线的影响。操作要点：拖动滑块分别改变 a、b、c，观察图像变化；参数区可在「一般式 y=ax²+bx+c」与「顶点式 y=a(x-h)²+k」两种写法间切换，顶点式下用 a、h、k 三个滑块直接控制开口与顶点位置（顶点就是 (h,k)，h 左加右减、k 上加下减），切换写法时图像不跳变；另有顶点式平移三步演示（y=x² → y=(x-1)² → y=(x-1)²+2）。关键规律：a 决定开口方向与宽窄（a>0 开口向上、|a| 越大开口越窄）；b 影响对称轴位置（对称轴位置由画布观察归纳）；c 决定与 y 轴交点 (0,c)。考点：配方法化顶点式、顶点坐标公式、对称轴。',
     icon: ParabolaIcon,
     component: Quadratic,
     category: 'function',
@@ -243,6 +245,54 @@ export const labs: LabMeta[] = [
     },
   },
   {
+    id: 'congruence',
+    subjectId: 'math',
+    name: { zh: '三角形全等', en: 'Triangle Congruence' },
+    description: { zh: '按一组条件重画三角形，叠合验证 SSS/SAS/ASA/AAS/HL 与 SSA 反例', en: 'Rebuild a triangle from given parts and overlap it to test each congruence criterion' },
+    aiKnowledge: '实验目的：探究判定两个三角形全等的条件，理解 SSA 为什么不能判定。操作要点：在六组条件（SSS/SAS/ASA/AAS/HL/SSA）之间切换，系统会按所选条件用同一组边角重新画一个三角形，点「叠合」把它平移旋转到基准三角形上；能完全重合说明这组条件能唯一确定形状，合不上说明还有别的解。SSA 条件下可点「另一个解」，拿到同样满足条件却形状不同的三角形——这就是反例。关键规律：SSS、SAS、ASA、AAS、HL 都能判定全等（HL 仅限直角三角形）；SSA 不能，因为同一个角和两条边可能对应两个不同的三角形。考点：全等三角形的判定方法、SSA 反例、对应顶点顺序书写。',
+    icon: TriangleIcon,
+    component: Congruence,
+    category: 'geometry',
+    beta: true,
+
+  },
+  {
+    id: 'similarity',
+    subjectId: 'math',
+    name: { zh: '相似与位似', en: 'Similarity & Homothety' },
+    description: { zh: '拖位似中心与顶点、拉位似比，探索周长比 |k| 与面积比 k²', en: 'Drag the centre and vertices, change the ratio, and discover |k| and k²' },
+    aiKnowledge: '实验目的：探究位似变换中周长比、面积比与位似比 k 的关系，以及对应点与位似中心的共线关系。操作要点：拖动位似中心 O 或三角形顶点，拖动「位似比 k」滑块（可取负值），画布实时画出位似像，对应点之间用虚线相连；「量一量」表把实测值与理论值并排显示。关键规律：位似图形一定相似，对应边比与周长比都等于 |k|，面积比等于 k²（面积比是周长比的平方）；每一对对应点与位似中心共线；k<0 时像落在 O 的另一侧，等价于先绕 O 旋转 180° 再按 |k| 缩放。考点：位似图形与相似图形的关系、周长比与面积比、位似中心与对应点共线。',
+    icon: SimilarityIcon,
+    component: Similarity,
+    category: 'geometry',
+    beta: true,
+
+  },
+  {
+    id: 'polygon-pi',
+    subjectId: 'math',
+    name: { zh: '割圆术', en: 'Circle-Cutting (π)' },
+    description: { zh: '边数一路翻倍，用内接与外切正多边形夹逼出 π', en: 'Double the sides and squeeze π between inscribed and circumscribed polygons' },
+    aiKnowledge: '实验目的：用割圆术理解 π 的逼近，体会「用能算的直边逼近不能直接量的曲线」这一极限思想。操作要点：拖动「边数 n」滑块（3→192，翻倍式递进）或点「边数翻倍」，画布实时画出半径 1 的圆与其内接正多边形，可另开外切正多边形与半径辅助线；读数表把「多边形算得 / 圆的值 / 差」并排显示。关键规律：内接正 n 边形边长 2r sin(π/n)、周长 2nr sin(π/n)、面积 (n/2)r² sin(2π/n)；边数越多，内接周长与面积越接近圆的 2πr 与 πr²，但永远偏小；外切正多边形永远偏大；两者把圆夹在中间，所以「周长÷直径」越来越接近 π。刘徽用正 96 边形得 π≈3.14。考点：正多边形与圆、弧长与扇形面积、π 的意义、逼近思想。',
+    icon: PolygonIcon,
+    component: PolygonPi,
+    category: 'geometry',
+    beta: true,
+
+  },
+  {
+    id: 'construction',
+    subjectId: 'math',
+    name: { zh: '尺规作图', en: 'Ruler & Compass' },
+    description: { zh: '只有直尺和圆规，亲手作出垂直平分线、中点与角平分线', en: 'Construct perpendicular bisectors, midpoints and angle bisectors with only a straightedge and compass' },
+    aiKnowledge: '实验目的：理解尺规作图为什么能在没有刻度的条件下作出精确图形，掌握五种基本作图。操作要点：只能用两件事——直尺过两点作直线、圆规以某点为圆心过另一点作圆；每作一个图形，它与已有图形的交点会自动出现，可以继续用这些交点作图；撤销/重来可随时回退。四关目标分别是线段 AB 的垂直平分线、线段 AB 的中点、∠AOB 的平分线、过直线 AB 外一点 P 作 AB 的垂线，判定看几何命题是否成立，步数只作参考不评分。关键规律：圆规画出的圆是「到圆心距离相等的点的集合」，两个等半径圆的交点同时到两个圆心等距，因而落在连心线的垂直平分线上；线段垂直平分线上的点到两端距离相等，角平分线上的点到两边距离相等。考点：五种基本作图、线段垂直平分线与角平分线的性质与判定、尺规作图的规范性。',
+    icon: ConstructionIcon,
+    component: Construction,
+    category: 'geometry',
+    beta: true,
+
+  },
+  {
     id: 'mass-conservation',
     subjectId: 'chemistry',
     name: { zh: '质量守恒定律', en: 'Conservation of Mass' },
@@ -276,7 +326,7 @@ export const labs: LabMeta[] = [
     subjectId: 'physics',
     name: { zh: '浮力', en: 'Buoyancy' },
     description: { zh: '探究阿基米德原理：浮力与排开液体体积、液体密度的关系', en: 'Explore Archimedes\' principle: buoyancy vs displaced volume and liquid density' },
-    aiKnowledge: '实验目的：探究阿基米德原理——浮力与排开液体体积、液体密度的关系。操作要点：改变物体浸入液体的体积或更换液体，读取弹簧测力计示数变化。关键规律：F浮=ρ液gV排；浸没后排开体积不变，浮力不再随深度增大。考点：阿基米德原理、浮沉条件、浮力计算。',
+    aiKnowledge: '实验目的：探究阿基米德原理——浮力与排开液体体积、液体密度的关系。操作要点：改变物体浸入液体的体积或更换液体，读取弹簧测力计示数变化。关键规律：浮力与排开液体体积、液体密度的关系（由画布观察归纳）；完全浸没后排开体积不变，浮力不再随深度增大；部分浸入时浮力随浸入体积增大而增大。考点：阿基米德原理、浮沉条件、浮力计算。',
     icon: BuoyancyIcon,
     component: Buoyancy,
     category: 'mechanics',
@@ -393,6 +443,16 @@ export function isToolLab(lab: LabMeta): boolean {
 /** 取某科目下的常规实验（排除专业工具台）。 */
 export function regularLabsForSubject(subjectId: SubjectId): LabMeta[] {
   return labsForSubject(subjectId).filter((lab) => !isToolLab(lab));
+}
+
+/** 当前学科的所有 Beta 实验（不改变通用首页/常规实验列表行为）。 */
+export function betaLabsForSubject(subjectId: SubjectId): LabMeta[] {
+  return regularLabsForSubject(subjectId).filter((lab) => !!lab.beta);
+}
+
+/** 学科页实验列表：未开启 Beta 时仅返回核心实验，开启后返回全部。 */
+export function visibleLabsForSubject(subjectId: SubjectId, showBeta: boolean): LabMeta[] {
+  return regularLabsForSubject(subjectId).filter((lab) => showBeta || !lab.beta);
 }
 
 /** 取某科目下登记在注册表的专业工具台（与静态查表工具并列展示）。 */

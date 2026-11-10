@@ -239,7 +239,8 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         : phase === 'activating' ? (lang === 'zh' ? '正在激活新版本…' : 'Activating the new version…')
           : phase === 'clearing' ? (lang === 'zh' ? '正在清理旧缓存…' : 'Clearing the old cache…')
             : phase === 'reloading' ? (lang === 'zh' ? '正在刷新…' : 'Reloading…')
-              : '';
+              : phase === 'failed' ? (lang === 'zh' ? '新版本资源同步中，请稍后重试' : 'Update package syncing, please try again shortly')
+                : '';
 
   // 单按钮循环切换：system → light → dark
   const themeOrder: ThemeMode[] = ['system', 'light', 'dark'];
@@ -253,7 +254,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
     <header className="w-full border-b border-[var(--border)]/70 pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)]">
       {/* 底线满幅通栏：border 落在满宽 header 上；内容由内层容器收回正文列。
           px-6 sm:px-12 lg:px-14 = 内容列容器的 px-4/sm:px-6/lg:px-8 + <main> 的 px-2 sm:px-6。 */}
-      <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl items-center justify-between gap-2 px-6 sm:px-12 lg:px-14">
+      <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-wrap items-center justify-between gap-2 px-6 sm:px-12 lg:px-14">
       {/* 左簇（品牌 + 版本号）必须锁死成一行：顶栏是 justify-between 的两组 flex 子项，
           默认 flex-shrink:1 会先压左簇；品牌文字是普通文本，一被压就在词间折行、
           版本号跟着错位。所以这里显式 nowrap + shrink-0，宁可左右组间隙变窄，
@@ -359,6 +360,15 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         </span>
       </Link>
 
+      {phase === 'failed' && (
+        <span
+          aria-hidden="true"
+          className="fixed right-3 top-14 sm:right-6 z-tooltip max-w-[calc(100vw-1.5rem)] rounded-md border border-[var(--border)] bg-[var(--card-bg)] px-3 py-2 text-[0.6875rem] text-[var(--warn)] shadow-lg"
+        >
+          {phaseText}
+        </span>
+      )}
+
       {/* 阶段播报：右上角的浮层已取消（进度显示在徽章本身上），但**播报不能跟着删** ——
           看得见的进度环替代不了看不见的 live region，读屏用户只有这一条线索。
           data-update-phase 留在这一层，供量测与断言读取，不再是浮层。 */}
@@ -374,7 +384,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           间距直接给在容器上：移动端 gap-1.5、桌面 gap-4，各控件自己的 padding 再加一层呼吸。
           注意：48px 的「节距」里 40px 是控件自身的 .tap-area 命中盒（触屏地板），
           真正可调的只有这 6px 间隙——所以收紧的观感来自「组更靠拢」，不是图标变小。 */}
-      <div className="flex items-center gap-1.5 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
+      <div data-tour="header-tools" className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
         {/* 离线教学包：仅下载中 / 已就绪时出现 */}
         {(packRunning || packStatus?.isFull) && (
           <button
@@ -544,7 +554,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}
           aria-label="Switch language"
           title={lang === 'zh' ? 'EN' : '中文'}
-          className="inline-flex items-center justify-center leading-none px-2.5 py-1.5 min-h-[1.625rem] rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
+          className="inline-flex items-center justify-center leading-none px-2.5 py-1.5 min-h-[1.625rem] rounded-lg text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area sm:w-11 sm:px-0"
         >
           {/* 移动端只留「中」：省 12px 横向宽度，给回归的 AI 图标腾位置；
               桌面（sm:）仍是完整的「中文」。英文侧 EN 两档同形，不需要拆。 */}
@@ -573,7 +583,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           to="/guide"
           title={t.guideHint}
           aria-label={t.guide}
-          className="group/guide inline-flex items-center justify-center gap-1.5 leading-none px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
+          className="group/guide inline-flex items-center justify-center gap-1.5 leading-none px-2 py-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area lg:w-[84px] lg:px-0"
         >
           {/* 媒体指示：说明页顶部就是项目介绍视频；图标与文字同属一个链接，触屏上常驻可见 */}
           <CirclePlay
@@ -603,7 +613,16 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         )}
       </div>
       </div>
-      {showVersion && <Suspense fallback={null}><VersionDialog onClose={() => setShowVersion(false)} /></Suspense>}
+      {showVersion && (
+        <Suspense fallback={null}>
+          <VersionDialog
+            onClose={() => setShowVersion(false)}
+            hasUpdate={hasUpdate}
+            updateBusy={busy}
+            onUpdate={() => { setShowVersion(false); void applyUpdate(); }}
+          />
+        </Suspense>
+      )}
       {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
     </header>
   );

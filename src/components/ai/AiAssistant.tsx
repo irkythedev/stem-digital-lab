@@ -15,7 +15,7 @@
  */
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowDown, ChevronDown, ChevronUp, ChevronsDown, GraduationCap, History, Lightbulb, Minus, Pause, Play, RotateCcw, Settings, ShieldCheck, Sparkles, Square, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
+import { ArrowDown, Check, ChevronDown, ChevronUp, ChevronsDown, CircleX, Copy, GraduationCap, History, Lightbulb, Minus, Pause, Play, RotateCcw, Settings, ShieldCheck, Sparkles, Square, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
@@ -25,6 +25,7 @@ import { symbolsForTopic } from '../../lib/physics-speech-symbols';
 import { labFromPath, labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import { buildQuizSummaryPrompt, logPromptIssue } from '../../lib/ai-config';
+import { formatAiAnswerForClipboard } from '../../lib/ai-clipboard';
 import { formatLabState, getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
 import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, trimHistoryToLimit, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
@@ -251,7 +252,7 @@ export default function AiAssistant() {
 
   // 朗读控制条（历史条目与当前轮共用）
   // topic 决定公式朗读口径：物理公式 topic → physics 模式 + 逐公式量名表（多义符号消歧）；其余走数学口径
-  const renderSpeakControls = (text: string, topic?: string) => {
+  const renderSpeakControls = (text: string, topic?: string, copyKey?: string) => {
     const symbols = lang === 'zh' ? symbolsForTopic(topic) : null;
     const speechOpts = symbols ? { mode: 'physics' as const, symbols } : undefined;
     // finished 态只对刚播完的那条显示重播；其他条目保持普通朗读按钮（点了会朗读自己）
@@ -275,7 +276,7 @@ export default function AiAssistant() {
             : speakState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
             : (lang === 'zh' ? '朗读回答' : 'Read aloud')
         }
-        className={`tap-area inline-flex items-center justify-center transition-colors p-1.5 ${
+        className={`tap-area inline-flex items-center justify-center gap-1.5 transition-colors p-1.5 ${
           speakState === 'synthesizing'
             ? (waitingLong ? 'text-[var(--warn)]' : 'text-[var(--muted)]')
             : 'text-[var(--muted)] hover:text-[var(--fg)]'
@@ -299,6 +300,28 @@ export default function AiAssistant() {
           : isReplay ? <RotateCcw className="w-4 h-4" />
           : <Volume2 className="w-4 h-4" />
         }
+      </button>
+      {/* 一键复制：紧贴朗读按钮，成功态显示对勾；内容先净版清洗，画面 KaTeX 不变 */}
+      <button
+        type="button"
+        onClick={() => void copyAnswerText(copyKey ?? text, text)}
+        title={copiedId === (copyKey ?? text)
+          ? (lang === 'zh' ? '已复制' : 'Copied')
+          : copyFailedId === (copyKey ?? text)
+            ? (lang === 'zh' ? '复制失败' : 'Copy failed')
+            : (lang === 'zh' ? '复制回答' : 'Copy answer')}
+        aria-label={lang === 'zh' ? '复制回答' : 'Copy answer'}
+        className={`tap-area inline-flex items-center justify-center transition-colors p-1.5 ${
+          copiedId === (copyKey ?? text)
+            ? 'text-[var(--success)]'
+            : copyFailedId === (copyKey ?? text)
+              ? 'text-[var(--error)]'
+              : 'text-[var(--muted)] hover:text-[var(--fg)]'
+        }`}
+      >
+        {copiedId === (copyKey ?? text) ? <Check className="w-3.5 h-3.5" aria-hidden="true" />
+          : copyFailedId === (copyKey ?? text) ? <CircleX className="w-3.5 h-3.5" aria-hidden="true" />
+          : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
       </button>
       {/* 暂停后可停止（回到开头） */}
       {speakState === 'paused' && (
@@ -349,6 +372,7 @@ export default function AiAssistant() {
     state: settingsState,
     refs: settingsRefs,
     openedRef: settingsOpenedRef,
+    showReasoning,
   } = aiSettings;
 
   // 局域网/本机端点：断网时仍值得一试（这类推理服务不依赖外网）
@@ -360,6 +384,14 @@ export default function AiAssistant() {
   const [copyFailedId, setCopyFailedId] = useState<string | null>(null);
   const copiedIdTimer = useRef<number | null>(null);
   useEffect(() => () => { if (copiedIdTimer.current) window.clearTimeout(copiedIdTimer.current); }, []);
+  const [copyToast, setCopyToast] = useState(false);
+  const copyToastTimer = useRef<number | null>(null);
+  const flashCopyToast = () => {
+    setCopyToast(true);
+    if (copyToastTimer.current) window.clearTimeout(copyToastTimer.current);
+    copyToastTimer.current = window.setTimeout(() => setCopyToast(false), 1800);
+  };
+  useEffect(() => () => { if (copyToastTimer.current) window.clearTimeout(copyToastTimer.current); }, []);
   // 持久化问答历史（本地 localStorage，上限 100 条；展开项 / 清空二次确认）
   const [persistHistory, setPersistHistory] = useState<AiHistoryEntry[]>(() => listHistory());
   const [expandedHistId, setExpandedHistId] = useState<string | null>(null);
@@ -718,6 +750,7 @@ export default function AiAssistant() {
   const [answer, setAnswer] = useState('');
   // AI 思考草稿（部分模型才有）：本回合显示、不落盘；思考中自动展开，正文一开始自动折叠
   const [reasoning, setReasoning] = useState('');
+  const [reasoningChars, setReasoningChars] = useState(0);
   // 折叠状态：'live' = 当前轮，'h<i>' = 第 i 条历史（同一时刻只展开一个）
   const [openReasoningId, setOpenReasoningId] = useState<string | null>(null);
   // 本回合的思考草稿按问答对暂存在内存（不落盘）：回答入历史后当前轮会被清空，
@@ -731,6 +764,7 @@ export default function AiAssistant() {
   const [reasoningStreaming, setReasoningStreaming] = useState(false);
   /** 思考草稿折叠区：默认折叠，标题写明它可能直接写出结论（与「探究型不给结论」的口径并存） */
   const renderReasoning = (text: string, sec: number, id: string) => {
+    const chars = text.length;
     const open = openReasoningId === id;
     // 只有「当前轮 + 思考仍在推进」才呼吸；历史轮次永远是已完成的静态灯泡
     const thinking = id === 'live' && reasoningStreaming;
@@ -765,18 +799,36 @@ export default function AiAssistant() {
             ? (settled
               /* 首包已到：秒数定稿，口径写「首字约」——它测的是「请求发出→首个正文字符」，
                  含网络与排队，不是纯思考时长，写「思考用时」属于夸大口径。 */
-              ? `思考过程（首字约 ${sec}s · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`
+              ? `思考过程（首字约 ${sec}s · ${chars} 字）：AI 的草稿，可能直接写出结论，也可能想错`
               /* 还在想：**绝不显示 0s**。此阶段秒数尚未定稿，写「约 0s」是在说谎，
                  而且与同一行正在增长的字数自相矛盾。改为语义化提示，进展感交给文字本身。 */
-              : `思考过程（正在思考 · ${text.length} 字）：AI 的草稿，可能直接写出结论，也可能想错`)
+              : `思考过程（正在思考 · ${chars} 字）：AI 的草稿，可能直接写出结论，也可能想错`)
             : (settled
-              ? `Thinking (first token in ≈${sec}s · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`
-              : `Thinking (in progress · ${text.length} chars): AI draft — it may state the answer outright, or be wrong`)}
+              ? `Thinking (first token in ≈${sec}s · ${chars} chars): AI draft — it may state the answer outright, or be wrong`
+              : `Thinking (in progress · ${chars} chars): AI draft — it may state the answer outright, or be wrong`)}
         </button>
         {open && (
-          <div className="px-2.5 pb-2 pt-1 text-[0.6875rem] leading-relaxed whitespace-pre-wrap text-[var(--muted)] border-t border-[var(--border)]">
-            {text}
-          </div>
+          showReasoning ? (
+            <div className="whitespace-pre-wrap px-2.5 pb-2 pt-1 text-xs leading-relaxed text-[var(--muted)] font-mono border-t border-[var(--border)]">
+              {text}
+            </div>
+          ) : (
+            <div className="px-2.5 pb-2 pt-1 text-[0.6875rem] leading-relaxed text-[var(--muted)] border-t border-[var(--border)]">
+              {lang === 'zh' ? (
+                <>
+                  内部推理仅用于生成最终答案，不展示推理明细。如需查看，可在
+                  <button
+                    type="button"
+                    onClick={() => setView('settings')}
+                    className="mx-0.5 text-[var(--fg)] underline decoration-dotted underline-offset-2 hover:text-[var(--accent)]"
+                  >「AI 设置」</button>
+                  中开启。
+                </>
+              ) : (
+                <>Internal reasoning is only used to generate the final answer and is not shown by default. You can enable it in <button type="button" onClick={() => setView('settings')} className="text-[var(--fg)] underline decoration-dotted underline-offset-2 hover:text-[var(--accent)]">AI Settings</button> if needed.</>
+              )}
+            </div>
+          )
         )}
       </div>
     );
@@ -1370,13 +1422,14 @@ export default function AiAssistant() {
     }
   };
 
-  // 复制历史回答：成功显示「已复制」+ 对勾图标，失败显示「复制失败」；2 秒后恢复
-  const copyAnswer = async (id: string, text: string) => {
-    const ok = await copyToClipboard(text);
+  // 复制回答：净版清洗后写入剪贴板；按钮显示对勾，面板内部 Toast 反馈。
+  const copyAnswerText = async (id: string, text: string) => {
+    const ok = await copyToClipboard(formatAiAnswerForClipboard(text));
     if (copiedIdTimer.current) window.clearTimeout(copiedIdTimer.current);
     if (ok) {
       setCopiedId(id);
       setCopyFailedId(null);
+      flashCopyToast();
     } else {
       setCopyFailedId(id);
       setCopiedId(null);
@@ -1384,8 +1437,9 @@ export default function AiAssistant() {
     copiedIdTimer.current = window.setTimeout(() => {
       setCopiedId(null);
       setCopyFailedId(null);
-    }, 2000);
+    }, 1800);
   };
+  const copyAnswer = copyAnswerText;
 
   // 清空持久化历史（只清历史，不动配置与当前会话）
   const clearHistoryAll = () => {
@@ -1456,6 +1510,8 @@ export default function AiAssistant() {
       liveState,
       // 页面人设（探究页的苏格拉底导师）：只改讲法，禁令仍以系统提示词第三节为准
       aiCtx.persona,
+      lab?.subjectId,
+      labId,
     );
   };
 
@@ -1493,6 +1549,7 @@ export default function AiAssistant() {
     setPeekTurn(null);
     setAnswer('');
     setReasoning('');
+    setReasoningChars(0);
     setReasoningStreaming(false);
     setOpenReasoningId('live');
     setReasoningSec(0);
@@ -1527,7 +1584,8 @@ export default function AiAssistant() {
     let accCjk = 0;   // 其中的 CJK / 全角字符数
     let accText = ''; // 已收正文（不含思考段）：中断时用它保全局部回答
     let firstContentAt = 0; // 首个正文 token 的时刻（用来算「思考了几秒」并自动折叠）
-    let reasoningText = '';   // 本轮思考全文（闭包内累积，结束后挂到本轮问答对上）
+    let reasoningText = ''; // 本轮思考原文：仅会话内存，不落盘
+    let reasoningCharsLocal = 0;
     let reasoningSecLocal = 0;
     let reasoningStarted = false; // 呼吸灯只需置位一次：每个思考增量都 setState 是纯浪费
     try {
@@ -1563,11 +1621,13 @@ export default function AiAssistant() {
           accLen += r.length;
           accCjk += countCjk(r);
           reasoningText += r;
+          reasoningCharsLocal += [...r].length;
+          setReasoning((x) => x + r);
           if (!reasoningStarted) {
             reasoningStarted = true;
             setReasoningStreaming(true); // 首个思考增量 → 灯泡开始呼吸
           }
-          setReasoning((x) => x + r);
+          setReasoningChars((x) => x + [...r].length);
         },
         task,
       );
@@ -1609,7 +1669,7 @@ export default function AiAssistant() {
         model: config.model ?? '',
       });
       setPersistHistory(listHistory());
-      // 思考草稿只留内存（本回合问答对为键；最多 20 轮、每轮截 4000 字），供历史气泡回看，不落盘
+      // 思考原文只存会话内存（最多 20 轮、每轮 4000 字），不落盘；localStorage 由 ai-history 清洗
       if (reasoningText) {
         const key = turnKey(q, body);
         setReasoningByTurn((m) => {
@@ -1635,7 +1695,7 @@ export default function AiAssistant() {
       // 中断也要保住成果：无论是点了「停止」还是网络断掉，只要已经收到正文，就把它
       // 当作一次「未完成」的问答留下来（标 [已停止]）——否则学生刚看到一半的内容
       // 会随面板关闭一起消失，追问也接不上。
-      const kept = markStopped(accText, lang);
+      const kept = markStopped(stripThinkingFromHistory(accText), lang);
       if (kept) {
         lastExchange.current = { user: q, assistant: kept };
         setHistory((h) => [...h.slice(-(HISTORY_MAX - 1)), { user: q, assistant: kept }]);
@@ -1900,7 +1960,7 @@ export default function AiAssistant() {
         ref={panelRef}
         className={`fixed z-modal flex flex-col overflow-hidden ${
           isMobile
-            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(85dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]'
+            ? 'ai-sheet inset-x-0 bottom-[var(--kb,0px)] max-h-[min(92dvh,var(--vvh,100dvh))] min-h-[min(62dvh,var(--vvh,100dvh))] rounded-t-xl border-b-0 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] border border-[var(--border)] bg-[var(--bg)] shadow-[var(--elev-md)]'
             : collapsed
               ? `w-auto ${SHELL_SKIN}`
               // 62dvh 保底只服务「对话视图」（防空会话塌到 221px）；用户拖过高度时同样让位。
@@ -2037,6 +2097,17 @@ export default function AiAssistant() {
           {actToast.msg}
         </div>
       )}
+      {/* 复制成功 Toast：只在 AI 窗口内部，顶部标题栏下方 12px */}
+      {copyToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-12 z-30 px-3 py-1.5 rounded-md bg-[var(--fg)] text-[var(--card-bg)] font-mono text-xs shadow-sm inline-flex items-center gap-1.5 transition-all duration-200"
+        >
+          <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+          <span>{lang === 'zh' ? '已复制到剪贴板' : 'Copied to clipboard'}</span>
+        </div>
+      )}
       {/* 头部：rounded-t-2xl 与外层圆角同半径 —— 顶栏吃的是外壳底色，
           大圆角下靠 overflow-hidden 裁形；显式写上是为了将来给顶栏加底色时不会露直角。
           移动端是 rounded-t-xl 的贴底抽屉，别在这里给更大的半径。 */}
@@ -2071,7 +2142,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => setView('settings')}
               aria-label={lang === 'zh' ? '设置' : 'Settings'}
               title={lang === 'zh' ? '设置模型与接口' : 'Settings'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
+              className="tap-header-icon relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
               <Settings className="w-4 h-4" />
             </button>
           )}
@@ -2081,7 +2152,7 @@ export default function AiAssistant() {
             <button type="button" onClick={() => { setView('history'); setExpandedHistId(null); }}
               aria-label={lang === 'zh' ? '问答历史' : 'History'}
               title={lang === 'zh' ? '问答历史与测验小结' : 'History'}
-              className="relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
+              className="tap-header-icon relative flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md">
               <History className="w-4 h-4" />
               {/* 信息点（有内容可看）：口径覆盖入口指向的**两个 Tab**——问答历史与考考你记录，
                   任一非空才亮；都为空时整点不渲染（空入口不该挂点）。
@@ -2105,12 +2176,12 @@ export default function AiAssistant() {
           <button type="button" onClick={collapseToCapsule}
             aria-label={lang === 'zh' ? '最小化' : 'Minimize'}
             title={lang === 'zh' ? '收起为胶囊（Esc 也可）' : 'Minimize'}
-            className={`flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md${isMobile ? ' hidden' : ''}`}>
+            className={`tap-header-icon flex h-7 w-7 items-center justify-center text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors cursor-pointer rounded-md${isMobile ? ' hidden' : ''}`}>
             <Minus className="w-4 h-4" />
           </button>
           <button type="button" onClick={closePanel}
             aria-label="Close" title={lang === 'zh' ? '关闭助手 (Esc)' : 'Close (Esc)'}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 active:bg-[var(--error)] active:text-white transition-colors cursor-pointer">
+            className="tap-header-icon flex h-7 w-7 items-center justify-center rounded-md text-[var(--muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10 active:bg-[var(--error)] active:text-white transition-colors cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -2199,7 +2270,7 @@ export default function AiAssistant() {
               {peekTurn !== null && peekQuestion && (
                 <div className="pointer-events-none absolute left-3 top-full z-dropdown mt-1 max-w-[calc(100%-1.5rem)] rounded-lg border border-[var(--border)] bg-[var(--card-bg)] px-2.5 py-1.5 text-[0.6875rem] leading-snug text-[var(--fg)] shadow-xl">
                   <span className="mono-font text-[var(--muted)]">Q: </span>
-                  <span className="line-clamp-2">{peekQuestion}</span>
+                  <span className="line-clamp-2"><FormulaText text={peekQuestion} lang={lang} /></span>
                 </div>
               )}
             </div>

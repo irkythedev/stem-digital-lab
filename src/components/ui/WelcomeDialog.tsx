@@ -37,10 +37,13 @@ type WelcomeTab = 'overview' | 'guide';
 export default function WelcomeDialog({
   onClose,
   initialTab = 'overview',
+  onReplayTour,
 }: {
   onClose: (permanent: boolean) => void;
   /** 初始激活的分区：首开自动弹出保持「实验室概览」；Header 帮助入口传入 'guide' */
   initialTab?: WelcomeTab;
+  /** 关闭弹窗并从第 1 步重新启动首页引导 */
+  onReplayTour?: () => void;
 }) {
   const { t, lang } = useApp();
   const zh = lang !== 'en';
@@ -407,15 +410,26 @@ export default function WelcomeDialog({
             />
             {t.welcomeDontShow}
           </label>
-          <button
-            ref={gotItRef}
-            type="button"
-            onClick={close}
-                /* 桌面维持 44px；移动端收 36px + 12px 字，与左侧复选框文字同级，不再压过整条底栏。 */ 
-            className="btn-solid shrink-0 px-4 py-2 text-xs mono-font font-bold border border-transparent transition-colors min-h-9 touch-manipulation rounded-md sm:min-h-11 sm:px-5 sm:text-sm"
-          >
-            {t.welcomeGotIt}
-          </button>
+          <div className="flex items-center gap-2">
+            {onReplayTour && (
+              <button
+                type="button"
+                onClick={onReplayTour}
+                className="shrink-0 h-6 px-2 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors whitespace-nowrap"
+              >
+                {zh ? '重看新手引导' : 'Replay Tour'}
+              </button>
+            )}
+            <button
+              ref={gotItRef}
+              type="button"
+              onClick={close}
+              /* 桌面维持 44px；移动端收 36px + 12px 字，与左侧复选框文字同级，不再压过整条底栏。 */
+              className="btn-solid shrink-0 px-4 py-2 text-xs mono-font font-bold border border-transparent transition-colors min-h-9 touch-manipulation rounded-md sm:min-h-11 sm:px-5 sm:text-sm"
+            >
+              {t.welcomeGotIt}
+            </button>
+          </div>
         </div>
       </div>
       {/* elevated：这两层是「模态里再开模态」，不抬到宿主卡片之上就整层被盖住 */}

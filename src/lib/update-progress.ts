@@ -27,7 +27,8 @@ export type UpdatePhase =
   | 'downloading'
   | 'activating'
   | 'clearing'
-  | 'reloading';
+  | 'reloading'
+  | 'failed';
 
 /** 有分母的那类读数。单位是**清单条目**。
  *
@@ -129,7 +130,7 @@ export function isPrecacheComplete(
  * 「下载」分开；reloading 用 complete（对勾）而不是满环 —— 满环没有完成语义。
  */
 export function ringStateFor(phase: UpdatePhase, progress: UpdateProgress | null): RingState {
-  if (phase === 'idle') return { mode: 'hidden' };
+  if (phase === 'idle' || phase === 'failed') return { mode: 'hidden' };
   if (phase === 'reloading') return { mode: 'complete' };
   const measured = (() => {
     if (!progress || !(progress.total > 0) || !Number.isFinite(progress.done)) return null;

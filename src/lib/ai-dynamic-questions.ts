@@ -55,7 +55,21 @@ export function setPageQuestion(labId: string, question: string): void {
 }
 
 export function getPageQuestion(labId: string): string {
-  return pageQuestions.get(labId) ?? '';
+  const base = pageQuestions.get(labId) ?? '';
+  if (!base) return '';
+  const stage = getLabState(labId)?.stage;
+  if (stage === 'predict') {
+    // 预测阶段绝不复用页面问句：动态 builder 的 base 可能已含 <当前读数> 或具体数值，
+    // 直接用会让学生发出的问题自爆答案。这里返回不含任何读数的通用预测引导。
+    return '我正在做预测：请先别告诉我最终结论，给我一条在当前画布上观察和思考的线索。';
+  }
+  if (stage === 'explore') {
+    return `我正在探索：${base}——如果这个问题与当前实验有关，请结合当前画布读数，告诉我应该比较哪两个量、怎么动手验证；如果它是通用知识问题，请直接回答，不要引用当前读数。`;
+  }
+  if (stage === 'conclude') {
+    return `我正在结论阶段：${base}——请引导我结合当前实验现象和读数复述证据链，再一起归纳规律。`;
+  }
+  return base;
 }
 
 /**
@@ -101,6 +115,37 @@ const FIELD_LABEL: Record<string, FieldDef> = {
   b: { zh: 'b 值', en: 'b' },
   a: { zh: 'a 值', en: 'a' },
   c: { zh: 'c 值', en: 'c' },
+  revealed: { zh: '预测揭晓状态', en: 'prediction revealed', bool: { on: { zh: '已揭晓', en: 'revealed' }, off: { zh: '未揭晓', en: 'hidden' } } },
+  beforeMass: { zh: '反应前总质量', en: 'mass before reaction', unit: 'g' },
+  afterMass: { zh: '反应后总质量', en: 'mass after reaction', unit: 'g' },
+  sealed: { zh: '容器密封', en: 'container sealed', bool: { on: { zh: '密封', en: 'sealed' }, off: { zh: '敞开', en: 'open' } } },
+  reactionDone: { zh: '反应状态', en: 'reaction state', bool: { on: { zh: '已反应', en: 'reacted' }, off: { zh: '未反应', en: 'not reacted' } } },
+  ph: { zh: 'pH 值', en: 'pH' },
+  indicatorColor: {
+    zh: '指示剂颜色',
+    en: 'indicator colour',
+    map: { colorless: { zh: '无色', en: 'colorless' }, pink: { zh: '浅红色', en: 'pink' }, red: { zh: '红色', en: 'red' } },
+  },
+  equivalenceReached: { zh: '是否到达等当点', en: 'equivalence reached', bool: { on: { zh: '已到达', en: 'reached' }, off: { zh: '未到达', en: 'not reached' } } },
+  h2Volume: { zh: '氢气体积', en: 'H₂ volume', unit: 'mL' },
+  o2Volume: { zh: '氧气体积', en: 'O₂ volume', unit: 'mL' },
+  volumeRatio: { zh: '氢氧体积比', en: 'H₂:O₂ ratio' },
+  bubbleRate: { zh: '气泡速率（相对）', en: 'bubble rate (relative)' },
+  observedColor: {
+    zh: '观察到的颜色',
+    en: 'observed colour',
+    map: {
+      'blue-fades': { zh: '蓝色变浅（近无色）', en: 'blue fades (nearly colourless)' },
+      'turns-blue': { zh: '变为蓝色', en: 'turns blue' },
+    },
+  },
+  bubbles: { zh: '气泡', en: 'bubbles', bool: { on: { zh: '有气泡', en: 'bubbling' }, off: { zh: '无气泡', en: 'no bubbles' } } },
+  angleBPC: { zh: '圆周角 ∠BPC', en: 'inscribed angle ∠BPC', unit: '°' },
+  angleBQC: { zh: '圆周角 ∠BQC', en: 'inscribed angle ∠BQC', unit: '°' },
+  angleBOC: { zh: '圆心角 ∠BOC', en: 'central angle ∠BOC', unit: '°' },
+  chordLen: { zh: '弦长 AB', en: 'chord AB length' },
+  halfChord: { zh: '半弦 AE / EB', en: 'half chord AE / EB' },
+  perpDist: { zh: '圆心到弦距离', en: 'centre-to-chord distance' },
   circleMode: {
     zh: '当前定理',
     en: 'theorem',
@@ -181,6 +226,86 @@ const FIELD_LABEL_BY_LAB: Record<string, Record<string, FieldDef>> = {
     f: { zh: '焦距', en: 'focal length', unit: 'cm' },
     v: { zh: '像距', en: 'image distance', unit: 'cm' },
   },
+  congruence: {
+    mode: {
+      zh: '判定条件',
+      en: 'condition',
+      map: {
+        sss: { zh: 'SSS 三边', en: 'SSS' },
+        sas: { zh: 'SAS 两边夹角', en: 'SAS' },
+        asa: { zh: 'ASA 两角夹边', en: 'ASA' },
+        aas: { zh: 'AAS 两角与对边', en: 'AAS' },
+        hl: { zh: 'HL 斜边直角边', en: 'HL' },
+        ssa: { zh: 'SSA 两边与对角（不能判定）', en: 'SSA (not a criterion)' },
+      },
+    },
+    branch: {
+      zh: 'SSA 分支',
+      en: 'SSA branch',
+      map: {
+        '0': { zh: '第一个解', en: 'first solution' },
+        '1': { zh: '第二个解', en: 'second solution' },
+      },
+    },
+    overlayed: {
+      zh: '叠合状态',
+      en: 'overlay',
+      bool: { on: { zh: '已叠合', en: 'overlaid' }, off: { zh: '未叠合', en: 'not overlaid' } },
+    },
+  },
+  similarity: {
+    perimeterRatio: { zh: '实测周长比', en: 'measured perimeter ratio' },
+    areaRatio: { zh: '实测面积比', en: 'measured area ratio' },
+    negative: {
+      zh: '像的位置',
+      en: 'image side',
+      bool: {
+        on: { zh: '在中心另一侧（k<0）', en: 'opposite side (k<0)' },
+        off: { zh: '与中心同侧（k>0）', en: 'same side (k>0)' },
+      },
+    },
+  },
+  'polygon-pi': {
+    n: { zh: '正多边形边数', en: 'polygon sides' },
+    showOuter: {
+      zh: '外切多边形',
+      en: 'circumscribed polygon',
+      bool: { on: { zh: '已显示', en: 'shown' }, off: { zh: '未显示', en: 'hidden' } },
+    },
+    piLo: { zh: '内接 π 估计', en: 'inscribed π estimate' },
+    piHi: { zh: '外切 π 估计', en: 'circumscribed π estimate' },
+  },
+  linear: {
+    xZero: { zh: '与 x 轴交点', en: 'x-intercept' },
+    slopeDy: { zh: 'Δx=1 时的 Δy（即斜率 k）', en: 'Δy at Δx=1 (slope k)' },
+  },
+  quadratic: {
+    vertexH: { zh: '顶点横坐标 h', en: 'vertex x' },
+    vertexK: { zh: '顶点纵坐标 k', en: 'vertex y' },
+  },
+  inverse: {
+    probeX: { zh: '探针 P 的横坐标', en: 'probe x' },
+    probeY: { zh: '探针 P 的纵坐标', en: 'probe y' },
+    probeArea: { zh: '探针围成的面积', en: 'probe area' },
+  },
+  construction: {
+    task: {
+      zh: '当前关卡',
+      en: 'task',
+      map: {
+        '0': { zh: '作垂直平分线', en: 'perpendicular bisector' },
+        '1': { zh: '作中点', en: 'midpoint' },
+        '2': { zh: '作角平分线', en: 'angle bisector' },
+        '3': { zh: '过点作垂线', en: 'perpendicular through a point' },
+      },
+    },
+    steps: { zh: '作图步数', en: 'construction steps' },
+    solved: {
+      zh: '过关状态',
+      en: 'task state',
+      bool: { on: { zh: '已达成', en: 'solved' }, off: { zh: '未达成', en: 'unsolved' } },
+    },
+  },
 };
 
 /** 该实验实际生效的词表：专用表覆盖通用表，顺序沿用通用表（输出稳定） */
@@ -194,6 +319,37 @@ const STAGE_TEXT: Record<string, { zh: string; en: string }> = {
   explore: { zh: '探索', en: 'Explore' },
   conclude: { zh: '结论', en: 'Conclude' },
 };
+
+/**
+ * 预测阶段白名单：只暴露阶段、模式/方案与初始可控自变量；未列出的字段一律不输出。
+ * 采用白名单而非黑名单——新增结果字段默认安全，不会因忘记加入黑名单而把后台读数漏给 AI。
+ */
+export const PREDICT_WHITELIST: Record<string, Set<string>> = {
+  // 数学
+  quadratic: new Set(['a', 'b', 'c', 'revealed']),
+  inverse: new Set(['k', 'probeX']),
+  linear: new Set(['k', 'b', 'revealed']),
+  similarity: new Set(['k', 'negative']),
+  congruence: new Set(['mode', 'branch']),
+  circle: new Set(['circleMode']),
+  'polygon-pi': new Set(['n', 'showOuter']),
+  construction: new Set(['task', 'steps']),
+  // 物理
+  ohm: new Set(['u', 'r', 'element', 'rp', 'switchOn']),
+  circuits: new Set(['styleZh', 'styleEn', 'switchOn', 'rList']),
+  'circuit-bench': new Set(['presetZh', 'presetEn', 'running', 'switchOn', 'wires']),
+  lens: new Set(['u', 'f']),
+  buoyancy: new Set(['vSub', 'liquidZh', 'liquidEn', 'rho']),
+  lever: new Set(['m1', 'd1', 'm2', 'd2']),
+  pressure: new Set(['F', 'S']),
+  pulley: new Set(['type', 'G']),
+  // 化学
+  'metal-activity': new Set(['react', 'polished']),
+  'mass-conservation': new Set(['activeScheme', 'beforeMass', 'sealed']),
+  neutralization: new Set(['volume', 'acidM']),
+  electrolysis: new Set(['power']),
+};
+
 
 /**
  * 把易失注册表里的实时状态压成一行人类可读文本，供**系统提示词**与**「考考你」出题提示词**共用。
@@ -213,11 +369,19 @@ export function formatLabState(
   const labels = fieldLabelFor(labId);
   const parts: string[] = [];
   const stage = state.stage;
+  const isPredict = stage === 'predict';
   if (typeof stage === 'string' && STAGE_TEXT[stage]) {
     parts.push(zh ? `当前阶段：${STAGE_TEXT[stage].zh}` : `stage: ${STAGE_TEXT[stage].en}`);
   }
+  if (isPredict) {
+    parts.push(zh
+      ? '【预测阶段：结果读数已隐藏，请引导学生在画布观察并先写下预测】'
+      : '[Predict stage: result readings hidden — guide observation and ask for a prediction first]');
+  }
+  const allowed = isPredict ? PREDICT_WHITELIST[labId || ''] : undefined;
   for (const [key, def] of Object.entries(labels)) {
     if (key === 'stage') continue;
+    if (isPredict && !allowed?.has(key)) continue;
     const v = state[key];
     if (def.bool) {
       if (typeof v === 'boolean') {

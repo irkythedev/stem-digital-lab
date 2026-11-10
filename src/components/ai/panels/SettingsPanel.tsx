@@ -18,6 +18,7 @@ import { type TtsConfig } from '../../../lib/tts-config';
 import { resetTtsStatus } from '../../../lib/tts-status';
 import { TTS_SAMPLE } from '../../../lib/use-tts-preview';
 import BenchSelect from '../../ui/BenchSelect';
+import ToggleSwitch from '../../lab/ToggleSwitch';
 import ProviderIcon from '../../ui/ProviderIcon';
 import TtsStatusBadge from '../TtsStatusBadge';
 import { ExternalLink, EyeOff, Eye, ShieldCheck, ChevronDown, RefreshCw, Activity, Coins, LoaderCircle, Volume2, Trash2 } from 'lucide-react';
@@ -113,6 +114,7 @@ export interface SettingsPanelState {
   settingsTab: any;
   showKey: any;
   showTtsKey: any;
+  showReasoning: boolean;
   testResult: any;
   testing: any;
   thinkingPlan: ThinkingPlan | null;
@@ -140,6 +142,7 @@ export interface SettingsPanelActions {
   setShowKey: Dispatch<SetStateAction<boolean>>;
   setShowTokenUsage: any;
   setShowTtsKey: Dispatch<SetStateAction<boolean>>;
+  setShowReasoning: (v: boolean) => void;
   setThinkingEffort: any;
   setView: any;
   testConnection: () => Promise<void>;
@@ -155,12 +158,12 @@ interface SettingsPanelProps {
 }
 
 function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) {
-  const { apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus } = state;
-  const { clearAll, fetchModelList, modelMatches, refreshTokenUsage, save, selectProvider, setApiKey, setCustomUrl, setExtraParamsOpen, setExtraParamsText, setMaxTokensText, setModel, setModelMenuOpen, setSettingsTab, setShowKey, setShowTokenUsage, setShowTtsKey, setThinkingEffort, setView, testConnection, tierLocked, updateTts } = actions;
+  const { apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, showReasoning, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus } = state;
+  const { clearAll, fetchModelList, modelMatches, refreshTokenUsage, save, selectProvider, setApiKey, setCustomUrl, setExtraParamsOpen, setExtraParamsText, setMaxTokensText, setModel, setModelMenuOpen, setSettingsTab, setShowKey, setShowTokenUsage, setShowTtsKey, setShowReasoning, setThinkingEffort, setView, testConnection, tierLocked, updateTts } = actions;
   const { modelMenuRef } = refs;
   return (
     <>
-<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-3 text-sm serif-font sm:pb-0">
+<div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4 pb-6 space-y-3 text-sm serif-font sm:pb-0 font-sans text-xs" style={{ fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
           {/* 设置 Tab：大模型设置 / 语音朗读。两栏共享同一份配置状态，切换不需要重新保存 */}
           <div className="flex items-center gap-1 border-b border-[var(--border)]" role="tablist" aria-label={lang === 'zh' ? '设置分类' : 'Settings sections'}>
             {([['model', lang === 'zh' ? '大模型设置' : 'Model setup'], ['speech', lang === 'zh' ? '语音朗读' : 'Speech']] as const).map(([id, label]) => (
@@ -254,7 +257,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                   href={provider.docUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-0.5 text-xs text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
+                  className="inline-flex min-h-8 shrink-0 items-center gap-0.5 text-xs text-[var(--muted)] transition-colors hover:text-[var(--fg)]"
                 >
                   {lang === 'zh' ? '获取 Key / 官方文档' : 'Get a key / docs'}
                   <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -359,7 +362,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                 disabled={fetching}
                 aria-label={lang === 'zh' ? '获取模型' : 'Fetch models'}
                 title={lang === 'zh' ? '列出该服务商实际可用的模型（不验证能否对话）' : 'List the models this provider offers (does not verify chat)'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50 tap-ai-row"
               >
                 <RefreshCw
                   className={`h-3.5 w-3.5 shrink-0 ${fetching ? 'motion-safe:animate-spin' : ''}`}
@@ -375,7 +378,7 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                 disabled={testing}
                 aria-label={lang === 'zh' ? '测试连接' : 'Test connection'}
                 title={lang === 'zh' ? '发一次极小的对话请求，验证 Key / 端点 / 模型能否正常使用' : 'Send one tiny chat request to verify key, endpoint and model'}
-                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap max-sm:min-h-[34px] rounded-md border border-transparent px-2.5 py-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)] disabled:opacity-50 tap-ai-row"
               >
                 <Activity
                   className={`h-3.5 w-3.5 shrink-0 ${testing ? 'motion-safe:animate-pulse' : ''}`}
@@ -410,54 +413,52 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
             )}
           </div>
 
-          {/* 思考强度：三档；可用档位由当前模型的能力表决定，不可用档位置灰并说明原因 */}
-          <div>
-            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mb-1">{lang === 'zh' ? '思考强度' : 'Thinking effort'}</p>
-            {/* 整体分段滑槽：三档同槽，选中由背景滑块承托（不再用符号点表达状态） */}
-            <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '思考强度' : 'Thinking effort'}>
-              {THINKING_TIERS.map((t) => {
-                // 只有「模型有档位集合但缺这一档」才置灰；其余情况三档都可点，保证点击有反馈
-                const usable = !tierLocked(t.id);
-                const selected = usable && selectedEffort === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    disabled={!usable}
-                    aria-pressed={selected}
-                    title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
-                    onClick={() => setThinkingEffort(t.id)}
-                    className={`tap-ai-tier tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
-                      ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs'
-                      : usable
-                        ? 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'
-                        : 'text-[var(--muted)] border-transparent opacity-40 cursor-not-allowed'}`}
-                  >
-                    {lang === 'zh' ? t.zh : t.en}
-                  </button>
-                );
-              })}
+          {/* 第一行：思考强度 + 输出上限；桌面左右并排，移动端自然折行 */}
+          <div className="grid grid-cols-1 items-start gap-3 pb-3 border-b border-[var(--border)]/60 sm:grid-cols-[1fr_auto]">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <p className="text-xs font-medium text-[var(--fg)]">{lang === 'zh' ? '思考强度' : 'Thinking effort'}</p>
+                {thinkingPlan?.note && (
+                  <span className="text-[11px] text-[var(--muted)]">
+                    {lang === 'zh' ? '当前模型按服务商默认策略处理。' : 'This model follows its provider default policy.'}
+                  </span>
+                )}
+              </div>
+              <div className="inline-flex items-center p-0.5 rounded-lg bg-[var(--accent-light)]/70 border border-[var(--border)]/60" role="group" aria-label={lang === 'zh' ? '思考强度' : 'Thinking effort'} style={{ height: 32 }}>
+                {THINKING_TIERS.map((t) => {
+                  const usable = !tierLocked(t.id);
+                  const selected = usable && selectedEffort === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      disabled={!usable}
+                      aria-pressed={selected}
+                      title={usable ? undefined : (lang === 'zh' ? '当前模型不支持该档位' : 'Not available for this model')}
+                      onClick={() => setThinkingEffort(t.id)}
+                      className={`tap-ai-tier tap-area rounded-md px-2.5 py-1.5 text-[0.6875rem] mono-font leading-none border transition-colors ${selected
+                        ? 'bg-[var(--card-bg)] text-[var(--fg)] font-medium border-[var(--border)]/50 shadow-xs'
+                        : usable
+                          ? 'text-[var(--muted)] border-transparent hover:text-[var(--fg)]'
+                          : 'text-[var(--muted)] border-transparent opacity-40 cursor-not-allowed'}`}
+                    >
+                      {lang === 'zh' ? t.zh : t.en}
+                    </button>
+                  );
+                })}
+              </div>
+              {!thinkingPlan?.note && (
+                <p
+                  className="mt-1 text-xs text-[var(--muted)] leading-snug"
+                  title={sentDesc ? (lang === 'zh' ? `本次下发 ${sentDesc}` : `Sending ${sentDesc}`) : (lang === 'zh' ? '不下发思考参数' : 'No thinking parameter sent')}
+                >
+                  {TIER_HINT[selectedEffort][lang === 'zh' ? 'zh' : 'en']}
+                </p>
+              )}
             </div>
-            {/* 单行动态说明：模型没有思考旋钮时，说「按服务商默认策略处理」，
-                具体原因（哪一档不可用、是否透传）落到 title 里——排障时才需要的细节不该占版面。 */}
-            <p
-              className="mt-1 text-xs text-[var(--muted)] leading-snug"
-              title={
-                thinkingPlan?.note
-                  ? THINKING_NOTE[thinkingPlan.note][lang === 'zh' ? 'zh' : 'en']
-                  : sentDesc
-                    ? (lang === 'zh' ? `本次下发 ${sentDesc}` : `Sending ${sentDesc}`)
-                    : (lang === 'zh' ? '不下发思考参数' : 'No thinking parameter sent')
-              }
-            >
-              {thinkingPlan?.note
-                ? (lang === 'zh' ? '当前模型按服务商默认策略处理。' : 'This model follows its provider default policy.')
-                : TIER_HINT[selectedEffort][lang === 'zh' ? 'zh' : 'en']}
-            </p>
-            {/* 输出上限（留空＝不下发 max_tokens）：思考型模型的思考也算进上限，填小了会挤出空白回答。
-                那整段解释已收进 input 的 title——它是「填小了会怎样」的边界知识，不是每次都要读的正文。 */}
-            <div className="mt-1.5 flex items-center gap-2">
-              <label htmlFor="ai-max-out-tokens" className="shrink-0 text-xs text-[var(--muted)]">
+
+            <div className="min-w-0">
+              <label htmlFor="ai-max-out-tokens" className="mb-1.5 block text-xs font-medium text-[var(--fg)]">
                 {lang === 'zh' ? '输出上限 (tokens)：' : 'Output limit (tokens):'}
               </label>
               <input
@@ -472,60 +473,83 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                     ? '思考型模型（R1 / 思考版千问 / 本地模型）的思考也计入这个上限：填小了思考会吃满预算，回答就是空白。除非要控成本，建议留空。'
                     : 'Thinking models (R1 / thinking Qwen / local servers) count their reasoning against this limit — set it too low and the answer comes back blank. Leave it empty unless you need a cost cap.'
                 }
-                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                className="w-24 rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-xs mono-font font-mono tabular-nums text-[var(--fg)] outline-none focus:border-[var(--fg)]"
+                style={{ height: 32, width: 112, borderRadius: 8, paddingLeft: 10, paddingRight: 10, backgroundColor: 'var(--card-bg)' }}
               />
             </div>
-            {providerId === 'custom' && (
-              <div className="mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setExtraParamsOpen((v) => !v)}
-                  className="inline-flex items-center gap-1 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)]"
-                >
-                  <ChevronDown className={`w-3 h-3 transition-transform ${extraParamsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-                  {lang === 'zh' ? '自定义请求参数（JSON，选填）' : 'Custom request params (JSON, optional)'}
-                </button>
-                {extraParamsOpen && (
-                  <>
-                    <textarea
-                      value={extraParamsText}
-                      onChange={(e) => setExtraParamsText(e.target.value)}
-                      rows={3}
-                      placeholder={'{"reasoning_effort": "high"}'}
-                      className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
-                    />
-                    {!extraParamsValid && (
-                      <p className="text-[0.625rem] text-[var(--error)] mt-0.5 leading-snug">
-                        {lang === 'zh' ? 'JSON 格式无效，已忽略（不影响保存与提问）' : 'Invalid JSON — ignored (saving and asking still work)'}
-                      </p>
-                    )}
-                    <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
-                      {lang === 'zh'
-                        ? '注意：部分模型在深度思考模式下会忽略 temperature 等采样参数（不报错，但不生效）。'
-                        : 'Note: in deep-thinking mode some models ignore sampling parameters such as temperature (no error, just no effect).'}
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* 累计 token 用量（跨会话；一行总数，明细点开树状图） */}
-          <div className="border border-[var(--border)] px-2.5 py-2 space-y-1.5">
+          {/* 第二行：思考显示开关；左侧标题+说明绑定，右侧开关固定 */}
+          <div className="flex items-center justify-between gap-4 py-2.5 border-b border-[var(--border)]/60">
+            <div className="min-w-0 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-xs font-medium text-[var(--fg)]">{lang === 'zh' ? '显示思考推理明细' : 'Show reasoning details'}</span>
+              <span className="text-[11px] text-[var(--muted)]">
+                {lang === 'zh'
+                  ? '展开思考摘要时显示模型的内部推理过程（默认关闭）'
+                  : 'Display internal reasoning process when expanding the thinking summary (off by default)'}
+              </span>
+            </div>
+            <ToggleSwitch
+              label={lang === 'zh' ? '显示思考推理明细' : 'Show reasoning details'}
+              checked={showReasoning}
+              onChange={setShowReasoning}
+              compact
+              hideLabel
+              className="shrink-0"
+            />
+          </div>
+
+          {/* 第三行：自定义请求参数（仅自定义端点） */}
+          {providerId === 'custom' && (
+            <div className="py-2">
+              <button
+                type="button"
+                onClick={() => setExtraParamsOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+              >
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${extraParamsOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                {lang === 'zh' ? '自定义请求参数（JSON，选填）' : 'Custom request params (JSON, optional)'}
+              </button>
+              {extraParamsOpen && (
+                <>
+                  <textarea
+                    value={extraParamsText}
+                    onChange={(e) => setExtraParamsText(e.target.value)}
+                    rows={3}
+                    placeholder={'{"reasoning_effort": "high"}'}
+                    className="mt-1 w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2 py-1.5 text-xs mono-font text-[var(--fg)] outline-none focus:border-[var(--fg)] resize-y"
+                  />
+                  {!extraParamsValid && (
+                    <p className="text-[0.625rem] text-[var(--error)] mt-0.5 leading-snug">
+                      {lang === 'zh' ? 'JSON 格式无效，已忽略（不影响保存与提问）' : 'Invalid JSON — ignored (saving and asking still work)'}
+                    </p>
+                  )}
+                  <p className="text-[0.625rem] text-[var(--muted)] mt-0.5 leading-snug">
+                    {lang === 'zh'
+                      ? '注意：部分模型在深度思考模式下会忽略 temperature 等采样参数（不报错，但不生效）。'
+                      : 'Note: in deep-thinking mode some models ignore sampling parameters such as temperature (no error, just no effect).'}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 第四行：累计用量唯一卡片；首行两端对齐，次行说明 */}
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-bg)]/40 px-3.5 py-2.5">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[0.625rem] mono-font font-bold text-[var(--fg)] tracking-widest">
+              <span className="text-xs font-semibold text-[var(--fg)]">
                 {lang === 'zh' ? '累计用量' : 'Total usage'}
-              </p>
-              <span className="flex items-center gap-2">
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-3 text-xs text-[var(--muted)]">
                 {tokenUsageTotalCount > 0 && (
                   <button
                     type="button"
                     onClick={() => setShowTokenUsage(true)}
                     title={lang === 'zh' ? '查看每日用量明细' : 'View daily usage'}
                     aria-label={lang === 'zh' ? '用量明细' : 'Usage details'}
-                    className="inline-flex items-center gap-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
+                    className="inline-flex items-center gap-1 text-xs text-[var(--muted)] hover:text-[var(--fg)] transition-colors"
                   >
-                    <Coins className="w-3 h-3" aria-hidden="true" />
+                    <Coins className="h-3 w-3" aria-hidden="true" />
                     {lang === 'zh' ? '明细' : 'Detail'}
                   </button>
                 )}
@@ -533,19 +557,25 @@ function SettingsPanelInner({ lang, state, actions, refs }: SettingsPanelProps) 
                   <button
                     type="button"
                     onClick={() => { clearTokenUsage(); refreshTokenUsage(); }}
-                    className="rounded px-1 py-0.5 text-[0.625rem] mono-font text-[var(--muted)] hover:text-[var(--error)] hover:bg-[color-mix(in_srgb,var(--error)_10%,transparent)] active:bg-[color-mix(in_srgb,var(--error)_20%,transparent)] active:text-[var(--error)] transition-colors"
+                    className="inline-flex items-center text-xs text-[var(--muted)] hover:text-[var(--error)] transition-colors"
                   >
                     {lang === 'zh' ? '清零' : 'Reset'}
                   </button>
                 )}
               </span>
             </div>
-            <p className="text-[0.625rem] mono-font text-[var(--muted)] leading-snug">
-              {tokenUsageTotalCount > 0
-                ? (lang === 'zh'
-                    ? `累计消耗 ≈ ${tokenUsageTotalCount.toLocaleString()} tokens（本地估算值，非服务商账单口径；实际计费以服务商后台为准）`
-                    : `≈ ${tokenUsageTotalCount.toLocaleString()} tokens in total (local estimate, not the provider\'s billing figure — check your provider dashboard for actual charges)`)
-                : (lang === 'zh' ? '还没有使用记录。对话、出题、AI 总结的消耗会累计在这里。' : 'No usage yet. Chat, quiz and AI-summary usage will accumulate here.')}
+            <p className="mt-1 text-xs text-[var(--muted)] leading-relaxed">
+              {tokenUsageTotalCount > 0 ? (
+                <>
+                  {lang === 'zh' ? '累计消耗 ≈ ' : '≈ '}
+                  <span className="font-mono text-[var(--fg)]">{tokenUsageTotalCount.toLocaleString()}</span>
+                  {lang === 'zh'
+                    ? ' tokens（本地估算值，非服务商账单口径；实际计费以服务商后台为准）'
+                    : ' tokens in total (local estimate, not the provider billing figure — check the provider dashboard)'}
+                </>
+              ) : (
+                lang === 'zh' ? '还没有使用记录。对话、出题、AI 总结的消耗会累计在这里。' : 'No usage yet. Chat, quiz and AI-summary usage will accumulate here.'
+              )}
             </p>
           </div>
 

@@ -27,7 +27,6 @@ type PredictQ2 = 'ratio21' | 'ratio11' | 'ratio12' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '观察', reset: '重置',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
@@ -92,7 +91,6 @@ const copy = {
     concludeQ3Ratio12: '1 : 2',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Observations', reset: 'Reset',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
@@ -414,11 +412,19 @@ export default function Electrolysis() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('electrolysis', { stage, power, elapsed });
-  }, [stage, power, elapsed]);
+    setLabState('electrolysis', {
+      stage,
+      power,
+      elapsed,
+      h2Volume: Number(hVol.toFixed(1)),
+      o2Volume: Number(oVol.toFixed(1)),
+      volumeRatio: oVol > 0 ? Number((hVol / oVol).toFixed(2)) : 0,
+      bubbleRate: Number(Math.min(1, elapsed).toFixed(2)),
+    });
+  }, [stage, power, elapsed, hVol, oVol]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('electrolysis', lang === 'zh' ? '请讲解电解水的实验现象：正负极各产生什么气体，体积比是多少' : 'Explain the electrolysis of water: which gas forms at each electrode and the 2:1 volume ratio');
+    setPageQuestion('electrolysis', lang === 'zh' ? '通电后两极产生什么现象？你怎样通过检验判断气体种类和体积关系？' : 'What appears at each electrode after power is on? How would you test the gases and compare their volumes?');
   }, [lang]);
 
   return (

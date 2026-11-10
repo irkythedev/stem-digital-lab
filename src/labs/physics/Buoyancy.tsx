@@ -41,7 +41,6 @@ const LIQUIDS = [
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '读数', reset: '重置',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
@@ -92,7 +91,6 @@ const copy = {
     concludeQ3Down: '越小',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Readings', reset: 'Reset',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
@@ -294,7 +292,7 @@ export default function Buoyancy() {
     setLabState('buoyancy', { stage, vSub, liquidZh: liquid.zh, liquidEn: liquid.en, rho: liquid.rho });
   }, [stage, vSub, liquid]);
   // 「问 AI」：有实时读数就带上，否则回退静态文案
-  const staticAiQuestion = lang === 'zh' ? '请讲解阿基米德原理：浮力与排开液体体积、液体密度有什么关系' : "Explain Archimedes' principle: how buoyancy depends on displaced volume and fluid density";
+  const staticAiQuestion = lang === 'zh' ? '改变浸入体积或换用不同液体时，浮力读数怎样变化？你能从画布上比较哪两个量？' : "As you change the submerged volume or the liquid, how does the buoyancy reading change? Which two quantities can you compare on the canvas?";
   const aiQuestion = useMemo(
     () => getDynamicQuestions('buoyancy', { stage, vSub, liquidZh: liquid.zh, liquidEn: liquid.en, rho: liquid.rho }, lang, staticAiQuestion)[0],
     [vSub, liquid, lang, staticAiQuestion],

@@ -214,7 +214,7 @@ function seoAssets(): Plugin {
       const lines: string[] = [];
       lines.push('# 数理化数字实验室 · STEM Digital Lab');
       lines.push('');
-      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，15 个交互实验 + 6 个工具，另有 AI 学习助手（自带 Key）。');
+      lines.push('> 面向初中 7-9 年级的数学、物理、化学数字实验与探究平台：无需登录、中英双语、深浅主题，19 个交互实验 + 6 个工具，另有 AI 学习助手（自带 Key）。');
       lines.push('');
       lines.push('License: AGPL-3.0');
       lines.push('');

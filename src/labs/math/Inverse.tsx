@@ -10,19 +10,25 @@
  *
  * 复用组件：CoordPlane（坐标系，segments 绘制双曲线两支）、ExploreStage、LabIcon。
  */
-import { useMemo, useState, useEffect } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { ChevronRight, Minus, Pin, Plus, RotateCcw } from 'lucide-react';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
-import CoordPlane, { type CoordCurve, type CoordMarker } from '../../components/lab/CoordPlane';
+import ToggleSwitch from '../../components/lab/ToggleSwitch';
+import CoordPlane, { type CoordCurve, type CoordMarker, type CoordOverlay, mathMinus } from '../../components/lab/CoordPlane';
+import { boolParam, enumParam, numParam, readUrlParams, useLabUrlSync } from '../../lib/lab-url-state';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
+import ParamDock from '../../components/lab/ParamDock';
+import MathCanvasStage from '../../components/lab/MathCanvasStage';
+import { HyperbolaIcon } from '../../components/ui/LabIcon';
 import EngineBadge from '../../components/lab/EngineBadge';
 import { getEngineTooltip } from '../../components/lab/engine-copy';
 import { loadOhmEngine, sampleInverse } from '../physics/stem-engine';
+import { inverseY, inverseRectArea, inverseTriangleArea } from './inverse-core';
 
 type Stage = 'predict' | 'explore' | 'conclude';
 
@@ -30,11 +36,24 @@ type Stage = 'predict' | 'explore' | 'conclude';
 type PredictQuadrant = 'i-iii' | 'ii-iv' | 'all' | 'none' | null;
 type PredictQuadrantNeg = 'i-iii-neg' | 'ii-iv-neg' | 'all-neg' | 'none-neg' | null;
 
+/** 把实验内使用的 Unicode 表达式转成 KaTeX LaTeX（仅用于展示层）。 */
+function texExpr(expr: string): string {
+  return expr.replace(/²/g, '^2').replace(/−/g, '-');
+}
+
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
+    paramDock: '调节参数',
+    paramDockClose: '收起参数',
+    probe: '探针 |x₀|',
+    shape: '图形',
+    shapeRect: '矩形',
+    shapeTriangle: '三角形',
+    area: '面积',
     readout: '当前函数',
+    guides: '辅助线',
+    guidesOffHint: '辅助线已关闭：画布上的虚线与标注暂不显示，先自己看图判断。',
     reset: '重置',
     // 幕导航
     stagePredict: '预测',
@@ -70,6 +89,8 @@ const copy = {
     pinLabel: '钉住这条曲线',
     unpinLabel: '取消钉住',
     pinnedTitle: '已钉住的曲线',
+    pinnedCount: (n: number) => `已钉 ${n} 条`,
+    clearPinned: '清除钉住',
     pinnedEmpty: '（未钉住。钉住后可与当前曲线对比）',
     cards: [
       {
@@ -126,9 +147,17 @@ const copy = {
       'k 的正负决定双曲线所在的象限（k>0 在一、三象限，k<0 在二、四象限）；|k| 决定曲线离原点的远近，但形状不变；两支曲线都无限接近坐标轴但永不相交。',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
+    paramDock: 'Adjust parameters',
+    paramDockClose: 'Close',
+    probe: 'Probe |x₀|',
+    shape: 'Shape',
+    shapeRect: 'Rectangle',
+    shapeTriangle: 'Triangle',
+    area: 'Area',
     readout: 'Current function',
+    guides: 'Guides',
+    guidesOffHint: 'Guides are off: dashed reference lines and labels are hidden — read the graph yourself first.',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -161,6 +190,8 @@ const copy = {
     pinLabel: 'Pin this curve',
     unpinLabel: 'Unpin',
     pinnedTitle: 'Pinned curves',
+    pinnedCount: (n: number) => `${n} pinned`,
+    clearPinned: 'Clear pinned',
     pinnedEmpty: '(nothing pinned — pin curves to compare with the current one)',
     cards: [
       {
@@ -245,14 +276,35 @@ export const QUIZ_CORRECT: Record<string, string[]> = {
 export default function Inverse() {
   const { lang } = useApp();
   const t = copy[lang];
+  const initialUrl = readUrlParams();
+  const initialX0 = numParam(initialUrl.get('x0') ?? initialUrl.get('probeAbs'), 1, -4, 4);
 
-  const [stage, setStage] = useState<Stage>('predict');
+  const [stage, setStage] = useState<Stage>(() => enumParam(initialUrl.get('stage'), ['predict', 'explore', 'conclude'] as const, 'predict'));
   const [predQuadrant, setPredQuadrant] = useState<PredictQuadrant>(null);
   const [predQuadrantNeg, setPredQuadrantNeg] = useState<PredictQuadrantNeg>(null);
   const [revealed, setRevealed] = useState(false);
-  const [k, setK] = useState(TARGET_K);
+  const [k, setK] = useState(() => numParam(initialUrl.get('k'), TARGET_K, -6, 6, { disallowZero: true }));
   const [pinned, setPinned] = useState<{ id: number; k: number }[]>([]);
+  // 辅助线开关：控制画布上的虚线/标注层（反比例=渐近线，一次函数=与 y 轴交点）
+  const [showGuides, setShowGuides] = useState(() => boolParam(initialUrl.get('guides'), true));
+  const [probeAbs, setProbeAbs] = useState(() => Math.max(0.2, Math.abs(initialX0)));
+  const [probeSide, setProbeSide] = useState<1 | -1>(() => (initialX0 < 0 ? -1 : 1));
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [viewCommand, setViewCommand] = useState({ factor: 1, reset: false, nonce: 0 });
+  const zoomViewport = (factor: number) => setViewCommand((v) => ({ factor, reset: false, nonce: v.nonce + 1 }));
+  const resetViewport = () => setViewCommand((v) => ({ factor: 1, reset: true, nonce: v.nonce + 1 }));
+  useEffect(() => {
+    const mq = window.matchMedia?.('(min-width: 1024px)');
+    const sync = () => setIsDesktop(!!mq?.matches);
+    sync();
+    mq?.addEventListener?.('change', sync);
+    return () => mq?.removeEventListener?.('change', sync);
+  }, []);
+  const [shape, setShape] = useState<'rect' | 'triangle'>(() => enumParam(initialUrl.get('geom'), ['rect', 'tri'] as const, 'rect') === 'tri' ? 'triangle' : 'rect');
+  const planeRef = useRef<HTMLDivElement>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
+  useLabUrlSync({ stage, k, x0: probeSide * probeAbs, geom: shape === 'rect' ? 'rect' : 'tri', guides: showGuides }, { stage: 'predict', k: TARGET_K, x0: 1, geom: 'rect', guides: true }, [stage, k, probeSide, probeAbs, shape, showGuides]);
   const [conclusion, setConclusion] = useState<{
     q1: 'quad' | 'shape' | 'none' | null;
     q2: 'near' | 'far' | 'none' | null;
@@ -278,40 +330,85 @@ export default function Inverse() {
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predQuadrant !== null && predQuadrantNeg !== null;
 
+  const sampleMin = isDesktop ? -14 : -4;
+  const sampleMax = isDesktop ? 14 : 4;
   const currentCurve: CoordCurve = useMemo(
     () => ({
       id: 'main',
-      segments: sampleInverse(k),
+      segments: sampleInverse(k, sampleMin, sampleMax),
       label: `y = ${k}/x`,
     }),
     // engineKind 进依赖：sampleInverse 按门面当前实现采样，WASM 加载完成后须重算
-    [k, engineKind],
+    [k, engineKind, sampleMin, sampleMax],
   );
 
   const pinnedCurves: CoordCurve[] = pinned.map((p) => ({
     id: `pin${p.id}`,
-    segments: sampleInverse(p.k),
+    segments: sampleInverse(p.k, sampleMin, sampleMax),
     dashed: true,
     label: `y = ${p.k}/x`,
   }));
 
   const curves = [currentCurve, ...pinnedCurves];
 
+  // 探针：k<0 时落在左支；|x₀| 夹在采样缺口之外，避免点落在断点外
+  const x0 = probeSide * probeAbs;
+  const y0 = inverseY(k, x0);
+  const area = shape === 'rect' ? inverseRectArea(k, x0) : inverseTriangleArea(k, x0);
+  const fmt2 = (v: number) => mathMinus(Math.round(v * 100) / 100);
+
+  const probeOverlays = useMemo<CoordOverlay[]>(() => {
+    if (k === 0 || !Number.isFinite(y0)) return [];
+    const out: CoordOverlay[] = [];
+    if (shape === 'rect') {
+      out.push({
+        kind: 'rect', x: 0, y: 0, w: x0, h: y0,
+        fill: 'var(--accent)', fillOpacity: 0.12,
+        color: 'var(--accent)', dash: '4 3', width: 1.2,
+      });
+    } else {
+      out.push({
+        kind: 'polyline', points: [[0, 0], [x0, 0], [x0, y0]], close: true,
+        fill: 'var(--accent)', fillOpacity: 0.12,
+        color: 'var(--accent)', dash: '4 3', width: 1.2,
+      });
+      out.push({ kind: 'rightAngle', x: x0, y: 0, ux: -1, uy: 0, vx: 0, vy: Math.sign(y0) || 1, size: 7, color: 'var(--muted)' });
+    }
+    out.push(
+      { kind: 'segment', x1: x0, y1: 0, x2: x0, y2: y0, dash: '3 3', color: 'var(--accent)' },
+      { kind: 'segment', x1: 0, y1: y0, x2: x0, y2: y0, dash: '3 3', color: 'var(--accent)' },
+      { kind: 'label', x: x0 * 1.45, y: y0 / 2, text: `S=${shape === 'rect' ? '|k|' : '|k|/2'}=${fmt2(area)}`, size: 10, color: 'var(--accent)' },
+    );
+    return out;
+  }, [k, x0, y0, shape, area]);
+
   // 反比例的「渐近线」就是坐标轴本身（x=0 / y=0）：再叠一条虚线会在轴线上画出断续，
   // 看上去像轴被打断。故 noLine，只在轴端给出规范标注（x 端给 x=0，y 端给 y=0）。
-  const markers = useMemo<CoordMarker[]>(
-    (): CoordMarker[] => [
+  const markers = useMemo<CoordMarker[]>(() => {
+    const marks: CoordMarker[] = [
       {
         key: 'asx',
         vline: { x: 0, label: lang === 'zh' ? '渐近线 x=0' : 'asymptote x=0', color: 'var(--muted)', noLine: true },
       },
       {
         key: 'asy',
-        hline: { y: 0, label: lang === 'zh' ? '渐近线 y=0' : 'asymptote y=0', color: 'var(--muted)', noLine: true },
+        hline: { y: 0, label: lang === 'zh' ? '渐近线 y=0' : 'asymptote y=0', color: 'var(--muted)', noLine: true, labelPlace: 'left' },
       },
-    ],
-    [lang],
-  );
+    ];
+    if (k !== 0 && Number.isFinite(y0)) {
+      marks.push({
+        key: 'probe',
+        dot: {
+          x: x0, y: y0,
+          label: `P(${fmt2(x0)}, ${fmt2(y0)})`,
+          color: 'var(--accent)',
+          place: k > 0 ? 'above' : 'below',
+          side: x0 > 0 ? 'right' : 'left',
+        },
+      });
+    }
+    return marks;
+  }, [lang, k, x0, y0]);
 
   const reset = () => setK(TARGET_K);
 
@@ -382,23 +479,39 @@ export default function Inverse() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('inverse', { stage, k });
-  }, [stage, k]);
+    setLabState('inverse', { stage, k, probeX: x0, probeY: y0, probeArea: area });
+  }, [stage, k, x0, y0, area]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('inverse', lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义，以及双曲线图像有什么特征' : 'Explain the meaning of k in y=k/x and the features of its hyperbola graph');
+    setPageQuestion('inverse', lang === 'zh' ? '改变 k 值或移动探针时，双曲线上的坐标与面积读数有什么规律？' : 'As you change k or move the probe, what pattern appears in the coordinates and area readings on the hyperbola?');
   }, [lang]);
 
   return (
-    <div className="flex flex-col space-y-6">
+    <MathCanvasStage
+      variant={isDesktop ? 'sheet' : 'default'}
+      title={lang === 'zh' ? '反比例函数' : 'Inverse Variation'}
+      grade={lang === 'zh' ? '7-9 年级' : 'Grades 7-9'}
+      backHref="/subject/math"
+      backLabel={lang === 'zh' ? '返回数学' : 'Back to Math'}
+      labId="inverse"
+      aiQuestion={lang === 'zh' ? '请讲解反比例函数 y=k/x 中 k 值的意义' : 'Explain the meaning of k in y=k/x'}
+      icon={<HyperbolaIcon className="h-4 w-4" aria-hidden="true" />}
+      shareTitle={lang === 'zh' ? '反比例函数 · 数理化数字实验室' : 'Inverse Variation · STEM Digital Lab'}
+      center={
+        <StageNav
+          stage={stage}
+          setStage={setStage}
+          stageOrder={stageOrder}
+          labels={{ predict: t.stagePredict, explore: t.stageExplore, conclude: t.stageConclude, next: t.nextStage, redo: t.redoLabel }}
+          onRedo={redoAll}
+          isDone={{ predict: predComplete, explore: observations.length > 0, conclude: conclusionComplete }}
+        />
+      }
+    >
+    <div className="flex flex-col space-y-4 lg:contents">
 
-      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
-          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
-      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
-        <Formula tex="y = \frac{k}{x}" block className="text-lg" />
-      </div>
-
-      {/* 幕导航 */}
+      {/* 幕导航：移动端保留，桌面已移入 MathCanvasStage 一字页头 */}
+      <div className="lg:hidden">
       <StageNav
         stage={stage}
         setStage={setStage}
@@ -417,37 +530,130 @@ export default function Inverse() {
           conclude: conclusionComplete,
         }}
       />
+      </div>
 
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+      <div className="grid items-start gap-5 lg:contents lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}
-        <div className="flex flex-col space-y-6">
-          {stage === 'predict' && !revealed ? (
-            <div className="border border-[var(--border)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
-              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-                {t.predictTitle}
-              </p>
-              <p className="text-sm serif-font text-[var(--fg)]">
-                {t.predictQuestion} <Formula tex={`y = \\frac{${TARGET_K}}{x}`} />
-              </p>
-              <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
-            </div>
-          ) : (
-            <CoordPlane curves={curves} markers={markers} xMin={-4} xMax={4} ariaLabel={`y = k/x graph`} xLabel="x" yLabel="y" />
-          )}
+        <div className={`flex flex-col space-y-4 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'}`}>
+          <div ref={planeRef} className="flex flex-col space-y-6 lg:block lg:h-full lg:space-y-0">
+            <div className="overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] lg:h-full lg:border-0 lg:bg-transparent">
+              <div className={`hidden items-center justify-between border-b border-[var(--border)] bg-[var(--card-bg)] px-3 lg:flex lg:h-10 ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {t.readout}</span>
+                  <span className="truncate text-sm text-[var(--fg)]"><Formula tex={`y = \\frac{${k}}{x}`} /></span>
+                  <span className="truncate text-[0.5625rem] mono-font text-[var(--muted)]">{t.area}: {shape === 'rect' ? '|k|' : '|k|/2'} = {mathMinus(area)}</span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <div className="grid grid-cols-2 gap-1">
+                    {(['rect','triangle'] as const).map((v) => <button key={v} type="button" aria-pressed={shape === v} onClick={() => setShape(v)} className={`compact h-7 rounded border px-1.5 text-[0.5625rem] mono-font ${shape === v ? 'border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)]'}`}>{v === 'rect' ? t.shapeRect : t.shapeTriangle}</button>)}
+                  </div>
+                  <button type="button" onClick={() => zoomViewport(1.25)} aria-label={lang === 'zh' ? '缩小视口' : 'Zoom out'} className="compact flex h-7 w-7 items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"><Minus className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => zoomViewport(0.8)} aria-label={lang === 'zh' ? '放大视口' : 'Zoom in'} className="compact flex h-7 w-7 items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"><Plus className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={resetViewport} aria-label={lang === 'zh' ? '重置视口' : 'Reset view'} className="compact flex h-7 w-7 items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"><RotateCcw className="h-3.5 w-3.5" /></button>
+                  <ToggleSwitch label={t.guides} checked={showGuides} onChange={setShowGuides} compact />
+                  {!inspectorOpen && <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center rounded border border-[var(--border)] px-2 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">« {lang === 'zh' ? '参数' : 'Parameters'}</button>}
+                </div>
+              </div>
+              {stage === 'predict' && !revealed && (
+                <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 p-4 sm:p-6 lg:hidden">
+                  <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
+                    {t.predictTitle}
+                  </p>
+                  <p className="text-sm serif-font text-[var(--fg)]">
+                    {t.predictQuestion} <Formula tex={`y = \\frac{${TARGET_K}}{x}`} />
+                  </p>
+                  <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
+                </div>
+              )}
+              <div className={`${stage === 'predict' && !revealed ? 'hidden lg:block' : 'block'} lg:absolute lg:inset-x-0 lg:top-10 lg:bottom-0 lg:h-auto`}>
+                <CoordPlane
+                  curves={stage === 'predict' && !revealed ? [] : curves}
+                  markers={stage === 'predict' && !revealed ? [] : (showGuides ? markers : [])}
+                  overlays={stage === 'predict' && !revealed ? [] : (showGuides ? probeOverlays : [])}
+                  xMin={-4}
+                  xMax={4}
+                  yMin={-10}
+                  yMax={10}
+                  ariaLabel={`y = k/x graph`}
+                  xLabel="x"
+                  yLabel="y"
+                  framed={false}
+                  viewWidth={isDesktop ? 920 : 640}
+                  viewHeight={isDesktop ? 620 : 380}
+                  fillContainer={isDesktop}
+                  bleed={isDesktop}
+                  clipContent={isDesktop}
+                  squareGrid={isDesktop}
+                  interactiveView={isDesktop}
+                  zoomCommand={viewCommand}
+                  draggablePoint={stage !== 'predict' ? { x: x0, y: y0, onDrag: (x) => { const a = Math.max(0.2, Math.min(4, Math.abs(x))); setProbeAbs(a); setProbeSide(x < 0 ? -1 : 1); } } : undefined}
+                  showLegend={!isDesktop}
+                  maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-h-[min(48vh,440px)]'}
+                />
+              </div>
 
-          <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
-              // {t.readout}
-            </h3>
-            <p className="text-sm mono-font text-[var(--fg)]">y = {k}/x</p>
+              <div data-lab-toolbar="true" className={`mt-2 flex flex-col gap-1.5 border-t border-[var(--border)] px-3 pb-2.5 pt-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2 lg:hidden ${stage === 'predict' && !revealed ? 'hidden' : ''}`}>
+                <div className="min-w-0 w-full flex-1">
+                  <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">
+                      // {t.readout}
+                    </span>
+                    <span className="min-w-0 truncate text-sm text-[var(--fg)]"><Formula tex={`y = \\frac{${k}}{x}`} /></span>
+                  </div>
+                  <p className="mt-0.5 truncate text-[0.625rem] mono-font leading-snug text-[var(--muted)]">
+                    {t.area}: {shape === 'rect' ? '|k|' : '|k|/2'} = {mathMinus(area)}
+                  </p>
+                </div>
+                <div className="flex w-full flex-wrap items-center justify-between gap-1.5 sm:w-auto sm:justify-start">
+                  <div className="grid grid-cols-2 gap-1" role="group" aria-label={t.shape}>
+                    {(['rect', 'triangle'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        aria-pressed={shape === v}
+                        onClick={() => setShape(v)}
+                        className={`compact h-7 rounded border px-2 py-0 text-[0.625rem] mono-font transition-colors ${
+                          shape === v
+                            ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]'
+                            : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
+                        }`}
+                      >
+                        {v === 'rect' ? t.shapeRect : t.shapeTriangle}
+                      </button>
+                    ))}
+                  </div>
+                  <ToggleSwitch label={t.guides} checked={showGuides} onChange={setShowGuides} compact />
+                  {!inspectorOpen && stage !== 'predict' && (
+                    <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center rounded border border-[var(--border)] px-2 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+                      « {lang === 'zh' ? '参数' : 'Parameters'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
+
         </div>
 
         {/* 右列：参数 + 三幕 */}
-        <div className="flex flex-col space-y-6">
-          <div className="border border-[var(--border)] p-4 space-y-4">
+        <div className={`flex flex-col space-y-4 ${stage === 'predict' ? 'lg:absolute lg:inset-0 lg:z-30 lg:flex lg:items-center lg:justify-center lg:bg-transparent lg:p-0' : stage === 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[460px] xl:w-[500px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : inspectorOpen ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[330px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : 'lg:hidden'}`}>
+          <div className={`${stage === 'predict' || stage === 'conclude' ? 'hidden' : 'hidden lg:flex'} shrink-0 items-center justify-between border-b border-[var(--border)] pb-2`}>
+            <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
+            <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+              <span>{lang === 'zh' ? '收起' : 'Collapse'}</span>
+            </button>
+          </div>
+          <div className={stage === 'predict' || stage === 'conclude' ? 'lg:hidden' : ''}>
+          <ParamDock
+            title={t.paramDock}
+            closeLabel={t.paramDockClose}
+            anchorRef={planeRef}
+            summary={`y = ${k}/x · |k| = ${Math.abs(k)}`}
+          >
+          <div className="border border-[var(--border)] p-4 space-y-4 lg:border-0 lg:p-0 lg:space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase lg:hidden">
                 // {t.params}
               </h3>
               <EngineBadge kind={engineKind} title={getEngineTooltip(engineKind, 'formulas', lang)} />
@@ -459,20 +665,80 @@ export default function Inverse() {
               max={6}
               step={0.1}
               onChange={(v) => setK(v === 0 ? (k > 0 ? 0.1 : -0.1) : v)}
-              format={(v) => v.toFixed(1)}
+              format={(v) => mathMinus(v.toFixed(1))}
             />
-            <button
-              type="button"
-              onClick={reset}
-              className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
-            >
-              {t.reset}
-            </button>
+            <ParamSlider
+              label={t.probe}
+              value={probeAbs}
+              min={0.2}
+              max={4}
+              step={0.1}
+              onChange={setProbeAbs}
+              format={(v) => mathMinus(v.toFixed(1))}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-2">
+              <button
+                type="button"
+                onClick={reset}
+                className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
+              >
+                {t.reset}
+              </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {pinned.length > 0 && (
+                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">{t.pinnedCount(pinned.length)}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPinned) {
+                      setPinned((prev) => prev.filter((p) => p.k !== k));
+                    } else {
+                      setPinned((prev) => [...prev, { id: prev.length + 1, k }]);
+                    }
+                  }}
+                  aria-pressed={isPinned}
+                  className={`compact inline-flex min-h-[32px] items-center gap-1 rounded px-2 py-1 text-[0.625rem] mono-font leading-5 transition-colors ${
+                    isPinned
+                      ? 'border border-[var(--fg)] bg-[var(--accent-light)] text-[var(--fg)]'
+                      : 'border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'
+                  }`}
+                >
+                  <Pin
+                    className="h-3.5 w-3.5 shrink-0 transition-transform duration-150"
+                    style={{ transform: isPinned ? 'rotate(-45deg)' : 'none' }}
+                    fill={isPinned ? 'currentColor' : 'none'}
+                    aria-hidden="true"
+                  /> {isPinned ? t.unpinLabel : t.pinLabel}
+                </button>
+                {pinned.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPinned([])}
+                    aria-label={t.clearPinned}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--muted)] hover:bg-[var(--accent-light)]"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              {pinned.length > 0 && (
+                <div className="flex flex-wrap gap-1 border-t border-[var(--border)] pt-1.5">
+                  {pinned.map((p) => (
+                    <span key={p.id} className="inline-flex max-w-full items-center rounded border border-[var(--border)] bg-[var(--accent-light)]/50 px-1.5 py-0.5 text-[0.5625rem] mono-font text-[var(--muted)]">
+                      <span className="truncate">{`y = ${p.k}/x`}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          </ParamDock>
           </div>
 
           {/* 幕1 预测 */}
           {stage === 'predict' && (
-            <div className="border border-[var(--border)] p-4 space-y-4">
+            <div className="border border-[var(--border)] p-4 space-y-4 lg:max-h-[calc(100%-2rem)] lg:w-full lg:max-w-lg lg:overflow-y-auto lg:rounded-xl lg:border lg:bg-[var(--card-bg)]/95 lg:p-6 lg:shadow-sm lg:backdrop-blur-md">
               <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                 // {t.predictTitle}
               </h3>
@@ -544,64 +810,33 @@ export default function Inverse() {
             </div>
           )}
 
-          {/* 幕2 探索 */}
+          {/* 幕2 探索：钉住操作已收编进参数卡底栏 */}
           {stage === 'explore' && (
-            <div className="space-y-6">
-              <ExploreStage
-                cards={cards}
-                observations={observations}
-                onAddObservation={addObservation}
-                onClearObservations={() => setObservations([])}
-                notePlaceholder={t.notePlaceholder}
-                recordLabel={t.recordLabel}
-                clearLabel={t.clearLabel}
-                emptyLabel={t.exploreEmpty}
-                title={t.exploreTitle}
-              />
-
-              {/* 钉住曲线对比 */}
-              <div className="border border-[var(--border)] p-4 space-y-3">
-                <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                  // {t.pinnedTitle}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isPinned) {
-                      setPinned((prev) => prev.filter((p) => p.k !== k));
-                    } else {
-                      setPinned((prev) => [...prev, { id: prev.length + 1, k }]);
-                    }
-                  }}
-                  className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${
-                    isPinned
-                      ? 'border-[var(--muted)] text-[var(--muted)]'
-                      : 'border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'
-                  }`}
-                >
-                  {isPinned ? t.unpinLabel : t.pinLabel}
-                </button>
-                {pinned.length === 0 ? (
-                  <p className="text-xs text-[var(--muted)] serif-font italic">{t.pinnedEmpty}</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {pinned.map((p) => (
-                      <span key={p.id} className="text-[0.6875rem] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
-                        y = {p.k}/x
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <ExploreStage
+              cards={cards}
+              observations={observations}
+              onAddObservation={addObservation}
+              onClearObservations={() => setObservations([])}
+              notePlaceholder={t.notePlaceholder}
+              recordLabel={t.recordLabel}
+              clearLabel={t.clearLabel}
+              emptyLabel={t.exploreEmpty}
+              title={t.exploreTitle}
+              compact
+            />
           )}
 
           {/* 幕3 结论（四组选择） */}
           {stage === 'conclude' && (
             <div className="border border-[var(--border)] p-4 space-y-4">
-              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                // {t.concludeTitle}
-              </h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                  // {t.concludeTitle}
+                </h3>
+                <button type="button" onClick={() => setStage('explore')} className="hidden shrink-0 items-center rounded border border-[var(--border)] px-2 py-1 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] lg:inline-flex">
+                  « {lang === 'zh' ? '返回探索调参' : 'Back to Explore'}
+                </button>
+              </div>
               <p className="text-sm serif-font leading-relaxed text-[var(--fg)]">{t.concludeQuestion}</p>
 
               {/* 软引导：预测未完成时提示（不硬锁，仍可作答） */}
@@ -800,5 +1035,6 @@ export default function Inverse() {
         </div>
       </div>
     </div>
+    </MathCanvasStage>
   );
 }

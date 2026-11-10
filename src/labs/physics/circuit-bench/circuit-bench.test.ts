@@ -71,6 +71,7 @@ import {
   toggleSwitch,
   updateParams,
 } from './circuit-bench-state';
+import { simpleLoop, stateOf } from './fixtures';
 import { buildMonitorModel, LIVE_CURRENT_A, monitorVerdict } from './circuit-bench-monitor';
 import { fitLinear, predict, reconcileProbeKey, toCsv } from './circuit-bench-fit';
 import { buildOptions, readProbe, type ProbeOption } from './circuit-bench-probes';
@@ -340,35 +341,6 @@ function assertRelClose(a: number, b: number, msg: string, tol = 1e-5): void {
   assert.ok(Math.abs(a - b) <= tol * scale, `${msg}: TS=${a} WASM=${b} (rel ${Math.abs(a - b) / scale})`);
 }
 
-function stateOf(components: CircuitComponent[], pairs: [string, string][]): BenchState {
-  return {
-    v: 1,
-    components,
-    wires: pairs.map(([from, to], i) => ({ id: `w_${i + 1}`, from, to })),
-  };
-}
-
-function simpleLoop(params: {
-  emf?: number;
-  r?: number;
-  loadKind?: ElementKind;
-  loadParams?: Record<string, number | string | boolean>;
-  extra?: CircuitComponent[];
-}): BenchState {
-  const load = createComponent('load', params.loadKind ?? 'resistor', 300, 160, params.loadParams ?? { r: 10 });
-  const comps = [
-    createComponent('bat', 'battery', 120, 300, { emf: params.emf ?? 6, r: params.r ?? 0.5 }, 90),
-    createComponent('sw', 'switch', 120, 160, { closed: true }, 90),
-    load,
-    ...(params.extra ?? []),
-  ];
-  return stateOf(comps, [
-    ['bat:b', 'sw:a'],
-    ['sw:b', 'load:b'],
-    ['load:a', 'bat:a'],
-  ]);
-}
-
 function lcg(seed: number): () => number {
   let s = seed >>> 0;
   return () => {
@@ -382,7 +354,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
 
   test('circuit-bench 路由: 注册表、规范路径与 labHref/labFromPath', async () => {
     const { labs, labMap, labHref, labFromPath, labsForSubject } = await import('../../../lib/labs');
-    assert.equal(labs.length, 16);
+    assert.equal(labs.length, 20);
     assert.equal(labsForSubject('physics').length, 8);
     const lab = labMap['circuit-bench'];
     assert.ok(lab, 'circuit-bench 已注册');
@@ -415,10 +387,10 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.equal(regular.length, 7, '物理常规实验为 7 个');
     assert.equal(tools.length, 1, '物理注册表工具台为 1 个');
     assert.equal(regular.length + tools.length, labsForSubject('physics').length, '分组不丢条目');
-    assert.equal(labs.length, 16, '全站条目总数不变');
+    assert.equal(labs.length, 20, '全站条目总数不变');
     // 其他学科：没有注册表工具台，常规实验数量不受影响
     assert.equal(toolsForSubject('math').length, 0);
-    assert.equal(regularLabsForSubject('math').length, 4);
+    assert.equal(regularLabsForSubject('math').length, 8);
     assert.equal(toolsForSubject('chemistry').length, 0);
     assert.equal(regularLabsForSubject('chemistry').length, 4);
 
@@ -426,7 +398,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(page.includes('regularLabsForSubject'), '学科页实验网格需排除工具台');
     assert.ok(page.includes('toolsForSubject'), '学科页工具栏需并入注册表工具台');
     assert.ok(!page.includes("badge?.kind === 'tool'"), '实验卡片不应再渲染工具台徽标');
-    assert.ok(page.includes("'BETA'"), '工具卡片保留 BETA 徽标');
+    assert.ok(page.includes('BetaBadge'), '工具卡片使用统一 BetaBadge 徽标');
     assert.ok(page.includes('lab.description'), '工具卡片沿用注册表文案');
 
     const home = readFileSync(resolve('src/pages/HomePage.tsx'), 'utf-8');
@@ -434,7 +406,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(home.includes("toolsForSubject('physics')"), '首页物理工具栏需并入注册表工具台');
     assert.ok(!home.includes('labsForSubject'), '首页实验网格不应再取含工具台的全量列表');
     assert.ok(!home.includes("lab.meta?.kind === 'tool'"), '首页实验卡片不应再渲染工具台徽标');
-    assert.ok(home.includes('BETA'), '首页工具卡片保留 BETA 徽标');
+    assert.ok(home.includes('BetaBadge'), '首页工具卡片使用统一 BetaBadge 徽标');
   });
 
   test('circuit-bench 路由: 所有入口链接统一走 labHref', () => {
@@ -459,8 +431,9 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     assert.ok(vite.includes('lab.path ?? `/lab/${lab.id}`'), 'sitemap/SEO 未读取 path');
     assert.ok(vite.includes('const path = b.match('), 'parseLabs 未解析 path 字段');
     assert.ok(vite.includes('...(path ? { path } : {})'), 'parseLabs 未把 path 带入 SEO 数据');
-    assert.ok(vite.includes('15 个交互实验 + 6 个工具'), 'GEO 文案需与实际实验/工具数一致');
+    assert.ok(vite.includes('19 个交互实验 + 6 个工具'), 'GEO 文案需与实际实验/工具数一致');
     assert.ok(!vite.includes('16 个交互实验'), 'GEO 文案不得回到旧的实验数口径');
+    assert.ok(!vite.includes('15 个交互实验'), 'GEO 文案不得回到旧的实验数口径');
   });
 
   test('circuit-bench 路由: 全站字面量路由统一为顶层单段', () => {

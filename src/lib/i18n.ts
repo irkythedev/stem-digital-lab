@@ -20,7 +20,7 @@ export const translations = {
       math: {
         title: '数学',
         sub: '7-9 年级',
-                note: '一次函数 · 二次函数 · 反比例函数',
+                note: '一次函数 · 二次函数 · 反比例函数 · 圆的性质 · 三角形全等 · 相似与位似 · 割圆术 · 尺规作图',
       },
       physics: {
         title: '物理',
@@ -157,7 +157,7 @@ export const translations = {
     backToHome: '返回',
     // 首开欢迎弹窗
     welcomeTag: '2026 全国青少年科学探究建模能力大赛 · 初中组 · 参赛作品',
-    welcomeMath: '函数图像（一次 / 二次 / 反比例）· 圆的性质（垂径定理、圆周角、直径所对直角）',
+    welcomeMath: '一次 / 二次 / 反比例函数 · 圆的性质 · 三角形全等与 SSA 反例 · 相似与位似 · 割圆术与尺规作图',
     welcomePhysics: '欧姆定律 · 串并联电路 · 浮力 · 杠杆 · 滑轮 · 压强 · 凸透镜成像',
     welcomeChemistry: '质量守恒 · 电解水 · 金属活动性 · 酸碱中和',
     welcomeTools: '电学工作台 · 元素周期表（3D 原子模型、实物照片、语音跟读）· 化学式与化合价 · 物理常量 · 物理公式 · 数学公式',
@@ -179,7 +179,7 @@ export const translations = {
     // 快速上手指引：4 条纵向导览行（横向覆盖全站，不偏向单一学科）
     lensOutOfBench: '光屏已超出光具座量程',
     guideCard1Title: '三幕探究闭环',
-    guideCard1Desc: '15 个实验都按「预测 → 探索 → 结论」走：先写下猜想，再动手操作，最后对照结论',
+    guideCard1Desc: '19 个实验都按「预测 → 探索 → 结论」走：先写下猜想，再动手操作，最后对照结论',
     guideCard2Title: '三科各有玩法',
     guideCard2Desc: '数学拖动参数看点线变化 · 物理合开关、滑块调参、拖砝码与探针测量 · 化学滴液观察颜色与曲线',
     guideCard3Title: '可视化展台与速查',
@@ -237,7 +237,7 @@ export const translations = {
       math: {
         title: 'Math',
         sub: 'Grades 7-9',
-                note: 'Linear · Quadratics · Inverse Variation',
+                note: 'Linear · Quadratics · Inverse · Circle · Congruence · Similarity · Circle-Cutting · Ruler & Compass',
       },
       physics: {
         title: 'Physics',
@@ -369,7 +369,7 @@ export const translations = {
     backToHome: 'Back',
     // Welcome dialog
     welcomeTag: 'Entry for the 2026 National Youth Scientific Inquiry & Modeling Ability Competition · Junior Division',
-    welcomeMath: 'Function graphs (linear / quadratic / inverse) · circle theorems (perpendicular bisector, inscribed angle, Thales)',
+    welcomeMath: 'Linear, quadratic & inverse functions · circle theorems · triangle congruence & the SSA counterexample · similarity & homothety · circle-cutting (π) · ruler & compass',
     welcomePhysics: "Ohm's law · series and parallel circuits · buoyancy · levers · pulleys · pressure · convex lens",
     welcomeChemistry: 'conservation of mass · electrolysis of water · metal activity · neutralization',
     welcomeTools: 'Circuit workbench · periodic table (3D atom model, photos, spoken readings) · chemical formulas · physics constants · physics formulas · math formulas',
@@ -391,7 +391,7 @@ export const translations = {
     // Quick start: four vertical step rows (cover the whole site, not one subject)
     lensOutOfBench: 'Screen exceeds optical bench limit',
     guideCard1Title: 'Three-stage inquiry',
-    guideCard1Desc: 'All 15 labs run predict → explore → conclude: write your guess, then experiment, then compare with the conclusion',
+    guideCard1Desc: 'All 19 labs run predict → explore → conclude: write your guess, then experiment, then compare with the conclusion',
     guideCard2Title: 'Each subject plays differently',
     guideCard2Desc: 'Maths: drag parameters and watch lines change · Physics: close switches, tune sliders, drag weights and read probes · Chemistry: add drops and watch colour and curves',
     guideCard3Title: 'Visual dashboards & references',

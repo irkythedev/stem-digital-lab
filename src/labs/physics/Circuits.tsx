@@ -70,7 +70,6 @@ type Stage = 'predict' | 'explore' | 'conclude';
 
 const baseCopy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     paramDock: '调节参数',
     paramDockClose: '收起参数',
@@ -130,7 +129,6 @@ const baseCopy = {
     meterVoltmeterErr: '电压表要并联在元件两端测电压，不能串在导线上。',
   },
   en: {
-    prompt: 'Predict, explore freely, then draw your own conclusion. You can move between stages any time.',
     params: 'Parameters',
     paramDock: 'Adjust',
     paramDockClose: 'Close controls',
@@ -298,8 +296,8 @@ export default function Circuits() {
   }, [stage, style.id, switchOn, i0, effR, style.copy.title.zh, style.copy.title.en]);
   // 「问 AI」的问题：有动态读数就带上当前拓扑与电流，否则回退静态文案
   const staticAiQuestion = lang === 'zh'
-    ? '请讲解串联与并联电路中电流、电压的分配规律有什么区别'
-    : 'Compare how current and voltage distribute in series vs parallel circuits';
+    ? '比较串联与并联电路中，改变一个元件后各支路电流、电压读数有什么不同？'
+    : 'In series vs parallel circuits, how do the branch current and voltage readings change after you change one component?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('circuits', {
       styleZh: style.copy.title.zh,

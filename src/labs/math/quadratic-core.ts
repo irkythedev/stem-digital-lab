@@ -30,11 +30,19 @@ export const SAMPLE_STEP = 0.05;
  * 累加会让末点漂移成 3.9999999999999396 并在 160 个点里留下浮点尾巴，
  * 相邻点间距不再严格相等，坐标轴刻度与曲线交点会出现亚像素抖动。
  */
-export function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
+export function sampleQuadratic(
+  a: number,
+  b: number,
+  c: number,
+  xMin: number = SAMPLE_MIN,
+  xMax: number = SAMPLE_MAX,
+): [number, number][] {
   const pts: [number, number][] = [];
-  const n = Math.round((SAMPLE_MAX - SAMPLE_MIN) / SAMPLE_STEP);
+  const span = Math.max(SAMPLE_STEP, xMax - xMin);
+  const n = Math.round(span / SAMPLE_STEP);
+  const step = span / Math.max(1, n);
   for (let k = 0; k <= n; k++) {
-    const x = SAMPLE_MIN + k * SAMPLE_STEP;
+    const x = xMin + k * step;
     pts.push([x, quadraticY(a, b, c, x)]);
   }
   return pts;
@@ -64,4 +72,22 @@ export function quadraticRoots(a: number, b: number, c: number): number[] {
   const r1 = (-b - sq) / (2 * a);
   const r2 = (-b + sq) / (2 * a);
   return r1 <= r2 ? [r1, r2] : [r2, r1];
+}
+
+/**
+ * 抛物线 y = ax² + bx + c 上关于对称轴 x = h 对称的一对点。
+ * 传入 t（通常取 h + d），返回 (t, y) 与 (2h − t, y)，两点同高，
+ * 连线被对称轴垂直平分——这是「轴对称」最直接的几何证据。
+ * a = 0 时不是抛物线，返回 null（由调用方隐藏对称点）。
+ */
+export function symPair(
+  a: number,
+  b: number,
+  c: number,
+  t: number,
+): { x1: number; x2: number; y: number; axisX: number } | null {
+  if (Math.abs(a) < 1e-12) return null;
+  const axisX = -b / (2 * a);
+  const y = a * t * t + b * t + c;
+  return { x1: t, x2: 2 * axisX - t, y, axisX };
 }

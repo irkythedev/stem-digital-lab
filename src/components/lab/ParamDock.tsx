@@ -34,7 +34,7 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
   const suppressClick = useRef(false);
 
   // 挂载标记：让 CSS 只给「装了参数抽屉」的实验页补底部安全区。
-  // 用 <html> 类而不是给每个实验页加 pb-* —— 8 个未装抽屉的实验必须零改动。
+  // 用 <html> 类而不是给每个实验页加 pb-* —— 未装抽屉的 14 个实验必须零改动。
   useEffect(() => {
     const cls = document.documentElement.classList;
     cls.add('param-dock-mounted');
@@ -86,11 +86,11 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
             aria-expanded={false}
             className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 right-[4.5rem] z-sticky-layer flex h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[var(--elev-md)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]"
           >
-            <span className="inline-flex items-center gap-2 min-w-0">
+            <span className="inline-flex shrink-0 items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="truncate">{title}</span>
             </span>
-            <span className="shrink-0 tabular-nums text-[var(--muted)]">{summary}</span>
+            <span className="min-w-0 flex-1 truncate text-right tabular-nums text-[var(--muted)]">{summary}</span>
           </button>,
           document.body,
         )}

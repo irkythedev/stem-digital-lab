@@ -11,6 +11,7 @@
  */
 
 import { loadStorageLimit } from './ai-storage-limit';
+import { stripThinkingFromHistory } from './ai-config';
 
 export interface AiHistoryEntry {
   /** 时间戳36进制 + 随机36进制，冲突概率可忽略 */
@@ -36,6 +37,19 @@ const STORAGE_KEY = HISTORY_STORAGE_KEY;
 /** 历史容量默认上限：保留最近 100 条（实际以 loadStorageLimit() 用户档位为准） */
 export const HISTORY_LIMIT = 100;
 
+/** 单条历史结构校验：answer 必须是字符串（AnswerRich 会对 text.split，缺字段会整站白屏）。
+ *  旧版本写入 / 手工导入 / 将来字段改名都可能出现坏条目，读取时直接过滤，不让一条坏数据拖垮面板。 */
+function isAiHistoryEntry(v: unknown): v is AiHistoryEntry {
+  if (!v || typeof v !== 'object') return false;
+  const e = v as Record<string, unknown>;
+  return (
+    typeof e.id === 'string' &&
+    typeof e.ts === 'number' &&
+    typeof e.question === 'string' &&
+    typeof e.answer === 'string'
+  );
+}
+
 /** 读取历史（损坏/异常一律返回空数组，绝不让历史数据拖垮面板） */
 export function listHistory(): AiHistoryEntry[] {
   if (typeof window === 'undefined') return [];
@@ -43,7 +57,28 @@ export function listHistory(): AiHistoryEntry[] {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as unknown;
-    return Array.isArray(arr) ? (arr as AiHistoryEntry[]) : [];
+    if (!Array.isArray(arr)) return [];
+    let changed = false;
+    const migrated = arr.map((item) => {
+      if (!isAiHistoryEntry(item)) return item; // 保留损坏条目，避免迁移时误删用户数据
+      const answer = stripThinkingFromHistory(item.answer);
+      // 只有“确实命中思考标签”或“去标签后实质内容变化”才迁移；
+      // 普通正文仅首尾空白被 trim 时保留原文，避免无意义回写。
+      const substantive = /<\/?(?:think|thinking|reasoning)\b/i.test(item.answer) || answer !== item.answer.trim();
+      if (substantive) changed = true;
+      return substantive ? { ...item, answer } : item;
+    });
+    // 旧版本 localStorage 可能保存过原始 reasoning；读取时统一清洗，绝不让它进入可见历史。
+    const visible = migrated.filter(isAiHistoryEntry) as AiHistoryEntry[];
+    if (changed) {
+      try {
+        // 一次性回写迁移结果，避免每次启动重复清洗；写入失败也不影响本次返回的干净内存数据。
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      } catch {
+        /* 存储失败：保留内存中的清洗结果，不重新暴露旧 reasoning */
+      }
+    }
+    return visible;
   } catch {
     return [];
   }
@@ -56,6 +91,8 @@ export function saveHistory(entry: Omit<AiHistoryEntry, 'id' | 'ts'>): void {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
     ts: Date.now(),
     ...entry,
+    // 防御性清洗：即使未来调用方传入原始流式文本，也不把 reasoning 写入 localStorage。
+    answer: stripThinkingFromHistory(entry.answer),
   };
   const list = listHistory();
   const limit = loadStorageLimit();

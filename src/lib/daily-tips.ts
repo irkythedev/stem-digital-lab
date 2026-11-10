@@ -17,7 +17,7 @@ export const DAILY_TIPS: DailyTip[] = [
   { subject: 'physics', zh: '串联分压：串联电路中电阻越大，分得的电压越多（U = IR）。', en: 'Series voltage division: in series, the larger the resistance, the more voltage it takes (U = IR).' },
   { subject: 'physics', zh: '并联分流：干路电流等于各支路电流之和（I₀ = I₁ + I₂）。', en: 'Parallel splitting: the main-line current equals the sum of the branch currents (I₀ = I₁ + I₂).' },
   { subject: 'physics', zh: '凸透镜成像：物距大于 2 倍焦距成倒立缩小实像（照相机）；在焦距与 2 倍焦距之间成倒立放大实像（投影仪）。', en: 'Convex lens: object beyond 2f forms an inverted, reduced real image (camera); between f and 2f forms an inverted, magnified real image (projector).' },
-  { subject: 'physics', zh: '浮力：F浮 = ρ液 g V排——浸没后排开液体的体积不变，浮力与深度无关。', en: 'Buoyancy: F = ρ·g·V — once fully submerged, displaced volume is fixed, so buoyancy does not depend on depth.' },
+  { subject: 'physics', zh: '浮力：F浮 = ρ液 g V排——部分浸入时浮力随浸入体积增大而增大；完全浸没后排开液体体积不变，浮力与深度无关。', en: 'Buoyancy: F = ρ·g·V — once fully submerged, displaced volume is fixed, so buoyancy does not depend on depth.' },
   { subject: 'physics', zh: '杠杆平衡条件：动力 × 动力臂 = 阻力 × 阻力臂（F₁L₁ = F₂L₂）。', en: 'Lever balance: effort × effort arm = load × load arm (F₁L₁ = F₂L₂).' },
   { subject: 'physics', zh: '压强：p = F / S；液体压强 p = ρgh，随深度增加而增大。', en: 'Pressure: p = F / S; liquid pressure p = ρgh grows with depth.' },
   { subject: 'physics', zh: '滑轮：定滑轮不省力但改变用力方向；动滑轮省一半力但不改变方向。', en: 'Pulleys: a fixed pulley changes direction but not effort; a moving pulley halves the effort but does not change direction.' },

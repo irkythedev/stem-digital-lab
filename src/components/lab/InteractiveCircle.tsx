@@ -120,6 +120,11 @@ interface InteractiveCircleProps {
   inscribedAngleP?: number;
   /** 直径直角模式：动点 C */
   thalesAngleC?: number;
+  /** 预测阶段只显示基础圆与示意线，隐藏数值/结论。 */
+  showEvidence?: boolean;
+  showAux?: boolean;
+  viewZoom?: number;
+  onMetrics?: (m: { angleBPC: number; angleBQC: number; angleBOC: number; chordLen: number; halfChord: number; perpDist: number }) => void;
   onChange?: (key: string, value: number) => void;
 }
 
@@ -131,6 +136,10 @@ export default function InteractiveCircle({
   inscribedAngleC = 2.0,
   inscribedAngleP = 3.0,
   thalesAngleC = 1.57,
+  showEvidence = true,
+  showAux = true,
+  viewZoom = 1,
+  onMetrics,
   onChange,
 }: InteractiveCircleProps) {
   const { lang } = useApp();
@@ -263,6 +272,7 @@ export default function InteractiveCircle({
   /* ── 直径直角模式计算 ── */
 
   const angleACB = angleBetween(aThales.x, aThales.y, cT.x, cT.y, bThales.x, bThales.y);
+  useEffect(() => { onMetrics?.({ angleBPC, angleBQC, angleBOC, chordLen, halfChord, perpDist }); }, [angleBPC, angleBQC, angleBOC, chordLen, halfChord, perpDist, onMetrics]);
 
   /* ── 拖拽处理 ── */
 
@@ -360,60 +370,27 @@ export default function InteractiveCircle({
   const isDragging = dragging !== null;
 
   return (
-    <div>
-      {/* 构造动画控制条 */}
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        <span className="text-[0.625rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-          {ctl.label}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={stepBack}
-            disabled={step <= 0}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
-          >
-            {ctl.back}
-          </button>
-          <button
-            type="button"
-            onClick={stepNext}
-            disabled={step >= MAX}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:pointer-events-none transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
-          >
-            {ctl.next}
-          </button>
-          <button
-            type="button"
-            onClick={togglePlay}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
-          >
-            {playing ? ctl.pause : ctl.play}
-          </button>
-          <button
-            type="button"
-            onClick={replay}
-            className="px-2.5 py-1.5 text-xs mono-font border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] transition-[border-color,background-color,color,transform] touch-manipulation active:scale-95 rounded-sm"
-          >
-            {ctl.replay}
-          </button>
+    <div className="w-full">
+      {/* 构造动画控制条：紧凑工具行，不抢画布高度 */}
+      <div className="flex h-8 shrink-0 items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--panel-bg)]/40 px-2.5 text-xs mono-font">
+        <span className="shrink-0 uppercase tracking-widest text-[var(--muted)]">{ctl.label}</span>
+        <div className="flex shrink-0 items-center gap-1">
+          <button type="button" onClick={stepBack} disabled={step <= 0} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--border)] px-2 text-xs text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] disabled:opacity-40 disabled:pointer-events-none active:scale-95">{ctl.back}</button>
+          <button type="button" onClick={stepNext} disabled={step >= MAX} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--accent)] px-2 text-xs text-[var(--accent)] transition-colors hover:bg-[var(--accent-light)] disabled:opacity-40 disabled:pointer-events-none active:scale-95">{ctl.next}</button>
+          <button type="button" onClick={togglePlay} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--border)] px-2 text-xs text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] active:scale-95">{playing ? ctl.pause : ctl.play}</button>
+          <button type="button" onClick={replay} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--border)] px-2 text-xs text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] active:scale-95">{ctl.replay}</button>
         </div>
-        {/* 步骤指示点（随内容显现 step 点亮；reduced-motion 全亮与内容全显一致） */}
-        <div className="flex items-center gap-1 ml-1" aria-label={ctl.step(step)}>
+        <div className="ml-1 flex shrink-0 items-center gap-1" aria-label={ctl.step(step)}>
           {Array.from({ length: MAX }).map((_, i) => (
-            <span
-              key={i}
-              className={`w-1.5 h-1.5 rounded-full transition-colors ${show(i + 1) ? 'bg-[var(--fg)]' : 'bg-[var(--border)]'}`}
-              style={{ opacity: show(i + 1) ? 1 : 0.35 }}
-            />
+            <span key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i <= step ? 'bg-[var(--fg)]' : 'bg-[var(--border)]'}`} style={{ opacity: i <= step ? 1 : 0.5 }} />
           ))}
         </div>
       </div>
 
       <svg
         ref={svgRef}
-        viewBox={VIEWBOX}
-        className="w-full select-none touch-none max-h-[500px]"
+        viewBox={`${250 - 250 / viewZoom} ${-10 + (460 - 460 / viewZoom) / 2} ${500 / viewZoom} ${460 / viewZoom}`}
+        className="block h-full w-full select-none touch-none"
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -439,11 +416,11 @@ export default function InteractiveCircle({
             </Fade>
 
             {/* 垂径 CD（过圆心垂直于弦的直径，虚线淡入） */}
-            <Fade show={show(2)}>
+            {showAux && <Fade show={show(2)}>
               <line x1={perp1.x} y1={perp1.y} x2={perp2.x} y2={perp2.y} stroke="var(--accent)" strokeWidth={1.2} strokeDasharray="5 3" />
               <text x={perp1.x + 8} y={perp1.y - 4} fill="var(--accent)" fontSize={13} className="mono-font font-bold">C</text>
               <text x={perp2.x + 8} y={perp2.y - 4} fill="var(--accent)" fontSize={13} className="mono-font font-bold">D</text>
-            </Fade>
+            </Fade>}
 
             {/* 垂足 E + 直角标记 */}
             {chordMid && (
@@ -456,7 +433,7 @@ export default function InteractiveCircle({
             )}
 
             {/* 标注 AE = EB + 相等标记 */}
-            {chordMid && (
+            {showEvidence && chordMid && (
               <Fade show={show(4)}>
                 <text x={(a.x + chordMid.x) / 2} y={(a.y + chordMid.y) / 2 - 10}
                   textAnchor="middle" fill="var(--muted)" fontSize={11} className="mono-font">
@@ -477,15 +454,19 @@ export default function InteractiveCircle({
 
             {/* 数值显示 */}
             <Fade show={show(4)}>
-              <text x={CX} y={CY + R + 30} textAnchor="middle" fill="var(--muted)" fontSize={12} className="mono-font">
-                弦长 AB = {chordLen.toFixed(1)} &nbsp;|&nbsp; 圆心到弦距离 = {perpDist.toFixed(1)}
-              </text>
-              {halfChord > 0 && (
-                <text x={CX} y={CY + R + 48} textAnchor="middle"
-                  fill={Math.abs(halfChord * 2 - chordLen) < 0.01 ? 'var(--fg)' : 'var(--muted)'}
-                  fontSize={13} className="mono-font">
-                  AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? (zh ? '垂径定理成立' : 'Perpendicular bisector holds') : ''}
-                </text>
+              {showEvidence && (
+                <>
+                  <text x={CX} y={CY + R + 30} textAnchor="middle" fill="var(--muted)" fontSize={12} className="mono-font">
+                    弦长 AB = {chordLen.toFixed(1)} &nbsp;|&nbsp; 圆心到弦距离 = {perpDist.toFixed(1)}
+                  </text>
+                  {halfChord > 0 && (
+                    <text x={CX} y={CY + R + 48} textAnchor="middle"
+                      fill={Math.abs(halfChord * 2 - chordLen) < 0.01 ? 'var(--fg)' : 'var(--muted)'}
+                      fontSize={13} className="mono-font">
+                      AE = EB = {halfChord.toFixed(1)} {Math.abs(halfChord * 2 - chordLen) < 0.01 ? (zh ? '垂径定理成立' : 'Perpendicular bisector holds') : ''}
+                    </text>
+                  )}
+                </>
               )}
             </Fade>
           </g>
@@ -539,9 +520,9 @@ export default function InteractiveCircle({
                 return pts.join(' ');
               })()}
                 fill="none" stroke="var(--accent)" strokeWidth={1.5} />
-              <text x={p.x + 20} y={p.y - 10} fill="var(--accent)" fontSize={12} className="mono-font font-bold">
+              {showEvidence && <text x={p.x + 20} y={p.y - 10} fill="var(--accent)" fontSize={12} className="mono-font font-bold">
                 ∠BPC = {toDeg(angleBPC)}
-              </text>
+              </text>}
             </Fade>
 
             {/* 虚线 BQ、QC + ∠BQC（虚线淡入） */}
@@ -566,9 +547,9 @@ export default function InteractiveCircle({
                 );
               })()}
               <text x={q.x + 8} y={q.y - 4} fill="var(--muted)" fontSize={12} className="mono-font">Q</text>
-              <text x={q.x + 20} y={q.y - 10} fill="var(--muted)" fontSize={11} className="mono-font">
+              {showEvidence && <text x={q.x + 20} y={q.y - 10} fill="var(--muted)" fontSize={11} className="mono-font">
                 ∠BQC = {toDeg(angleBQC)}
-              </text>
+              </text>}
             </Fade>
 
             {/* 圆心角 ∠BOC：从圆心 O 到 B、C 的射线（虚线淡入）+ 角度弧 */}
@@ -592,26 +573,31 @@ export default function InteractiveCircle({
                 return pts.join(' ');
               })()}
                 fill="none" stroke="var(--accent)" strokeWidth={1.4} />
-              <text x={CX - 70} y={CY - 40} fill="var(--accent)" fontSize={12} className="mono-font font-bold">
+              {showEvidence && <text x={CX - 70} y={CY - 40} fill="var(--accent)" fontSize={12} className="mono-font font-bold">
                 ∠BOC = {toDeg(angleBOC)}
-              </text>
+              </text>}
             </Fade>
 
             {/* 相等 / 半角提示 */}
             <Fade show={show(5)}>
-              {Math.abs(angleBPC - angleBQC) < 0.01 && (
+              {showEvidence && Math.abs(angleBPC - angleBQC) < 0.01 && (
                 <text x={CX} y={CY + R + 30} textAnchor="middle"
                   fill="var(--fg)" fontSize={13} className="mono-font">
                   ∠BPC = ∠BQC = {toDeg(angleBPC)} 同弧所对圆周角相等
                 </text>
               )}
-              {Math.abs(angleBPC - angleBOC / 2) < 0.01 && (
+              {showEvidence && Math.abs(angleBPC - angleBOC / 2) < 0.01 && (
                 <text x={CX} y={CY + R + 48} textAnchor="middle"
                   fill="var(--accent)" fontSize={13} className="mono-font">
                   ∠BPC = ½∠BOC 圆周角 = 圆心角一半
                 </text>
               )}
             </Fade>
+            {showEvidence && angleBPC > Math.PI / 2 && (
+              <text x={CX} y={CY + R + 66} textAnchor="middle" fill="var(--accent)" fontSize={11} className="mono-font">
+                {zh ? `P 在劣弧上：∠BPC = 180° − ½∠BOC = ${toDeg(angleBPC)}` : `P is on the minor arc: ∠BPC = 180° − ½∠BOC = ${toDeg(angleBPC)}`}
+              </text>
+            )}
           </g>
         )}
 
@@ -654,14 +640,14 @@ export default function InteractiveCircle({
 
             {/* ∠ACB 值 */}
             <Fade show={show(3)}>
-              <text x={cT.x + 20} y={cT.y - 10} fill="var(--accent)" fontSize={13} className="mono-font font-bold">
+              {showEvidence && <text x={cT.x + 20} y={cT.y - 10} fill="var(--accent)" fontSize={13} className="mono-font font-bold">
                 ∠ACB = {toDeg(angleACB)}
-              </text>
+              </text>}
             </Fade>
 
             {/* 90° 提示 */}
             <Fade show={show(4)}>
-              {Math.abs(angleACB - Math.PI / 2) < 0.01 && (
+              {showEvidence && Math.abs(angleACB - Math.PI / 2) < 0.01 && (
                 <text x={CX} y={CY + R + 30} textAnchor="middle"
                   fill="var(--fg)" fontSize={13} className="mono-font">
                   ∠ACB = 90° 直径所对圆周角为直角

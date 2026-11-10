@@ -6,7 +6,7 @@
  * 从原 App.tsx 抽出。免责声明点击展开，Gitee 保留官方红色 icon 悬停显示项目地址。
  */
 import { GITHUB_PATH, GITEE_PATH, REPO_URLS } from '../../lib/brand-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Share2, Library, Mail, Network } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import ShareDialog from '../feedback/ShareDialog';
@@ -14,6 +14,7 @@ import InstallAppButton from '../feedback/InstallAppButton';
 import LicenseDialog from '../ui/LicenseDialog';
 import ExternalLinkConfirm from '../ui/ExternalLinkConfirm';
 import GoPortalBadge from './GoPortalBadge';
+import { ONBOARDING_END_EVENT, ONBOARDING_STEP_EVENT } from '../../lib/use-onboarding-tour';
 
 export default function Footer() {
   const { t } = useApp();
@@ -24,6 +25,31 @@ export default function Footer() {
   const shareBtnRef = useRef<HTMLButtonElement>(null);
   // AGPL-3.0 协议弹窗（点击遮罩/关闭消失，免页面跳转）
   const [showLicense, setShowLicense] = useState(false);
+
+  // 引导第 4 步停在「其他作品」：自动展开作品列表；引导结束后收回默认状态。
+  const tourOpenedWorksRef = useRef(false);
+  useEffect(() => {
+    const onStep = (event: Event) => {
+      const step = (event as CustomEvent<{ step?: number }>).detail?.step;
+      if (step === 3) {
+        tourOpenedWorksRef.current = true;
+        setShowWorks(true);
+        window.setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
+      }
+    };
+    const onEnd = () => {
+      if (tourOpenedWorksRef.current) {
+        tourOpenedWorksRef.current = false;
+        setShowWorks(false);
+      }
+    };
+    window.addEventListener(ONBOARDING_STEP_EVENT, onStep);
+    window.addEventListener(ONBOARDING_END_EVENT, onEnd);
+    return () => {
+      window.removeEventListener(ONBOARDING_STEP_EVENT, onStep);
+      window.removeEventListener(ONBOARDING_END_EVENT, onEnd);
+    };
+  }, []);
 
   const shareUrl = typeof window !== 'undefined' ? window.location.href : 'https://stem.irky.dev/';
 
@@ -75,7 +101,7 @@ export default function Footer() {
             <Mail className="w-3.5 h-3.5" />
           </a>
         </span>
-        <span className="hidden min-[360px]:inline-flex items-center self-center leading-none text-[var(--border)]" aria-hidden="true">
+        <span className="hidden min-[360px]:inline-flex items-center self-center leading-none text-[var(--muted)]" aria-hidden="true">
           /
         </span>
         <span className="inline-flex items-center gap-2 leading-none">
@@ -83,7 +109,7 @@ export default function Footer() {
           {/* 其他作品：作品集图标 + 科技蓝角标，点击展开（与项目描述同行）。
               角标与 hover 动效写在 index.css（.footer-works-*），这里只挂钩子。 */}
           {t.works.length > 0 && (
-          <span className="footer-works relative inline-flex items-center">
+          <span className="footer-works relative inline-flex items-center" data-tour="more-works-trigger">
             <button
               type="button"
               onClick={() => setShowWorks((v) => !v)}
@@ -104,7 +130,7 @@ export default function Footer() {
               <span className="footer-works-tip" aria-hidden="true">{t.moreWorksHint}</span>
             )}
             {showWorks && (
-              <span className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-dropdown flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
+              <span data-tour="more-works" className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-dropdown flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
                 {t.works.map((w) => (
                   <a
                     key={w.url}

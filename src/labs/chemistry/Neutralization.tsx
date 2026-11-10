@@ -142,7 +142,6 @@ function phColor(pH: number): string {
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     paramDock: '调节参数',
     paramDockClose: '收起参数',
@@ -230,7 +229,6 @@ const copy = {
       '恰好中和时 pH=7；酸浓度越大，恰好中和所需碱液体积越大（中和点右移）。',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     paramDock: 'Adjust',
     paramDockClose: 'Close controls',
@@ -471,11 +469,20 @@ export default function Neutralization() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('neutralization', { stage, volume, acidM });
+    const ph = phAt(acidM, volume);
+    const indicatorColor = ph < 7 ? 'colorless' : ph <= 8.2 ? 'pink' : 'red';
+    setLabState('neutralization', {
+      stage,
+      volume,
+      acidM,
+      ph,
+      indicatorColor,
+      equivalenceReached: Math.abs(ph - 7) <= 0.05,
+    });
   }, [stage, volume, acidM]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('neutralization', lang === 'zh' ? '请讲解酸碱中和反应的实质，以及滴定实验为什么在终点时 pH 会突跃' : 'Explain the essence of neutralization and why pH jumps at the titration endpoint');
+    setPageQuestion('neutralization', lang === 'zh' ? '滴入碱液时 pH 读数怎样变化？接近等当点时你观察到什么？' : 'How does the pH reading change as base is added? What do you observe near the equivalence point?');
   }, [lang]);
 
   return (

@@ -55,7 +55,6 @@ type PredictShape = 'line' | 'curve' | 'flat' | 'drop' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     paramDock: '调节参数',
     paramDockClose: '收起参数',
@@ -176,7 +175,6 @@ const copy = {
     ],
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     paramDock: 'Adjust',
     paramDockClose: 'Close controls',
@@ -375,8 +373,8 @@ export default function Ohm() {
   }, [stage, u, r, element, rp, i, switchOn, elemVoltage]);
   // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
   const staticAiQuestion = lang === 'zh'
-    ? '请讲解欧姆定律 I=U/R 的定量关系，以及实验中的操作要点'
-    : 'Explain Ohm\'s law I=U/R and the key steps of this experiment';
+    ? '在本实验中，改变定值电阻或调节滑动变阻器时，电流与电压读数会怎样变化？背后是什么规律？'
+    : 'In this experiment, how do the current and voltage readings change when you change the resistor or adjust the rheostat? What rule explains it?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('ohm', { u, element, i, switchOn, rp, r, elemVoltage }, lang, staticAiQuestion)[0],
     [u, element, i, switchOn, rp, r, elemVoltage, lang, staticAiQuestion],

@@ -8,10 +8,10 @@
 
 <p>
   <a href="LICENSE"><img src="public/badges/license.svg" alt="License: AGPL-3.0"></a>
-  <img src="public/badges/version.svg" alt="Version v0.47.9">
+  <img src="public/badges/version.svg" alt="Version v0.50.1">
   <img src="public/badges/core.svg" alt="Core: C++17 / WebAssembly">
   <img src="public/badges/frontend.svg" alt="Frontend: React 19 + TypeScript">
-  <img src="public/badges/tests.svg" alt="776 tests passing">
+  <img src="public/badges/tests.svg" alt="847 tests passing">
 </p>
 
 <p>
@@ -42,19 +42,19 @@
 
 | 课程与探究体系 | 数值计算底座 | 工程与交付标准 |
 | :--- | :--- | :--- |
-| **15 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 776 项单测门禁 |
+| **19 个交互实验 + 6 个工具**<br>覆盖 7–9 年级数理化核心课标 · 三幕式探究 | **C++17 单文件 WASM 求解核**<br>公式核 + 电路求解核 · TS 静默回退与数值对拍 | **纯前端 · 无后端 · 可离线安装**<br>GB/T 4728 国标图形符号 · 847 项单测门禁 |
 
 无需登录 · 中英双语 · 深浅主题 · 电路图 / 仿真图双模视图 · 电学工作台配色过 WCAG AA 对比度
 
 <!-- Hero 区硬指标的口径来源（改动前必须重新实测）：
-     15 实验 + 6 工具 ← src/lib/labs.ts 注册表（15 个 kind:'lab' + 1 个 kind:'tool' + 5 个固定路由查表工具，smoke 计数守卫会核对）
-     776 passed     ← npm test 实测（48 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
+     19 实验 + 6 工具 ← src/lib/labs.ts 注册表（19 个 kind:'lab' + 1 个 kind:'tool' + 5 个固定路由查表工具，smoke 计数守卫会核对）
+     847 passed     ← npm test 实测（48 条测试命令的 Results 汇总；golden 436 条快照单独统计、不计入。
                       新增用例须同步徽章 / 中英正文 / 三栏表 / 本行，tools/check-readme-stats.mjs 会与实测比对）
      C++17 / WASM   ← cpp/ + src/wasm/{stemCore,circuitBench}.js（-std=c++17 · SINGLE_FILE · 双核）
      React 19 / TS  ← package.json（react ^19.0.1 · typescript ^5.9.3）
      GB/T 4728      ← 《电气简图用图形符号》国标族，电路图线稿按国标绘制（render/schematic.tsx）
      WCAG AA        ← 电学工作台配色令牌对比度实测（仅此范围，勿扩大为全站声明）
-     徽章视觉        ← labelColor=18181b 统一深炭灰底，值色只做低饱和区分，禁用高饱和撞色
+     徽章视觉        ← labelColor=18471b 统一深炭灰底，值色只做低饱和区分，禁用高饱和撞色
      首屏禁用 Emoji   ← 与站内 UI 同一纪律（正文既有条目另行处理） -->
 
 ---
@@ -86,7 +86,8 @@
 - **深浅主题**：默认浅色，适合希沃 / 投影大屏
 - **多端响应式**：手机 / 平板 / PC / 希沃大屏
 - **随机探索**：首页一键随机进入实验或工具
-- **15 个交互实验 + 6 个工具**：电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图 · 读表与元件状态监控）、化学式与化合价（化合价速查 · 十字交叉生成 · 由式反推 · 六类练习）、元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
+- **19 个交互实验 + 6 个工具**：电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图 · 读表与元件状态监控）、化学式与化合价（化合价速查 · 十字交叉生成 · 由式反推 · 六类练习）、元素周期表（118 元素 · 实物照片 · 读音）、物理常量速查、物理公式速查、数学公式速查
+- **Beta 实验预览**：4 个进阶几何实验默认收起，可在学科页一键展开；不影响现有核心实验与 6 个工具的正常使用
 - **AI 学习助手**（顶栏入口）：支持数学公式排版、问答历史（本地持久化）、**考考我**AI 出题练习与**回答朗读**（数学公式、化学式按规范读法读出），错题自动汇入错题集、**可导出 A4 复习卷打印**；面板尺寸可自由调整；配置您自己的 AI 服务商 API Key 即可使用，Key 仅存本机、对话直连服务商、本站不记录
 - **可离线安装**：安装为应用后离线使用（PWA）
 - **每日科学**：首页每天一位科学家的名言、考点速记与小故事
@@ -94,7 +95,7 @@
 
 ### 实验与工具清单
 
-**数学** `7-9`　一次函数 · 二次函数 · 反比例函数 · 圆的性质
+**数学** `7-9`　一次函数 · 二次函数 · 反比例函数 · 圆的性质 · 三角形全等 · 相似与位似 · 割圆术 · 尺规作图
 
 **物理** `8-9`　欧姆定律 · 串并联电路 · 凸透镜成像 · 浮力 · 杠杆 · 压强 · 滑轮
 
@@ -102,7 +103,9 @@
 
 **工具**　电学工作台（自由画布搭电路 · 电路图 / 仿真图双视图）· 化学式与化合价（价态速查 · 十字交叉生成 · 由式反推 · 六类练习）· 元素周期表（118 元素 · 检索 · 实物照片 · 读音 · 中考跟读）· 物理常量速查 · 物理公式速查 · 数学公式速查
 
-> 15 个实验与 6 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
+> **Beta 实验说明**：三角形全等、相似与位似、割圆术、尺规作图这 4 个进阶几何实验目前为 **Beta 预览**，默认不在首页/学科页展开。在学科页点「+4 实验」开关，或访问带 `?beta=1` 的链接即可开启；开启状态会保存在本机，Beta 实验的深链也会自动解锁。卡片和实验标题上的 **BETA** 徽标表示内容仍在校准中，欢迎通过右下角反馈入口提出意见。
+
+> 19 个实验与 6 个工具页均内置**问 AI**（结合当前页面的启发答疑）与**考考你**（随堂出题、即时判分）双入口。
 
 ### 路线图（探索中）
 
@@ -170,7 +173,7 @@ npm test           # 运行全部测试（无需任何服务）
 
 提交前另跑 `npm run lint`（即 `tsc --noEmit`）做类型检查，它不包含在 `npm test` 里。
 
-内置测试套件 **776 项全绿**（48 条测试命令：`src/smoke.test.ts` 174 项 + 其余命令 600 项；其中 `src/latex-speech.golden.test.ts` 已含在上述 48 条内，钉住 **436 条逐字快照**，快照单独统计、不计入 776），约 1 分钟内完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
+内置测试套件 **847 项全绿**（48 条测试命令：`src/smoke.test.ts` 180 项 + 其余命令 664 项；其中 `src/latex-speech.golden.test.ts` 已含在上述 48 条内，钉住 **436 条逐字快照**，快照单独统计、不计入 847），约 1 分钟内完成，**100% 离线**：不启动服务器、不访问网络、不需要数据库或环境变量。默认那些用例只使用 Node 内置模块（`node:assert` / `node:fs`）；三方对拍那组额外调用本机 `g++` 与已入库的 WASM 产物（两者缺失即失败，不降级为两方对拍）。四类断言并存：
 
 - **三方对拍**：同一批公式的 `g++` 原生真值 · WASM 导出 · TS 回退真源逐点比对（10 个导出，相对容差 1e-5，NaN 哨兵必须两边都是 NaN）；
 - **行为与数值**：实验注册表、物理与数学真源对拍、公式朗读、本地存储与题目解析；
@@ -322,7 +325,8 @@ src/
 - **Light & dark themes** — light by default for classroom projection
 - **Responsive layout** — mobile / tablet / PC / Seewo interactive screen
 - **Random explore** — a homepage button jumps into a random lab or tool
-- **15 interactive labs + 6 tools** — Circuit Workbench (free canvas · circuit and simulation views · live meters and component status), Chemical Formulas (valence reference, cross-rule builder, solver, six practice types), Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
+- **19 interactive labs + 6 tools** — Circuit Workbench (free canvas · circuit and simulation views · live meters and component status), Chemical Formulas (valence reference, cross-rule builder, solver, six practice types), Periodic Table (118 elements · photos · pronunciation · recite), Physics Constants, Physics Formulas, Math Formulas
+- **Beta lab preview** — four advanced geometry labs are hidden by default; expand them from the subject page without affecting the existing core labs or 6 tools
 - **AI assistant** (header entry) — renders math formulas, keeps Q&A history (stored locally), offers "Quiz me" AI practice and **reads answers aloud** (formulas and chemical names in standard spoken form), with wrong answers collected into a mistake book you can **export as a printable A4 revision sheet**; panel size is freely adjustable; configure your own provider API key for science help — key stays on-device, chats go straight to your provider, nothing is logged
 - **Offline install** — installable as an app and usable offline (PWA)
 - **Daily Science** — a scientist quote, key-point tip and short story each day on the homepage
@@ -330,7 +334,7 @@ src/
 
 ### Labs & Tools
 
-**Math** `7–9`　Linear · Quadratic · Inverse Variation · Circle Properties
+**Math** `7–9`　Linear · Quadratic · Inverse Variation · Circle Properties · Triangle Congruence · Similarity & Homothety · Circle-Cutting (π) · Ruler & Compass
 
 **Physics** `8–9`　Ohm's Law · Circuits · Lens · Buoyancy · Levers · Pressure · Pulleys
 
@@ -338,7 +342,9 @@ src/
 
 **Tools**　Circuit Workbench (free canvas · circuit and simulation views) · Chemical Formulas (valence reference · cross-rule builder · solver · six practice types) · Periodic Table (118 elements · search · photos · pronunciation · recite) · Physics Constants · Physics Formulas · Math Formulas
 
-> All 15 labs and all 6 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
+> **Beta labs**: Four advanced geometry labs — Triangle Congruence, Similarity & Homothety, Circle-Cutting (π), and Ruler & Compass — are in **Beta preview** and hidden from the default home/subject lists. Turn them on with the “+4 Labs” toggle on the subject page or open a link with `?beta=1`; the choice is remembered on this device, and Beta deep links unlock automatically. A **BETA** badge means the content is still being calibrated — feedback via the bottom-right entry is welcome.
+
+> All 19 labs and all 6 tool pages ship two entry points: **Ask AI** (page-aware hints and explanations) and **Quiz me** (on-the-spot questions with instant grading).
 
 ### Roadmap (experimental)
 
@@ -406,7 +412,7 @@ npm test           # Run the whole suite (no service required)
 
 Before committing, also run `npm run lint` (`tsc --noEmit`) for type checking; it is not part of `npm test`.
 
-The built-in suite runs **776 cases, all green** (48 test commands: 174 in `src/smoke.test.ts` plus 600 across the rest, including `src/latex-speech.golden.test.ts` (one of the 48 commands), which pins **436 verbatim snapshots** counted separately from the 776), in about a minute, and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
+The built-in suite runs **847 cases, all green** (48 test commands: 180 in `src/smoke.test.ts` plus 664 across the rest, including `src/latex-speech.golden.test.ts` (one of the 48 commands), which pins **436 verbatim snapshots** counted separately from the 847), in about a minute, and is **100% offline**: no server, no network, no database, no environment variables. The default cases use only Node built-ins (`node:assert` / `node:fs`); the three-way parity group additionally shells out to the local `g++` and imports the checked-in WASM artifact (missing either one fails the run rather than degrading to a two-way check). Four kinds of checks live side by side:
 
 - **Three-way parity**: the same formulas checked point by point across `g++` native truth, the WASM exports, and the TS source-of-truth fallbacks (10 exports, 1e-5 relative tolerance, NaN sentinels must be NaN on both sides);
 - **Behaviour and numerics**: lab registry, physics/math source-of-truth cross-checks, formula speech, local storage and quiz parsing;

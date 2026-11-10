@@ -203,12 +203,20 @@ export function sampleOhm(r: number, element: ElementType, rp = 0): [number, num
  * 采样一条二次函数曲线（与 quadratic-core 同语义）：x ∈ [-4, 4]（x <= 4.0001）
  * 步长 0.05，单段。循环固定在此，标量走当前指针。
  */
-export function sampleQuadratic(a: number, b: number, c: number): [number, number][] {
+export function sampleQuadratic(
+  a: number,
+  b: number,
+  c: number,
+  xMin = -4,
+  xMax = 4,
+): [number, number][] {
   const pts: [number, number][] = [];
-  // 索引乘法取点（原先的逐点累加使末点漂移为 3.9999999999999396，161 点里 160 个带尾数）
-  const n = Math.round(8 / 0.05);
+  // 索引乘法取点：区间可随视窗扩展，末点仍精确落在请求的 xMax。
+  const span = Math.max(0.05, xMax - xMin);
+  const n = Math.round(span / 0.05);
+  const step = span / Math.max(1, n);
   for (let k = 0; k <= n; k++) {
-    const x = -4 + k * 0.05;
+    const x = xMin + k * step;
     pts.push([x, implQuadraticY(a, b, c, x)]);
   }
   return pts;
@@ -218,14 +226,19 @@ export function sampleQuadratic(a: number, b: number, c: number): [number, numbe
  * 采样反比例函数两支（与 inverse-core 同语义）：[左支, 右支]，
  * x ∈ [-4, −0.15] ∪ [0.15, 4]，步长 0.05，索引乘法取点；k = 0 → 两个空段。
  */
-export function sampleInverse(k: number): [number, number][][] {
+export function sampleInverse(k: number, xMin = -4, xMax = 4): [number, number][][] {
   if (k === 0) return [[], []];
   const neg: [number, number][] = [];
   const pos: [number, number][] = [];
-  const n = Math.round((4 - 0.15) / 0.05);
-  for (let i = 0; i <= n; i++) {
-    const x = 0.15 + i * 0.05;
-    neg.push([-4 + i * 0.05, implInverseY(k, -4 + i * 0.05)]);
+  const step = 0.05;
+  const negN = Math.max(1, Math.round((Math.abs(xMin) - 0.15) / step));
+  const posN = Math.max(1, Math.round((xMax - 0.15) / step));
+  for (let i = 0; i <= negN; i++) {
+    const x = xMin + (i * ((Math.abs(xMin) - 0.15) / negN));
+    neg.push([x, implInverseY(k, x)]);
+  }
+  for (let i = 0; i <= posN; i++) {
+    const x = 0.15 + (i * ((xMax - 0.15) / posN));
     pos.push([x, implInverseY(k, x)]);
   }
   return [neg, pos];

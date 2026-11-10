@@ -19,6 +19,7 @@ import {
   type AiConfig, type AiProvider, type ThinkingEffort,
 } from '../../../lib/ai-config';
 import { reportAiFailure, reportAiSuccess } from '../../../lib/ai-status';
+import { loadAiShowReasoning, saveAiShowReasoning } from '../../../lib/ai-reasoning-preference';
 import { groupLocalVoices, loadTtsConfig, saveTtsConfig, type LocalVoice, type TtsConfig } from '../../../lib/tts-config';
 import { useTtsPreview } from '../../../lib/use-tts-preview';
 import { useTtsStatus } from '../../../lib/tts-status';
@@ -58,6 +59,11 @@ export default function useAiSettings(deps: AiSettingsDeps) {
   const groupedVoices = groupLocalVoices(localVoices);
   /** 设置视图内的 Tab：model = 大模型设置（默认）；speech = 语音朗读。切换不触发保存 */
   const [settingsTab, setSettingsTab] = useState<'model' | 'speech'>('model');
+  const [showReasoning, setShowReasoningState] = useState<boolean>(() => loadAiShowReasoning());
+  const setShowReasoning = (next: boolean) => {
+    setShowReasoningState(next);
+    saveAiShowReasoning(next);
+  };
   /** 原位试听（独立于朗读主链路：试听失败不静默换声） */
   const ttsPreview = useTtsPreview();
   /** 语音通道状态（就绪 / 已降级 / 连接异常）：供状态胶囊与试听按钮共用 */
@@ -367,6 +373,8 @@ export default function useAiSettings(deps: AiSettingsDeps) {
     setModel('');
     setKeyByProvider({});
     setThinkingEffort('standard');
+    setShowReasoningState(false);
+    saveAiShowReasoning(false);
     setExtraParamsText('');
     setExtraParamsOpen(false);
     setMaxTokensText('');
@@ -380,8 +388,8 @@ export default function useAiSettings(deps: AiSettingsDeps) {
     testingRef.current = false;
     fetchingRef.current = false;
   };
-  const settingsState = useMemo(() => ({ apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus }), [apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus]);
-  const settingsActions = useStable(() => ({ clearSettings, fetchModelList, modelMatches, refreshTokenUsage, save, selectProvider, setApiKey, setCustomUrl, setExtraParamsOpen, setExtraParamsText, setMaxTokensText, setModel, setModelMenuOpen, setSettingsTab, setShowKey, setShowTokenUsage, setShowTtsKey, setThinkingEffort, setView, testConnection, tierLocked, updateTts }));
+  const settingsState = useMemo(() => ({ apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, showReasoning, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus }), [apiKey, config, customUrl, extraParamsOpen, extraParamsText, extraParamsValid, fetching, formMatchesSaved, groupedVoices, liveModels, maxTokensText, model, modelMenuOpen, modelNote, provider, providerId, selectedEffort, sentDesc, setOpen, settingsTab, showKey, showTtsKey, showReasoning, testResult, testing, thinkingPlan, tokenUsageTotalCount, ttsCfg, ttsPreview, ttsStatus]);
+  const settingsActions = useStable(() => ({ clearSettings, fetchModelList, modelMatches, refreshTokenUsage, save, selectProvider, setApiKey, setCustomUrl, setExtraParamsOpen, setExtraParamsText, setMaxTokensText, setModel, setModelMenuOpen, setSettingsTab, setShowKey, setShowTokenUsage, setShowTtsKey, setShowReasoning, setThinkingEffort, setView, testConnection, tierLocked, updateTts }));
   const settingsRefs = useMemo(() => ({ modelMenuRef }), [modelMenuRef]);
   // ── 对外接口 ────────────────────────────────────────────────
   return {
@@ -399,5 +407,7 @@ export default function useAiSettings(deps: AiSettingsDeps) {
     openedRef: settingsOpenedRef,
     /** 供主组件其它链路复用（思考参数实发描述等） */
     sentDesc,
+    /** 设置面板中的「显示思考推理明细」偏好（默认关闭） */
+    showReasoning,
   };
 }

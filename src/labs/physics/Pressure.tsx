@@ -29,7 +29,6 @@ type PredictQ1 = 'pres' | 'area' | 'mass' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '读数', reset: '重置',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
@@ -76,7 +75,6 @@ const copy = {
     concludeQ3Board: '书包带做宽（增大受力面积）',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Readings', reset: 'Reset',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
@@ -245,7 +243,7 @@ export default function Pressure() {
     setLabState('pressure', { stage, F, S });
   }, [stage, F, S]);
   // 「问 AI」：有实时读数就带上，否则回退静态文案
-  const staticAiQuestion = lang === 'zh' ? '请讲解压强 p=F/S 的物理意义，增大和减小压强的方法有哪些' : 'Explain pressure p=F/S and the ways to increase or decrease it';
+  const staticAiQuestion = lang === 'zh' ? '改变压力或受力面积时，压强读数怎样变化？你能从画布上比较哪两个量？' : 'As you change the force or the contact area, how does the pressure reading change? Which two quantities can you compare on the canvas?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('pressure', { stage, F, S }, lang, staticAiQuestion)[0],
     [F, S, lang, staticAiQuestion],

@@ -46,7 +46,6 @@ function imageDesc(u: number, f: number, lang: 'zh' | 'en'): string {
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数',
     readout: '读数',
     reset: '重置',
@@ -153,7 +152,6 @@ const copy = {
     concludeQ4Vltf: 'v < f',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters',
     readout: 'Readings',
     reset: 'Reset',
@@ -321,8 +319,8 @@ export default function Lens() {
   }, [stage, u, f, v]);
   // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
   const staticAiQuestion = lang === 'zh'
-    ? '请讲解凸透镜成像的规律：物距与像的性质有什么关系'
-    : 'Explain convex-lens imaging: how object distance determines the image properties';
+    ? '移动蜡烛改变物距时，像的大小、正倒和虚实会怎样变化？'
+    : 'As you move the candle and change the object distance, how do the image size, orientation and type change?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('lens', { u, f, v }, lang, staticAiQuestion)[0],
     [u, f, v, lang, staticAiQuestion],

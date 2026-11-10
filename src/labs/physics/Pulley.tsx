@@ -28,7 +28,6 @@ type PredictQ1 = 'fixed' | 'moving' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '读数', reset: '重置',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
     nextStage: '下一步 →', redoLabel: '再次实验',
@@ -71,7 +70,6 @@ const copy = {
     concludeQ2None: '不省力，改变方向',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Readings', reset: 'Reset',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
     nextStage: 'Next →', redoLabel: 'Redo',
@@ -233,7 +231,7 @@ export default function Pulley() {
     setLabState('pulley', { stage, type, G });
   }, [stage, type, G]);
   // 「问 AI」：有实时读数就带上，否则回退静态文案
-  const staticAiQuestion = lang === 'zh' ? '请讲解定滑轮与动滑轮各有什么特点，滑轮组怎么判断省力情况' : 'Explain fixed vs movable pulleys and how to determine the effort saved by a pulley system';
+  const staticAiQuestion = lang === 'zh' ? '换用定滑轮/动滑轮或改变重物时，拉力与绳端移动距离有什么变化规律？' : 'When you switch between fixed and movable pulleys or change the load, how do the pull force and rope distance change?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('pulley', { stage, type, G }, lang, staticAiQuestion)[0],
     [type, G, lang, staticAiQuestion],

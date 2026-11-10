@@ -31,7 +31,6 @@ type PredictQ1 = 'prop' | 'inv' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     params: '参数', readout: '读数', reset: '重置',
     paramDock: '调节参数', paramDockClose: '收起参数',
     stagePredict: '预测', stageExplore: '探索', stageConclude: '结论',
@@ -76,7 +75,6 @@ const copy = {
     concludeQ2Rod: '钓鱼竿（费力杠杆）',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     params: 'Parameters', readout: 'Readings', reset: 'Reset',
     paramDock: 'Adjust', paramDockClose: 'Close controls',
     stagePredict: 'Predict', stageExplore: 'Explore', stageConclude: 'Conclude',
@@ -171,8 +169,8 @@ export default function Lever() {
   }, [stage, m1, d1, m2, d2, isBalanced]);
   // 「问 AI」的问题：有动态读数模板就用它，否则回退静态文案（见 ai-dynamic-questions.ts）
   const staticAiQuestion = lang === 'zh'
-    ? '请讲解杠杆平衡条件 F₁l₁=F₂l₂，以及省力、费力、等臂杠杆怎么区分'
-    : 'Explain the lever balance F₁l₁=F₂l₂ and how to tell effort-saving, effort-costing and equal-arm levers';
+    ? '改变左右钩码个数或力臂长度时，杠杆什么时候保持平衡？你观察到什么规律？'
+    : 'As you change the weights or arm lengths on each side, when does the lever balance? What pattern do you observe?';
   const aiQuestion = useMemo(
     () => getDynamicQuestions('lever', { m1, d1, m2, d2, balanced: isBalanced }, lang, staticAiQuestion)[0],
     [m1, d1, m2, d2, isBalanced, lang, staticAiQuestion],

@@ -18,11 +18,15 @@ interface VersionDialogProps {
   onClose: () => void;
   /** 从欢迎弹窗里打开：整层抬到宿主卡片之上，否则面板被宿主卡片（z-modal）盖住 */
   elevated?: boolean;
+  /** 当前有新版时，在版本历史顶部提供直接更新入口 */
+  hasUpdate?: boolean;
+  updateBusy?: boolean;
+  onUpdate?: () => void;
 }
 
 const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
 
-export default function VersionDialog({ onClose, elevated = false }: VersionDialogProps) {
+export default function VersionDialog({ onClose, elevated = false, hasUpdate = false, updateBusy = false, onUpdate }: VersionDialogProps) {
   useEscapeKey(onClose);
   useFocusReturn(); // 关掉后焦点回到版本号按钮
   const { lang, t } = useApp();
@@ -60,6 +64,20 @@ export default function VersionDialog({ onClose, elevated = false }: VersionDial
           </h2>
           <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
         </div>
+        {hasUpdate && onUpdate && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-[var(--accent)]/50 bg-[var(--accent-light)]/60 px-2.5 py-2 text-[0.6875rem] text-[var(--fg)]">
+            <span>{lang === 'zh' ? '有新版本可用，建议立即更新' : 'A new version is available — update now'}</span>
+            <button
+              type="button"
+              disabled={updateBusy}
+              onClick={onUpdate}
+              className="shrink-0 rounded border border-[var(--accent)] px-2 py-1 mono-font text-[0.625rem] text-[var(--accent)] transition-colors hover:bg-[var(--card-bg)] disabled:cursor-progress disabled:opacity-60"
+            >
+              {updateBusy ? (lang === 'zh' ? '更新中…' : 'Updating…') : (lang === 'zh' ? '立即更新' : 'Update now')}
+            </button>
+          </div>
+        )}
+
         {/* 离线教学包入口：放在更新日志上方，属于「应用级」设置 */}
         <button
           type="button"

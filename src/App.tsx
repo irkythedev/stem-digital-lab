@@ -5,7 +5,7 @@
  * 应用外壳：路由 + 全局 Provider。
  */
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppProvider, useApp } from './lib/app-context';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -16,6 +16,7 @@ import AppErrorBoundary from './components/AppErrorBoundary';
 import { AiProvider, useAiContext } from './lib/ai-context';
 import { flushFeedbackQueue } from './lib/feedback';
 import { installFeedbackAutoFlush } from './lib/feedback-auto-flush';
+import { ONBOARDING_START_EVENT, ONBOARDING_WELCOME_CLOSED_EVENT } from './lib/use-onboarding-tour';
 /**
  * 路由页面一律按需加载：主入口只保留应用外壳（导航、AI 助手、反馈）。
  * 页面自带的 GEO JSON 与重型组件因此落在各自 chunk，不会撑大首屏主包。
@@ -92,6 +93,12 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
   // 路由变化时重建错误边界：某一页 chunk 失败后，点导航去已缓存的页面仍应能打开，
   // 而不是被上一次的错误状态永久锁在提示页。
   const location = useLocation();
+  const navigate = useNavigate();
+  // GraphLab 样板：二次函数需要 1280px 工作台把画布真正放大；其他页面保持既有版心。
+  const WIDE_LABS = ['/lab/quadratic', '/lab/construction', '/lab/polygon-pi', '/lab/similarity', '/lab/congruence', '/lab/linear', '/lab/inverse', '/lab/circle'];
+  const wideLab = WIDE_LABS.includes(location.pathname);
+  const fullCanvasLab = ['/lab/quadratic', '/lab/linear', '/lab/inverse', '/lab/circle', '/lab/congruence', '/lab/similarity', '/lab/polygon-pi', '/lab/construction'].includes(location.pathname);
+  const sheetLab = fullCanvasLab;
   // 首屏预渲染骨架只在首次进入时用；一旦用户发生路由跳转就退回普通加载占位。
   const [initialFallback, setInitialFallback] = useState(initialFallbackHtml);
   const firstPath = useRef(location.pathname);
@@ -127,23 +134,43 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
       }
     }
     setShowWelcome(false);
+    try {
+      window.dispatchEvent(new Event(ONBOARDING_WELCOME_CLOSED_EVENT));
+    } catch {
+      // SSR / 隐私模式静默
+    }
+  };
+
+  const replayTour = () => {
+    setShowWelcome(false);
+    if (location.pathname !== '/') navigate('/');
+    // 等首页挂载后再启动，避免在别的路由上派发事件丢失。
+    window.setTimeout(() => {
+      try {
+        window.dispatchEvent(new Event(ONBOARDING_START_EVENT));
+      } catch {
+        // ignore
+      }
+    }, 120);
   };
 
   return (
     <AppProvider>
       <AiProvider>
-      {showWelcome && <WelcomeDialog onClose={closeWelcome} initialTab={welcomeTab} />}
+      {showWelcome && <WelcomeDialog onClose={closeWelcome} initialTab={welcomeTab} onReplayTour={replayTour} />}
       <div
         id="app-main"
-        className="min-h-dvh w-full flex flex-col justify-between py-4 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] sm:py-6 selection:bg-[var(--accent-light)] selection:text-[var(--fg)]"
+        className={`min-h-dvh w-full flex flex-col justify-between py-4 pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] sm:py-6 selection:bg-[var(--accent-light)] selection:text-[var(--fg)] ${fullCanvasLab ? 'lg:py-0' : ''} ${sheetLab ? 'lg:h-dvh lg:overflow-hidden' : ''}`}
       >
         <SkipLink />
-        <Header
-          onOpenGuide={() => {
-            setWelcomeTab('guide');
-            setShowWelcome(true);
-          }}
-        />
+        <div>
+          <Header
+            onOpenGuide={() => {
+              setWelcomeTab('guide');
+              setShowWelcome(true);
+            }}
+          />
+        </div>
         {/* 内容列：外壳不再限宽（使页头/页脚的分隔线能满幅通栏），
             限宽与水平内边距改由这一层承担，正文列位置与宽度保持不变。
             页头/页脚的内容容器用 px-6 sm:px-12 lg:px-14（= 本层 px + <main> 的 px-2 sm:px-6），
@@ -151,7 +178,15 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
             工作台也走这一列：它与全站页头共用同一套版心，不再 100vw 贴死屏幕边缘。
             flex-1 让这一列吃掉页头与页脚之间的全部剩余高度，
             否则 justify-between 会把空白摊在页头下方，形成一条突兀的断层。 */}
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 sm:px-6 lg:max-w-5xl lg:px-8 xl:max-w-6xl 2xl:max-w-7xl">
+        <div
+          className={
+            sheetLab
+              ? 'mx-auto flex min-h-0 w-full flex-1 flex-col lg:max-w-5xl lg:px-14 xl:max-w-6xl 2xl:max-w-7xl'
+              : wideLab
+              ? 'mx-auto flex w-full max-w-[1360px] flex-1 flex-col px-4 sm:px-6 lg:px-8'
+              : 'mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 sm:px-6 lg:max-w-5xl lg:px-8 xl:max-w-6xl 2xl:max-w-7xl'
+          }
+        >
           <AppErrorBoundary resetKey={location.pathname}>
           <Suspense fallback={initialFallback ? <PrerenderFallback html={initialFallback} /> : <RouteLoading />}>
           <Routes>
@@ -176,10 +211,15 @@ export default function App({ initialFallbackHtml = '' }: { initialFallbackHtml?
           </Suspense>
           </AppErrorBoundary>
         </div>
-        <Footer />
+        <div className={fullCanvasLab && !sheetLab ? 'lg:hidden' : ''}><Footer /></div>
         <WechatShareOverlay />
         <FeedbackFab />
-        <AiPanelHost />
+        {/* AI 面板是可选浮层：内部渲染异常（如历史坏条目）必须被就地隔离，
+            不能再把整站 React 树卸载成白屏（审计 Important-8）。
+            独立边界 + 路由级 resetKey：换页后可自愈。 */}
+        <AppErrorBoundary resetKey={location.pathname}>
+          <AiPanelHost />
+        </AppErrorBoundary>
       </div>
       </AiProvider>
     </AppProvider>

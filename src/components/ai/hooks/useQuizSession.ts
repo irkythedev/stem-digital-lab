@@ -172,6 +172,7 @@ export default function useQuizSession(deps: QuizSessionDeps) {
           formatLabState(labIdFromPath(location.pathname), getLabState(labIdFromPath(location.pathname)), lang),
         ].filter(Boolean).join('\n'),
         count, angle, timeLimit, qtype,
+        getLabState(labIdFromPath(location.pathname))?.stage as string | undefined,
       ) },
       { role: 'user', content: lang === 'zh' ? `请围绕当前页面知识点（${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? '当前主题'}）按格式出 ${count} 道题。` : `Please create ${count} questions in the specified format, based on the current page knowledge (${aiCtx.topic ?? pageSubject(location.pathname, lang) ?? 'current topic'}).` },
     ];

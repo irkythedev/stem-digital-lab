@@ -177,6 +177,83 @@ export function LensIcon({ className = '' }: LabIconProps) {
 }
 
 /** 圆：圆 + 圆心 + 直径 */
+/** 两个叠合的三角形（全等判定：实线基准 + 虚线重画） */
+export function TriangleIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 19.5 L9.5 7 L15.5 19.5 Z" />
+      <path d="M9 16.5 L14.5 5 L20.5 16.5" strokeDasharray="2.4 2" opacity="0.55" />
+    </svg>
+  );
+}
+
+/** 一大一小两个相似三角形（共底边，暗示位似） */
+export function SimilarityIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 20.5 L8 12.5 L12.5 20.5 Z" />
+      <path d="M11.5 20.5 L17 6 L22.5 20.5 Z" opacity="0.5" />
+    </svg>
+  );
+}
+
+export function ConstructionIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3.2 L5.6 20.2" />
+      <path d="M12 3.2 L18.4 20.2" />
+      <path d="M12 5.6 L12 9.4" />
+      <circle cx="12" cy="3.4" r="1.3" />
+      <path d="M8.6 14.4 A6.4 6.4 0 0 0 15.4 14.4" opacity="0.5" strokeDasharray="2 2" />
+    </svg>
+  );
+}
+
+export function PolygonIcon({ className = '' }: LabIconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" opacity="0.45" />
+      <path d="M12 5.6 L17.54 8.8 L17.54 15.2 L12 18.4 L6.46 15.2 L6.46 8.8 Z" />
+    </svg>
+  );
+}
+
 export function CircleIcon({ className = '' }: LabIconProps) {
   return (
     <svg

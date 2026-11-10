@@ -139,7 +139,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             <button
               type="button"
               onClick={() => setHistoryTab('qa')}
-              className={`px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
+              className={`tap-ai-tab tap-area px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
                 historyTab === 'qa' ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
             >
@@ -148,7 +148,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             <button
               type="button"
               onClick={() => setHistoryTab('quiz')}
-              className={`px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
+              className={`tap-ai-tab tap-area px-2.5 py-1 text-[0.6875rem] mono-font transition-colors border-b-2 ${
                 historyTab === 'quiz' ? 'border-[var(--fg)] text-[var(--fg)] font-bold' : 'border-transparent text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
             >
@@ -204,7 +204,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                     <button
                       type="button"
                       onClick={() => setTopicMenuOpen((v) => !v)}
-                      className="w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
+                      className="tap-ai-mini tap-area w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
                     >
                       <span className="truncate text-left">{topicFilter ?? (lang === 'zh' ? '全部知识点' : 'All topics')}</span>
                       <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${topicMenuOpen ? 'rotate-180' : ''}`} />
@@ -342,7 +342,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
               <button
                 type="button"
                 onClick={clearHistoryAll}
-                className={`inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors shrink-0 ${confirmClearHist ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
+                className={`tap-ai-text inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors shrink-0 ${confirmClearHist ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
               >
                 <Trash2 className="w-3 h-3" />
                 {confirmClearHist ? (lang === 'zh' ? '确认清空？' : 'Confirm clear?') : (lang === 'zh' ? '清空历史' : 'Clear history')}
@@ -364,14 +364,14 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                 <button
                   type="button"
                   onClick={() => setQuizScope('wrong')}
-                  className={`px-1.5 py-0.5 border transition-colors ${quizScope === 'wrong' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
+                  className={`tap-ai-mini tap-area px-1.5 py-0.5 border transition-colors ${quizScope === 'wrong' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
                 >
                   {lang === 'zh' ? '仅错题' : 'Wrong'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuizScope('all')}
-                  className={`px-1.5 py-0.5 border transition-colors ${quizScope === 'all' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
+                  className={`tap-ai-mini tap-area px-1.5 py-0.5 border transition-colors ${quizScope === 'all' ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-transparent text-[var(--muted)] hover:border-[var(--border)]'}`}
                 >
                   {lang === 'zh' ? '全部' : 'All'}
                 </button>
@@ -554,7 +554,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                     <button
                       type="button"
                       onClick={() => setQuizOverviewOpen((v) => !v)}
-                      className="inline-flex items-center gap-1 text-[0.625rem] mono-font font-bold text-[var(--fg)] hover:opacity-80 transition-opacity"
+                      className="tap-ai-text inline-flex items-center gap-1 text-[0.625rem] mono-font font-bold text-[var(--fg)] hover:opacity-80 transition-opacity"
                     >
                       <span>{lang === 'zh' ? '学情概览' : 'Overview'}</span>
                       <ChevronDown className={`w-3 h-3 text-[var(--muted)] transition-transform ${quizOverviewOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -735,7 +735,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                       <button
                         type="button"
                         onClick={() => setQuizTopicMenuOpen((v) => !v)}
-                        className="w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
+                        className="tap-ai-mini tap-area w-40 max-w-full flex items-center justify-between gap-2 border border-[var(--border)] bg-[var(--bg)] px-2 py-1 text-xs text-[var(--fg)] outline-none hover:border-[var(--fg)] focus:border-[var(--fg)] transition-colors"
                       >
                         <span className="truncate text-left">{quizTopicFilter ?? (lang === 'zh' ? '全部知识点' : 'All topics')}</span>
                         <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-[var(--muted)] transition-transform ${quizTopicMenuOpen ? 'rotate-180' : ''}`} />
@@ -774,8 +774,9 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                 )}
               </div>
             )}
-            {/* 记录列表 */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
+            {/* 记录列表：min-h 兜底，避免小屏（320×568 / 360×640）被上方统计+筛选区吃光后
+                塌成一条 16px 的缝（审计 Important-6）。外壳小屏 max-h 已抬到 92dvh 配合。 */}
+            <div className="flex-1 min-h-[7rem] overflow-y-auto overscroll-contain px-3 py-2 space-y-2">
               {filteredQuizHistory.length === 0 ? (
                 <div className="pt-8 text-center space-y-2">
                   <GraduationCap className="w-6 h-6 mx-auto text-[var(--muted)]" aria-hidden="true" />
@@ -921,7 +922,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                 <button
                   type="button"
                   onClick={clearQuizHistoryAll}
-                  className={`inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors ${confirmClearQuiz ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
+                  className={`tap-ai-text inline-flex items-center gap-1 text-[0.6875rem] mono-font transition-colors ${confirmClearQuiz ? 'text-[var(--error)] font-bold' : 'text-[var(--muted)] hover:text-[var(--error)]'}`}
                 >
                   <Trash2 className="w-3 h-3" />
                   {confirmClearQuiz ? (lang === 'zh' ? '确认清空？' : 'Confirm clear?') : (lang === 'zh' ? '清空记录' : 'Clear records')}
@@ -947,7 +948,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                   type="button"
                   onClick={() => applyStorageLimit(n)}
                   aria-pressed={storageLimit === n}
-                  className={`tap-area rounded-full border px-1.5 py-0.5 text-[0.625rem] mono-font tabular-nums transition-colors ${storageLimit === n ? 'border-[var(--fg)]/30 bg-[var(--accent-light)] text-[var(--fg)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]'}`}
+                  className={`tap-ai-mini tap-area inline-flex items-center justify-center whitespace-nowrap rounded-full border px-2 leading-none text-[0.625rem] mono-font tabular-nums transition-colors ${storageLimit === n ? 'border-[var(--fg)]/30 bg-[var(--accent-light)] text-[var(--fg)] font-bold' : 'border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]'}`}
                 >
                   {n}{lang === 'zh' ? ' 条' : ''}
                 </button>
@@ -956,8 +957,8 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
             {pendingStorageLimit != null && (
               <span className="w-full flex flex-wrap items-center gap-2 rounded border border-[var(--warn)]/40 bg-[var(--accent-light)]/70 px-2 py-1 leading-snug text-[var(--warn)]">
                 <span>{lang === 'zh' ? `将上限调低为 ${pendingStorageLimit} 条，将裁剪最旧记录（仅保留最新 ${pendingStorageLimit} 条）。确认？` : `Lower the limit to ${pendingStorageLimit}? Oldest records will be trimmed (keep newest ${pendingStorageLimit}).`}</span>
-                <button type="button" onClick={confirmStorageLimit} className="tap-area rounded border border-[var(--warn)]/60 px-1.5 py-0.5 font-bold text-[var(--warn)] hover:bg-[var(--warn)]/10">{lang === 'zh' ? '确认裁剪' : 'Trim'}</button>
-                <button type="button" onClick={cancelStorageLimit} className="tap-area rounded px-1.5 py-0.5 text-[var(--muted)] hover:text-[var(--fg)]">{lang === 'zh' ? '取消' : 'Cancel'}</button>
+                <button type="button" onClick={confirmStorageLimit} className="tap-ai-mini tap-area inline-flex items-center justify-center whitespace-nowrap rounded border border-[var(--warn)]/60 px-2 leading-none font-bold text-[var(--warn)] hover:bg-[var(--warn)]/10">{lang === 'zh' ? '确认裁剪' : 'Trim'}</button>
+                <button type="button" onClick={cancelStorageLimit} className="tap-ai-mini tap-area inline-flex items-center justify-center whitespace-nowrap rounded px-2 leading-none text-[var(--muted)] hover:text-[var(--fg)]">{lang === 'zh' ? '取消' : 'Cancel'}</button>
               </span>
             )}
           </div>

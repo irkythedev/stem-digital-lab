@@ -12,10 +12,15 @@
  * 复用组件：InteractiveCircle（交互几何 SVG）、ExploreStage（任务卡+笔记）。
  */
 import { useMemo, useState, useEffect } from 'react';
+import { boolParam, enumParam, numParam, readUrlParams, useLabUrlSync } from '../../lib/lab-url-state';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import StageNav from '../../components/lab/StageNav';
+import CanvasSurface, { CanvasZoomControls } from '../../components/lab/CanvasSurface';
+import ToggleSwitch from '../../components/lab/ToggleSwitch';
+import LabStageShell from '../../components/lab/LabStageShell';
 import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useIsDesktopLab } from '../../components/lab/useIsDesktopLab';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
 import InteractiveCircle, { type CircleMode } from '../../components/lab/InteractiveCircle';
 
@@ -26,7 +31,6 @@ type PredictBisect = 'yes' | 'no' | 'unsure' | null;
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     reset: '重置',
     stagePredict: '预测',
     stageExplore: '探索',
@@ -138,7 +142,6 @@ const copy = {
     },
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -276,9 +279,11 @@ export const QUIZ_CORRECT: Record<string, string[]> = {
 
 export default function Circle() {
   const { lang } = useApp();
+  const isDesktop = useIsDesktopLab();
   const c = copy[lang as Lang] ?? copy.zh;
+  const initialUrl = readUrlParams();
 
-  const [stage, setStage] = useState<Stage>('predict');
+  const [stage, setStage] = useState<Stage>(() => enumParam(initialUrl.get('stage'), ['predict', 'explore', 'conclude'] as const, 'predict'));
   const [predict, setPredict] = useState<PredictBisect>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [obsId, setObsId] = useState(0);
@@ -291,7 +296,12 @@ export default function Circle() {
   const [proofChecked, setProofChecked] = useState<'correct' | 'wrong' | null>(null);
 
   // 探索模式
-  const [circleMode, setCircleMode] = useState<CircleMode>('chord');
+  const [circleMode, setCircleMode] = useState<CircleMode>(() => { const m = initialUrl.get('mode'); return m === 'inscribed' ? 'inscribed' : m === 'diameter' ? 'thales' : 'chord'; });
+  const [pAngle, setPAngle] = useState(() => numParam(initialUrl.get('pAngle'), 3, 0, Math.PI * 2));
+  const [metrics, setMetrics] = useState({ angleBPC: 0, angleBQC: 0, angleBOC: 0, chordLen: 0, halfChord: 0, perpDist: 0 });
+  const [viewZoom, setViewZoom] = useState(1);
+  const [showAux, setShowAux] = useState(() => boolParam(initialUrl.get('guides') ?? initialUrl.get('aux'), true));
+  useLabUrlSync({ stage, mode: circleMode === 'thales' ? 'diameter' : circleMode, pAngle, guides: showAux }, { stage: 'predict', mode: 'chord', pAngle: 3, guides: true }, [stage, circleMode, pAngle, showAux]);
   const [activeCard, setActiveCard] = useState(0);
 
   const predComplete = predict !== null;
@@ -402,31 +412,67 @@ export default function Circle() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('circle', { stage, circleMode });
-  }, [stage, circleMode]);
+    setLabState('circle', { stage, circleMode, angleBPC: +(metrics.angleBPC * 180 / Math.PI).toFixed(1), angleBQC: +(metrics.angleBQC * 180 / Math.PI).toFixed(1), angleBOC: +(metrics.angleBOC * 180 / Math.PI).toFixed(1), chordLen: +metrics.chordLen.toFixed(1), halfChord: +metrics.halfChord.toFixed(1), perpDist: +metrics.perpDist.toFixed(1) });
+  }, [stage, circleMode, metrics]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('circle', lang === 'zh' ? '请讲解垂径定理、圆周角定理与直径所对圆周角是直角这三个圆的性质' : 'Explain the chord theorem, inscribed angle theorem and the angle in a semicircle');
+    setPageQuestion('circle', lang === 'zh' ? '改变弦的位置或圆周角顶点时，弦长、圆心角与圆周角读数之间有什么关系？' : 'As you move the chord or the inscribed-angle vertex, how do the chord length, central angle and inscribed angle relate?');
   }, [lang]);
 
+  const stageNav = (
+    <StageNav
+    stage={stage}
+    setStage={setStage}
+    labels={{ predict: c.stagePredict, explore: c.stageExplore, conclude: c.stageConclude, next: c.nextStage, redo: c.redoLabel }}
+    onRedo={redoAll}
+    isDone={{ predict: !!predComplete, explore: observations.length > 0, conclude: !!concludeComplete }}
+    />
+  );
+
+  const circleModeLabel = circleMode === 'chord' ? c.modeChord : circleMode === 'inscribed' ? c.modeInscribed : c.modeThales;
+  const circleMeasureBar = (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[0.625rem] mono-font tabular-nums text-[var(--fg)]">
+      {circleMode === 'chord' ? (
+        <>
+          <span>AE <b>{metrics.halfChord.toFixed(1)}</b></span><span>EB <b>{metrics.halfChord.toFixed(1)}</b></span>
+          <span>弦长 AB <b>{metrics.chordLen.toFixed(1)}</b></span><span>弦心距 OE <b>{metrics.perpDist.toFixed(1)}</b></span>
+          <span className="text-[var(--muted)]">AE = EB · 垂径定理成立</span>
+        </>
+      ) : circleMode === 'inscribed' ? (
+        <>
+          <span>∠BPC <b>{(metrics.angleBPC * 180 / Math.PI).toFixed(1)}°</b></span>
+          <span>∠BQC <b>{(metrics.angleBQC * 180 / Math.PI).toFixed(1)}°</b></span>
+          <span>∠BOC <b>{(metrics.angleBOC * 180 / Math.PI).toFixed(1)}°</b></span>
+          <span className="text-[var(--muted)]">{metrics.angleBPC > Math.PI / 2 ? `P 在劣弧上：∠BPC = 180° − ½∠BOC = ${(metrics.angleBPC * 180 / Math.PI).toFixed(1)}°` : '∠BPC = ½∠BOC'}</span>
+        </>
+      ) : (
+        <span>∠ACB <b>90°</b></span>
+      )}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <LabStageShell titleZh="圆的性质" titleEn="Circle Properties" labId="circle" variant={isDesktop ? 'sheet' : 'default'}
+      center={stageNav}>
+    <div className="flex h-full min-h-0 w-full flex-col overflow-y-auto">
+    <div className="flex h-full min-h-0 w-full flex-col gap-4 overflow-hidden">
             {/* ── 幕导航 ── 与其余实验统一：StageNav 胶囊 + 右侧动作簇（下一步 / 重置 / 问 AI / 考考你） */}
-      <StageNav
-        stage={stage}
-        setStage={setStage}
-        labels={{ predict: c.stagePredict, explore: c.stageExplore, conclude: c.stageConclude, next: c.nextStage, redo: c.redoLabel }}
-        onRedo={redoAll}
-        isDone={{ predict: !!predComplete, explore: observations.length > 0, conclude: !!concludeComplete }}
-      />
+      <div className="shrink-0">
+      <div className="lg:hidden shrink-0">{stageNav}</div>
+      </div>
 
 
       {/* ── 交互圆 ── */}
-      <div className="border border-[var(--border)] p-3">
-        <InteractiveCircle
-          mode={circleMode}
-        />
-      </div>
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[minmax(0,1fr)_350px]">
+      <CanvasSurface
+        showToolbar={stage !== 'predict'}
+        titleSlot={<div className="flex min-w-0 items-center gap-2"><span className="hidden truncate sm:inline">//</span><div className="inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-[var(--border)] bg-[var(--panel-bg)] p-0.5">{([['chord', c.modeChord], ['inscribed', c.modeInscribed], ['thales', c.modeThales]] as const).map(([m, label]) => <button key={m} type="button" onClick={() => setCircleMode(m)} className={`compact inline-flex h-6 items-center rounded px-1.5 text-[0.5625rem] transition-colors ${circleMode === m ? 'bg-[var(--fg)] text-[var(--card-bg)]' : 'text-[var(--muted)] hover:text-[var(--fg)]'}`}>{label}</button>)}</div></div>}
+        actionsSlot={<><ToggleSwitch compact label={lang === 'zh' ? '辅助线' : 'Guides'} checked={showAux} onChange={setShowAux} /><CanvasZoomControls onZoomIn={() => setViewZoom((z) => Math.min(1.6, z + 0.1))} onZoomOut={() => setViewZoom((z) => Math.max(0.75, z - 0.1))} onReset={() => setViewZoom(1)} /></>}
+        footerBar={stage === 'predict' ? undefined : circleMeasureBar}
+      >
+        <InteractiveCircle mode={circleMode} showEvidence={stage !== 'predict'} showAux={showAux} viewZoom={viewZoom} inscribedAngleP={pAngle} onChange={(key, value) => { if (key === 'inscribedAngleP') setPAngle(value); }} onMetrics={setMetrics} />
+      </CanvasSurface>
+      <div className="min-h-0 overflow-y-auto border-t border-[var(--border)] pt-2 lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
 
       {/* ── 幕内容 ── */}
 
@@ -486,35 +532,6 @@ export default function Circle() {
 
       {stage === 'explore' && (
         <div className="space-y-4">
-          {/* 模式切换 */}
-          <div className="flex gap-2">
-            {(['chord', 'inscribed', 'thales'] as CircleMode[]).map((mode) => {
-              const label =
-                mode === 'chord'
-                  ? c.modeChord
-                  : mode === 'inscribed'
-                    ? c.modeInscribed
-                    : c.modeThales;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => {
-                    setCircleMode(mode);
-                    setActiveCard(mode === 'chord' ? 0 : mode === 'inscribed' ? 1 : 2);
-                  }}
-                  className={`px-3 py-1.5 text-[0.6875rem] border transition-colors ${
-                    circleMode === mode
-                      ? 'border-[var(--fg)] text-[var(--fg)]'
-                      : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
           <ExploreStage
             cards={cards}
             observations={observations}
@@ -525,6 +542,8 @@ export default function Circle() {
             clearLabel={c.clearLabel}
             emptyLabel={c.exploreEmpty}
             title={c.exploreTitle}
+            activeIndex={circleMode === 'chord' ? 0 : circleMode === 'inscribed' ? 1 : 2}
+            onIndexChange={(i) => setCircleMode(i === 0 ? 'chord' : i === 1 ? 'inscribed' : 'thales')}
           />
         </div>
       )}
@@ -678,5 +697,9 @@ export default function Circle() {
         </div>
       )}
     </div>
+    </div>
+    </div>
+    </div>
+    </LabStageShell>
   );
 }

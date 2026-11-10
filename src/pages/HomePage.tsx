@@ -8,7 +8,7 @@
  * 每个实验显示：LabIcon + 标题 + 一句话描述 + 点击进入。
  * 大屏 3 列，中屏 2 列，小屏 1 列。
  */
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { usePageMeta } from '../lib/use-page-meta';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
@@ -18,6 +18,7 @@ import { subjectList, type SubjectId } from '../lib/subjects';
 import {
   labs,
   regularLabsForSubject,
+  betaLabsForSubject,
   toolsForSubject,
   labCategories,
   labHref,
@@ -25,6 +26,11 @@ import {
 } from '../lib/labs';
 import SubjectIcon from '../components/ui/SubjectIcon';
 import { FormulaIcon, PeriodicTableIcon } from '../components/ui/LabIcon';
+import { useBetaLabs } from '../lib/use-beta-labs';
+import BetaToggleChip from '../components/lab/BetaToggleChip';
+import BetaBadge from '../components/lab/BetaBadge';
+import OnboardingTour from '../components/onboarding/OnboardingTour';
+import { useOnboardingTour, ONBOARDING_STEP_EVENT } from '../lib/use-onboarding-tour';
 
 /**
  * 学科卡片「内容清单」按「项数」统一截断：显示前 3 项 + 省略号。
@@ -65,11 +71,7 @@ function ToolCard({
       <div className="min-w-0">
         <span className="mb-0.5 flex flex-wrap items-baseline gap-1.5">
           <span className="text-sm font-semibold text-[var(--fg)] serif-font">{title}</span>
-          {pro && (
-            <span className="border border-[var(--fg)] px-1 py-px text-[0.625rem] leading-none mono-font text-[var(--fg)]">
-              BETA
-            </span>
-          )}
+          {pro && <BetaBadge />}
         </span>
         <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">{desc}</span>
       </div>
@@ -79,6 +81,8 @@ function ToolCard({
 
 export default function HomePage() {
   const { t, lang } = useApp();
+  const { showBeta, setShowBeta } = useBetaLabs();
+  const tour = useOnboardingTour();
   // 路由级 meta（首页默认标题/描述）
   usePageMeta({
     title: `${t.brandName} | STEM Digital Lab`,
@@ -90,6 +94,19 @@ export default function HomePage() {
   const [activeSubject, setActiveSubject] = useState<SubjectId | null>(null);
   // 学科展开的领域分类 tab（默认第一个分类；切换学科时重置）
   const [activeCategory, setActiveCategory] = useState<LabCategoryId | null>(null);
+
+  // 引导进入第 2 步时，如果首页尚未展开学科，临时展开数学实验列表供聚光灯定位。
+  useEffect(() => {
+    const onTourStep = (event: Event) => {
+      const detail = (event as CustomEvent<{ step?: number }>).detail;
+      if (detail?.step === 1 && activeSubject === null) {
+        setActiveSubject('math');
+        window.setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+      }
+    };
+    window.addEventListener(ONBOARDING_STEP_EVENT, onTourStep);
+    return () => window.removeEventListener(ONBOARDING_STEP_EVENT, onTourStep);
+  }, [activeSubject]);
 
   // 随机探索：从全部实验 + 工具（周期表/物理常量/数学公式）中随机选一个进入
   const randomExplore = () => {
@@ -140,7 +157,7 @@ export default function HomePage() {
       </div>
 
       {/* ── 学科切换卡片 ── */}
-      <div className="rise rise-2 home-subjects grid grid-cols-3 gap-3 sm:gap-6 w-full mb-[var(--sp-block)]">
+      <div data-tour="subject-cards" className="rise rise-2 home-subjects grid grid-cols-3 gap-3 sm:gap-6 w-full mb-[var(--sp-block)]">
         {subjectList.map((subject) => {
           const meta = t.subjects[subject.id];
           const isActive = activeSubject === subject.id;
@@ -152,7 +169,7 @@ export default function HomePage() {
                 const next = activeSubject === subject.id ? null : subject.id;
                 setActiveSubject(next);
                 if (next) {
-                  setActiveCategory(labCategories[next][0].id);
+                  setActiveCategory(next === 'math' ? null : labCategories[next][0].id);
                   scrollToLabList();
                 }
               }}
@@ -187,14 +204,17 @@ export default function HomePage() {
       {/* ── 实验列表（淡入淡出）：紧跟学科卡片，点击后即时可见；未展开时无占位高度 ── */}
       {/* overflow-hidden：未选中/非激活学科的实验卡片以 absolute inset-0 渲染，
          内容会溢出容器并撑高文档滚动区域（移动端页脚下方空白根因），裁剪隐藏内容 */}
-      <div id="lab-list" className={`relative overflow-hidden ${activeSubject ? 'min-h-[200px]' : ''}`}>
+      <div id="lab-list" data-tour="lab-entry" className={`relative overflow-hidden ${activeSubject ? 'min-h-[200px]' : ''}`}>
         {subjectList.map((subject) => {
           const isActive = activeSubject === subject.id;
           // 实验网格只放常规实验；专业工具台（meta.kind === 'tool'）单独归入下方「// 工具」
           const allLabs = regularLabsForSubject(subject.id);
+          const betaLabs = betaLabsForSubject(subject.id);
           const cats = labCategories[subject.id];
-          // 领域过滤：按当前 tab；无 tab 时（防御）显示全部
-          const shownLabs = activeCategory ? allLabs.filter((lab) => lab.category === activeCategory) : allLabs;
+          // 领域过滤：按当前 tab；无 tab 时（防御）显示全部。
+          // Beta 关闭时只显示核心实验，开启后显示全部。
+          const shownLabs = (activeCategory ? allLabs.filter((lab) => lab.category === activeCategory) : allLabs)
+            .filter((lab) => showBeta || !lab.beta);
           return (
             <div
               key={subject.id}
@@ -242,6 +262,7 @@ export default function HomePage() {
                           <span className="text-sm font-semibold text-[var(--fg)] serif-font">
                             {lab.name[lang as 'zh' | 'en']}
                           </span>
+                          {lab.beta && showBeta && <BetaBadge />}
                         </span>
                         <span className="block text-[0.6875rem] text-[var(--muted)] sans-font leading-relaxed">
                           {lab.description[lang as 'zh' | 'en']}
@@ -251,6 +272,22 @@ export default function HomePage() {
                   );
                 })}
               </div>
+
+              {betaLabs.length > 0 && (activeCategory === null || activeCategory === 'geometry') && (
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 border-t border-dashed border-[var(--border)] px-2 pt-2 text-xs text-[var(--muted)]">
+                  <span>
+                    // {showBeta
+                      ? (lang === 'zh' ? `Beta 实验已展开（${betaLabs.length} 个）` : `Beta labs expanded (${betaLabs.length})`)
+                      : (lang === 'zh' ? `另有 ${betaLabs.length} 个 Beta 实验（全等 · 相似 · 割圆术 · 尺规）` : `Plus ${betaLabs.length} Beta labs (Congruence · Similarity · π · Construction)`)}
+                  </span>
+                  <BetaToggleChip
+                    showBeta={showBeta}
+                    onChange={(next) => { setShowBeta(next); setActiveCategory(null); }}
+                    count={betaLabs.length}
+                    lang={lang === 'en' ? 'en' : 'zh'}
+                  />
+                </div>
+              )}
 
               {/* 工具区：数学 → 公式速查；物理 → 常量速查；化学 → 周期表（独立于实验） */}
               {(subject.id === 'math' || subject.id === 'physics' || subject.id === 'chemistry') && (
@@ -348,6 +385,14 @@ export default function HomePage() {
       <div className="rise rise-3 home-daily">
         <DailyQuote lang={lang} />
       </div>
+      <OnboardingTour
+        active={tour.active}
+        step={tour.step}
+        onNext={tour.next}
+        onPrev={tour.prev}
+        onSkip={tour.skip}
+        onFinish={tour.finish}
+      />
     </main>
   );
 }

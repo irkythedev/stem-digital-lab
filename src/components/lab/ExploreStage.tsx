@@ -41,6 +41,11 @@ interface ExploreStageProps {
   /** 记录按钮禁用（如电路断开时，I=0 无记录意义） */
   recordDisabled?: boolean;
   recordDisabledHint?: string;
+  /** 紧凑模式：观察笔记折叠进 details，默认只露任务卡 */
+  compact?: boolean;
+  /** 可选受控当前卡索引（如 Circle 的模式切换同步）。 */
+  activeIndex?: number;
+  onIndexChange?: (index: number) => void;
 }
 
 export default function ExploreStage({
@@ -55,8 +60,13 @@ export default function ExploreStage({
   title,
   recordDisabled = false,
   recordDisabledHint,
+  compact = false,
+  activeIndex,
+  onIndexChange,
 }: ExploreStageProps) {
-  const [activeCard, setActiveCard] = useState(0);
+  const [localActiveCard, setLocalActiveCard] = useState(0);
+  const activeCard = activeIndex ?? localActiveCard;
+  const setActiveCard = (index: number) => { setLocalActiveCard(index); onIndexChange?.(index); };
   const [note, setNote] = useState('');
 
   const submit = () => {
@@ -65,43 +75,7 @@ export default function ExploreStage({
     setNote('');
   };
 
-  return (
-    <div className="border border-[var(--border)] p-4 space-y-4">
-      <h3 className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-        // {title}
-      </h3>
-
-      {/* 任务卡：引导提问，不锁定 */}
-      <div className="space-y-3">
-        <div className="flex flex-wrap gap-2">
-          {cards.map((card, i) => (
-            <button
-              key={card.key}
-              type="button"
-              onClick={() => setActiveCard(i)}
-              className={`min-w-[38px] min-h-[38px] px-3 py-1.5 flex items-center justify-center text-xs 2xl:text-sm mono-font font-bold border transition-colors rounded-sm touch-manipulation ${
-                i === activeCard ? 'border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)] shadow-sm' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-sm 2xl:text-base serif-font font-medium text-[var(--fg)]">{cards[activeCard].title}</p>
-          <p className="text-xs 2xl:text-sm text-[var(--muted)] serif-font leading-relaxed">{cards[activeCard].prompt}</p>
-          <button
-            type="button"
-            onClick={cards[activeCard].tryIt}
-            className="compact min-h-[38px] text-xs 2xl:text-sm mono-font px-3.5 py-1.5 border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-[border-color,background-color,transform] rounded-sm touch-manipulation"
-          >
-            {cards[activeCard].tryLabel}
-          </button>
-        </div>
-      </div>
-
-      {/* 观察笔记 */}
+  const noteSection = (
       <div className="pt-2 border-t border-[var(--border)] space-y-3">
         <div className="flex gap-2">
           <input
@@ -153,6 +127,56 @@ export default function ExploreStage({
           </div>
         )}
       </div>
+  );
+
+  return (
+    <div className={`border border-[var(--border)] ${compact ? 'p-2 space-y-2' : 'p-4 space-y-4'}`}>
+      <h3 className="text-xs 2xl:text-sm font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+        // {title}
+      </h3>
+
+      {/* 任务卡：引导提问，不锁定 */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {cards.map((card, i) => (
+            <button
+              key={card.key}
+              type="button"
+              onClick={() => setActiveCard(i)}
+              className={`min-w-[38px] min-h-[38px] px-3 py-1.5 flex items-center justify-center text-xs 2xl:text-sm mono-font font-bold border transition-colors rounded-sm touch-manipulation ${
+                i === activeCard ? 'border-[var(--fg)] bg-[var(--fg)] text-[var(--bg)] shadow-sm' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'
+              }`}
+            >
+              {i + 1}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <p className={`serif-font font-medium text-[var(--fg)] ${compact ? 'text-xs' : 'text-sm 2xl:text-base'}`}>{cards[activeCard].title}</p>
+          <p className={`text-[var(--muted)] serif-font ${compact ? 'max-h-[2.5rem] overflow-hidden text-[0.6875rem] leading-snug' : 'text-xs 2xl:text-sm leading-relaxed'}`}>{cards[activeCard].prompt}</p>
+          <button
+            type="button"
+            onClick={cards[activeCard].tryIt}
+            className={`compact mono-font border border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)] active:scale-95 transition-[border-color,background-color,transform] rounded-sm touch-manipulation ${compact ? 'min-h-[36px] px-3 py-1 text-[0.6875rem]' : 'min-h-[38px] px-3.5 py-1.5 text-xs 2xl:text-sm'}`}
+          >
+            {cards[activeCard].tryLabel}
+          </button>
+        </div>
+      </div>
+
+      {compact ? (
+        <details className="border-t border-[var(--border)] pt-2">
+          <summary className="flex min-h-[32px] cursor-pointer select-none items-center text-[0.625rem] mono-font text-[var(--muted)]">
+            {recordLabel}
+            {observations.length > 0 && <span className="ml-2 tabular-nums">· {observations.length}</span>}
+          </summary>
+          <div className="pt-2">{noteSection}</div>
+        </details>
+      ) : (
+        noteSection
+      )}
+
     </div>
   );
 }

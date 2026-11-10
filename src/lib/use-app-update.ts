@@ -35,6 +35,8 @@ const CHECK_MS = 20000;       // 更新检查的最长等待（慢网下放宽�
 const INSTALL_MS = 60000;     // 新 worker 安装完成的最长等待（首装/慢网可能几十秒）
 const ACTIVATE_MS = 45000;    // 发出 SKIP_WAITING 后等 controllerchange 的上限
 const HARD_DEADLINE_MS = 120000; // 整个流程的绝对上限
+/** 更新失败提示的停留时间：足够用户看到，又不至于长期占着顶栏 */
+const UPDATE_FAILED_NOTICE_MS = 3500;
 /** 预缓存条目计数的采样间隔：安装期计数单调增长，120ms 足以让弧看起来连续 */
 const PROGRESS_POLL_MS = 120;
 
@@ -97,11 +99,21 @@ export async function fetchRemoteVersion(): Promise<string | null> {
   }
 }
 
+/** 判断响应体是否像真正的 Service Worker 脚本，而不是 EdgeOne 的 SPA fallback HTML。 */
+function looksLikeServiceWorkerScript(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.startsWith('<')) return false;
+  return /(?:self\.|addEventListener|precache|CACHE|importScripts|function\s|=>)/.test(trimmed);
+}
+
 /** 探测目标版本的 SW 文件是否存在（带时间戳，穿透边缘缓存）。 */
 export async function probeSwExists(version: string): Promise<boolean> {
   try {
     const r = await fetch(`${swUrlFor(version)}?_t=${Date.now()}`, { cache: 'no-store' });
-    return r.ok;
+    if (!r.ok) return false;
+    const contentType = r.headers.get('content-type') || '';
+    if (contentType && !/(javascript|ecmascript)/i.test(contentType)) return false;
+    return looksLikeServiceWorkerScript(await r.text());
   } catch {
     return false;
   }
@@ -122,6 +134,8 @@ export function useAppUpdate() {
   const pollRef = useRef(0);
   /** trackPrecache 幂等守卫：一次点击只开一表 */
   const trackingRef = useRef(false);
+  /** 失败提示的自动回 idle 定时器 */
+  const failedTimer = useRef(0);
 
   /** 停表：阶段切换与流程结束都必须调，否则页面加载完还在每 120ms 开一次 cache */
   const stopPoll = useCallback(() => {
@@ -129,6 +143,10 @@ export function useAppUpdate() {
       window.clearInterval(pollRef.current);
       pollRef.current = 0;
     }
+  }, []);
+
+  useEffect(() => () => {
+    if (failedTimer.current) window.clearTimeout(failedTimer.current);
   }, []);
 
   /**
@@ -199,6 +217,10 @@ export function useAppUpdate() {
       return;
     }
     runningRef.current = true;
+    if (failedTimer.current) {
+      window.clearTimeout(failedTimer.current);
+      failedTimer.current = 0;
+    }
     setPhase('checking');
     setProgress(null);
     trackingRef.current = false;
@@ -215,11 +237,16 @@ export function useAppUpdate() {
       window.clearTimeout(activationTimer);
     };
 
-    /** 慢网/异常：只回 idle 提示重试，绝不清缓存。 */
+    /** 慢网/异常：回到可见的失败态，3.5s 后再回 idle；绝不清缓存。 */
     const giveUp = () => {
       settle();
-      setPhase('idle');
       runningRef.current = false;
+      setPhase('failed');
+      if (failedTimer.current) window.clearTimeout(failedTimer.current);
+      failedTimer.current = window.setTimeout(() => {
+        failedTimer.current = 0;
+        setPhase('idle');
+      }, UPDATE_FAILED_NOTICE_MS);
     };
 
     deadline = window.setTimeout(() => { giveUp(); }, HARD_DEADLINE_MS);
@@ -296,7 +323,17 @@ export function useAppUpdate() {
       setPhase('activating');
       try { worker.postMessage({ type: 'SKIP_WAITING' }); } catch { /* ignore */ }
 
-      // 激活上限：45s；超时仅回 idle，让用户重试，不清缓存
+      // 首访/强制刷新后页面没有 controller，controllerchange 永远不会触发；
+      // 新 SW 安装/激活已经完成后直接刷新，避免空等 45s。
+      if (!navigator.serviceWorker.controller) {
+        setPhase('reloading');
+        settle();
+        runningRef.current = false;
+        window.setTimeout(() => window.location.reload(), 600);
+        return;
+      }
+
+      // 激活上限：45s；超时回失败态让用户重试，不清缓存
       activationTimer = window.setTimeout(() => { giveUp(); }, ACTIVATE_MS);
     } catch {
       giveUp();

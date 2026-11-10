@@ -44,7 +44,6 @@ const SCHEME_INIT: SchemeState = { reacted: false, beforeMass: 100, afterMass: 1
 
 const copy = {
   zh: {
-    prompt: '先预测，再自由探索，最后自己下结论。每一步都可以来回调整。',
     reset: '重置',
     stagePredict: '预测',
     stageExplore: '探索',
@@ -148,7 +147,6 @@ const copy = {
     concludeQ3Energy: '能量在化学反应中保持守恒',
   },
   en: {
-    prompt: 'Predict first, explore freely, then draw your own conclusion. You can move back and forth at any time.',
     reset: 'Reset',
     stagePredict: 'Predict',
     stageExplore: 'Explore',
@@ -443,11 +441,18 @@ export default function MassConservation() {
 
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
-    setLabState('mass-conservation', { stage, activeScheme });
-  }, [stage, activeScheme]);
+    setLabState('mass-conservation', {
+      stage,
+      activeScheme,
+      beforeMass: curScheme.beforeMass,
+      afterMass: curScheme.afterMass,
+      sealed: activeScheme !== 2,
+      reactionDone: curScheme.reacted,
+    });
+  }, [stage, activeScheme, curScheme]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
-    setPageQuestion('mass-conservation', lang === 'zh' ? '请讲解质量守恒定律的实质，以及本实验三个方案为什么要分别设计' : 'Explain the essence of conservation of mass and why this lab uses three designs');
+    setPageQuestion('mass-conservation', lang === 'zh' ? '反应前后质量读数如何变化？为什么不同方案要密封或敞开？你观察到什么规律？' : 'How do the mass readings change before and after each reaction? Why are some designs sealed and others open? What pattern do you observe?');
   }, [lang]);
 
   return (

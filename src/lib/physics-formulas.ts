@@ -130,7 +130,7 @@ export const PHYSICS_FORMULAS: PhysicsFormula[] = [
     category: 'mech',
     unit: 'N',
     condition: { zh: '浸在液体（或气体）中的物体；V排 为排开液体的体积。', en: 'Body immersed in fluid; V_displaced is the displaced volume.' },
-    pitfall: { zh: '浮力与物体自身密度、形状、浸没深度无关；漂浮时 V排 小于 V物。', en: 'Buoyancy ignores the body\'s own density, shape, or depth; floating means V_displaced < V_body.' },
+    pitfall: { zh: '浮力与物体自身密度、形状无关；部分浸入时随浸入深度（V排）增大而增大，完全浸没后液体密度不变，才与深度无关；漂浮时 V排 小于 V物。', en: 'Buoyancy ignores the body\'s own density and shape; for partial immersion it increases with submerged volume, and once fully submerged it is independent of depth when density is unchanged; floating means V_displaced < V_body.' },
     usage: { zh: '轮船吃水、潜水艇、密度计、浮沉条件判断。', en: 'Ships, submarines, hydrometers, sinking/floating conditions.' },
     chapter: '第九章 压强和浮力',
     diagram: { kind: 'buoyancy' },

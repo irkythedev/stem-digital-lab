@@ -57,6 +57,19 @@ const STORAGE_KEY = QUIZ_HISTORY_STORAGE_KEY;
 /** 记录默认容量上限：保留最近 100 条（实际以 loadStorageLimit() 用户档位为准） */
 export const QUIZ_HISTORY_LIMIT = 100;
 
+/** 单条记录结构校验：question 必须是字符串、options 必须是数组（面板会逐条渲染/映射），
+ *  否则坏数据会在渲染期抛错并整站白屏。读取时直接过滤，不让一条坏数据拖垮面板。 */
+function isQuizHistoryEntry(v: unknown): v is QuizHistoryEntry {
+  if (!v || typeof v !== 'object') return false;
+  const e = v as Record<string, unknown>;
+  return (
+    typeof e.id === 'string' &&
+    typeof e.ts === 'number' &&
+    typeof e.question === 'string' &&
+    Array.isArray(e.options)
+  );
+}
+
 /** 读取记录（损坏/异常一律返回空数组，绝不让数据拖垮面板） */
 export function listQuizHistory(): QuizHistoryEntry[] {
   if (typeof window === 'undefined') return [];
@@ -64,7 +77,7 @@ export function listQuizHistory(): QuizHistoryEntry[] {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as unknown;
-    return Array.isArray(arr) ? (arr as QuizHistoryEntry[]) : [];
+    return Array.isArray(arr) ? arr.filter(isQuizHistoryEntry) : [];
   } catch {
     return [];
   }
