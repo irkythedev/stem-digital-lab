@@ -84,8 +84,8 @@ function replaceSymbols(text: string): string {
 }
 
 /** 去除末尾「可以继续了解 / Further questions / You can also explore」及 3 条追问。 */
-function stripFollowUps(text: string): string {
-  const marker = text.search(/\n\s*(?:可以继续了解|可以继续了解[:：]|Further questions[:：]?|You can also explore[:：]?)/i);
+export function stripFollowUps(text: string): string {
+  const marker = text.search(/(?:^|\n)\s*(?:可以继续了解|可以继续了解[:：]|Further questions[:：]?|You can also explore[:：]?)/i);
   return marker >= 0 ? text.slice(0, marker) : text;
 }
 

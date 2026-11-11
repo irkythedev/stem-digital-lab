@@ -89,7 +89,7 @@ export interface HistoryPanelActions {
   copyAnswer: (id: string, text: string) => Promise<void>;
   exportPaper: (preview: boolean) => void;
   gotoHistoryPath: (path: string) => void;
-  renderSpeakControls: (text: string, topic?: string) => ReactNode;
+  renderSpeakControls: (text: string, topic?: string, itemId?: string) => ReactNode;
   retryWrongQuestion: () => void;
   runQuizSummary: () => Promise<void>;
   setExpandedHistId: any;
@@ -278,7 +278,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                       <div className="text-left">
                         <div className="inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                           <AnswerRich text={h.answer} />
-                          {renderSpeakControls(h.answer, h.topic)}
+                          {renderSpeakControls(h.answer, h.topic, h.id)}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
@@ -679,7 +679,7 @@ function HistoryPanelInner({ lang, state, actions, refs }: HistoryPanelProps) {
                         <div className="text-left">
                           <div className="inline-block w-full px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed ai-answer">
                             <AnswerRich text={quizSummaryText} />
-                            {renderSpeakControls(quizSummaryText, aiCtx.topic)}
+                            {renderSpeakControls(quizSummaryText, aiCtx.topic, 'quiz-summary')}
                           </div>
                         </div>
                       </div>

@@ -18,6 +18,22 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.4',
+    date: '2026-11',
+    zh: [
+      '[优化] AI 助教朗读体验进一步优化，播放与切换更顺畅',
+      '[优化] 历史回答的朗读状态更准确，切换页面时更自然',
+      '[修复] 修复连续切换朗读时可能出现的声音错位或重复播放',
+      '[优化] 朗读内容更聚焦，减少结尾多余内容的干扰',
+    ],
+    en: [
+      '[Improved] Smoother AI assistant reading with better playback and switching',
+      '[Improved] More accurate reading state for history answers and cleaner page transitions',
+      '[Fixed] Fixed possible audio mismatch or repeated playback when switching readings quickly',
+      '[Improved] Cleaner spoken content with less unwanted trailing text',
+    ],
+  },
+  {
     version: '0.50.3',
     date: '2026-11',
     zh: [

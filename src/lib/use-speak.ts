@@ -144,6 +144,8 @@ export interface LocalSpeechHost {
     onstart?: (() => void) | null;
     onend?: (() => void) | null;
     onerror?: ((e?: unknown) => void) | null;
+    onpause?: (() => void) | null;
+    onresume?: (() => void) | null;
   };
 }
 
@@ -248,13 +250,14 @@ export async function fetchScfSpeech(
   text: string,
   voice: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<ArrayBuffer> {
   const base = getTtsUrl();
   // 先拼完整 query，再用 scfUrlWithToken 以 & 挂 token（避免双问号导致 SCF 校验 403）
   const url = scfUrlWithToken(`${base}?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voice)}`);
   const doFetch = async (attempt: number): Promise<Response> => {
     try {
-      const resp = await fetchImpl(url);
+      const resp = await fetchImpl(url, signal ? { signal } : undefined);
       if (attempt < 1 && !resp.ok) {
         await new Promise((r) => setTimeout(r, 600));
         return doFetch(attempt + 1);
@@ -278,11 +281,13 @@ export async function fetchCloudSpeech(
   cfg: TtsConfig,
   voiceHint: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<ArrayBuffer> {
   const url = normalizeSpeechEndpoint(cfg.endpoint);
   if (!url) throw new Error('invalid endpoint');
   const resp = await fetchImpl(url, {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.apiKey}` },
     body: JSON.stringify({
       model: cfg.model || 'tts-1',

@@ -18,7 +18,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowDown, Check, ChevronDown, ChevronUp, ChevronsDown, CircleX, Copy, GraduationCap, History, Lightbulb, Minus, Pause, Play, RotateCcw, Settings, ShieldCheck, Sparkles, Square, TriangleAlert, Volume2, X, WifiOff, RotateCw } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
-import { useSpeak } from '../../lib/use-speak';
+import { useTtsPlayer } from '../../lib/tts-player';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import TtsStatusBadge from './TtsStatusBadge';
@@ -182,7 +182,7 @@ function parseRecQuestions(text: string): { body: string; recs: string[] } {
 
 export default function AiAssistant() {
   const { lang, t, isOffline } = useApp();
-  const { state: speakState, errorMsg, notice: speakNotice, finishedText, speak, pause, resume, replay, stop: stopSpeak, waitingLong } = useSpeak();
+  const { activeId: ttsActiveId, state: speakState, errorMsg, notice: speakNotice, finishedText, toggle: ttsToggle, pause, resume, stop: stopSpeak, waitingLong } = useTtsPlayer();
   // 面板关闭时停止朗读（组件不卸载，需显式停止）
   const location = useLocation();
   const { open, setOpen, configured, setConfigured, aiCtx, ask, setAsk, quizSignal, settingsSignal } = useAiContext();
@@ -254,37 +254,33 @@ export default function AiAssistant() {
 
   // 朗读控制条（历史条目与当前轮共用）
   // topic 决定公式朗读口径：物理公式 topic → physics 模式 + 逐公式量名表（多义符号消歧）；其余走数学口径
-  const renderSpeakControls = (text: string, topic?: string, copyKey?: string) => {
+  const renderSpeakControls = (text: string, topic?: string, itemId = 'live-answer', copyKey?: string) => {
     const symbols = lang === 'zh' ? symbolsForTopic(topic) : null;
     const speechOpts = symbols ? { mode: 'physics' as const, symbols } : undefined;
-    // finished 态只对刚播完的那条显示重播；其他条目保持普通朗读按钮（点了会朗读自己）
-    const isReplay = speakState === 'finished' && finishedText === text;
+    // 只有当前 activeId 才是真正播放中的卡片；其余卡片一律显示普通朗读按钮。
+    const current = ttsActiveId === itemId;
+    const displayState = current ? speakState : 'idle';
+    const isReplay = current && speakState === 'finished' && finishedText === text;
     return (
     <div className="flex justify-end items-center gap-1 mt-1.5">
       <button
         type="button"
-        onClick={() => {
-          if (speakState === 'playing') pause();
-          else if (speakState === 'paused') resume();
-          else if (speakState === 'synthesizing') stopSpeak();
-          else if (isReplay) replay();
-          else speak(text, '', lang, speechOpts);
-        }}
+        onClick={() => ttsToggle({ id: itemId, text, lang, opts: speechOpts })}
         title={
-          speakState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
-            : speakState === 'paused' ? (lang === 'zh' ? '继续朗读' : 'Resume')
-            : speakState === 'synthesizing' ? (lang === 'zh' ? '合成中' : 'Loading')
+          displayState === 'playing' ? (lang === 'zh' ? '暂停朗读' : 'Pause')
+            : displayState === 'paused' ? (lang === 'zh' ? '继续朗读' : 'Resume')
+            : displayState === 'synthesizing' ? (lang === 'zh' ? '合成中' : 'Loading')
             : isReplay ? (lang === 'zh' ? '重新朗读' : 'Replay')
-            : speakState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
+            : displayState === 'error' ? (lang === 'zh' ? '重试朗读' : 'Retry reading')
             : (lang === 'zh' ? '朗读回答' : 'Read aloud')
         }
         className={`tap-area inline-flex items-center justify-center gap-1.5 transition-colors p-1.5 ${
-          speakState === 'synthesizing'
+          displayState === 'synthesizing'
             ? (waitingLong ? 'text-[var(--warn)]' : 'text-[var(--muted)]')
             : 'text-[var(--muted)] hover:text-[var(--fg)]'
         }`}
       >
-        {speakState === 'synthesizing' ? (
+        {displayState === 'synthesizing' ? (
           /* 品牌三角方圆：合成中沿三角形路径循环移位（复用 Header 品牌动画）；等待超 4s 变暖色提示 */
           <span className="relative block w-5 h-5 speak-brand" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="absolute w-2 h-2 animate-tri-spin speak-tri" style={{ top: 0, left: 6 }}>
@@ -297,8 +293,8 @@ export default function AiAssistant() {
               <circle cx="12" cy="12" r="8" />
             </svg>
           </span>
-        ) : speakState === 'playing' ? <Pause className="w-4 h-4" />
-          : speakState === 'paused' ? <Play className="w-4 h-4" />
+        ) : displayState === 'playing' ? <Pause className="w-4 h-4" />
+          : displayState === 'paused' ? <Play className="w-4 h-4" />
           : isReplay ? <RotateCcw className="w-4 h-4" />
           : <Volume2 className="w-4 h-4" />
         }
@@ -326,7 +322,7 @@ export default function AiAssistant() {
           : <Copy className="w-3.5 h-3.5" aria-hidden="true" />}
       </button>
       {/* 暂停后可停止（回到开头） */}
-      {speakState === 'paused' && (
+      {displayState === 'paused' && (
         <button
           type="button"
           onClick={stopSpeak}
@@ -336,19 +332,33 @@ export default function AiAssistant() {
           <Square className="w-3.5 h-3.5" />
         </button>
       )}
-      {speakState === 'error' && errorMsg && (
+      {current && displayState === 'error' && errorMsg && (
         <span className="text-[0.625rem] text-[var(--error)] mono-font ml-1" role="alert">
           {errorMsg}
         </span>
       )}
       {/* 云端不可用静默回落端侧时的克制提示（一行小字，不打断朗读） */}
-      {speakNotice && speakState !== 'error' && (
+      {current && speakNotice && displayState !== 'error' && (
         <span className="text-[0.625rem] text-[var(--muted)] mono-font ml-1">{speakNotice}</span>
       )}
     </div>
   );
   };
   const [view, setView] = useState<'terms' | 'settings' | 'chat' | 'history' | 'quiz'>('terms');
+
+  // 离开历史列表 / 切走路由时自动静音，避免朗读在不可见面板里继续空响。
+  const prevViewRef = useRef(view);
+  useEffect(() => {
+    if (prevViewRef.current === 'history' && view !== 'history') stopSpeak();
+    prevViewRef.current = view;
+  }, [view, stopSpeak]);
+  const prevRoutePathRef = useRef(location.pathname);
+  useEffect(() => {
+    if (prevRoutePathRef.current !== location.pathname) {
+      prevRoutePathRef.current = location.pathname;
+      stopSpeak();
+    }
+  }, [location.pathname, stopSpeak]);
 
   /*
    * 设置域 Hook：模型配置 / 连通性检测 / 语音朗读 / 思考强度的状态与处理器全部内聚在 useAiSettings。
@@ -1883,7 +1893,7 @@ export default function AiAssistant() {
 
   const termsState = useMemo(() => ({ collapsedTerms, pending }), [collapsedTerms, pending]);
   const termsActions = useStable(() => ({ setView, toggleTerm }));
-  const historyState = useMemo(() => ({ aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageLimitOptions: STORAGE_LIMIT_OPTIONS, storageUsage }), [aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageUsage]);
+  const historyState = useMemo(() => ({ aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageLimitOptions: STORAGE_LIMIT_OPTIONS, storageUsage, ttsActiveId, speakState }), [aiCtx, config, confirmClearHist, confirmClearQuiz, copiedId, copyFailedId, expandedHistId, filteredHistory, filteredQuizHistory, hasFilter, hasQuizFilter, histPage, histPageCount, histSubjects, histTopics, historyTab, pagedHistory, pagedQuizHistory, paperData, paperOpen, paperOpts, paperPreview, pendingStorageLimit, persistHistory, quizExpandedId, quizHistoryData, quizOverview, quizOverviewOpen, quizPage, quizPageCount, quizScope, quizStatsData, quizSubjFilter, quizSubjects, quizSummaryConfirm, quizSummaryError, quizSummaryLoading, quizSummaryScopeLabel, quizSummaryText, quizTopicFilter, quizTopicMenuOpen, quizTopics, subjFilter, topicFilter, topicMenuOpen, storageLimit, storageUsage, ttsActiveId, speakState]);
   const historyActions = useStable(() => ({ applyStorageLimit, backToPaperOptions, cancelStorageLimit, clearHistoryAll, clearQuizHistoryAll, closePaperPreview, confirmStorageLimit, copyAnswer, exportPaper, gotoHistoryPath, renderSpeakControls, retryWrongQuestion, runQuizSummary, setExpandedHistId, setHistPage, setHistoryTab, setPaperOpen, setPaperOpts, setPaperPreview, setQuizExpandedId, setQuizOverviewOpen, setQuizPage, setQuizScope, setQuizSubjFilter, setQuizSummaryConfirm, setQuizTopicFilter, setQuizTopicMenuOpen, setSubjFilter, setTopicFilter, setTopicMenuOpen, setView }));
   const historyRefs = useMemo(() => ({ quizTopicMenuRef, topicMenuRef }), [quizTopicMenuRef, topicMenuRef]);
 
@@ -2334,7 +2344,7 @@ export default function AiAssistant() {
                     <div className="text-left">
                       <div className="inline-block max-w-[95%] min-w-0 break-words px-2.5 py-1.5 border border-[var(--border)] text-left text-xs leading-relaxed whitespace-pre-wrap ai-answer">
                         <AnswerRich text={h.assistant} />
-                        {renderSpeakControls(h.assistant, aiCtx.topic)}
+                        {renderSpeakControls(h.assistant, aiCtx.topic, `mem-${i}`)}
                       </div>
                     </div>
                     {/* 被中断的回答：给一个「继续生成」入口（复用 followUp 链路续写） */}
@@ -2384,7 +2394,7 @@ export default function AiAssistant() {
                           </div>
                         )}
                         {/* 朗读按钮：流式完成前不显示（busy 中）；完成后由历史区提供 */}
-                        {answer && !busy && renderSpeakControls(answer, aiCtx.topic)}
+                        {answer && !busy && renderSpeakControls(answer, aiCtx.topic, 'live-answer')}
                       </div>
                     </div>
                     )}
