@@ -157,6 +157,7 @@ export const translations = {
     backToHome: '返回',
     // 首开欢迎弹窗
     welcomeTag: '2026 全国青少年科学探究建模能力大赛 · 初中组 · 参赛作品',
+    welcomeTagShort: '2026 全国青少年科创大赛 · 初中组 · 作品',
     welcomeMath: '一次 / 二次 / 反比例函数 · 圆的性质 · 三角形全等与 SSA 反例 · 相似与位似 · 割圆术与尺规作图',
     welcomePhysics: '欧姆定律 · 串并联电路 · 浮力 · 杠杆 · 滑轮 · 压强 · 凸透镜成像',
     welcomeChemistry: '质量守恒 · 电解水 · 金属活动性 · 酸碱中和',
@@ -369,6 +370,7 @@ export const translations = {
     backToHome: 'Back',
     // Welcome dialog
     welcomeTag: 'Entry for the 2026 National Youth Scientific Inquiry & Modeling Ability Competition · Junior Division',
+    welcomeTagShort: '2026 National STEM Competition · Junior',
     welcomeMath: 'Linear, quadratic & inverse functions · circle theorems · triangle congruence & the SSA counterexample · similarity & homothety · circle-cutting (π) · ruler & compass',
     welcomePhysics: "Ohm's law · series and parallel circuits · buoyancy · levers · pulleys · pressure · convex lens",
     welcomeChemistry: 'conservation of mass · electrolysis of water · metal activity · neutralization',

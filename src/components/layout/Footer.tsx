@@ -59,7 +59,7 @@ export default function Footer() {
   const archUrl = `/architecture.html?theme=${archTheme}`;
 
   return (
-    <footer className="w-full border-t border-[var(--border)] py-6 text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <footer className="app-footer w-full border-t border-[var(--border)] pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] max-sm:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] text-[0.625rem] text-[var(--muted)] mono-font uppercase tracking-wider transition-colors duration-[var(--dur-base)]">
       {/* 顶线满幅通栏：border 落在满宽 footer 上；内容由内层容器收回正文列（同 Header 算法） */}
       {/* 竖屏节奏：作者行（含角色）→ 协议行 → 版权行，三层统一 8px（`max-sm:gap-y-2`）。
           旧的 16px 行距还要叠在 26px 的图标热区盒上，字形净空实测 32.5 / 31px，

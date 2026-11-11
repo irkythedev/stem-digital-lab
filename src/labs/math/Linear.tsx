@@ -532,7 +532,7 @@ export default function Linear() {
         {/* 左列：坐标系 + 读数 */}
         <div className={`flex flex-col space-y-4 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
           <div ref={planeRef} className="flex flex-col space-y-6 lg:block lg:h-full lg:space-y-0">
-            <div className="overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] lg:h-full lg:border-0 lg:bg-transparent">
+            <div className="overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:h-full lg:border-0 lg:bg-transparent">
               <div className={`hidden items-center justify-between border-b border-[var(--border)] bg-[var(--card-bg)] px-3 lg:flex lg:h-10 ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
                 <div className="flex min-w-0 items-baseline gap-2">
                   <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {t.readout}</span>
@@ -572,7 +572,7 @@ export default function Linear() {
                   yLabel="y"
                   framed={false}
                   viewWidth={isDesktop ? 920 : 640}
-                  viewHeight={isDesktop ? 620 : 380}
+                  viewHeight={isDesktop ? 620 : 760}
                   fillContainer={isDesktop}
                   bleed={isDesktop}
                   clipContent={isDesktop}
@@ -580,11 +580,11 @@ export default function Linear() {
                   interactiveView={isDesktop}
                   zoomCommand={viewCommand}
                   showLegend={!isDesktop}
-                  maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-h-[min(48vh,440px)]'}
+                  maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-sm:min-h-[440px] max-sm:max-h-[65dvh] max-h-[min(48vh,440px)]'}
                 />
               </div>
 
-              <div data-lab-toolbar="true" className={`mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] px-3 pb-2.5 pt-2 lg:hidden ${stage === 'predict' && !revealed ? 'hidden' : ''}`}>
+              <div data-lab-toolbar="true" className={`mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] px-3 pb-2.5 pt-2 max-sm:h-9 max-sm:min-h-0 max-sm:items-center max-sm:gap-1 max-sm:px-2 max-sm:py-0 lg:hidden ${stage === 'predict' && !revealed ? 'hidden' : ''}`}>
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">

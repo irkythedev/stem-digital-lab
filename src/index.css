@@ -453,6 +453,7 @@ html.dark {
 }
 
 html {
+  -webkit-tap-highlight-color: transparent;
   /* 画布层（body 之外：回弹区、短页留白）跟随主题；color-scheme 让滚动条、
      原生表单控件与自动填充在暗色下也走暗色，不再突兀闪白 */
   background-color: var(--bg);
@@ -480,8 +481,8 @@ html.dark {
    整体推低，滚到底时末行仍在视口底边、仍被胶囊覆盖（实测 main pb=80 版权行照样被压；
    改补 footer 才清除）。桌面不加：抽屉在 ≥640px 根本不挂载，没有胶囊要避让。 */
 @media (max-width: 639px) {
-  html.param-dock-mounted #app-main > footer {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+  html.param-dock-mounted #app-main .app-footer {
+    padding-bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
@@ -803,6 +804,14 @@ main button.compact {
 }
 
 /* ── 交互元素全局按压触感反馈（Apple HIG 风格微缩放与平滑阻尼） ── */
+button,
+[role="button"],
+a,
+summary,
+label {
+  touch-action: manipulation;
+}
+
 button,
 .btn,
 [role="button"] {

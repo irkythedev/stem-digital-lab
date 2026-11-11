@@ -18,6 +18,22 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.3',
+    date: '2026-11',
+    zh: [
+      '[优化] 小屏实验页面更紧凑，画布与操作区显示更协调',
+      '[优化] 移动端常用入口更简洁，操作更容易找到',
+      '[优化] 底部留白与弹出面板体验进一步优化，整体更接近原生应用',
+      '[优化] 若干触控、滚动与主题细节优化，整体更稳定',
+    ],
+    en: [
+      '[Improved] More compact small-screen lab pages with a more balanced canvas and control layout',
+      '[Improved] Simplified mobile actions that are easier to find',
+      '[Improved] Bottom spacing and pop-up panels refined for a more native app feel',
+      '[Improved] Several touch, scrolling and theme details refined for overall stability',
+    ],
+  },
+  {
     version: '0.50.2',
     date: '2026-11',
     zh: [

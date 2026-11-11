@@ -108,6 +108,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       } else {
         root.classList.add(themeMode);
       }
+      // iOS PWA standalone 的状态栏 / 启动边缘跟随当前主题，避免深浅切换时闪白。
+      const bg = getComputedStyle(root).getPropertyValue('--bg').trim()
+        || (root.classList.contains('dark') ? '#161613' : '#fafafa');
+      document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+        meta.setAttribute('content', bg);
+      });
     };
 
     applyTheme();

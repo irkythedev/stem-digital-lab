@@ -558,13 +558,13 @@ export default function Similarity() {
 
   const measureBar = (
     <div className="min-w-0 space-y-1">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 max-sm:grid-cols-3 max-sm:gap-1 sm:grid-cols-3">
         {[
           [t.perimeterRatio, pRatio, perimeterRatio(displayK)],
           [t.areaRatio, aRatio, areaRatio(displayK)],
           [t.sideRatio, sideRatioVal, perimeterRatio(displayK)],
         ].map(([label, measured, expected]) => (
-          <div key={String(label)} className="min-w-0 border border-[var(--border)] px-1.5 py-0.5">
+          <div key={String(label)} className="min-w-0 border border-[var(--border)] px-1.5 py-0.5 max-sm:px-1 max-sm:py-0.5">
             <p className="truncate text-[0.5rem] mono-font text-[var(--muted)]">{label}</p>
             <p className="text-xs mono-font tabular-nums text-[var(--fg)]">{f2(Number(measured))}</p>
             <p className="truncate text-[0.5rem] mono-font tabular-nums text-[var(--muted)]">{t.expected} {f2(Number(expected))}</p>

@@ -22,21 +22,25 @@ interface AskAiButtonProps {
   label?: string;
   /** 附加样式类（如间距） */
   className?: string;
+  /** 移动端紧凑头部：只保留图标，文字转为 tooltip / aria-label */
+  iconOnly?: boolean;
 }
 
-export default function AskAiButton({ question, labId, label, className = '' }: AskAiButtonProps) {
+export default function AskAiButton({ question, labId, label, className = '', iconOnly = false }: AskAiButtonProps) {
   const { lang, t, isOffline } = useApp();
   const { askAi } = useAiContext();
+  const labelText = label ?? (lang === 'zh' ? '问 AI' : 'Ask AI');
   return (
     <button
       type="button"
       onClick={() => askAi((labId ? getPageQuestion(labId) : '') || question)}
       disabled={isOffline}
-      title={isOffline ? t.offlineAi.sendBlocked : undefined}
-      className={`compact tap32 inline-flex items-center gap-1 rounded px-1.5 py-1 text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--muted)] ${className}`}
+      title={isOffline ? t.offlineAi.sendBlocked : labelText}
+      aria-label={labelText}
+      className={`compact tap32 inline-flex items-center rounded text-xs mono-font hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-[var(--muted)] ${iconOnly ? 'h-7 w-7 justify-center px-0' : 'gap-1 px-1.5 py-1'} ${className}`}
     >
       <Sparkles className="w-3 h-3" />
-      {label ?? (lang === 'zh' ? '问 AI' : 'Ask AI')}
+      {!iconOnly && labelText}
     </button>
   );
 }

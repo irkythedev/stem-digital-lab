@@ -547,7 +547,20 @@ export default function PolygonPi() {
         <span className="shrink-0 text-[0.6875rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {t.ratioTitle}</span>
         <div className="min-w-0 flex-1"><SqueezeBar lo={bounds.lo} hi={bounds.hi} /></div>
       </div>
-      <div className="grid min-w-[18rem] grid-cols-2 gap-x-3 gap-y-0.5 text-[0.5625rem] mono-font tabular-nums sm:grid-cols-4">
+      <details className="text-[0.625rem] mono-font text-[var(--muted)] max-sm:block sm:hidden">
+        <summary className="min-h-[24px] cursor-pointer select-none">{lang === 'zh' ? '查看推导明细' : 'View derivation details'}</summary>
+        <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[0.5625rem] tabular-nums">
+          {rows.map((row) => (
+            <div key={row.label} className="min-w-0 border border-[var(--border)] px-1.5 py-0.5 leading-tight">
+              <span className="block truncate text-[0.45rem] text-[var(--muted)]">{row.label}</span>
+              <span className="text-[var(--fg)]">{row.poly}</span>
+              <span className="text-[var(--muted)]"> / {row.circle}</span>
+              <span className="text-[var(--muted)]"> Δ{row.gap}</span>
+            </div>
+          ))}
+        </div>
+      </details>
+      <div className="hidden min-w-[18rem] grid-cols-2 gap-x-3 gap-y-0.5 text-[0.5625rem] mono-font tabular-nums sm:grid sm:grid-cols-4">
         {rows.map((row) => (
           <div key={row.label} className="min-w-0 border border-[var(--border)] px-1.5 py-0.5 leading-tight">
             <span className="block truncate text-[0.45rem] text-[var(--muted)]">{row.label}</span>

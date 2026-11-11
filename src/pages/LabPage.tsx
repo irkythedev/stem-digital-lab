@@ -107,7 +107,7 @@ export default function LabPage() {
     : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
-    <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
+    <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] max-sm:min-h-[calc(100dvh-5rem)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
       {/* 数学全画布实验：移动端两行紧凑头部（导航+标题+工具 / 32px 步进条） */}
       {fullCanvasLab && (
         <div className="lg:hidden">
@@ -136,8 +136,8 @@ export default function LabPage() {
                   ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
                   : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
               />
-              <AskAiButton labId={lab.id} question={pageAiQuestion} />
-              <AskQuizButton />
+              <AskAiButton labId={lab.id} question={pageAiQuestion} iconOnly />
+              <AskQuizButton iconOnly />
             </div>
           </div>
         </div>

@@ -956,7 +956,7 @@ export default function Quadratic() {
         <div ref={planeRef} className={`flex flex-col space-y-3 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
           <div
             ref={canvasRef}
-            className="relative overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] lg:h-full lg:border-0 lg:bg-transparent"
+            className="relative overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:h-full lg:border-0 lg:bg-transparent"
             style={{ touchAction: isDesktop ? 'none' : undefined }}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
@@ -1038,21 +1038,21 @@ export default function Quadratic() {
                 yLabel="y"
                 framed={false}
                 viewWidth={isDesktop ? 920 : 640}
-                viewHeight={isDesktop ? 620 : 380}
+                viewHeight={isDesktop ? 620 : 760}
                 fillContainer={isDesktop}
                 originXRatio={isDesktop ? 0.5 : undefined}
                 bleed={isDesktop}
                 showLegend={false}
                 clipContent={isDesktop}
                 squareGrid={isDesktop}
-                maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-h-[min(56vh,520px)] min-h-[280px]'}
+                maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-sm:min-h-[440px] max-sm:max-h-[65dvh] max-h-[min(56vh,520px)] min-h-[280px]'}
               />
             </div>
 
             {/* 画布底栏：猜想顶点单行条（不单独占卡） */}
             {Math.abs(eff.a) > 1e-9 && stage !== 'conclude' && (
               <div
-                className={`flex min-h-[44px] flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border)] px-3 py-0.5 lg:absolute lg:inset-x-0 lg:bottom-0 lg:h-11 lg:z-20 lg:rounded-none lg:border-0 lg:border-t lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? 'hidden' : ''}`}
+                className={`flex min-h-[44px] flex-wrap items-center gap-x-2 gap-y-1 border-t border-[var(--border)] px-3 py-0.5 max-sm:h-9 max-sm:min-h-0 max-sm:flex-nowrap max-sm:gap-x-1 max-sm:overflow-hidden max-sm:px-2 max-sm:py-0 lg:absolute lg:inset-x-0 lg:bottom-0 lg:h-11 lg:z-20 lg:rounded-none lg:border-0 lg:border-t lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:px-3 lg:shadow-none lg:backdrop-blur-none ${stage === 'predict' && !revealed ? 'hidden' : ''}`}
                 title={guessValid ? `h: ${f2(guessHNum as number)} / ${f2(vAxis)} / ${signed(dGuessH)}; k: ${f2(guessKNum as number)} / ${f2(vPeak)} / ${signed(dGuessK)}` : t.guessHint}
               >
                 <div className="flex shrink-0 items-baseline gap-2">
@@ -1071,7 +1071,7 @@ export default function Quadratic() {
                       value={guessH}
                       onChange={(e) => setGuessH(e.target.value)}
                       aria-label={t.guessH}
-                      className="min-h-[40px] w-16 rounded border border-[var(--border)] bg-transparent px-1.5 text-center text-xs mono-font tabular-nums text-[var(--fg)] focus:border-[var(--fg)] focus:outline-none"
+                      className="min-h-[40px] w-16 rounded border border-[var(--border)] bg-transparent px-1.5 text-center text-xs mono-font tabular-nums text-[var(--fg)] focus:border-[var(--fg)] focus:outline-none max-sm:h-7 max-sm:min-h-0 max-sm:w-12 max-sm:px-1"
                     />
                   </label>
                   <label className="flex items-center gap-1 text-[0.625rem] mono-font text-[var(--muted)]">
@@ -1083,7 +1083,7 @@ export default function Quadratic() {
                       value={guessK}
                       onChange={(e) => setGuessK(e.target.value)}
                       aria-label={t.guessK}
-                      className="min-h-[40px] w-16 rounded border border-[var(--border)] bg-transparent px-1.5 text-center text-xs mono-font tabular-nums text-[var(--fg)] focus:border-[var(--fg)] focus:outline-none"
+                      className="min-h-[40px] w-16 rounded border border-[var(--border)] bg-transparent px-1.5 text-center text-xs mono-font tabular-nums text-[var(--fg)] focus:border-[var(--fg)] focus:outline-none max-sm:h-7 max-sm:min-h-0 max-sm:w-12 max-sm:px-1"
                     />
                   </label>
                   {guessValid ? (

@@ -1211,7 +1211,7 @@ export default function Construction() {
                     type="button"
                     onClick={() => switchTask(i)}
                     aria-pressed={taskIdx === i}
-                    className={`min-h-[40px] rounded border px-2 py-1.5 text-[0.6875rem] mono-font leading-snug transition-colors ${
+                    className={`min-h-[40px] rounded border px-2 py-1.5 text-[0.6875rem] mono-font leading-snug transition-colors max-sm:h-7 max-sm:min-h-0 max-sm:px-1 max-sm:py-0 max-sm:text-[0.625rem] ${
                       taskIdx === i ? 'border-[var(--fg)] bg-[var(--accent-light)] font-semibold text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                     }`}
                   >

@@ -79,7 +79,7 @@ export default function CanvasSurface({
   const reactId = useId();
   const patternId = `canvas-surface-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   return (
-    <div className={`flex h-full min-h-[500px] w-full flex-1 flex-col overflow-hidden bg-[var(--card-bg)] lg:min-h-0 ${className}`}>
+    <div className={`flex h-full min-h-[500px] w-full flex-1 flex-col overflow-hidden bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:min-h-0 ${className}`}>
       {showToolbar ? <CanvasToolbar titleSlot={titleSlot} actionsSlot={actionsSlot} /> : null}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {background !== 'none' && (
@@ -98,7 +98,7 @@ export default function CanvasSurface({
             <rect width="100%" height="100%" fill={`url(#${patternId})`} />
           </svg>
         )}
-        <div className="absolute inset-0">{children}</div>
+        <div className="absolute inset-0 touch-none">{children}</div>
       </div>
       {active && hud ? <div className="shrink-0 border-t border-[var(--border)] px-3 py-2">{hud}</div> : null}
       {footerBar ? <CanvasFooterBar>{footerBar}</CanvasFooterBar> : null}

@@ -859,6 +859,8 @@ export default function Congruence() {
                       strokeWidth="1.6"
                       strokeDasharray={displayOverlayed && isCongruent ? '0' : '6 4'}
                       strokeLinejoin="round"
+                      style={!activeTimeline ? { cursor: 'grab', touchAction: 'none' } : undefined}
+                      onPointerDown={!activeTimeline ? onPoseDown('move') : undefined}
                     />
                     {(['A', 'B', 'C'] as const).map((k) => (
                       <circle key={'canddot' + k} cx={candTri[k].x * SCALE} cy={-candTri[k].y * SCALE} r="3.2" fill="var(--accent)" />

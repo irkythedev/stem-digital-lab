@@ -14,6 +14,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useParamDock } from '../../lib/use-param-dock';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { useFocusReturn } from '../../lib/use-focus-return';
+import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 
 interface ParamDockProps {
   children: ReactNode;
@@ -31,6 +32,7 @@ interface ParamDockProps {
 
 export default function ParamDock({ children, summary, anchorRef, title, closeLabel, dismissPx = 80, disabled = false }: ParamDockProps) {
   const dock = useParamDock();
+  useLockBodyScroll(dock.state === 'open');
   const [dragDy, setDragDy] = useState(0);
   const drag = useRef<{ y: number; dy: number } | null>(null);
   const suppressClick = useRef(false);
@@ -82,7 +84,7 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
     if (dock.aiOpen) return null;
     return (
       <>
-        <div aria-hidden="true" className="h-16" />
+        <div aria-hidden="true" className="hidden" />
         {createPortal(
           <button
             type="button"

@@ -77,7 +77,7 @@ export default function TokenUsageDialog({ usage, onClose, lang }: TokenUsageDia
   return createPortal(
     <div className="safe-overlay safe-overlay-4 fixed inset-0 z-[130] flex items-center justify-center bg-black/25 p-4" role="dialog" aria-modal="true" aria-label={u.title}>
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
-      <div className="relative z-[131] w-full max-w-[440px] max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4 shadow-2xl">
+      <div className="relative z-[131] w-full max-w-[440px] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-4 shadow-2xl">
         {/* 头部 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
           <div>

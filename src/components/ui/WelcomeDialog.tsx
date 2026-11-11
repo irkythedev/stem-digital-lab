@@ -148,9 +148,10 @@ export default function WelcomeDialog({
                 </span>
               )}
             </h2>
-            <p className="mt-1 text-[0.625rem] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5">
-              <span>{t.welcomeTag}</span>
-              <span aria-hidden="true">·</span>
+            <p className="mt-1 text-[0.625rem] leading-relaxed mono-font text-[var(--meter-v)] border-l-2 border-[var(--meter-v)] pl-2.5 flex flex-wrap items-center gap-x-1.5 max-sm:text-[0.5rem] max-[359px]:text-[0.45rem] max-sm:gap-x-1 max-sm:flex-nowrap">
+              <span className="hidden min-w-0 sm:inline" title={t.welcomeTag}>{t.welcomeTag}</span>
+              <span className="min-w-0 flex-1 truncate sm:hidden" title={t.welcomeTag}>{t.welcomeTagShort}</span>
+              <span aria-hidden="true" className="shrink-0">·</span>
               <button
                 type="button"
                 onClick={() =>
@@ -162,7 +163,7 @@ export default function WelcomeDialog({
                   })
                 }
                 title={t.viewAuthor}
-                className="tap-pad flex items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
+                className="tap-pad flex shrink-0 items-center gap-1 text-[var(--muted)] hover:text-[var(--meter-v)] transition-colors"
               >
                 <img
                   src="/icons/pubg-helmet.png"

@@ -20,6 +20,7 @@ import { ThinkingOrb } from 'thinking-orbs';
 import { useApp } from '../../lib/app-context';
 import { useSpeak } from '../../lib/use-speak';
 import { useEscapeKey } from '../../lib/use-escape-key';
+import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import TtsStatusBadge from './TtsStatusBadge';
 import { symbolsForTopic } from '../../lib/physics-speech-symbols';
 import { labFromPath, labMap } from '../../lib/labs';
@@ -189,6 +190,7 @@ export default function AiAssistant() {
   // 移动端判定跟随窗口尺寸实时更新（旋转 / 桌面窗口缩放）：<640px 为底部抽屉。
   // 原先只在渲染时读 innerWidth，缩放后要等下一次无关重渲染才切换，会出现「横屏仍是抽屉 / 窄屏仍是浮窗」。
   const [isMobileViewport, setIsMobileViewport] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useLockBodyScroll(isMobileViewport && open);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(max-width: 639px)');

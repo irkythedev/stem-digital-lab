@@ -97,7 +97,7 @@ export default function VersionDialog({ onClose, elevated = false, hasUpdate = f
         </button>
         {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} elevated={elevated} />}
 
-        <div className="space-y-4 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-4 max-h-[50dvh] overflow-y-auto">
           {CHANGELOG.map((entry) => (
             <div key={entry.version} className="border-t border-[var(--border)] pt-3">
               <div className="flex items-baseline gap-2 mb-1.5">
