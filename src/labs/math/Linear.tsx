@@ -13,12 +13,19 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { ChevronRight, Minus, Pin, Plus, RotateCcw } from 'lucide-react';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import { useCriticalDetent } from '../../lib/detent-feedback';
+
+const K_DETENTS = [-1, 1] as const;
+const ZERO_DETENT = [0] as const;
 import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useAiContext } from '../../lib/ai-context';
+import PredictionStamp from '../../components/lab/PredictionStamp';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ToggleSwitch from '../../components/lab/ToggleSwitch';
 import CoordPlane, { type CoordCurve, type CoordMarker, type CoordOverlay, mathMinus } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
 import ParamDock from '../../components/lab/ParamDock';
@@ -286,15 +293,20 @@ export const QUIZ_CORRECT: Record<string, string[]> = {
 
 export default function Linear() {
   const { lang } = useApp();
+  const { askAi } = useAiContext();
   const t = copy[lang];
   const initialUrl = readUrlParams();
 
   const [stage, setStage] = useState<Stage>(() => enumParam(initialUrl.get('stage'), ['predict', 'explore', 'conclude'] as const, 'predict'));
+  const [stampClosed, setStampClosed] = useState(false);
+  useEffect(() => { if (stage === 'explore') setStampClosed(false); }, [stage]);
   const [predSlope, setPredSlope] = useState<PredictSlope>(null);
   const [predIntercept, setPredIntercept] = useState<PredictIntercept>(null);
   const [revealed, setRevealed] = useState(false);
   const [k, setK] = useState(() => numParam(initialUrl.get('k'), TARGET_K, -5, 5));
   const [b, setB] = useState(() => numParam(initialUrl.get('b'), TARGET_B, -5, 5));
+  useCriticalDetent(k, K_DETENTS);
+  useCriticalDetent(b, ZERO_DETENT);
   const [pinned, setPinned] = useState<{ id: number; k: number; b: number }[]>([]);
   // 辅助线开关：控制画布上的虚线/标注层（反比例=渐近线，一次函数=与 y 轴交点）
   const [showGuides, setShowGuides] = useState(() => boolParam(initialUrl.get('guides'), true));
@@ -325,6 +337,16 @@ export default function Linear() {
   const conclusionComplete =
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
   const predComplete = predSlope !== null && predIntercept !== null;
+  const predictionCorrect = predSlope === 'up' && predIntercept === 'neg';
+  const predictionSummary = predComplete
+    ? (lang === 'zh'
+        ? `${predSlope === 'up' ? '上升' : predSlope === 'down' ? '下降' : '水平'} · ${predIntercept === 'pos' ? '交 y 轴正半轴' : predIntercept === 'neg' ? '交 y 轴负半轴' : '过原点'}`
+        : `${predSlope === 'up' ? 'rising' : predSlope === 'down' ? 'falling' : 'horizontal'} · ${predIntercept === 'pos' ? 'positive y-intercept' : predIntercept === 'neg' ? 'negative y-intercept' : 'through the origin'}`)
+    : '';
+  const showPredictionStamp = stage === 'explore' && predComplete && !stampClosed;
+  const askWhy = () => askAi(lang === 'zh'
+    ? `我在预测阶段选了「${predictionSummary}」，但实测结果与预测不一致。请结合当前实验读数和画布现象，先别直接给结论，告诉我应该观察或比较哪些量，才能找出差异的原因。`
+    : `In the Predict stage I chose “${predictionSummary}”, but the measurement differs. Using the current readings and what is on the canvas, please do not give the conclusion directly — tell me which quantities to observe or compare to find why they differ.`);
 
   const sampleMin = isDesktop ? -14 : -4;
   const sampleMax = isDesktop ? 14 : 4;
@@ -474,9 +496,15 @@ export default function Linear() {
       b,
       slopeDy: k,
       revealed,
+      ...(predSlope !== null && predIntercept !== null
+        ? {
+            predictionCorrect: predSlope === 'up' && predIntercept === 'neg',
+            predictionSummary: `${predSlope === 'up' ? '上升' : predSlope === 'down' ? '下降' : '水平'} · ${predIntercept === 'pos' ? '交 y 轴正半轴' : predIntercept === 'neg' ? '交 y 轴负半轴' : '过原点'}`,
+          }
+        : {}),
       ...(xZero === null ? {} : { xZero }),
     });
-  }, [stage, k, b, revealed]);
+  }, [stage, k, b, revealed, predSlope, predIntercept]);
   // 页面级「问 AI」问句：登记到页级注册表，点击标题旁入口时取用（动态实验含当前读数）
   useEffect(() => {
     setPageQuestion('linear', lang === 'zh' ? '改变 k 或 b 时，直线的倾斜方向、与坐标轴交点和图像读数怎样变化？' : 'As you change k or b, how do the line direction, axis intercepts and graph readings change?');
@@ -610,6 +638,11 @@ export default function Linear() {
 
         {/* 右列：参数 + 三幕 */}
         <div className={`flex flex-col space-y-4 ${stage === 'predict' ? 'lg:absolute lg:inset-0 lg:z-30 lg:flex lg:items-center lg:justify-center lg:bg-transparent lg:p-0' : stage === 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[460px] xl:w-[500px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : inspectorOpen ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[330px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : 'lg:hidden'}`}>
+          {showPredictionStamp && (
+            <div className="mb-3 hidden lg:block">
+              <PredictionStamp correct={predictionCorrect} summary={predictionSummary} lang={lang} onAsk={askWhy} onClose={() => setStampClosed(true)} />
+            </div>
+          )}
           <div className={`${stage === 'predict' || stage === 'conclude' ? 'hidden' : 'hidden lg:flex'} shrink-0 items-center justify-between border-b border-[var(--border)] pb-2`}>
             <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
             <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
@@ -624,6 +657,11 @@ export default function Linear() {
             anchorRef={planeRef}
             summary={exprOf(k, b)}
           >
+          {showPredictionStamp && (
+            <div className="mb-3 lg:hidden">
+              <PredictionStamp correct={predictionCorrect} summary={predictionSummary} lang={lang} onAsk={askWhy} onClose={() => setStampClosed(true)} />
+            </div>
+          )}
           <div className="border border-[var(--border)] p-4 space-y-4 lg:border-0 lg:p-0 lg:space-y-3">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase lg:hidden">
               // {t.params}
@@ -640,7 +678,7 @@ export default function Linear() {
               </button>
               <div className="flex flex-wrap items-center gap-1.5">
                 {pinned.length > 0 && (
-                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">{t.pinnedCount(pinned.length)}</span>
+                  <span className="max-w-[22rem] truncate text-[0.625rem] mono-font tabular-nums text-[var(--muted)]">{lang === 'zh' ? '// 定格对照: ' : '// pinned: '}{exprOf(pinned[pinned.length - 1].k, pinned[pinned.length - 1].b)} → {exprOf(k, b)}</span>
                 )}
                 <button
                   type="button"
@@ -966,6 +1004,7 @@ export default function Linear() {
                 <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
                 <span>{t.redoLabel}</span>
               </button>
+              <ConcludeNextActions labId="linear" />
             </div>
           )}
 

@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HardDrive, Check } from 'lucide-react';
+import { HardDrive, Check, ChevronDown } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import OfflinePackPanel from './OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
@@ -34,6 +34,51 @@ export default function VersionDialog({ onClose, elevated = false, hasUpdate = f
   const [showPack, setShowPack] = useState(false);
   const closeLabel = lang === 'zh' ? '关闭' : 'Close';
   const title = t.changelogTitle;
+  const recentEntries = CHANGELOG.slice(0, 3);
+  const olderEntries = CHANGELOG.slice(3);
+
+  /** 每一条日志：左侧微标签与右侧首行汉字锁定同一基线。 */
+  const tagClass = (tag: string): string =>
+    `lab-tag-micro inline-flex shrink-0 items-center justify-center rounded border px-1.5 py-0.5 text-[11px] font-normal leading-none bg-[var(--panel-bg)]/50 ${
+      /修复|fix/i.test(tag)
+        ? 'border-[var(--fg)]/25 text-[var(--fg)]'
+        : 'border-[var(--border)] text-[var(--muted)]'
+    }`;
+
+  /** 最新版本为 Featured Card，历史条目保持轻量时间轴。 */
+  const renderEntry = (entry: (typeof CHANGELOG)[number], featured = false, showDivider = true) => (
+    <div
+      key={entry.version}
+      className={featured
+        ? 'version-latest-card rounded-lg border border-[var(--border)] bg-[var(--panel-bg)]/30 p-3.5'
+        : `px-1 ${showDivider ? 'border-t border-[var(--border)]/60' : ''} pt-3.5 opacity-80 transition-opacity hover:opacity-100`}
+    >
+      <div className="mb-2 flex items-baseline gap-2.5">
+        <span className="text-xs font-bold mono-font text-[var(--fg)]">v{entry.version}</span>
+        <span className="text-[0.625rem] mono-font text-[var(--muted)]">{entry.date}</span>
+        {featured && (
+          <span className="ml-auto rounded bg-[var(--fg)] px-2 py-0.5 text-[11px] font-medium text-[var(--card-bg)]">
+            {lang === 'zh' ? '最新' : 'LATEST'}
+          </span>
+        )}
+      </div>
+      <ul className={featured ? 'space-y-2' : 'space-y-1'}>
+        {(lang === 'zh' ? entry.zh : entry.en).map((line, i) => {
+          const m = line.match(/^\[([^\]]+)\]\s*(.*)$/);
+          const tag = m?.[1] ?? '';
+          return (
+            <li key={i} className="flex items-baseline gap-2.5 text-xs leading-5">
+              {tag ? <span className={tagClass(tag)}>{tag}</span> : null}
+              <span className={`min-w-0 leading-5 ${featured ? 'text-xs text-[var(--fg)]' : 'text-xs text-[var(--muted)]'}`}>
+                {m ? m[2] : line}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
   return createPortal(
     /* 拦截层与面板必须处在同一个层叠上下文里才能保证「面板在遮罩之上」。
        平时包一层 `relative`（z-index:auto，不建上下文，行为与直接挂 body 一致）；
@@ -62,7 +107,7 @@ export default function VersionDialog({ onClose, elevated = false, hasUpdate = f
             </svg>
             {title}
           </h2>
-          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
+          <button type="button" onClick={onClose} aria-label={closeLabel} title={closeLabel} className="lab-control-28 h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none">×</button>
         </div>
         {hasUpdate && onUpdate && (
           <div className="flex items-center justify-between gap-2 rounded-md border border-[var(--accent)]/50 bg-[var(--accent-light)]/60 px-2.5 py-2 text-[0.6875rem] text-[var(--fg)]">
@@ -97,36 +142,19 @@ export default function VersionDialog({ onClose, elevated = false, hasUpdate = f
         </button>
         {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} elevated={elevated} />}
 
-        <div className="space-y-4 max-h-[50dvh] overflow-y-auto">
-          {CHANGELOG.map((entry) => (
-            <div key={entry.version} className="border-t border-[var(--border)] pt-3">
-              <div className="flex items-baseline gap-2 mb-1.5">
-                <span className="text-xs font-bold mono-font text-[var(--fg)]">v{entry.version}</span>
-                <span className="text-[0.625rem] mono-font text-[var(--muted)]">{entry.date}</span>
+        <div className="space-y-3 max-h-[60dvh] overflow-y-auto pr-0.5">
+          {recentEntries.map((entry, i) => renderEntry(entry, i === 0, i !== 1))}
+          {olderEntries.length > 0 && (
+            <details className="group border-t border-[var(--border)] pt-3">
+              <summary className="flex cursor-pointer select-none list-none items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)] transition-colors hover:text-[var(--fg)]">
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
+                <span>{lang === 'zh' ? `查看更早版本（${olderEntries.length}）` : `Older versions (${olderEntries.length})`}</span>
+              </summary>
+              <div className="mt-2 space-y-3">
+                {olderEntries.map((entry) => renderEntry(entry))}
               </div>
-              <ul className="space-y-1">
-                {(lang === 'zh' ? entry.zh : entry.en).map((line, i) => {
-                  // 前缀标签（[新增]/[优化]/[修复]）加粗显示
-                  const m = line.match(/^(\[[^\]]+\])\s*(.*)$/);
-                  return (
-                    <li key={i} className="flex gap-2 text-xs serif-font leading-relaxed text-[var(--muted)]">
-                      <span className="text-[var(--border)] shrink-0">•</span>
-                      <span>
-                        {m ? (
-                          <>
-                            <strong className="text-[var(--fg)] font-bold">{m[1]}</strong>{' '}
-                            {m[2]}
-                          </>
-                        ) : (
-                          line
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+            </details>
+          )}
         </div>
       </div>
       </div>

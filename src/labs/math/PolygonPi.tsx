@@ -22,6 +22,7 @@ import ParamDock from '../../components/lab/ParamDock';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ToggleSwitch from '../../components/lab/ToggleSwitch';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import StageNav from '../../components/lab/StageNav';
 import CanvasSurface, { CanvasZoomControls } from '../../components/lab/CanvasSurface';
 import LabStageShell from '../../components/lab/LabStageShell';
@@ -875,14 +876,17 @@ export default function PolygonPi() {
           )}
 
           {stage === 'conclude' && conclusionComplete && (
-            <button
-              type="button"
-              onClick={resetAll}
-              className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
-            >
-              <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
-              <span>{t.redoLabel}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={resetAll}
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
+              >
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
+                <span>{t.redoLabel}</span>
+              </button>
+              <ConcludeNextActions labId="polygon-pi" />
+            </>
           )}
           </section>
         </div>

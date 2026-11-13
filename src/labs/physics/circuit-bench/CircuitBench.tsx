@@ -98,6 +98,7 @@ import {
   undo,
   type History,
 } from './circuit-bench-history';
+import { overlayStackDepth } from '../../../lib/overlay-stack';
 import { readingReversed } from './circuit-bench-labels';
 import { deenergizePlan, type DeenergizePlan } from './circuit-bench-monitor';
 import { loadCircuitBenchEngine, solveNow, type CircuitEngineKind } from './circuit-bench-engine';
@@ -496,6 +497,7 @@ export default function CircuitBench() {
   /* ── 删除 / 撤销 / 重做快捷键（文本输入控件内不拦截） ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (overlayStackDepth() > 0) return;
       // Esc：取消待接的接线柱 / 关闭检查器。检查器浮在右上角，会盖住元件，
       // 学生要快速回到干净画布时它必须能一键收走。
       if (e.key === 'Escape') {

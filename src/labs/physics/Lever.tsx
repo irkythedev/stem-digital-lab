@@ -13,6 +13,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, RotateCcw, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import { useCriticalDetent } from '../../lib/detent-feedback';
+
+const BALANCE_DETENT = [1] as const;
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ParamDock from '../../components/lab/ParamDock';
@@ -160,6 +163,7 @@ export default function Lever() {
   const torque1 = torque(m1, d1);
   const torque2 = torque(m2, d2);
   const isBalanced = isLeverBalanced(torque1, torque2);
+  useCriticalDetent(isBalanced ? 1 : 0, BALANCE_DETENT);
   /** 参数抽屉的滚动锚点：杠杆示意主图 */
   const beamRef = useRef<HTMLDivElement>(null);
 

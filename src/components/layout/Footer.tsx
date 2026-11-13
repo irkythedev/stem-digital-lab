@@ -130,14 +130,14 @@ export default function Footer() {
               <span className="footer-works-tip" aria-hidden="true">{t.moreWorksHint}</span>
             )}
             {showWorks && (
-              <span data-tour="more-works" className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-dropdown flex flex-col gap-1.5 bg-[var(--bg)] border border-[var(--border)] p-2 shadow-[var(--elev-sm)] w-max max-w-[min(16rem,calc(100vw-2rem))]">
+              <span data-tour="more-works" className="absolute right-0 sm:left-0 sm:right-auto bottom-full mb-2 z-dropdown flex w-max max-w-[min(16rem,calc(100vw-2rem))] flex-col gap-0.5 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card-bg)] p-1.5 shadow-[var(--elev-md)]">
                 {t.works.map((w) => (
                   <a
                     key={w.url}
                     href={w.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--fg)] transition-colors leading-snug"
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[var(--muted)] leading-snug transition-colors hover:bg-[var(--accent-light)] hover:text-[var(--fg)]"
                   >
                     <img src={w.icon} alt="" width="14" height="14" className="flex-shrink-0" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                     <span className="normal-case tracking-normal">{w.name}</span>

@@ -20,6 +20,7 @@ import ToggleSwitch from '../../components/lab/ToggleSwitch';
 import CoordPlane, { type CoordCurve, type CoordMarker, type CoordOverlay, mathMinus } from '../../components/lab/CoordPlane';
 import { boolParam, enumParam, numParam, readUrlParams, useLabUrlSync } from '../../lib/lab-url-state';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
 import ParamDock from '../../components/lab/ParamDock';
@@ -536,7 +537,7 @@ export default function Inverse() {
         {/* 左列：坐标系（预测幕未揭示时隐藏）+ 读数 */}
         <div className={`flex flex-col space-y-4 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
           <div ref={planeRef} className="flex flex-col space-y-6 lg:block lg:h-full lg:space-y-0">
-            <div className="overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:h-full lg:border-0 lg:bg-transparent">
+            <div className="relative overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:h-full lg:border-0 lg:bg-transparent">
               <div className={`hidden items-center justify-between border-b border-[var(--border)] bg-[var(--card-bg)] px-3 lg:flex lg:h-10 ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
                 <div className="flex min-w-0 items-baseline gap-2">
                   <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {t.readout}</span>
@@ -591,6 +592,12 @@ export default function Inverse() {
                   maxHeightClass={isDesktop ? 'lg:h-full lg:max-h-none min-h-[280px]' : 'max-sm:min-h-[440px] max-sm:max-h-[65dvh] max-h-[min(48vh,440px)]'}
                 />
               </div>
+
+              {stage !== 'predict' && Math.abs(x0) <= 0.3 && (
+                <div className="pointer-events-none absolute bottom-2 left-2 right-2 z-10 border border-[var(--border)] bg-[var(--card-bg)]/90 px-2 py-1 text-[0.625rem] mono-font leading-relaxed text-[var(--muted)]">
+                  // {lang === 'zh' ? '渐近特征：x → 0 时曲线无限逼近 y 轴但永不相交' : 'Asymptote: as x → 0 the curve approaches the y-axis but never meets it'}
+                </div>
+              )}
 
               <div data-lab-toolbar="true" className={`mt-2 flex flex-col gap-1.5 border-t border-[var(--border)] px-3 pb-2.5 pt-2 max-sm:h-9 max-sm:min-h-0 max-sm:flex-row max-sm:items-center max-sm:gap-1 max-sm:px-2 max-sm:py-0 sm:flex-row sm:items-center sm:justify-between sm:gap-2 lg:hidden ${stage === 'predict' && !revealed ? 'hidden' : ''}`}>
                 <div className="min-w-0 w-full flex-1">
@@ -1013,6 +1020,7 @@ export default function Inverse() {
                 <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
                 <span>{t.redoLabel}</span>
               </button>
+              <ConcludeNextActions labId="inverse" />
             </div>
           )}
 

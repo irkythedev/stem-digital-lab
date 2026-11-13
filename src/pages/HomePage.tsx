@@ -13,6 +13,7 @@ import { usePageMeta } from '../lib/use-page-meta';
 import { Link, useNavigate } from 'react-router-dom';
 import { Calculator, Gauge, Shuffle, Sigma } from 'lucide-react';
 import DailyQuote from '../components/ui/DailyQuote';
+import QuickLookupBar from '../components/layout/QuickLookupBar';
 import { useApp } from '../lib/app-context';
 import { subjectList, type SubjectId } from '../lib/subjects';
 import {
@@ -154,6 +155,7 @@ export default function HomePage() {
         </div>
         <p className="t-lead text-[var(--muted)] serif-font italic mb-2 sm:mb-4">{t.subtitle}</p>
         <p className="text-[0.6875rem] sm:text-sm text-[var(--muted)] mono-font tracking-wide">// {t.description}</p>
+        <div className="mt-3 w-full max-w-md"><QuickLookupBar /></div>
       </div>
 
       {/* ── 学科切换卡片 ── */}

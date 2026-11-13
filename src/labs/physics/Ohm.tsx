@@ -14,6 +14,9 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
 import { Check, RotateCcw, SlidersHorizontal, TriangleAlert, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import { useCriticalDetent } from '../../lib/detent-feedback';
+
+const VOLTAGE_TICKS = Array.from({ length: 25 }, (_, i) => i);
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ParamDock from '../../components/lab/ParamDock';
@@ -301,6 +304,7 @@ export default function Ohm() {
   const [predShape, setPredShape] = useState<PredictShape>(null);
   const [revealed, setRevealed] = useState(false);
   const [u, setU] = useState(6);
+  useCriticalDetent(u, VOLTAGE_TICKS);
   const [r, setR] = useState(TARGET_R);
   const [element, setElement] = useState<ElementType>('resistor');
   const [rp, setRp] = useState(40); // 滑动变阻器阻值；初始置最大（教科书：连接电路时滑片在最大阻值处，保护电路）
@@ -330,8 +334,8 @@ export default function Ohm() {
     const r = e.currentTarget.getBoundingClientRect();
     setTip({ x: r.left + r.width / 2, y: r.top + r.height / 2, ...t });
   };
-  // 电流表串联在干路（电池与开关之间，远离变阻器）
-  const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-left', x: 67, y: 60 });
+  // 电流表串联在干路：默认放在电池负极下方（底部回流导线），避开正极图形
+  const [meterA, setMeterA] = useState<MeterTarget | null>({ id: 'dry-bottom', x: 70, y: 140 });
   const [meterV, setMeterV] = useState<MeterTarget | null>({ id: 'element', x: 250, y: 28 });
   const [meterErr, setMeterErr] = useState<string | null>(null);
   const [pinned, setPinned] = useState<{ id: number; r: number; element: ElementType; rp: number }[]>([]);
@@ -494,7 +498,7 @@ export default function Ohm() {
     setMeasureMode(false);
     setRRevealed(false);
     setTargetV(null);
-    setMeterA({ id: 'dry-left', x: 67, y: 60 });
+    setMeterA({ id: 'dry-bottom', x: 70, y: 140 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
     setARange(null);
@@ -512,7 +516,7 @@ export default function Ohm() {
     setMeasureMode(false);
     setRRevealed(false);
     setSwitchOn(true);
-    setMeterA({ id: 'dry-left', x: 67, y: 60 });
+    setMeterA({ id: 'dry-bottom', x: 70, y: 140 });
     setMeterV({ id: 'element', x: 250, y: 28 });
     setMeterErr(null);
     setTargetV(null);

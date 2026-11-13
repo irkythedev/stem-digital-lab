@@ -12,13 +12,20 @@
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import { useCriticalDetent } from '../../lib/detent-feedback';
+
+const A_DETENTS = [-1, 1] as const;
+const ZERO_DETENT = [0] as const;
 import { Check, ChevronRight, Minus, Pin, Plus, RotateCcw, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
+import { useAiContext } from '../../lib/ai-context';
+import PredictionStamp from '../../components/lab/PredictionStamp';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ParamDock from '../../components/lab/ParamDock';
 import ToggleSwitch from '../../components/lab/ToggleSwitch';
 import CoordPlane, { type CoordCurve, type CoordMarker, type CoordOverlay, mathMinus } from '../../components/lab/CoordPlane';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import Formula from '../../components/ui/Formula';
 import StageNav from '../../components/lab/StageNav';
 import { loadOhmEngine, sampleQuadratic } from '../physics/stem-engine';
@@ -442,10 +449,13 @@ export const QUIZ_CORRECT: Record<string, string[]> = {
 
 export default function Quadratic() {
   const { lang } = useApp();
+  const { askAi } = useAiContext();
   const t = copy[lang];
   const initialUrl = readUrlParams();
 
   const [stage, setStage] = useState<Stage>(() => enumParam(initialUrl.get('stage'), ['predict', 'explore', 'conclude'] as const, 'predict'));
+  const [stampClosed, setStampClosed] = useState(false);
+  useEffect(() => { if (stage === 'explore') setStampClosed(false); }, [stage]);
   // 预测幕：暂存对目标函数的三个猜测；全部回答后揭示图像
   const [predOpen, setPredOpen] = useState<PredictOpen>(null);
   const [predVertex, setPredVertex] = useState<PredictVertex>(null);
@@ -455,6 +465,9 @@ export default function Quadratic() {
   const [a, setA] = useState(() => numParam(initialUrl.get('a'), TARGET_A, -10, 10, { disallowZero: true }));
   const [b, setB] = useState(() => numParam(initialUrl.get('b'), TARGET_B, -20, 20));
   const [c, setC] = useState(() => numParam(initialUrl.get('c'), TARGET_C, -20, 20));
+  useCriticalDetent(a, A_DETENTS);
+  useCriticalDetent(b, ZERO_DETENT);
+  useCriticalDetent(c, ZERO_DETENT);
   // 表达式形式：一般式 y=ax²+bx+c ↔ 顶点式 y=a(x−h)²+k（同一条抛物线的两种写法）
   const [form, setForm] = useState<'general' | 'vertex'>(() => enumParam(initialUrl.get('mode'), ['general', 'vertex'] as const, 'general'));
   const [translateOpen, setTranslateOpen] = useState(false);
@@ -516,6 +529,19 @@ export default function Quadratic() {
     conclusion.q1 !== null && conclusion.q2 !== null && conclusion.q3 !== null && conclusion.q4 !== null;
 
   const predComplete = predOpen !== null && predVertex !== null && predIntercept !== null;
+  const predictionCorrect =
+    predOpen === (TARGET_A < 0 ? 'down' : 'up') &&
+    predVertex === (TARGET_A < 0 ? 'max' : 'min') &&
+    predIntercept === (TARGET_C > 0 ? 'pos' : TARGET_C < 0 ? 'neg' : 'zero');
+  const predictionSummary = predComplete
+    ? (lang === 'zh'
+        ? `${predOpen === 'up' ? '开口向上' : '开口向下'} · ${predVertex === 'max' ? '顶点最高' : '顶点最低'} · ${predIntercept === 'pos' ? '交 y 轴正半轴' : predIntercept === 'neg' ? '交 y 轴负半轴' : '过原点'}`
+        : `${predOpen === 'up' ? 'opening up' : 'opening down'} · ${predVertex === 'max' ? 'highest vertex' : 'lowest vertex'} · ${predIntercept === 'pos' ? 'positive y-intercept' : predIntercept === 'neg' ? 'negative y-intercept' : 'through the origin'}`)
+    : '';
+  const showPredictionStamp = stage === 'explore' && predComplete && !stampClosed;
+  const askWhy = () => askAi(lang === 'zh'
+    ? `我在预测阶段选了「${predictionSummary}」，但实测结果与预测不一致。请结合当前实验读数和画布现象，先别直接给结论，告诉我应该观察或比较哪些量，才能找出差异的原因。`
+    : `In the Predict stage I chose “${predictionSummary}”, but the measurement differs. Using the current readings and what is on the canvas, please do not give the conclusion directly — tell me which quantities to observe or compare to find why they differ.`);
 
   /**
    * 当前生效的系数：顶点式按 y=a(x−h)²+k 展开成 a、b=−2ah、c=ah²+k。
@@ -887,9 +913,18 @@ export default function Quadratic() {
       b: eff.b,
       c: eff.c,
       revealed,
+      ...(predComplete
+        ? {
+            predictionCorrect:
+              predOpen === (TARGET_A < 0 ? 'down' : 'up') &&
+              predVertex === (TARGET_A < 0 ? 'max' : 'min') &&
+              predIntercept === (TARGET_C > 0 ? 'pos' : TARGET_C < 0 ? 'neg' : 'zero'),
+            predictionSummary: `${predOpen === 'up' ? '开口向上' : '开口向下'} · ${predVertex === 'max' ? '顶点最高' : '顶点最低'} · ${predIntercept === 'pos' ? '交 y 轴正半轴' : predIntercept === 'neg' ? '交 y 轴负半轴' : '过原点'}`,
+          }
+        : {}),
       ...(vertex ? { vertexH: vertex.h, vertexK: vertex.k } : {}),
     });
-  }, [stage, eff, vertex, revealed]);
+  }, [stage, eff, vertex, revealed, predComplete, predOpen, predVertex, predIntercept]);
   // 页面级「问 AI」问句：登记到页级注册表，点击页头入口时取用
   useEffect(() => {
     setPageQuestion('quadratic', lang === 'zh' ? '改变 a、b、c 时，抛物线的开口、顶点和对称轴怎样变化？你观察到什么规律？' : 'As you change a, b and c, how do the opening, vertex and axis of symmetry change? What pattern do you observe?');
@@ -1120,6 +1155,11 @@ export default function Quadratic() {
         <div className="flex flex-col space-y-4 lg:contents">
           {/* 参数卡：窄屏收进底部抽屉，桌面变右侧悬浮控制台 */}
           <div className={`${stage === 'predict' ? 'hidden' : inspectorOpen && stage !== 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:flex lg:w-[330px] lg:flex-col lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:shadow-none' : 'lg:hidden'}`}>
+          {showPredictionStamp && (
+            <div className="mb-3 hidden lg:block">
+              <PredictionStamp correct={predictionCorrect} summary={predictionSummary} lang={lang} onAsk={askWhy} onClose={() => setStampClosed(true)} />
+            </div>
+          )}
           <div className="hidden items-center justify-between border-b border-[var(--border)] pb-2 lg:flex">
             <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
             <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
@@ -1133,6 +1173,11 @@ export default function Quadratic() {
             anchorRef={planeRef}
             summary={form === 'vertex' ? vertexExprOf(a, h, k) : exprOf(eff.a, eff.b, eff.c)}
           >
+          {showPredictionStamp && (
+            <div className="mb-3 lg:hidden">
+              <PredictionStamp correct={predictionCorrect} summary={predictionSummary} lang={lang} onAsk={askWhy} onClose={() => setStampClosed(true)} />
+            </div>
+          )}
           <div className="border border-[var(--border)] p-4 space-y-4 lg:border-0 lg:p-0">
             <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase lg:hidden">
               // {t.params}
@@ -1230,7 +1275,7 @@ export default function Quadratic() {
               </button>
               <div className="flex flex-wrap items-center gap-1.5">
                 {pinned.length > 0 && (
-                  <span className="text-[0.625rem] mono-font text-[var(--muted)]">{t.pinnedCount(pinned.length)}</span>
+                  <span className="max-w-[22rem] truncate text-[0.625rem] mono-font tabular-nums text-[var(--muted)]">{lang === 'zh' ? '// 定格对照: ' : '// pinned: '}{exprOf(pinned[pinned.length - 1].a, pinned[pinned.length - 1].b, pinned[pinned.length - 1].c)} → {exprOf(eff.a, eff.b, eff.c)}</span>
                 )}
                 <button
                   type="button"
@@ -1609,6 +1654,7 @@ export default function Quadratic() {
                 <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
                 <span>{t.redoLabel}</span>
               </button>
+              <ConcludeNextActions labId="quadratic" />
             </div>
           )}
 

@@ -13,6 +13,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import StageNav from '../../components/lab/StageNav';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
+import { useCriticalDetent } from '../../lib/detent-feedback';
+
+const LENS_DETENTS = [10, 20] as const;
 import { useApp } from '../../lib/app-context';
 import ParamSlider from '../../components/lab/ParamSlider';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
@@ -282,6 +285,7 @@ export default function Lens() {
 
   const [stage, setStage] = useState<Stage>('predict');
   const [u, setU] = useState(25);
+  useCriticalDetent(u, LENS_DETENTS);
   const [showRays, setShowRays] = useState(false);
   const [predict1, setPredict1] = useState<PredictType>(null);
   const [predict2, setPredict2] = useState<PredictType>(null);
@@ -447,6 +451,11 @@ export default function Lens() {
       {/* ── 光具座 ── */}
       <div className="border border-[var(--border)] p-3">
         <LensBench u={u} f={f} showRays={showRays} />
+        {v === null && (
+          <div className="mt-2 border-t border-[var(--border)] pt-2 text-[0.625rem] mono-font leading-relaxed text-[var(--muted)]">
+            // {lang === 'zh' ? '临界态：u = f 时折射光平行射出，光屏不成像' : 'Critical: at u = f outgoing rays are parallel — no screen image'}
+          </div>
+        )}
       </div>
 
       {/* ── 参数 ── */}

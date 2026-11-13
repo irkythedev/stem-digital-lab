@@ -67,7 +67,7 @@ export default function MathCanvasStage({
         </div>
         <div className={variant === 'sheet' ? 'flex flex-1 justify-center px-4' : 'flex justify-self-center lg:col-span-2 lg:row-start-2 xl:col-span-1 xl:col-start-2 xl:row-start-1'}>{center}</div>
         <div className={`flex shrink-0 items-center gap-1.5 ${variant === 'sheet' ? '' : 'justify-self-end lg:col-start-2 lg:row-start-1 xl:col-start-3'}`}>
-          <ShareInline title={shareTitle} text={shareText} />
+          <ShareInline labId={labId} labName={{ zh: title, en: title }} title={shareTitle} text={shareText} />
           <AskAiButton labId={labId} question={aiQuestion} />
           <AskQuizButton />
         </div>

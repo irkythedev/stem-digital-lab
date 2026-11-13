@@ -18,6 +18,38 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.6',
+    date: '2026-11',
+    zh: [
+      '[新增] 实验结论页新增「考考你 / 下一实验」快捷入口',
+      '[优化] 移动端实验室导航与工具区更紧凑，点击操作更舒适',
+      '[修复] 修复多层浮层同时打开时快捷键可能误关闭底层页面的问题',
+      '[优化] 关键状态提示、作图引导与电流表默认位置更清晰，整体更稳定',
+    ],
+    en: [
+      '[Added] Quick “Quiz / Next lab” actions on lab conclusion screens',
+      '[Improved] More compact mobile lab navigation and controls with more comfortable tap areas',
+      '[Fixed] Fixed shortcut handling that could close underlying panels when multiple overlays were open',
+      '[Improved] Clearer critical-state hints, construction guidance and ammeter placement for overall stability',
+    ],
+  },
+  {
+    version: '0.50.5',
+    date: '2026-11',
+    zh: [
+      '[新增] 新增速查入口，实验、公式与元素随手可查',
+      '[优化] 实验中的预测提示与对照反馈更清晰，操作更顺手',
+      '[优化] 更新记录与更多作品浮层更统一，最新内容更容易找到',
+      '[优化] 若干搜索、复制与移动端交互细节优化，整体更稳定',
+    ],
+    en: [
+      '[Added] A quick lookup entry for labs, formulas and elements',
+      '[Improved] Clearer prediction hints and comparison feedback inside labs',
+      '[Improved] More consistent changelog and more-works popovers, with the latest updates easier to find',
+      '[Improved] Several search, copy and mobile interaction details refined for overall stability',
+    ],
+  },
+  {
     version: '0.50.4',
     date: '2026-11',
     zh: [

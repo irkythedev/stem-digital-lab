@@ -19,6 +19,7 @@ import { useApp } from '../../lib/app-context';
 import { enumParam, numParam, readUrlParams, useLabUrlSync } from '../../lib/lab-url-state';
 import { useIsDesktopLab } from '../../components/lab/useIsDesktopLab';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import StageNav from '../../components/lab/StageNav';
 import CanvasSurface, { CanvasZoomControls } from '../../components/lab/CanvasSurface';
 import LabStageShell from '../../components/lab/LabStageShell';
@@ -497,7 +498,7 @@ export default function Construction() {
   const [camera, setCamera] = useState({ zoom: 1, tx: 0, ty: 0 });
   useLabUrlSync({ stage, task: taskIdx + 1, tool }, { stage: 'predict', task: 1, tool: 'compass' }, [stage, taskIdx, tool]);
   const [warn, setWarn] = useState<string | null>(null);
-  const [hintOn, setHintOn] = useState(false);
+  const [hintOn, setHintOn] = useState(true);
   const [demoSpeed, setDemoSpeed] = useState(1);
   const demoProgressRef = useRef(0);
   const demoCircleRef = useRef<SVGCircleElement>(null);
@@ -1324,14 +1325,17 @@ export default function Construction() {
           )}
 
           {stage === 'conclude' && conclusionComplete && (
-            <button
-              type="button"
-              onClick={resetAll}
-              className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
-            >
-              <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
-              <span>{t.redoLabel}</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={resetAll}
+                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
+              >
+                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
+                <span>{t.redoLabel}</span>
+              </button>
+              <ConcludeNextActions labId="construction" />
+            </>
           )}
           </section>
         </div>

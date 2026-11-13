@@ -7,7 +7,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle, RotateCw } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle, RotateCw, Search } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
 import {
@@ -28,6 +28,7 @@ import { useAppUpdate, type UpdatePhase } from '../../lib/use-app-update';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { ringStateFor, type RingState } from '../../lib/update-progress';
 const VersionDialog = lazy(() => import('../feedback/VersionDialog'));
+const QuickLookupModal = lazy(() => import('./QuickLookupModal'));
 import OfflinePackPanel from '../feedback/OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
 import type { ThemeMode } from '../../lib/app-context';
@@ -194,6 +195,24 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   const [showHealth, setShowHealth] = useState(false);
   const [showVersion, setShowVersion] = useState(false);
   const [showPack, setShowPack] = useState(false);
+  const [lookupOpen, setLookupOpen] = useState(false);
+
+  // 全局速查：/ 或 Cmd/Ctrl+K（输入框内不劫持；已有模态时让位，避免叠层）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      const isSlash = e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey;
+      const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
+      if (!isSlash && !isCmdK) return;
+      e.preventDefault();
+      setLookupOpen(true);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // 卡片只在自己打开时读一次配置（端点要显示给用户排查用）；关闭即不再读
   const healthCfg = showHealth ? loadAiConfig() : null;
@@ -258,7 +277,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   };
 
   return (
-    <header className="w-full border-b border-[var(--border)]/70 pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)]">
+    <header data-site-header="true" className="w-full border-b border-[var(--border)]/70 pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)]">
       {/* 底线满幅通栏：border 落在满宽 header 上；内容由内层容器收回正文列。
           px-6 sm:px-12 lg:px-14 = 内容列容器的 px-4/sm:px-6/lg:px-8 + <main> 的 px-2 sm:px-6。 */}
       <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-wrap items-center justify-between gap-2 px-6 sm:px-12 lg:px-14">
@@ -366,6 +385,19 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           )}
         </span>
       </Link>
+
+      {/* 速查胶囊：桌面端收起为 Brand 旁的快捷键提示；移动端由首页/学科页的速查条承担 */}
+      <button
+        type="button"
+        onClick={() => setLookupOpen(true)}
+        title={lang === 'zh' ? '速查实验 / 公式 / 元素 ( / 或 ⌘K )' : 'Search labs, formulas, elements ( / or ⌘K )'}
+        aria-label={lang === 'zh' ? '速查实验 / 公式 / 元素' : 'Search labs, formulas, elements'}
+        className="hidden md:inline-flex items-center gap-2 ml-4 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--panel-bg)]/40 hover:border-[var(--fg)]/40 text-xs text-[var(--muted)] transition-colors"
+      >
+        <Search className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>{lang === 'zh' ? '速查' : 'Search'}</span>
+        <kbd className="font-mono text-[10px] px-1 rounded border border-[var(--border)]">/</kbd>
+      </button>
 
       {phase === 'failed' && (
         <span
@@ -631,6 +663,11 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
         </Suspense>
       )}
       {showPack && <OfflinePackPanel onClose={() => setShowPack(false)} />}
+      {lookupOpen && (
+        <Suspense fallback={null}>
+          <QuickLookupModal onClose={() => setLookupOpen(false)} />
+        </Suspense>
+      )}
     </header>
   );
 }

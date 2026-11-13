@@ -195,4 +195,25 @@ export function registerUiLayerGuardsTests(test: TestFn): void {
     assert.ok(!/(?<!aria-)disabled=\{quizSelected !== null\}/.test(src), '不许再整排 disabled');
     assert.match(src, /role="status" aria-live="polite"/, '判分反馈须有 live region');
   });
+
+  /* ── ⑤ 结课承接 & 电学工作台 Esc 防穿透 ── */
+
+  test('CircuitBench 在任意浮层打开时不得抢 Esc（防穿透到实验选择态）', () => {
+    const src = readSrc('src/labs/physics/circuit-bench/CircuitBench.tsx');
+    const keyHandler = src.slice(src.indexOf("const onKey = (e: KeyboardEvent)"), src.indexOf("const onKey = (e: KeyboardEvent)") + 260);
+    assert.match(keyHandler, /overlayStackDepth\(\) > 0/, 'Esc 监听必须先检查浮层栈');
+    assert.match(src, /import \{ overlayStackDepth \}/, '必须复用共享浮层栈');
+  });
+
+  test('ConcludeNextActions 必须提供考考你与下一实验入口，并由 8 个数学实验接入', () => {
+    const action = readSrc('src/components/lab/ConcludeNextActions.tsx');
+    assert.match(action, /openQuiz/, '必须调用共享 openQuiz');
+    assert.match(action, /data-conclude-next-actions/, '必须有稳定测试锚点');
+    assert.match(action, /NEXT_LAB/, '必须有下一实验映射');
+    for (const f of ['Quadratic', 'Linear', 'Inverse', 'Circle', 'Congruence', 'Similarity', 'PolygonPi', 'Construction']) {
+      assert.match(readSrc(`src/labs/math/${f}.tsx`), /<ConcludeNextActions labId=/, `${f} 未接入结课承接`);
+    }
+  });
+
+
 }

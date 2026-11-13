@@ -22,6 +22,7 @@ import { Check, X } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useIsDesktopLab } from '../../components/lab/useIsDesktopLab';
 import ExploreStage, { type Observation, type ExploreCard } from '../../components/lab/ExploreStage';
+import ConcludeNextActions from '../../components/lab/ConcludeNextActions';
 import InteractiveCircle, { type CircleMode } from '../../components/lab/InteractiveCircle';
 
 type Stage = 'predict' | 'explore' | 'conclude';
@@ -625,6 +626,8 @@ export default function Circle() {
                   ))}
                 </ul>
               </div>
+
+              <ConcludeNextActions labId="circle" />
 
               {/* 证明推理引导：按正确逻辑顺序排列步骤 */}
               {circleMode && (

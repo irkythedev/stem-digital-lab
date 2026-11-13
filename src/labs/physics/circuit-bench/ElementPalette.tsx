@@ -52,6 +52,7 @@ import {
   type PointerSample,
 } from './circuit-bench-touch';
 import { useNarrow } from './use-bench-media';
+import { overlayStackDepth } from '../../../lib/overlay-stack';
 
 /** 屏幕点 ↔ 画布世界点的换算入口；由 CircuitBench 从画布句柄转发过来。 */
 export interface PaletteProjection {
@@ -263,6 +264,7 @@ export default function ElementPalette({
    */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (overlayStackDepth() > 0) return;
       if (e.key !== 'Escape') return;
       const d = dragRef.current;
       if (!d) return;

@@ -54,6 +54,7 @@ export default function StageNav({
 
   return (
     <div
+      data-stage-nav="true"
       data-legacy-height="min-h-[34px]"
       className={`stage-shell inline-flex h-8 w-fit max-w-full select-none items-center rounded-lg border border-[var(--border)] bg-[var(--panel-bg)]/70 p-0.5 text-xs max-sm:flex max-sm:w-full`}
     >
@@ -68,7 +69,7 @@ export default function StageNav({
               type="button"
               onClick={() => setStage(s)}
               aria-current={active ? 'step' : undefined}
-              className={`compact inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-1.5 font-medium transition-all touch-manipulation sm:flex-none sm:px-3 ${
+              className={`compact lab-control-28 inline-flex h-7 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-1.5 font-medium transition-all touch-manipulation sm:flex-none sm:px-3 ${
                 active
                   ? 'bg-[var(--fg)] text-[var(--card-bg)] shadow-2xs'
                   : 'bg-transparent text-[var(--muted)] hover:text-[var(--fg)]'
@@ -89,7 +90,7 @@ export default function StageNav({
           type="button"
           onClick={handleNext}
           disabled={stageIdx >= stageOrder.length - 1}
-          className={`compact inline-flex h-7 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-2.5 text-xs font-medium transition-colors ${
+          className={`compact lab-control-28 inline-flex h-7 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-[6px] px-2.5 text-xs font-medium transition-colors ${
             stageIdx >= stageOrder.length - 1
               ? 'pointer-events-none text-[var(--muted)] opacity-35'
               : 'text-[var(--muted)] hover:bg-[var(--card-bg)] hover:text-[var(--fg)]'
@@ -105,7 +106,7 @@ export default function StageNav({
           onClick={onRedo}
           title={labels.redo}
           aria-label={labels.redo}
-          className={`compact ml-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-[var(--muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--fg)] sm:inline-flex ${
+          className={`compact lab-control-28 ml-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-[var(--muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--fg)] sm:inline-flex ${
             stageIdx >= stageOrder.length - 1 ? '' : 'invisible pointer-events-none'
           }`}
         >

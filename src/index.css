@@ -1931,6 +1931,24 @@ html.dark .update-ring-track { stroke-opacity: 0.38; }
   outline-offset: 2px;
 }
 
+/* 口袋速查台输入框：搜索区不应出现全局键盘焦点环（否则像多套了一层黑框）。 */
+.quick-lookup-input:focus,
+.quick-lookup-input:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+}
+
+/* 去掉 type=search 的原生搜索框外观（黑框 / 自带清除 ×），只保留自定义清空按钮。 */
+.quick-lookup-input {
+  appearance: none;
+  -webkit-appearance: none;
+}
+.quick-lookup-input::-webkit-search-cancel-button,
+.quick-lookup-input::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
 /* ── 短视口紧凑（14" MacBook Pro 等「宽而矮」笔记本）──────────────────
    病灶：宏环节奏令牌 --sp-block = clamp(2.5rem, 4vw, 3.5rem) 随**宽度**伸缩，
    1512 宽（14" MBP 默认）取到最大值 56px；而同一台机器的可用高度只有 ~790px。
@@ -2194,4 +2212,73 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .demo-poly-in,
   .demo-pulse { animation: none; }
+}
+/* 更新日志最新卡片：手动切换主题（html.dark）也要有和 dark: 前缀一致的层次。 */
+html.dark .version-latest-card,
+:root:not(.light) .version-latest-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+html.dark .version-tag-fix,
+:root:not(.light) .version-tag-fix { color: #fbbf24; }
+html.dark .version-tag-new,
+:root:not(.light) .version-tag-new { color: #60a5fa; }
+
+/* ── 共享密度原子类（只收口共享外壳，不重构实验）──────────────────── */
+.lab-bar-36 { height: 2.25rem; min-height: 2.25rem; }
+.lab-control-28 { height: 1.75rem; min-height: 1.75rem; }
+.lab-tag-micro {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.25rem;
+  padding-inline: 0.375rem;
+  font-size: 11px;
+  border-radius: 0.25rem;
+}
+
+/* 触屏画布工具条透明热区：视觉尺寸不变，四周各扩 3px，避免与 gap-1.5 邻居打架 */
+@media (pointer: coarse) {
+  [data-canvas-toolbar] button,
+  [data-canvas-toolbar] [role="switch"],
+  [data-lab-toolbar] button,
+  [data-lab-toolbar] [role="switch"] {
+    position: relative;
+  }
+  [data-canvas-toolbar] button::after,
+  [data-canvas-toolbar] [role="switch"]::after,
+  [data-lab-toolbar] button::after,
+  [data-lab-toolbar] [role="switch"]::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+  }
+}
+
+/* 手机横屏短视口：释放首屏画布；严格按 max-height 隔离，不碰 PC/平板横屏 */
+@media (orientation: landscape) and (max-height: 480px) {
+  body:has([data-lab-header]) [data-site-header] { display: none !important; }
+  [data-site-header] {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+  [data-lab-header] {
+    height: 1.75rem !important;
+    margin-top: 0 !important;
+    overflow: hidden;
+    padding-top: 0 !important;
+  }
+  [data-lab-header] h1 {
+    font-size: 0.9375rem !important;
+    line-height: 1.25rem !important;
+  }
+  [data-stage-nav] {
+    margin-top: 0.125rem !important;
+    margin-bottom: 0.125rem !important;
+  }
+  main {
+    margin-top: 0.125rem !important;
+    padding-top: 0 !important;
+  }
 }

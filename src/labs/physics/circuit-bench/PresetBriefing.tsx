@@ -47,6 +47,7 @@ import {
   type InquiryPrompt,
   type InquiryStage,
 } from './circuit-bench-prompts';
+import { overlayStackDepth } from '../../../lib/overlay-stack';
 
 /** 与 `duration-200` 对齐：关闭时先播动画，播完再真正卸载。 */
 const TRANSITION_MS = 200;
@@ -221,6 +222,7 @@ export default function PresetBriefing({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      if (overlayStackDepth() > 0) return;
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);

@@ -22,6 +22,7 @@ import { usePageMeta } from '../lib/use-page-meta';
 import { useBetaLabs } from '../lib/use-beta-labs';
 import BetaToggleChip from '../components/lab/BetaToggleChip';
 import BetaBadge from '../components/lab/BetaBadge';
+import QuickLookupBar from '../components/layout/QuickLookupBar';
 
 /** 卡片外壳：细描边 + 圆角 + 卡面底色（跟随深浅色令牌）；悬停轻微上浮并点亮边框 */
 const CARD_CLS =
@@ -128,6 +129,8 @@ export default function SubjectPage() {
   return (
     <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
       <BackLink to="/">{t.backHome}</BackLink>
+
+      <div className="mt-3"><QuickLookupBar /></div>
 
       <div className="mb-10">
         <SubjectHeading

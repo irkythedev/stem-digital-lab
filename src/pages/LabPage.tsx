@@ -14,6 +14,7 @@ import { useApp } from '../lib/app-context';
 import { translations } from '../lib/i18n';
 import { labFromPath, labHref } from '../lib/labs';
 import { useAiContext } from '../lib/ai-context';
+import PinDiffButton from '../components/lab/PinDiffButton';
 import { subjects } from '../lib/subjects';
 import UnderConstruction from '../components/ui/UnderConstruction';
 import ShareInline from '../components/share/ShareInline';
@@ -110,7 +111,7 @@ export default function LabPage() {
     <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] max-sm:min-h-[calc(100dvh-5rem)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
       {/* 数学全画布实验：移动端两行紧凑头部（导航+标题+工具 / 32px 步进条） */}
       {fullCanvasLab && (
-        <div className="lg:hidden">
+        <div data-lab-header="true" className="lg:hidden">
           <div className="flex min-w-0 items-center gap-1.5">
             <Link
               to={subjects[lab.subjectId].path}
@@ -131,6 +132,8 @@ export default function LabPage() {
             </span>
             <div className="flex shrink-0 items-center gap-1">
               <ShareInline
+                labId={lab.id}
+                labName={lab.name}
                 title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
                 text={lang === 'zh'
                   ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
@@ -173,11 +176,14 @@ export default function LabPage() {
             移动端 mt-1.5：这一行与标题同属一个语义块，桌面仍是 mt-3 的呼吸。 */}
         <div className="mt-1.5 flex flex-wrap items-center gap-3 sm:mt-3">
           <ShareInline
+            labId={lab.id}
+            labName={lab.name}
             title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
             text={lang === 'zh'
               ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
               : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
           />
+          <PinDiffButton labId={lab.id} />
           <AskAiButton labId={lab.id} question={pageAiQuestion} />
           <AskQuizButton />
           {HeaderBadge && (

@@ -54,7 +54,7 @@ const PAD = 10;
 const badges = [
   { file: 'license.svg', label: 'License', value: 'AGPL-3.0', color: '#2e90fa' },
   { file: 'version.svg', label: 'Version', value: `v${APP_VERSION}`, color: '#52525b' },
-  { file: 'core.svg', label: 'Core', value: 'C++17 / WASM', color: '#00599C' },
+  { file: 'core.svg', label: 'Core', value: 'C++ / WASM', color: '#00599C' },
   { file: 'frontend.svg', label: 'Frontend', value: 'React 19 + TS', color: '#3178C6' },
   ...(tests === null
     ? []

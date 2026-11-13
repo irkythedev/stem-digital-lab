@@ -698,7 +698,7 @@ export default function PeriodicTable() {
         onBlur={previewOff}
         title={`${el.zh} ${el.symbol}`}
         aria-label={`${el.zh} ${el.symbol}`}
-        className={`relative flex-1 h-[58px] flex flex-col border transition-[border-color,box-shadow,transform] duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)] ${
+        className={`relative flex-1 h-[58px] max-sm:min-w-[36px] flex flex-col border transition-[border-color,box-shadow,transform] duration-[var(--dur-fast)] hover:-translate-y-0.5 hover:shadow-[var(--elev-sm)] hover:border-[var(--fg)] ${
           matched ? 'ring-2 ring-[var(--fg)]' : ''
         } ${reciting ? 'recite-active' : ''}`}
         style={{ borderColor: color.border, backgroundColor: color.bg }}
