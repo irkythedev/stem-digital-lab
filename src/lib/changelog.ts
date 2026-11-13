@@ -18,6 +18,20 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.8',
+    date: '2026-11',
+    zh: [
+      '[优化] 优化离线教学包状态展示：下载时显示进度，完成后统一在更新记录中查看',
+      '[优化] 修复部分界面样式构建提示，显示效果更稳定',
+      '[优化] 若干界面细节优化，整体更一致',
+    ],
+    en: [
+      '[Improved] Refined offline teaching pack status: progress while downloading, completion shown in the changelog',
+      '[Improved] Fixed some interface style build warnings for more stable rendering',
+      '[Improved] Several interface details refined for a more consistent experience',
+    ],
+  },
+  {
     version: '0.50.7',
     date: '2026-11',
     zh: [

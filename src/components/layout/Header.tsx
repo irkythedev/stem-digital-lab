@@ -7,7 +7,7 @@
  */
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, Monitor , Sparkles, CircleCheck, WifiOff, CirclePlay, HelpCircle, RotateCw, Search } from 'lucide-react';
+import { Sun, Moon, Monitor , Sparkles, WifiOff, CirclePlay, HelpCircle, RotateCw, Search } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useAiContext } from '../../lib/ai-context';
 import {
@@ -260,7 +260,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   // Esc 关闭健康卡片（外部点击由覆盖层负责，不挂 document 监听）
   useEscapeKey(() => setShowHealth(false), showHealth);
   // 离线教学包状态：只在「下载中 / 已就绪」时于顶栏露出徽标，平时不占位置
-  const { status: packStatus, progress: packProgress, running: packRunning } = useOfflinePack();
+  const { progress: packProgress, running: packRunning } = useOfflinePack();
 
   // 更新状态机：检测（挂载 / 回前台 / 恢复联网）+ 显式阶段 + 硬兜底
   const { hasUpdate, phase, progress, applyUpdate, busy } = useAppUpdate();
@@ -425,7 +425,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
           真正可调的只有这 6px 间隙——所以收紧的观感来自「组更靠拢」，不是图标变小。 */}
       <div data-tour="header-tools" className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5 sm:gap-4 text-[0.6875rem] mono-font uppercase tracking-wider">
         {/* 离线教学包：仅下载中 / 已就绪时出现 */}
-        {(packRunning || packStatus?.isFull) && (
+        {packRunning && (
           <button
             type="button"
             onClick={() => setShowPack(true)}
@@ -433,13 +433,9 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
             title={t.offlinePack.entryHint}
             className="relative flex items-center justify-center p-2 rounded-lg text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] transition-colors tap-area"
           >
-            {packRunning ? (
-              <span className="text-[0.625rem] mono-font font-bold text-[var(--fg)]">
-                {Math.round(((packProgress?.bytes ?? 0) / Math.max(1, packProgress?.totalBytes ?? 1)) * 100)}%
-              </span>
-            ) : (
-              <CircleCheck className="w-3.5 h-3.5 text-[var(--success)]" />
-            )}
+            <span className="text-[0.625rem] mono-font font-bold text-[var(--fg)]">
+              {Math.round(((packProgress?.bytes ?? 0) / Math.max(1, packProgress?.totalBytes ?? 1)) * 100)}%
+            </span>
           </button>
         )}
 

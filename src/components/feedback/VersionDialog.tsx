@@ -6,7 +6,7 @@
  */
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HardDrive, Check, ChevronDown } from 'lucide-react';
+import { HardDrive, CircleCheck, ChevronDown } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import OfflinePackPanel from './OfflinePackPanel';
 import { useOfflinePack } from '../../lib/use-offline-pack';
@@ -24,7 +24,7 @@ interface VersionDialogProps {
   onUpdate?: () => void;
 }
 
-const CHECK_ICON = <Check className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em]" aria-hidden="true" />;
+const CHECK_ICON = <CircleCheck className="inline-block h-3.5 w-3.5 shrink-0 align-[-0.15em] text-[var(--success)]" aria-hidden="true" />;
 
 export default function VersionDialog({ onClose, elevated = false, hasUpdate = false, updateBusy = false, onUpdate }: VersionDialogProps) {
   useEscapeKey(onClose);

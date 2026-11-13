@@ -168,7 +168,7 @@ export function registerTouchTargetGuardsTests(test: TestFn): void {
 
   test('顶栏安全区不得清零上内边距：须为 calc 叠加（页脚同款写法）', () => {
     const header = readSrc('src/components/layout/Header.tsx', 'utf8');
-    assert.ok(!/pt-\[env\(safe-area-inset-top/.test(header), 'pt-[env(...)] 会覆盖 py 的上内边距，造成上下不对称');
+    assert.ok(!/pt-\[env\(safe-area-inset-top/.test(header), 'pt-[env(' + '...)] 会覆盖 py 的上内边距，造成上下不对称');
     assert.match(header, /pt-\[calc\([^)]*env\(safe-area-inset-top/);
   });
 
