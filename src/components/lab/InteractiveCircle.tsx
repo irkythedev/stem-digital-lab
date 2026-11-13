@@ -24,6 +24,7 @@ const CY = 200;
 const R = 160;
 const VIEWBOX = '0 0 500 440';
 const HIT_R = 26; // 拖拽点透明命中半径（触屏友好；视觉小圆 r=5 另绘）
+const SAFE_PAD = 20; // 移动端圆/标注与画布边缘的安全留白
 
 /* ── 动画常量 ── */
 const DRAW_MS = 600; // 直线描边生长时长
@@ -126,6 +127,8 @@ interface InteractiveCircleProps {
   viewZoom?: number;
   onMetrics?: (m: { angleBPC: number; angleBQC: number; angleBOC: number; chordLen: number; halfChord: number; perpDist: number }) => void;
   onChange?: (key: string, value: number) => void;
+  /** 仅移动端显示的额外工具栏控件（如 Circle 的辅助线开关）。 */
+  extraControls?: ReactNode;
 }
 
 export default function InteractiveCircle({
@@ -141,6 +144,7 @@ export default function InteractiveCircle({
   viewZoom = 1,
   onMetrics,
   onChange,
+  extraControls,
 }: InteractiveCircleProps) {
   const { lang } = useApp();
   const zh = lang !== 'en';
@@ -380,7 +384,8 @@ export default function InteractiveCircle({
           <button type="button" onClick={togglePlay} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--border)] px-2 text-xs text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] active:scale-95">{playing ? ctl.pause : ctl.play}</button>
           <button type="button" onClick={replay} className="compact inline-flex h-6 shrink-0 items-center rounded border border-[var(--border)] px-2 text-xs text-[var(--muted)] transition-colors hover:border-[var(--fg)] hover:text-[var(--fg)] active:scale-95">{ctl.replay}</button>
         </div>
-        <div className="ml-1 flex shrink-0 items-center gap-1" aria-label={ctl.step(step)}>
+        {extraControls && <div className="hidden shrink-0 items-center gap-1 max-sm:flex">{extraControls}</div>}
+        <div className="ml-1 flex shrink-0 items-center gap-1 max-sm:hidden" aria-label={ctl.step(step)}>
           {Array.from({ length: MAX }).map((_, i) => (
             <span key={i} className={`h-1.5 w-1.5 rounded-full transition-colors ${i <= step ? 'bg-[var(--fg)]' : 'bg-[var(--border)]'}`} style={{ opacity: i <= step ? 1 : 0.5 }} />
           ))}
@@ -389,7 +394,7 @@ export default function InteractiveCircle({
 
       <svg
         ref={svgRef}
-        viewBox={`${250 - 250 / viewZoom} ${-10 + (460 - 460 / viewZoom) / 2} ${500 / viewZoom} ${460 / viewZoom}`}
+        viewBox={`${250 - 250 / viewZoom - SAFE_PAD} ${-10 + (460 - 460 / viewZoom) / 2 - SAFE_PAD} ${500 / viewZoom + SAFE_PAD * 2} ${460 / viewZoom + SAFE_PAD * 2}`}
         className="block h-full w-full select-none touch-none"
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         onPointerMove={handlePointerMove}

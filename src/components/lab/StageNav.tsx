@@ -100,15 +100,13 @@ export default function StageNav({
         </button>
       </div>
       {/* 兼容既有 onRedo API：结论阶段的重做入口仍保留给实验内部使用；此条不增加视觉高度。 */}
-      {onRedo ? (
+      {onRedo && stageIdx >= stageOrder.length - 1 ? (
         <button
           type="button"
           onClick={onRedo}
           title={labels.redo}
           aria-label={labels.redo}
-          className={`compact lab-control-28 ml-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-[var(--muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--fg)] sm:inline-flex ${
-            stageIdx >= stageOrder.length - 1 ? '' : 'invisible pointer-events-none'
-          }`}
+          className="compact lab-control-28 ml-0.5 hidden h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-[var(--muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--fg)] sm:inline-flex"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
         </button>

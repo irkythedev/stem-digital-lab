@@ -40,7 +40,7 @@ export default function PinDiffButton({ labId }: { labId: string }) {
         onClick={() => setPinned((v) => (v ? null : (getLabState(labId) ?? {})))}
         aria-pressed={Boolean(pinned)}
         title={zh ? '定格对照' : 'Pin readings'}
-        className={`compact hidden h-7 items-center gap-1 rounded border px-2 text-[0.625rem] mono-font transition-colors sm:inline-flex ${
+        className={`compact hidden h-7 items-center gap-1 rounded border px-2 text-xs font-medium leading-none mono-font transition-colors sm:inline-flex ${
           pinned
             ? 'border-[var(--fg)] bg-[var(--fg)] text-[var(--card-bg)]'
             : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]'

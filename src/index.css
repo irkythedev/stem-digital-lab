@@ -2225,8 +2225,11 @@ html.dark .version-tag-new,
 :root:not(.light) .version-tag-new { color: #60a5fa; }
 
 /* ── 共享密度原子类（只收口共享外壳，不重构实验）──────────────────── */
-.lab-bar-36 { height: 2.25rem; min-height: 2.25rem; }
+.lab-bar-36 { height: auto; min-height: 2.25rem; }
 .lab-control-28 { height: 1.75rem; min-height: 1.75rem; }
+@media (min-width: 640px) {
+  .lab-bar-36 { height: 2.25rem; }
+}
 .lab-tag-micro {
   display: inline-flex;
   align-items: center;
@@ -2239,16 +2242,12 @@ html.dark .version-tag-new,
 
 /* 触屏画布工具条透明热区：视觉尺寸不变，四周各扩 3px，避免与 gap-1.5 邻居打架 */
 @media (pointer: coarse) {
-  [data-canvas-toolbar] button,
-  [data-canvas-toolbar] [role="switch"],
-  [data-lab-toolbar] button,
-  [data-lab-toolbar] [role="switch"] {
+  [data-canvas-toolbar] button:not([role="switch"]),
+  [data-lab-toolbar] button:not([role="switch"]) {
     position: relative;
   }
-  [data-canvas-toolbar] button::after,
-  [data-canvas-toolbar] [role="switch"]::after,
-  [data-lab-toolbar] button::after,
-  [data-lab-toolbar] [role="switch"]::after {
+  [data-canvas-toolbar] button:not([role="switch"])::after,
+  [data-lab-toolbar] button:not([role="switch"])::after {
     content: '';
     position: absolute;
     inset: -3px;
@@ -2281,4 +2280,13 @@ html.dark .version-tag-new,
     margin-top: 0.125rem !important;
     padding-top: 0 !important;
   }
+}
+/* 画布工具栏按钮契约：同排 h-7 / text-xs / leading-none，避免展开按钮与主功能按钮高低不一。 */
+[data-canvas-toolbar] button:not([role="switch"]),
+[data-lab-toolbar] button:not([role="switch"]) {
+  height: 1.75rem !important;
+  min-height: 1.75rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
 }

@@ -33,15 +33,15 @@ export default function ToggleSwitch({ label, checked, onChange, className = '',
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        style={{ width: 28, height: 16, minWidth: 28, minHeight: 16 }}
+        style={{ width: 36, height: 20, minWidth: 36, minHeight: 20 }}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-4 w-7 min-w-[28px] shrink-0 items-center rounded-full border-0 transition-colors duration-200 ${
+        className={`relative inline-flex h-5 w-9 min-w-[36px] shrink-0 items-center rounded-full border-0 transition-colors duration-200 ${
           checked ? 'bg-[var(--fg)]' : 'bg-[var(--border-strong)]'
         }`}
       >
         <span
-          className={`pointer-events-none absolute left-0.5 top-0.5 inline-block h-3 w-3 rounded-full border-0 shadow-sm transition-transform ${checked ? 'bg-[var(--card-bg)]' : 'bg-white'} duration-200 ease-in-out ${
-            checked ? 'translate-x-3' : 'translate-x-0'
+          className={`pointer-events-none absolute left-0.5 top-0.5 inline-block h-4 w-4 rounded-full border-0 shadow-sm transition-transform ${checked ? 'bg-[var(--card-bg)]' : 'bg-white'} duration-200 ease-in-out ${
+            checked ? 'translate-x-4' : 'translate-x-0'
           }`}
           aria-hidden="true"
         />

@@ -538,7 +538,7 @@ export default function Inverse() {
         <div className={`flex flex-col space-y-4 lg:absolute lg:inset-y-0 lg:left-0 lg:z-0 lg:block lg:space-y-0 ${stage === 'conclude' ? 'lg:right-[460px] xl:right-[500px]' : inspectorOpen && stage === 'explore' ? 'lg:right-[330px]' : 'lg:right-0'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
           <div ref={planeRef} className="flex flex-col space-y-6 lg:block lg:h-full lg:space-y-0">
             <div className="relative overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] max-sm:min-h-[440px] max-sm:max-h-[65dvh] lg:h-full lg:border-0 lg:bg-transparent">
-              <div className={`hidden items-center justify-between border-b border-[var(--border)] bg-[var(--card-bg)] px-3 lg:flex lg:h-10 ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
+              <div data-canvas-toolbar="true" className={`hidden items-center justify-between border-b border-[var(--border)] bg-[var(--card-bg)] px-3 lg:flex lg:h-10 ${stage === 'predict' && !revealed ? 'lg:hidden' : ''}`}>
                 <div className="flex min-w-0 items-baseline gap-2">
                   <span className="shrink-0 text-[0.5625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {t.readout}</span>
                   <span className="truncate text-sm text-[var(--fg)]"><Formula tex={`y = \\frac{${k}}{x}`} /></span>
@@ -552,7 +552,7 @@ export default function Inverse() {
                   <button type="button" onClick={() => zoomViewport(0.8)} aria-label={lang === 'zh' ? '放大视口' : 'Zoom in'} className="compact flex h-7 w-7 items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"><Plus className="h-3.5 w-3.5" /></button>
                   <button type="button" onClick={resetViewport} aria-label={lang === 'zh' ? '重置视口' : 'Reset view'} className="compact flex h-7 w-7 items-center justify-center rounded border border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]"><RotateCcw className="h-3.5 w-3.5" /></button>
                   <ToggleSwitch label={t.guides} checked={showGuides} onChange={setShowGuides} compact />
-                  {!inspectorOpen && <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center rounded border border-[var(--border)] px-2 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">« {lang === 'zh' ? '参数' : 'Parameters'}</button>}
+                  {!inspectorOpen && <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none mono-font text-[var(--fg)] hover:border-[var(--fg)]/40">« {lang === 'zh' ? '参数' : 'Parameters'}</button>}
                 </div>
               </div>
               {stage === 'predict' && !revealed && (
@@ -631,7 +631,7 @@ export default function Inverse() {
                   </div>
                   <ToggleSwitch label={t.guides} checked={showGuides} onChange={setShowGuides} compact />
                   {!inspectorOpen && stage !== 'predict' && (
-                    <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center rounded border border-[var(--border)] px-2 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+                    <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none mono-font text-[var(--fg)] hover:border-[var(--fg)]/40">
                       « {lang === 'zh' ? '参数' : 'Parameters'}
                     </button>
                   )}
@@ -643,10 +643,10 @@ export default function Inverse() {
         </div>
 
         {/* 右列：参数 + 三幕 */}
-        <div className={`flex flex-col space-y-4 ${stage === 'predict' ? 'lg:absolute lg:inset-0 lg:z-30 lg:flex lg:items-center lg:justify-center lg:bg-transparent lg:p-0' : stage === 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[460px] xl:w-[500px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : inspectorOpen ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[330px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : 'lg:hidden'} ${stage === 'predict' && !revealed ? 'hidden lg:block' : ''}`}>
+        <div className={`flex flex-col space-y-4 ${stage === 'predict' ? 'lg:absolute lg:inset-0 lg:z-30 lg:flex lg:items-center lg:justify-center lg:bg-transparent lg:p-0' : stage === 'conclude' ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[460px] xl:w-[500px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : inspectorOpen ? 'lg:absolute lg:inset-y-0 lg:right-0 lg:z-20 lg:w-[330px] lg:overflow-y-auto lg:border-l lg:border-[var(--border)] lg:bg-[var(--card-bg)] lg:p-3.5 lg:space-y-3' : 'lg:hidden'} `}>
           <div className={`${stage === 'predict' || stage === 'conclude' ? 'hidden' : 'hidden lg:flex'} shrink-0 items-center justify-between border-b border-[var(--border)] pb-2`}>
             <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
-            <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+            <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none text-[var(--fg)] hover:border-[var(--fg)]/40">
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
               <span>{lang === 'zh' ? '收起' : 'Collapse'}</span>
             </button>
@@ -840,7 +840,7 @@ export default function Inverse() {
                 <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                   // {t.concludeTitle}
                 </h3>
-                <button type="button" onClick={() => setStage('explore')} className="hidden shrink-0 items-center rounded border border-[var(--border)] px-2 py-1 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] lg:inline-flex">
+                <button type="button" onClick={() => setStage('explore')} className="hidden h-7 shrink-0 items-center rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none mono-font text-[var(--fg)] hover:border-[var(--fg)]/40 lg:inline-flex">
                   « {lang === 'zh' ? '返回探索调参' : 'Back to Explore'}
                 </button>
               </div>

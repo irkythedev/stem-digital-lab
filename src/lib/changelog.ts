@@ -18,6 +18,20 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.7',
+    date: '2026-11',
+    zh: [
+      '[优化] 移动端实验界面布局与操作体验进一步优化',
+      '[优化] 修复部分窄屏场景下的显示与交互问题',
+      '[优化] 若干界面细节优化，整体更稳定',
+    ],
+    en: [
+      '[Improved] Mobile lab layouts and controls are more comfortable to use',
+      '[Improved] Fixed some display and interaction issues on narrow screens',
+      '[Improved] Several interface details refined for overall stability',
+    ],
+  },
+  {
     version: '0.50.6',
     date: '2026-11',
     zh: [

@@ -216,4 +216,16 @@ export function registerUiLayerGuardsTests(test: TestFn): void {
   });
 
 
+
+  test('FeedbackFab 移动端必须默认贴边、首次点击只展开、再点才打开并自动收回', () => {
+    const src = readSrc('src/components/feedback/FeedbackFab.tsx');
+    assert.match(src, /NARROW_QUERY/, '移动端状态机须使用共享窄屏查询');
+    assert.match(src, /data-docked=/, '须暴露吸附态测试锚点');
+    assert.match(src, /max-sm:translate-x-\[62%\]/, '默认须右侧半隐吸附');
+    assert.match(src, /max-sm:opacity-60/, '默认须降低视觉权重');
+    assert.match(src, /3500/, '展开后须 3.5 秒自动收回');
+    assert.match(src, /addEventListener\('scroll'/, '页面滚动须自动收回');
+    assert.match(src, /if \(!expanded\) \{[\s\S]*setExpanded\(true\)/, '首次点击只展开，不直接开窗');
+  });
+
 }

@@ -1041,7 +1041,7 @@ export default function Quadratic() {
                 </button>
                 <ToggleSwitch label={t.guides} checked={showGuides} onChange={setShowGuides} compact />
                 {!inspectorOpen && stage !== 'predict' && stage !== 'conclude' && (
-                  <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center rounded border border-[var(--border)] px-2 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+                  <button type="button" onClick={() => setInspectorOpen(true)} aria-label={lang === 'zh' ? '参数' : 'Parameters'} className="ml-1 inline-flex h-7 items-center gap-1.5 rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none mono-font text-[var(--fg)] hover:border-[var(--fg)]/40">
                     « {lang === 'zh' ? '参数' : 'Parameters'}
                   </button>
                 )}
@@ -1162,7 +1162,7 @@ export default function Quadratic() {
           )}
           <div className="hidden items-center justify-between border-b border-[var(--border)] pb-2 lg:flex">
             <span className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] mono-font">// {lang === 'zh' ? '参数' : 'PARAMETERS'}</span>
-            <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-8 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded border border-[var(--border)] px-2 text-[0.5625rem] text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)]">
+            <button type="button" onClick={() => setInspectorOpen(false)} aria-label={lang === 'zh' ? '收起参数' : 'Collapse parameters'} className="inline-flex h-7 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none text-[var(--fg)] hover:border-[var(--fg)]/40">
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
               <span>{lang === 'zh' ? '收起' : 'Collapse'}</span>
             </button>
@@ -1474,7 +1474,7 @@ export default function Quadratic() {
                 <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
                   // {t.concludeTitle}
                 </h3>
-                <button type="button" onClick={() => setStage('explore')} className="hidden shrink-0 items-center rounded border border-[var(--border)] px-2 py-1 text-[0.5625rem] mono-font text-[var(--muted)] hover:border-[var(--fg)] hover:text-[var(--fg)] lg:inline-flex">
+                <button type="button" onClick={() => setStage('explore')} className="hidden h-7 shrink-0 items-center rounded border border-[var(--border)] bg-[var(--card-bg)] px-2 text-xs font-medium leading-none mono-font text-[var(--fg)] hover:border-[var(--fg)]/40 lg:inline-flex">
                   « {lang === 'zh' ? '返回探索调参' : 'Back to Explore'}
                 </button>
               </div>
