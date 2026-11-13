@@ -390,7 +390,25 @@ export default defineConfig({
   ],
   build: {
     // EdgeOne 构建容器 fd 限额较低：限制 Rollup 并发开文件数，避免 EMFILE
-    rollupOptions: { maxParallelFileOps: 8 },
+    rollupOptions: {
+      maxParallelFileOps: 8,
+      output: {
+        // 把基础框架、图标、AI 核心、速查词典和更新记录拆成稳定的小 chunk：
+        // 首屏主包不再被这些跨页面共享模块拽到 500kB 以上。
+        manualChunks(id) {
+          if (id.includes('/node_modules/')) {
+            if (/\/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)(\/|$)/.test(id)) return 'vendor-react';
+            if (id.includes('/node_modules/lucide-react/')) return 'vendor-icons';
+            if (id.includes('/node_modules/katex/')) return 'vendor-katex';
+            return 'vendor';
+          }
+          if (id.includes('/src/lib/changelog')) return 'changelog';
+          if (id.includes('/src/lib/quick-lookup')) return 'quick-lookup';
+          if (id.includes('/src/lib/elements') || id.includes('/src/lib/physics-formulas') || id.includes('/src/lib/chemistry/valency') || id.includes('/src/lib/labs')) return 'lookup-data';
+          if (id.includes('/src/lib/ai-')) return 'ai-core';
+        },
+      },
+    },
   },
   resolve: {
     alias: {

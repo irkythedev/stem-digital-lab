@@ -18,6 +18,18 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.9',
+    date: '2026-11',
+    zh: [
+      '[优化] 优化整体使用体验与运行表现',
+      '[优化] 完善若干细节，稳定性进一步提升',
+    ],
+    en: [
+      '[Improved] Overall experience and runtime performance refined',
+      '[Improved] Several details polished for greater stability',
+    ],
+  },
+  {
     version: '0.50.8',
     date: '2026-11',
     zh: [

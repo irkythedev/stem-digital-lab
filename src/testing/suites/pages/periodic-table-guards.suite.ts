@@ -822,9 +822,10 @@ export function registerPeriodicTableTests(test: TestFn, testAsync: TestFn): voi
       assert.match(statusSrc, /addEventListener\('storage'/, '状态须跨标签同步（storage 事件）');
       assert.match(
         statusSrc,
-        /refreshAiStatus\(m\.loadAiConfig\(\)\)/,
-        '跨标签重算须复用 loadAiConfig（动态 import 断开 ai-config ↔ ai-status 环）',
+        /import \{[^}]*loadAiConfig[^}]*\} from '\.\/ai-config'/,
+        '跨标签重算须静态导入 loadAiConfig（避免动态导入告警）',
       );
+      assert.match(statusSrc, /refreshAiStatus\(loadAiConfig\(\)\)/, '跨标签重算须复用 loadAiConfig');
       // 会话级静默自检 + 轮询：没有它们，角标会停在旧结论上，用户还得出手动点「重新验证」
       assert.match(statusSrc, /export function runSessionProbe\(\): void/, '须导出会话自检入口（可测）');
       assert.match(statusSrc, /if \(isStatusFresh\(snapshot\.checkedAt\)\) return;/, '结论仍新鲜时不得联网');

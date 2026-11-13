@@ -17,7 +17,7 @@
  *   不含 Key 本体，任何时刻都无法从存档里还原密钥。
  */
 import { useSyncExternalStore } from 'react';
-import type { AiConfig } from './ai-config';
+import { loadAiConfig, type AiConfig } from './ai-config';
 
 export type AiStatus = 'unconfigured' | 'configured' | 'verifying' | 'valid' | 'invalid';
 
@@ -417,7 +417,7 @@ export function aiCheckedAtLabel(checkedAt: number | null, lang: 'zh' | 'en', no
 }
 
 // 首帧就把状态算好（只读 localStorage，不联网）：避免「先闪一下未配置再变绿」。
-// 这里刻意只读指纹存档、不 import ai-config 的 loadAiConfig（那会造成循环依赖），
+// 这里只读指纹存档，避免在首帧做配置解析；
 // 真正的配置解析由 ai-context 在首帧渲染前调用 refreshAiStatus(loadAiConfig()) 完成。
 
 /** 与 ai-config 的 STORAGE_KEY 同值（同样刻意复制而不 import，理由见上） */
@@ -433,14 +433,13 @@ const CONFIG_STORAGE_KEY = 'stem-ai-config';
  * - 监听两个 key：结论（stem-ai-status）与配置（stem-ai-config）。配置换成另一套时
  *   refreshAiStatus 只在内存里 emit、并不改状态存档，所以只听结论会漏掉「换配置」这件事。
  * - e.key === null 表示某个标签执行了 localStorage.clear()，一并重算。
- * - 用动态 import 取 loadAiConfig：ai-config 在运行时 import 本模块（refreshAiStatus 等），
- *   静态 import 会成环；事件到达时两个模块都已加载，动态 import 落在既有 chunk 上。
+ * - 配置解析复用 loadAiConfig；storage 事件触发时模块已完成初始化，直接调用即可。
  * storage 事件只在**其它文档**写入时触发，因此这里不会自激循环。
  */
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('storage', (e: StorageEvent) => {
     if (e.key !== null && e.key !== STORAGE_KEY && e.key !== CONFIG_STORAGE_KEY) return;
-    void import('./ai-config').then((m) => { refreshAiStatus(m.loadAiConfig()); });
+    refreshAiStatus(loadAiConfig());
   });
 }
 
@@ -463,18 +462,16 @@ const SESSION_PROBE_KEY = 'stem-ai-probe-session';
  * - 只在真实浏览器里调度（`document` 存在），测试环境不得被定时器偷偷联网。
  */
 export function runSessionProbe(): void {
-  void import('./ai-config').then((m) => {
-    const cfg = m.loadAiConfig();
-    if (!cfg) return;
-    if (isStatusFresh(snapshot.checkedAt)) return;
-    try {
-      if (window.sessionStorage.getItem(SESSION_PROBE_KEY) === '1') return;
-      window.sessionStorage.setItem(SESSION_PROBE_KEY, '1');
-    } catch {
-      /* 隐私模式 / 配额满：退化为每次加载最多一次，语义仍成立 */
-    }
-    void verifyAiStatus(cfg, { auto: true });
-  });
+  const cfg = loadAiConfig();
+  if (!cfg) return;
+  if (isStatusFresh(snapshot.checkedAt)) return;
+  try {
+    if (window.sessionStorage.getItem(SESSION_PROBE_KEY) === '1') return;
+    window.sessionStorage.setItem(SESSION_PROBE_KEY, '1');
+  } catch {
+    /* 隐私模式 / 配额满：退化为每次加载最多一次，语义仍成立 */
+  }
+  void verifyAiStatus(cfg, { auto: true });
 }
 
 /**
@@ -549,8 +546,7 @@ export async function pollAiStatus(reason: 'interval' | 'visible' | 'online' = '
     resetPollBackoff();
   }
   if (inFlight) return null;
-  const m = await import('./ai-config');
-  const cfg = m.loadAiConfig();
+  const cfg = loadAiConfig();
   if (!cfg) return null;
   const result = await verifyAiStatus(cfg, { silent: true });
   // 失败累积退避、探到绿即复位：绿了就没有再敲打的理由

@@ -4,10 +4,10 @@
  *
  * 移动端专属速查条（<768px）：首页与学科页顶部使用；实验页保持沉浸不出现。
  */
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
-import QuickLookupModal from './QuickLookupModal';
+const QuickLookupModal = lazy(() => import('./QuickLookupModal'));
 
 export default function QuickLookupBar() {
   const { lang } = useApp();
@@ -24,7 +24,11 @@ export default function QuickLookupBar() {
         <span className="flex-1">{zh ? '速查实验 / 公式 / 元素' : 'Search labs, formulas, elements'}</span>
         <kbd className="rounded border border-[var(--border)] px-1 font-mono text-[10px]">/</kbd>
       </button>
-      {open && <QuickLookupModal onClose={() => setOpen(false)} />}
+      {open && (
+        <Suspense fallback={null}>
+          <QuickLookupModal onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }
