@@ -277,7 +277,7 @@ export default function Header({ onOpenGuide }: { onOpenGuide?: () => void }) {
   };
 
   return (
-    <header data-site-header="true" className="w-full border-b border-[var(--border)]/70 pb-3 sm:pb-3.5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-[calc(0.875rem+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)]">
+    <header data-site-header="true" className="h-[calc(3rem+env(safe-area-inset-top,0px))] w-full border-b border-[var(--border)]/70 pb-0 pt-[calc(0px+env(safe-area-inset-top,0px))] transition-colors duration-[var(--dur-base)] sm:h-[calc(3.5rem+env(safe-area-inset-top,0px))]">
       {/* 底线满幅通栏：border 落在满宽 header 上；内容由内层容器收回正文列。
           px-6 sm:px-12 lg:px-14 = 内容列容器的 px-4/sm:px-6/lg:px-8 + <main> 的 px-2 sm:px-6。 */}
       <div className="mx-auto flex w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl flex-wrap items-center justify-between gap-2 px-6 sm:px-12 lg:px-14">

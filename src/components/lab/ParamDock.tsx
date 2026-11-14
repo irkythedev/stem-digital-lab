@@ -28,9 +28,13 @@ interface ParamDockProps {
   dismissPx?: number;
   /** 预测阶段不挂载参数抽屉（连 portal 胶囊也不渲染） */
   disabled?: boolean;
+  /** 移动端且非探索阶段时隐藏胶囊与参数卡；桌面端仍平铺参数卡 */
+  disabledMobile?: boolean;
+  /** 移动端探索阶段把收起胶囊放回文档流，避免固定浮层压住 I-U 图像 */
+  inlineCollapsed?: boolean;
 }
 
-export default function ParamDock({ children, summary, anchorRef, title, closeLabel, dismissPx = 80, disabled = false }: ParamDockProps) {
+export default function ParamDock({ children, summary, anchorRef, title, closeLabel, dismissPx = 80, disabled = false, disabledMobile = false, inlineCollapsed = false }: ParamDockProps) {
   const dock = useParamDock();
   useLockBodyScroll(dock.state === 'open');
   const [dragDy, setDragDy] = useState(0);
@@ -40,11 +44,11 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
   // 挂载标记：让 CSS 只给「装了参数抽屉」的实验页补底部安全区。
   // 用 <html> 类而不是给每个实验页加 pb-* —— 未装抽屉的 14 个实验必须零改动。
   useEffect(() => {
-    if (disabled) return;
+    if (disabled || (disabledMobile && dock.isNarrow)) return;
     const cls = document.documentElement.classList;
     cls.add('param-dock-mounted');
     return () => cls.remove('param-dock-mounted');
-  }, [disabled]);
+  }, [disabled, disabledMobile, dock.isNarrow]);
 
   // 展开期间：反馈气泡淡出（CSS 按 html 类名控制）
   useEffect(() => {
@@ -74,6 +78,7 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
   }, [dock.state, anchorRef]);
 
   if (disabled) return null;
+  if (disabledMobile && dock.isNarrow) return null;
 
   // 桌面：原样平铺，零额外节点
   if (dock.state === 'hidden') return <>{children}</>;
@@ -82,25 +87,27 @@ export default function ParamDock({ children, summary, anchorRef, title, closeLa
   // AI 面板打开时胶囊整体让位（不渲染），避免它被压在 AI 遮罩下面。
   if (dock.state === 'collapsed') {
     if (dock.aiOpen) return null;
+    const collapsedButton = (
+      <button
+        type="button"
+        onClick={dock.open}
+        aria-label={title}
+        aria-expanded={false}
+        className={inlineCollapsed
+          ? 'flex h-12 w-full items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[var(--elev-md)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]'
+          : 'fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 right-[4.5rem] z-sticky-layer flex h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[var(--elev-md)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]'}
+      >
+        <span className="inline-flex shrink-0 items-center gap-2">
+          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="truncate">{title}</span>
+        </span>
+        <span className="min-w-0 flex-1 truncate text-right tabular-nums text-[var(--muted)]">{summary}</span>
+      </button>
+    );
     return (
       <>
         <div aria-hidden="true" className="hidden" />
-        {createPortal(
-          <button
-            type="button"
-            onClick={dock.open}
-            aria-label={title}
-            aria-expanded={false}
-            className="fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-4 right-[4.5rem] z-sticky-layer flex h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)]/80 bg-[var(--card-bg)]/90 px-4 text-xs mono-font text-[var(--fg)] shadow-[var(--elev-md)] backdrop-blur-md touch-manipulation select-none transition-transform duration-[var(--dur-fast)] active:scale-[0.98]"
-          >
-            <span className="inline-flex shrink-0 items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="truncate">{title}</span>
-            </span>
-            <span className="min-w-0 flex-1 truncate text-right tabular-nums text-[var(--muted)]">{summary}</span>
-          </button>,
-          document.body,
-        )}
+        {inlineCollapsed ? collapsedButton : createPortal(collapsedButton, document.body)}
       </>
     );
   }

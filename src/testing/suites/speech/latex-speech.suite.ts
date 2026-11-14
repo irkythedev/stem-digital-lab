@@ -257,4 +257,14 @@ export function registerLatexTtsTests(test: TestFn): void {
     assert.ok(sanitizeMrSpoken('Mr = 160').includes('相对分子质量'));
     assert.ok(!sanitizeMrSpoken('Ca(OH)2').includes('('), '括号不得原样留给 TTS');
   });
+
+  test('带空格的减号与真负号区分朗读', () => {
+    assert.equal(latexToSpeech('5 - 3'), '5 减 3');
+    assert.equal(latexToSpeech('x - y'), 'x 减 y');
+    assert.equal(latexToSpeech('\\frac{1}{2} - \\frac{1}{3}'), '2 分之 1 减 3 分之 1');
+    assert.equal(latexToSpeech('5 \\times -3'), '5 乘以 负3');
+    assert.equal(latexToSpeech('5 \\div -2'), '5 除以 负2');
+    assert.equal(latexToSpeech('= -5'), '等于 负5');
+    assert.equal(latexToSpeech('(-3)'), '负3括号');
+  });
 }

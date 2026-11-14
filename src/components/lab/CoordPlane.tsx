@@ -498,7 +498,7 @@ export default function CoordPlane({
   const tickFont = sheetMode ? 11 : bleed ? 12 : 11;
   const xTickY = clamp(zeroY + 15, pad.top + 12, H - 6); // 贴 x 轴下方，而不是钉在画布底边
   const yTickX = Math.max(zeroX - 6, pad.left - 6);      // 贴 y 轴左侧，轴在左边时退回 PAD 内
-  const xNameX = W - 16;
+  const xNameX = W - 28;
   const xNameY = clamp(zeroY + 18, pad.top + 12, H - 8);
   const yNameX = clamp(zeroX + 14, pad.left + 4, W - 12);
   const yNameY = 18;

@@ -27,7 +27,7 @@ import { labFromPath, labMap } from '../../lib/labs';
 import { useAiContext } from '../../lib/ai-context';
 import { buildQuizSummaryPrompt, logPromptIssue } from '../../lib/ai-config';
 import { formatAiAnswerForClipboard } from '../../lib/ai-clipboard';
-import { formatLabState, getLabState, labIdFromPath, stageLabel } from '../../lib/ai-dynamic-questions';
+import { formatLabState, getLabState, labIdFromPath, labSubmodeOf, stageLabel } from '../../lib/ai-dynamic-questions';
 import { clearHistory, isStoppedAnswer, listHistory, markStopped, markTruncated, saveHistory, stripStoppedMark, trimHistoryToLimit, type AiHistoryEntry } from '../../lib/ai-history';
 import { STICK_THRESHOLD, isNearBottom } from '../../lib/ai-scroll';
 import { clearQuizHistory, groupQuizByQuestion, listQuizHistory, trimQuizHistoryToLimit, wrongQuizHistory, type QuizHistoryEntry } from '../../lib/quiz-history';
@@ -972,7 +972,11 @@ export default function AiAssistant() {
     if (typeof window === 'undefined') return null;
     try {
       const raw = window.localStorage.getItem('stem-ai-pos');
-      return raw ? (JSON.parse(raw) as { x: number; y: number }) : null;
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as { x?: unknown; y?: unknown };
+      return Number.isFinite(parsed?.x) && Number.isFinite(parsed?.y)
+        ? { x: parsed.x as number, y: parsed.y as number }
+        : null;
     } catch {
       return null;
     }
@@ -1507,16 +1511,17 @@ export default function AiAssistant() {
   const systemPromptForPage = () => {
     const labId = labIdFromPath(location.pathname);
     const lab = labId ? labMap[labId] : undefined;
+    const state = getLabState(labId);
     // 静态页面知识与实时读数**分开注入**：两者权威级不同，混在一个 <页面资料> 里会让
     // 模型把学生眼前的真实读数当「可选背景」，转而自己按公式算一个。
-    const liveState = [aiCtx.live, formatLabState(labId, getLabState(labId), lang)]
+    const liveState = [aiCtx.live, formatLabState(labId, state, lang)]
       .filter(Boolean)
       .join('\n');
     return buildSystemPrompt(
       lang,
       aiCtx.topic ?? pageSubject(location.pathname, lang),
       aiCtx.knowledge,
-      stageLabel(getLabState(labId)?.stage, lang),
+      stageLabel(state?.stage, lang),
       // 实验页用注册表里的学科判定（显示名里没有「物理」二字）；非实验页留给主题串回退
       lab ? lab.subjectId === 'physics' : undefined,
       liveState,
@@ -1524,6 +1529,8 @@ export default function AiAssistant() {
       aiCtx.persona,
       lab?.subjectId,
       labId,
+      // 子模式（circle 的定理切换、construction 的关卡）：让探究目标只封当前模式
+      labSubmodeOf(labId, state),
     );
   };
 

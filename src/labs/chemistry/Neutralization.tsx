@@ -55,6 +55,11 @@ export function phAt(acidM: number, v: number): number {
  *  的突跃及其「过量后平缓上升」段仍完整落在坐标系内 */
 export const AXIS_MAX = 50;
 
+/** 酚酞颜色：pH≤8.2 无色；8.2–10 粉红；>10 红色。 */
+export function indicatorColorForPh(ph: number): 'colorless' | 'pink' | 'red' {
+  return ph <= 8.2 ? 'colorless' : ph <= 10 ? 'pink' : 'red';
+}
+
 /** 判定标记图标：统一 Lucide 矢量图标与尺寸/对齐，禁用「对勾 / 叉号」文本字符充当图标（全站图标纪律） */
 const MARK_CLS = 'inline-block w-3.5 h-3.5 align-middle mr-1';
 
@@ -436,7 +441,7 @@ export default function Neutralization() {
       prompt: t.cards[1].prompt,
       tryLabel: t.tryLabel,
       tryIt: () => {
-        setAcidM(1);
+        setAcidM(0.20);
         setVolume(0);
       },
     },
@@ -456,7 +461,7 @@ export default function Neutralization() {
       prompt: t.cards[3].prompt,
       tryLabel: t.tryLabel,
       tryIt: () => {
-        setAcidM(0.5);
+        setAcidM(0.15);
         setVolume(15);
       },
     },
@@ -470,7 +475,7 @@ export default function Neutralization() {
   // AI：实时状态登记（当前阶段 + 核心受控变量），供系统提示词与「问 AI」动态问句读取
   useEffect(() => {
     const ph = phAt(acidM, volume);
-    const indicatorColor = ph < 7 ? 'colorless' : ph <= 8.2 ? 'pink' : 'red';
+    const indicatorColor = indicatorColorForPh(ph);
     setLabState('neutralization', {
       stage,
       volume,

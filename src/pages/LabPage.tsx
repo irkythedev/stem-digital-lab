@@ -76,7 +76,7 @@ export default function LabPage() {
 
   if (!lab) {
     return (
-      <main className="grow shrink-0 flex flex-col my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
+      <main className="grow shrink-0 flex flex-col px-2 sm:px-6">
         <div className="mb-8">
           <span className="text-[0.625rem] uppercase tracking-widest text-[var(--muted)] mono-font">
             / lab / {canonicalLabId ?? 'unknown'}
@@ -99,6 +99,8 @@ export default function LabPage() {
   // 阶段提示仍由 StageNav 承担，不丢流程信息。
   const compactLab = ['construction', 'congruence', 'similarity', 'polygon-pi', 'circle', 'quadratic', 'linear', 'inverse'].includes(lab.id);
   const fullCanvasLab = ['quadratic', 'linear', 'inverse', 'circle', 'congruence', 'similarity', 'polygon-pi', 'construction'].includes(lab.id);
+  // Ohm：桌面端单独收口为「返回/标题/公式 + StageNav + 动作簇」单行副栏；移动端保留原页头。
+  const compactOhm = lab.id === 'ohm';
   // 页头右侧状态徽标（可选）：工作台的 C++ / JS 计算核标识走标准动作簇末尾。
   const HeaderBadge = lab.headerBadge;
 
@@ -108,7 +110,7 @@ export default function LabPage() {
     : `Explain the ${lab.name.en} lab: its principle, key steps and what to observe`;
 
   return (
-    <main className={`grow shrink-0 flex flex-col mt-3 mb-[var(--sp-edge)] max-sm:min-h-[calc(100dvh-5rem)] px-2 sm:mt-[var(--sp-block)] sm:mb-[var(--sp-block)] sm:px-6 ${fullCanvasLab ? 'lg:mt-0 lg:mb-0 lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
+    <main data-lab-main="true" className={`grow shrink-0 flex flex-col max-sm:min-h-[calc(100dvh-5rem)] px-2 sm:px-6 ${fullCanvasLab ? 'lg:min-h-0 lg:shrink lg:px-0' : ''}`}>
       {/* 数学全画布实验：移动端两行紧凑头部（导航+标题+工具 / 32px 步进条） */}
       {fullCanvasLab && (
         <div data-lab-header="true" className="lg:hidden">
@@ -145,7 +147,49 @@ export default function LabPage() {
           </div>
         </div>
       )}
-      <div className={fullCanvasLab ? 'hidden' : ''}>
+      {compactOhm && (
+        <div data-ohm-header="true" className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 border-b border-[var(--border)] pb-2 lg:mb-3 lg:grid-cols-[1fr_auto_1fr] lg:gap-4 lg:pb-3">
+          <div className="order-1 flex min-w-0 items-center gap-2.5 justify-self-start lg:order-none">
+            <Link to={subjects[lab.subjectId].path} className="compact inline-flex h-7 shrink-0 items-center gap-1 rounded px-1 text-xs mono-font text-[var(--muted)] hover:text-[var(--fg)] tap-area" aria-label={lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}>
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden xl:inline">{lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}</span>
+            </Link>
+            <span className="h-4 w-px shrink-0 bg-[var(--border)]" aria-hidden="true" />
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[var(--fg)]"><lab.icon className="h-4 w-4" aria-hidden="true" /></span>
+            <h1 className="truncate text-base font-semibold tracking-tight leading-none serif-font text-[var(--fg)]">{lab.name[lang]}</h1>
+            <span className="inline-flex h-5 shrink-0 items-center rounded border border-[var(--border)] px-1.5 text-[11px] leading-none mono-font text-[var(--muted)]">{lang === 'zh' ? subjects[lab.subjectId].gradeZh : subjects[lab.subjectId].gradeEn}</span>
+          </div>
+          <div id="ohm-stage-nav-slot" className="order-3 col-span-2 flex w-full min-w-0 justify-center lg:order-none lg:col-auto lg:w-auto lg:justify-self-center" />
+          <div className="order-2 flex h-7 shrink-0 items-center gap-2 justify-self-end lg:order-none">
+            <div className="flex items-center gap-2 lg:hidden">
+              <ShareInline
+                labId={lab.id}
+                labName={lab.name}
+                title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+                text={lang === 'zh'
+                  ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                  : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+              />
+              <AskAiButton labId={lab.id} question={pageAiQuestion} iconOnly />
+              <AskQuizButton iconOnly />
+            </div>
+            <div className="hidden items-center gap-2 lg:flex">
+              <PinDiffButton labId={lab.id} />
+              <ShareInline
+                labId={lab.id}
+                labName={lab.name}
+                title={lang === 'zh' ? `${lab.name.zh} · ${t.shareTitle}` : `${lab.name.en} · ${t.shareTitle}`}
+                text={lang === 'zh'
+                  ? translations.zh.shareLabZh.replace('{name}', lab.name.zh).replace('{desc}', lab.description.zh)
+                  : translations.zh.shareLabEn.replace('{name}', lab.name.en).replace('{desc}', lab.description.en)}
+              />
+              <AskAiButton labId={lab.id} question={pageAiQuestion} />
+              <AskQuizButton />
+            </div>
+          </div>
+        </div>
+      )}
+      <div className={fullCanvasLab || compactOhm ? 'hidden' : ''}>
       {/* 返回学科：Ghost Link（无下划线、无 ⌂ —— 回首页由顶栏 Logo 承担） */}
       <BackLink to={subjects[lab.subjectId].path}>
         {lang === 'zh' ? `返回${t.subjects[lab.subjectId].title}` : `Back to ${t.subjects[lab.subjectId].title}`}
@@ -198,7 +242,7 @@ export default function LabPage() {
       {/* 建议流程：移动端 my-2（桌面保持 mb-5、无上边距），避免这句话上下各多出一段留白。
           工具台（meta.kind === 'tool'）没有三幕式阶段，不能继续提示「先预测…最后完成结论」——
           那句话会把自由工作台重新说成步骤锁定的实验。此处换成工具台自己的引导。 */}
-      <p className={`mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5 ${compactLab ? 'hidden' : ''}`}>
+      <p className={`mt-2 mb-2 text-xs serif-font italic text-[var(--muted)] sm:mt-0 sm:mb-5 ${compactLab || compactOhm ? 'hidden' : ''}`}>
         {lab.meta?.kind === 'tool'
           ? lang === 'zh'
             ? '自由工作台：加载预设或从空白开始，随时接线、读表、记录数据。所有操作都可撤销。'

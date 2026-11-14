@@ -19,7 +19,7 @@
 import assert from 'node:assert';
 import type { TestFn } from '../../harness';
 import {
-  PROMPT_VERSION, LAB_TARGETS, EXPLORE_KNOWLEDGE_OVERRIDES, QUIZ_SENTINEL, buildFillJudgePrompt, buildQuizPrompt, buildSystemPrompt,
+  PROMPT_VERSION, LAB_TARGETS, LAB_SUBMODE_TARGETS, resolveLabTarget, EXPLORE_KNOWLEDGE_OVERRIDES, QUIZ_SENTINEL, buildFillJudgePrompt, buildQuizPrompt, buildSystemPrompt,
 } from '../../../lib/ai-config';
 import {
   dedupeQuizQuestions, parseJudgeVerdict, parseQuizBatchChecked, shuffleOptions, type QuizQuestion,
@@ -27,7 +27,7 @@ import {
 import { formatAiAnswerForClipboard } from '../../../lib/ai-clipboard';
 import { labs } from '../../../lib/labs';
 import {
-  PREDICT_WHITELIST, clearLabState, formatLabState, getDynamicQuestions, getLabState, getPageQuestion, labIdFromPath, setLabState, setPageQuestion, stageLabel,
+  PREDICT_WHITELIST, clearLabState, formatLabState, getDynamicQuestions, getLabState, getPageQuestion, labIdFromPath, labSubmodeOf, setLabState, setPageQuestion, stageLabel,
 } from '../../../lib/ai-dynamic-questions';
 
 export function registerAiPromptContractsTests(test: TestFn): void {
@@ -504,6 +504,41 @@ D. 丁
       assert.ok(!p.includes('4ac-b^2'), `${stage} 不得注入顶点公式`);
       assert.ok(p.includes('观察开口朝向'), `${stage} 仍须保留安全观察说明`);
     }
+  });
+
+  test('v2.5：子模式探究目标——circle 按定理、construction 按关卡精确到当前模式', () => {
+    // 两个多模式实验都必须有子模式条目，且每个子模式键可被 resolveLabTarget 命中
+    for (const mode of ['chord', 'inscribed', 'thales']) {
+      assert.ok(LAB_SUBMODE_TARGETS.circle?.[mode], `circle 缺子模式目标 ${mode}`);
+      assert.ok(resolveLabTarget('circle', mode)?.zh.includes(
+        mode === 'chord' ? '垂径定理' : mode === 'inscribed' ? '圆周角定理' : '直径',
+      ), `circle/${mode} 子模式目标须对应本定理`);
+    }
+    for (const [idx, id] of [['0', 'perp-bisector'], ['1', 'midpoint'], ['2', 'angle-bisector'], ['3', 'perp-through']] as const) {
+      assert.ok(LAB_SUBMODE_TARGETS.construction?.[id], `construction 缺子模式目标 ${id}`);
+      assert.ok(resolveLabTarget('construction', idx), `construction 关卡 ${idx} 须可解析`);
+    }
+    // Explore 提示词：子模式命中时只注入本模式目标，整页宽目标不得出现
+    const pChord = buildSystemPrompt('zh', '圆的性质实验', '页面知识', '探索', false, undefined, undefined, 'math', 'circle', 'chord');
+    assert.ok(pChord.includes('垂径定理：垂直于弦的直径平分'), 'circle/chord 须注入垂径子模式目标');
+    assert.ok(!pChord.includes('圆周角定理、圆周角与直径所对圆周角'), 'circle/chord 不得再注入整页宽目标');
+    // 未命中子模式（未登记 / 非法值）回退整页条目——新增模式默认安全
+    assert.equal(resolveLabTarget('circle', 'unknown'), LAB_TARGETS.circle, '未知子模式须回退整页目标');
+    assert.equal(resolveLabTarget('circle'), LAB_TARGETS.circle, '无子模式须回退整页目标');
+    assert.equal(labSubmodeOf('circle', { stage: 'explore' }), undefined, 'circleMode 缺失须安全返回 undefined');
+    assert.equal(labSubmodeOf('construction', { stage: 'explore', task: 2 }), 'angle-bisector', 'construction 关卡序号须映射为 id');
+    assert.equal(labSubmodeOf('ohm', { stage: 'explore' }), undefined, '无子模式的实验须返回 undefined');
+  });
+
+  test('v2.5：inverse 与 circuit-bench 目标补齐——k 的几何意义带 |k| 与增减性象限前提', () => {
+    const inv = LAB_TARGETS.inverse;
+    assert.ok(inv.zh.includes('|k|') && inv.zh.includes('增减性'), 'inverse 目标须含 |k| 几何意义与增减性');
+    assert.ok(inv.zh.includes('象限') || inv.zh.includes('k>0'), 'inverse 增减性须带象限/符号前提');
+    const bench = LAB_TARGETS['circuit-bench'];
+    assert.ok(bench.zh.includes('串联分压') && bench.zh.includes('并联分流'), 'circuit-bench 目标须含分压分流规律');
+    assert.ok(bench.zh.includes('P=UI'), 'circuit-bench 目标须含电功率');
+    const pInv = buildSystemPrompt('zh', '反比例函数实验', '页面知识', '探索', false, undefined, undefined, 'math', 'inverse');
+    assert.ok(pInv.includes('|k|'), 'inverse Explore 目标块须注入补齐后的 |k| 描述');
   });
 
   test('v2.2：Explore 不注入目标公式，Conclude 不注入目标块', () => {

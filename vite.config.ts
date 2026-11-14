@@ -310,11 +310,12 @@ export default defineConfig({
         // 上限只影响「是否预缓存」，不改变离线策略，故按当前体积放宽到 3 MiB。
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,svg,png,webp,woff,woff2,ttf}', 'offline-manifest.json'],
-        // architecture.html（约 735KB）已纳入预缓存：页脚「运行架构页」必须在断网时也能打开，
-        // 仅靠首次在线访问的运行时缓存无法保证新设备离线可用。
+        // architecture.html（约 735KB）不进入首包预缓存：它由运行时 navigation 缓存单独兜底，
+        // 页脚「运行架构页」首次在线打开后离线仍可访问；首包因此减重约 745KB。
         // KaTeX 同时产出 woff2 / woff / ttf 三份同字形文件，浏览器优先用 woff2；
         // 预缓存只留 woff2，省掉约 800KB 的重复字体（离线公式排版仍完整）。
         globIgnores: [
+          '**/architecture.html',
           '**/version.json',
           '**/sw.js',
           '**/sw-*.js',

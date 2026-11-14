@@ -15,6 +15,8 @@ export interface Observation {
   id: number;
   /** 参数快照（父组件按实验定制） */
   snapshot: { label: string; value: string }[];
+  /** 可选的原始未截断读数（伏安法均值等计算用） */
+  raw?: { v: number; i: number };
   /** 可选：是否满足该实验的核心关系（供结论幕做证据统计） */
   balanced?: boolean;
   note: string;

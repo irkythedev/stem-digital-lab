@@ -615,7 +615,7 @@ export default function Similarity() {
               titleSlot={<span className="truncate">{lang === 'zh' ? '位似比' : 'Scale ratio'} <strong>k = {displayK.toFixed(2)}</strong><span className="hidden sm:inline"> · O ({f2(o.x)}, {f2(o.y)})</span></span>}
               actionsSlot={<>
                 <ToggleSwitch compact label={lang === 'zh' ? '辅助射线' : 'Rays'} checked={showRays} onChange={setShowRays} />
-                <button type="button" onClick={startDemo} className="compact inline-flex h-7 shrink-0 items-center rounded-full border border-[var(--border)] px-2 text-[0.625rem] text-[var(--fg)] hover:bg-[var(--accent-light)]"><Play className="h-3 w-3" aria-hidden="true" /> {t.demoStart}</button>
+                <button type="button" onClick={startDemo} className="compact inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-[var(--border)] px-2.5 text-xs text-[var(--fg)] hover:bg-[var(--accent-light)]"><Play className="h-3 w-3" aria-hidden="true" /> {t.demoStart}</button>
                 <CanvasZoomControls onZoomIn={() => setViewZoom((z) => Math.min(1.6, z + 0.1))} onZoomOut={() => setViewZoom((z) => Math.max(0.75, z - 0.1))} onReset={resetViewport} />
               </>}
               footerBar={stage === 'predict' ? undefined : measureBar}

@@ -65,7 +65,11 @@ export function quadraticRoots(a: number, b: number, c: number): number[] {
     if (Math.abs(b) < 1e-12) return [];
     return [(-c / b) || 0];
   }
-  const d = discriminant(a, b, c);
+  const rawD = discriminant(a, b, c);
+  // 相对浮点容差：顶点式 k=0 或一般式接近切点时，b²−4ac 会留下 −1e-13 量级误差，
+  // 若不归零会被误判为「无实根」，丢掉唯一切点。容差随系数尺度缩放。
+  const eps = 1e-9 * Math.max(1, b * b, Math.abs(4 * a * c));
+  const d = Math.abs(rawD) <= eps ? 0 : rawD;
   if (d < 0) return [];
   if (d === 0) return [(-b / (2 * a)) || 0]; // -0 → 0：否则坐标标注会渲染成「-0」
   const sq = Math.sqrt(d);

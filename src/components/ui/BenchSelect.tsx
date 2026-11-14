@@ -29,6 +29,7 @@ import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 
 import { dropdownPosition, nextActiveIndex, optionIndexOf, type SelectOption } from '../../lib/select-model';
+import { useEscapeKey } from '../../lib/use-escape-key';
 
 /**
  * 触控层守卫（禁浏览器手势与文本选择）。
@@ -218,11 +219,6 @@ export default function BenchSelect({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       const cur = latest.current;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cur.close();
-        return;
-      }
       // Tab：让焦点照常走，只把弹层收掉，别把用户锁在里面。
       if (e.key === 'Tab') {
         setOpen(false);
@@ -250,6 +246,8 @@ export default function BenchSelect({
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [open]);
+
+  useEscapeKey(() => latest.current.close(), open);
 
   // 高亮项出视野就滚回来（选项多过 max-h 时，键盘走到看不见的行等于没走）。
   useEffect(() => {

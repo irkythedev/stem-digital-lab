@@ -16,7 +16,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { menuPosition, type MenuAction, type MenuItem } from './circuit-bench-menu';
 import MenuItemIcon from './MenuItemIcon';
 import { TOUCH_GUARD } from './circuit-bench-touch';
-import { overlayStackDepth } from '../../../lib/overlay-stack';
+import { useEscapeKey } from '../../../lib/use-escape-key';
 
 export interface CanvasContextMenuProps {
   /** 触发点（client 坐标）。 */
@@ -50,17 +50,10 @@ export default function CanvasContextMenu({ x, y, items, zh, onPick, onClose }: 
     const onDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) onClose();
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (overlayStackDepth() > 0) return;
-      if (e.key === 'Escape') onClose();
-    };
     window.addEventListener('pointerdown', onDown, true);
-    window.addEventListener('keydown', onKey, true);
-    return () => {
-      window.removeEventListener('pointerdown', onDown, true);
-      window.removeEventListener('keydown', onKey, true);
-    };
+    return () => window.removeEventListener('pointerdown', onDown, true);
   }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <div

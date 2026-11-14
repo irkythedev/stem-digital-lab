@@ -21,6 +21,7 @@ import { HISTORY_STORAGE_KEY, isStoppedAnswer, listHistory, markStopped, markTru
 import {
   CHAIN_MAX_TOKENS, EmptyAnswerError, classifyChatFailure, classifyStreamOutcome, resolveMaxTokens, streamChat,
 } from '../../../lib/ai-config';
+import { judgeResultIsCurrent } from '../../../lib/quiz-abort';
 
 export function registerAiOutputLimitsTests(test: TestFn, testAsync: TestFn): void {
   /** 读仓库内源码：参数保持仓库相对路径，错误消息里的文件标识也不变。 */
@@ -180,6 +181,15 @@ export function registerAiOutputLimitsTests(test: TestFn, testAsync: TestFn): vo
     } finally {
       (globalThis as any).fetch = originalFetch;
     }
+  });
+
+  test('Quiz 判分结果：abort 或换题后不得写入当前题状态', () => {
+    const c = new AbortController();
+    assert.equal(judgeResultIsCurrent(c.signal, 'Q1', 'Q1'), true);
+    c.abort();
+    assert.equal(judgeResultIsCurrent(c.signal, 'Q1', 'Q1'), false);
+    assert.equal(judgeResultIsCurrent(new AbortController().signal, 'Q1', 'Q2'), false);
+    assert.equal(judgeResultIsCurrent(null, 'Q1', 'Q1'), false);
   });
 
   test('学生点停止（外层 abort）不当作「切断」：走「已停止」语义', () => {

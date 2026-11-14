@@ -14,6 +14,8 @@
 import assert from 'node:assert';
 import type { TestFn } from '../../harness';
 import {
+  averageResistance,
+  measuredResistance,
   currentOf as coreCurrentOf,
   elementResistance as coreElementResistance,
   sampleOhm as coreSampleOhm,
@@ -92,5 +94,18 @@ export function registerOhmCoreGuardTests(test: TestFn): void {
     assert.ok(inf >= 0);
     assert.ok(Number.isFinite(coreCurrentOf(0, 0, 'resistor', 0)), 'U=0 总阻 0 不得为 NaN/Inf');
     assert.equal(coreCurrentOf(0, 0, 'resistor', 0), 0, '无驱动电压时读数应为 0');
+  });
+
+  test('伏安法单次电阻：V/I 使用未截断读数，I≤0 返回 null', () => {
+    assert.equal(measuredResistance(2.55, 0.3448275862), 2.55 / 0.3448275862);
+    assert.equal(measuredResistance(2.55, 0), null);
+    assert.equal(measuredResistance(NaN, 1), null);
+  });
+
+  test('平均电阻：过滤 I≤0 的无效行，分母用有效行数', () => {
+    assert.equal(averageResistance([{ v: 2, i: 0.5 }, { v: 0, i: 0 }, { v: 3, i: 1 }]), 3.5);
+    assert.equal(averageResistance([{ v: 0, i: 0 }, { v: 0, i: 0 }]), null);
+    const avg = averageResistance([{ v: 2.55, i: 0.3448 }, { v: 2.55, i: 0.3448 }]);
+    assert.ok(avg !== null && Math.abs(avg - 2.55 / 0.3448) < 1e-12);
   });
 }

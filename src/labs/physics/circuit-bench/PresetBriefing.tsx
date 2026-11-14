@@ -47,7 +47,7 @@ import {
   type InquiryPrompt,
   type InquiryStage,
 } from './circuit-bench-prompts';
-import { overlayStackDepth } from '../../../lib/overlay-stack';
+import { useEscapeKey } from '../../../lib/use-escape-key';
 
 /** 与 `duration-200` 对齐：关闭时先播动画，播完再真正卸载。 */
 const TRANSITION_MS = 200;
@@ -219,15 +219,7 @@ export default function PresetBriefing({
     return () => window.removeEventListener('resize', onResize);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (overlayStackDepth() > 0) return;
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  useEscapeKey(onClose, open);
 
   /* ── 拖拽：只在标题栏按下才生效 ── */
   const onDragDown = (e: React.PointerEvent<HTMLDivElement>) => {

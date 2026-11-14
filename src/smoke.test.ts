@@ -1608,7 +1608,7 @@ describe('版本一致性（package.json ↔ APP_VERSION ↔ 变更记录首条�
     assert.ok(!/element-images\/105|472\s*个/.test(cfg), '数量不得硬编码');
     assert.match(cfg, /createHash\('sha256'\)/, '清单须计算内容 hash');
     assert.match(cfg, /version:\s*pkg\.version/, '清单根节点须带 APP_VERSION');
-    assert.ok(!cfg.includes("'**/architecture.html'"), 'architecture.html 须纳入预缓存（不得在 globIgnores 中排除）');
+    assert.ok(cfg.includes("'**/architecture.html'"), 'architecture.html 须移出首包预缓存（745KB 文档交给运行时缓存）');
   });
 
   test('离线媒体规则必须覆盖 public/ 下的每一个真实文件（下好了却打不开就是规则漏了）', () => {

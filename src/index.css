@@ -234,8 +234,8 @@ html.dark {
   --bg: #161613;
   --fg: #e8e6df;
   --muted: #9c9a90;
-  --border: #2e2e28;
-  --card-bg: #1e1e1a;
+  --border: #383831;
+  --card-bg: #21211c;
   --accent: #ffffff;
   --accent-light: #262621;
   --error: #ef4444;
@@ -295,8 +295,8 @@ html.dark {
     --bg: #161613;
     --fg: #e8e6df;
     --muted: #9c9a90;
-    --border: #2e2e28;
-    --card-bg: #1e1e1a;
+    --border: #383831;
+    --card-bg: #21211c;
     --accent: #ffffff;
     --accent-light: #262621;
     --error: #ef4444;
@@ -2289,4 +2289,42 @@ html.dark .version-tag-new,
   font-size: 0.75rem !important;
   font-weight: 500 !important;
   line-height: 1 !important;
+}
+
+/* ── 纵向间距单一归属：Header/Footer 固定边界，页面根 main 负责首尾呼吸 ── */
+#app-main {
+  padding-top: 1rem !important;   /* shell breathing above Header: mobile 16px */
+  padding-bottom: 0 !important;
+}
+#app-main main {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 1rem !important;   /* mobile content pages: 16px */
+  padding-bottom: 1.5rem !important; /* mobile content pages: 24px */
+}
+#app-main main[data-lab-main] {
+  padding-top: 0.5rem !important;  /* mobile lab: 8px */
+  padding-bottom: 1rem !important; /* mobile lab: 16px */
+}
+@media (min-width: 1024px) {
+  #app-main { padding-top: 1.5rem !important; } /* desktop 24px */
+  #app-main main {
+    padding-top: 1.5rem !important;  /* desktop content pages: 24px */
+    padding-bottom: 2.5rem !important; /* desktop content pages: 40px */
+  }
+  #app-main main[data-lab-main] {
+    padding-top: 0.75rem !important; /* desktop lab: 12px */
+    padding-bottom: 2rem !important; /* desktop lab: 32px */
+  }
+}
+
+
+/* 内容页首个返回链接的自身外边距不再与 main 的顶距叠加 */
+#app-main main > a:first-child {
+  margin-top: 0 !important;
+}
+
+/* 页面最后一块的下外边距不再与 main 的底部留白叠加 */
+#app-main main > :last-child {
+  margin-bottom: 0 !important;
 }

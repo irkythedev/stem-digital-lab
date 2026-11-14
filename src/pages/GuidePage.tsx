@@ -168,7 +168,7 @@ export default function GuidePage() {
   usePageMeta({ title: `${lang === 'zh' ? '使用说明' : 'Guide'} - ${lang === 'zh' ? '数理化数字实验室' : 'STEM Digital Lab'}` });
   const c = copy[lang];
   return (
-    <main className="grow shrink-0 my-[var(--sp-edge)] sm:my-[var(--sp-block)] px-2 sm:px-6">
+    <main className="grow shrink-0 px-2 sm:px-6">
       <div className="mx-auto w-full max-w-5xl">
       <BackLink to="/">{c.backHome}</BackLink>
       <div className="mb-8">

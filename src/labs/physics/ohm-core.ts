@@ -46,6 +46,23 @@ export function currentOf(u: number, r: number, element: ElementType, rp = 0): n
   return u / denom;
 }
 
+/** 伏安法单次/平均电阻：只用 I>0 的有效行；无有效行返回 null。 */
+export interface OhmReading {
+  v: number;
+  i: number;
+}
+
+/** 伏安法单次电阻：I≤0 或非有限值时返回 null（页面显示用）。 */
+export function measuredResistance(v: number, i: number): number | null {
+  return Number.isFinite(v) && Number.isFinite(i) && i > 0 ? v / i : null;
+}
+
+export function averageResistance(readings: readonly OhmReading[]): number | null {
+  const valid = readings.filter((r) => Number.isFinite(r.v) && Number.isFinite(r.i) && r.i > 0);
+  if (valid.length === 0) return null;
+  return valid.reduce((sum, r) => sum + r.v / r.i, 0) / valid.length;
+}
+
 /**
  * 采样 I-U 曲线：U 为电源电压 ∈ [0, 12]。
  * 返回 [元件两端电压 U_elem, 电流 I]——横轴严格用元件真实压降（伏安法口径），

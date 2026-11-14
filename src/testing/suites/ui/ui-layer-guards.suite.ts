@@ -22,6 +22,7 @@ import { isTopOverlay, overlayStackDepth, popOverlay, pushOverlay } from '../../
 import { isVersionNewer, parseVersion } from '../../../lib/version-compare';
 import { isComposingEvent } from '../../../lib/ime';
 import { selectShellCachesToClear } from '../../../lib/use-app-update';
+import { supportReason } from '../../../lib/offline-pack';
 
 export function registerUiLayerGuardsTests(test: TestFn): void {
   const readSrc = (p: string, enc: BufferEncoding = 'utf8') => readFileSync(repoPath(p), enc);
@@ -80,6 +81,22 @@ export function registerUiLayerGuardsTests(test: TestFn): void {
     assert.equal(overlayStackDepth(), 0);
     popOverlay(a); // 重复出栈（StrictMode 清理）不抛错
     assert.equal(overlayStackDepth(), 0);
+  });
+
+  test('offline-pack supportReason：非安全上下文返回 insecure，安全上下文无 API 返回 unsupported', () => {
+    const g = globalThis as unknown as { window?: unknown; caches?: unknown };
+    const oldWindow = g.window;
+    const oldCaches = g.caches;
+    try {
+      g.caches = undefined;
+      g.window = { isSecureContext: false };
+      assert.equal(supportReason(), 'insecure');
+      g.window = { isSecureContext: true };
+      assert.equal(supportReason(), 'unsupported');
+    } finally {
+      if (oldWindow === undefined) delete g.window; else g.window = oldWindow;
+      if (oldCaches === undefined) delete g.caches; else g.caches = oldCaches;
+    }
   });
 
   test('浮层栈：非栈顶出栈不影响栈顶，重复压栈会顶回最上面', () => {

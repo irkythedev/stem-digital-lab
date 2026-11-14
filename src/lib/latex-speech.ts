@@ -779,10 +779,17 @@ const hOperator = (ctx: Ctx, text: string, keepDigit = false): void => {
   ctx.i++;
 };
 
-/** 减号 vs 负号：前一字符是操作数结尾（字母/数字/)/]/}）→ 减，否则 → 负 */
+/** 减号 vs 负号：向前跳过空白，找到上一个非空 token；运算符/左括号后的 − 是真负号。 */
 const hMinus = (ctx: Ctx): void => {
-  const prev = ctx.tex[ctx.i - 1];
-  const prevIsOperand = prev ? /[A-Za-z0-9}\]\)]/.test(prev) : false;
+  let j = ctx.i - 1;
+  while (j >= 0 && /\s/.test(ctx.tex[j])) j--;
+  const prev = j >= 0 ? ctx.tex[j] : '';
+  const before = ctx.tex.slice(0, j + 1);
+  // \times / \div / \cdot / \pm、四则运算符、等号、逗号、左括号之后 → 负号。
+  const operatorBefore = /(?:\\times|\\div|\\cdot|\\pm|[+\-*/=<>,(\[])\s*$/.test(before);
+  const prevIsOperand = !operatorBefore && (
+    ctx.sp.lastVar || ctx.sp.lastEndsDigit || /[A-Za-z0-9}\]\)]/.test(prev)
+  );
   hOperator(ctx, prevIsOperand ? '减' : '负');
 };
 

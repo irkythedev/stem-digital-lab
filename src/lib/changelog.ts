@@ -18,6 +18,22 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.51.0',
+    date: '2026-11',
+    zh: [
+      '[新增] AI 实验助手可按实验子模式与当前任务理解探究目标，圆、尺规作图、反比例函数与电学工作台的提问更贴合当前画面',
+      '[修复] 修正中和反应、欧姆定律、二次方程与灯泡读数等科学严谨性问题',
+      '[优化] 欧姆定律实验改为更紧凑的三幕布局，读数、公式与移动端参数区更清晰',
+      '[优化] 统一页面纵向间距与顶栏高度，改善移动端与桌面端控件对齐',
+    ],
+    en: [
+      '[Added] The AI lab assistant now understands explore targets by lab submode and current task, with prompts that follow circle, construction, inverse, and circuit bench labs more closely',
+      '[Fixed] Corrected rigor issues in neutralization, Ohm’s law, quadratic equations, and bulb readouts',
+      '[Improved] Compacted the Ohm’s law three-act layout with clearer readouts, formulas, and mobile parameter controls',
+      '[Improved] Unified page vertical spacing and header height for better mobile and desktop alignment',
+    ],
+  },
+  {
     version: '0.50.10',
     date: '2026-11',
     zh: [

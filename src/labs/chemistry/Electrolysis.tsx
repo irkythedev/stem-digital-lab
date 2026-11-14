@@ -276,9 +276,10 @@ export default function Electrolysis() {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!power) return;
+    // 80ms ≈ 12.5fps：体积/液面动画足够顺滑，同时避免 60fps 触发整个实验树重渲染。
     const t = setInterval(() => {
       setElapsed((e) => (e >= 1 ? 1 : Math.min(1, e + 0.02)));
-    }, 60);
+    }, 80);
     return () => clearInterval(t);
   }, [power]);
 
@@ -302,9 +303,13 @@ export default function Electrolysis() {
     if (typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let raf = 0;
     let last = performance.now();
+    let lastPaint = 0;
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+      // 气泡只按 80ms 节流提交 React 状态；rAF 仍用于计算，避免 60fps 整树重渲染。
+      if (now - lastPaint < 80) { raf = requestAnimationFrame(tick); return; }
+      lastPaint = now;
       const { left, right } = levelRef.current;
       setBubbles((prev) =>
         prev.map((b) => {

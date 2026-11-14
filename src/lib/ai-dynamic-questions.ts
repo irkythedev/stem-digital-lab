@@ -599,6 +599,29 @@ export function clearLabState(labId: string): void {
   LAB_STATE.delete(labId);
 }
 
+/** construction 的关卡序号 → construction-core TASKS 的 id（与页面的关卡数组一一对应） */
+const CONSTRUCTION_TASK_IDS = ['perp-bisector', 'midpoint', 'angle-bisector', 'perp-through'] as const;
+
+/**
+ * 取实验当前子模式键（供 LAB_SUBMODE_TARGETS 精确到当前定理/关卡）：
+ *   - circle → state.circleMode（'chord' | 'inscribed' | 'thales'）
+ *   - construction → state.task（0–3 序号，映射为关卡 id）
+ * 其余实验返回 undefined——resolveLabTarget 回退整页目标，行为与旧版一致。
+ * 只读注册表，不触发渲染；未登记或字段缺失一律安全返回 undefined。
+ */
+export function labSubmodeOf(labId: string | null | undefined, state: Record<string, unknown> | undefined): string | undefined {
+  if (!labId || !state) return undefined;
+  if (labId === 'circle') {
+    const m = state.circleMode;
+    return m === 'chord' || m === 'inscribed' || m === 'thales' ? m : undefined;
+  }
+  if (labId === 'construction') {
+    const idx = typeof state.task === 'number' && Number.isInteger(state.task) ? state.task : NaN;
+    return idx >= 0 && idx < CONSTRUCTION_TASK_IDS.length ? CONSTRUCTION_TASK_IDS[idx] : undefined;
+  }
+  return undefined;
+}
+
 /**
  * 规范路径 → 实验 id（含已废弃但需继续可用的历史路径）。
  * 这里刻意不 import labs.ts：labs 会 import 全部实验组件，而实验组件又 import 本模块，

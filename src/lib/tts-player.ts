@@ -182,6 +182,11 @@ export class TtsPlayer {
    */
   play = async (options: TtsPlayOptions): Promise<void> => {
     const currentToken = ++this.token;
+    // iOS/PWA：在任何 await 之前同步创建并唤醒 AudioContext，避免首个 await 后失去用户手势。
+    const bootCtx = this.ensureAudioContext();
+    if (bootCtx && bootCtx.state === 'suspended') {
+      try { void bootCtx.resume().catch(() => {}); } catch { /* 静默 */ }
+    }
     this.abortController?.abort();
     this.abortController = null;
     this.stopAudio();
@@ -232,6 +237,7 @@ export class TtsPlayer {
   pause = (): void => {
     if (!this.snapshot.activeId) return;
     if (this.localMode) {
+      this.token += 1;
       this.cancelSpeech();
       this.localMode = false;
       this.publish({ state: 'paused' });
@@ -239,6 +245,7 @@ export class TtsPlayer {
     }
     if (this.audioSource && this.audioCtx) {
       this.elapsedSec = Math.max(0, this.audioCtx.currentTime - this.startAt);
+      this.audioSource.onended = null;
       this.stopAudio();
       this.publish({ state: 'paused' });
     }
@@ -301,6 +308,7 @@ export class TtsPlayer {
     const tokenAtStart = this.token;
     source.onended = () => {
       if (tokenAtStart !== this.token) return;
+      if (this.snapshot.state === 'paused') return;
       this.audioSource = null;
       const next = this.segmentIndex + 1;
       if (next < this.segments.length) {

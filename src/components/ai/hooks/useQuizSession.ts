@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStable } from '../panels/panel-shared';
+import { judgeResultIsCurrent } from '../../../lib/quiz-abort';
 import {
   CHAIN_MAX_TOKENS, QUIZ_SENTINEL, buildFillJudgePrompt, buildQuizPrompt, classifyChatFailure,
   classifyStreamOutcome, estimateTokens, logPromptIssue, streamChat, streamChatWithRecovery, stripThinkingFromHistory,
@@ -92,6 +93,8 @@ export default function useQuizSession(deps: QuizSessionDeps) {
   };
   // 当前题 = 批量数组中的当前项
   const quizQ: QuizQuestion | null = quizQuestions[quizIdx] ?? null;
+  const quizQRef = useRef<QuizQuestion | null>(null);
+  quizQRef.current = quizQ;
 
   // 页面级入口 openQuiz：自增信号 → 打开面板并进入 quiz 视图（显示设置面板）
   useEffect(() => {
@@ -129,6 +132,8 @@ export default function useQuizSession(deps: QuizSessionDeps) {
 
   const resetQuiz = () => {
     quizAbortRef.current?.abort();
+    quizAbortRef.current = null;
+    setFillJudging(false);
     setQuizSetup(null);
     setQuizQuestions([]);
     setQuizIdx(0);
@@ -306,22 +311,29 @@ export default function useQuizSession(deps: QuizSessionDeps) {
     // 规则判错 + 开关开 + 有配置 + 答案长度合理 → AI 兜底判分
     // 长度上限：全站唯一的学生自由输入，超长既吃掉上下文、也把判分器暴露给「输入里写 Y」的玩法
     const answerForAi = input.slice(0, 200);
+    let judgeSignal: AbortSignal | null = null;
+    const judgeQuestion = quizQ.question;
     if (!ruleCorrect && fillAiJudge && config && quizQ.fillAnswers.length > 0 && input.length <= 200) {
       setFillJudging(true);
       const { system, user } = buildFillJudgePrompt(lang, quizQ.question, answerForAi, quizQ.fillAnswers);
+      const judgeController = new AbortController();
+      // 与出题/重置共用 quizAbortRef：换题、reset、关闭面板都会 abort 本次判分。
+      quizAbortRef.current?.abort();
+      quizAbortRef.current = judgeController;
+      judgeSignal = judgeController.signal;
       try {
-        const signal = new AbortController(); // 判分超时 20 秒（思考型模型需要先想再回一个字母）
-        const timeoutId = setTimeout(() => signal.abort(), 20000);
+        const timeoutId = setTimeout(() => judgeController.abort(), 20000);
         const res = await streamChat(
           config,
           [{ role: 'system', content: system }, { role: 'user', content: user }],
           () => {},
-          signal.signal,
+          judgeSignal,
           CHAIN_MAX_TOKENS.judge,
           undefined,
           'judge', // 二值判分：强制极简思考（能关则关，不可关回落最低档）
         );
         clearTimeout(timeoutId);
+        if (!judgeResultIsCurrent(judgeSignal, judgeQuestion, quizQRef.current?.question ?? '')) return;
         // 取第一个 Y/N，而不是首字符（解析见 ai-quiz.ts parseJudgeVerdict）
         if (parseJudgeVerdict(stripThinkingFromHistory(res.text))) finalCorrect = true;
         else if (!res.text.trim()) {
@@ -330,14 +342,17 @@ export default function useQuizSession(deps: QuizSessionDeps) {
           logPromptIssue('fill-judge', `空正文（finish_reason=${res.finishReason}）：保留规则判分结果`);
         }
       } catch (e) {
+        if (!judgeResultIsCurrent(judgeSignal, judgeQuestion, quizQRef.current?.question ?? '')) return;
         // AI 判分失败（网络/Key 超时等）：静默回退规则结果，不抛错、不卡 UI
         logPromptIssue('fill-judge', (e as Error).message);
       } finally {
+        if (quizAbortRef.current === judgeController) quizAbortRef.current = null;
         setFillJudging(false);
       }
     } else if (!ruleCorrect && fillAiJudge && config && input.length > 200) {
       logPromptIssue('fill-judge', `答案超长（${input.length} 字符）跳过 AI 兜底`);
     }
+    if (!judgeResultIsCurrent(judgeSignal, judgeQuestion, quizQRef.current?.question ?? '')) return;
     setQuizSelected(finalCorrect ? 0 : -2); // 0 答对 / -2 答错（-1 保留给超时语义）
     clearTimer();
     setQuizStats((s) => ({ correct: s.correct + (finalCorrect ? 1 : 0), total: s.total + 1 }));
@@ -361,6 +376,9 @@ export default function useQuizSession(deps: QuizSessionDeps) {
 
   // 下一题 / 本轮结束
   const nextQuiz = () => {
+    quizAbortRef.current?.abort();
+    quizAbortRef.current = null;
+    setFillJudging(false);
     clearTimer();
     setQuizSelected(null);
     if (quizIdx + 1 < quizQuestions.length) {

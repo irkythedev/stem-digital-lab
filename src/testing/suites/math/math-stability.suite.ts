@@ -51,6 +51,14 @@ export function registerMathStabilityTests(test: TestFn): void {
     assert.deepStrictEqual(QC.quadraticRoots(0, 2, -4), [2]);
     assert.deepStrictEqual(QC.quadraticRoots(0, 0, 5), [], 'a=b=0 无解');
   });
+
+  test('判别式浮点零容差：顶点式 k=0 / 近切点不得丢根', () => {
+    // a=-5, h=-3.1, k=0 → y=-5(x+3.1)^2 = -5x²-31x-48.05
+    assert.equal(QC.quadraticRoots(-5, -31, -48.05).length, 1);
+    // 一般式近切点：a=-3.2, b=-4.8, c=-1.8
+    assert.equal(QC.quadraticRoots(-3.2, -4.8, -1.8).length, 1);
+    assert.equal(QC.quadraticRoots(1, 0, 1).length, 0, '真正 Δ<0 仍须无根');
+  });
 }
 
 /* ── 入口契约守卫 ── */

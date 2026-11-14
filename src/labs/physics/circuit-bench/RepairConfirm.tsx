@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { PowerOff, TriangleAlert, X } from 'lucide-react';
 
 import type { DeenergizePlan } from './circuit-bench-monitor';
+import { useEscapeKey } from '../../../lib/use-escape-key';
 
 export interface RepairConfirmProps {
   plan: DeenergizePlan;
@@ -54,20 +55,9 @@ export default function RepairConfirm({ plan, zh, onConfirm, onCancel }: RepairC
    * 模态框期间 Esc 归它所有：`stopPropagation` 不让事件继续下沉，免得同一下按键
    * 顺手把背后的检查器也收起来——学生按 Esc 的意图是「退出这一层」。
    */
-  const cancelRef = useRef(onCancel);
+  useEscapeKey(onCancel);
   useEffect(() => {
-    cancelRef.current = onCancel;
-  }, [onCancel]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      e.preventDefault();
-      cancelRef.current();
-    };
-    window.addEventListener('keydown', onKey, true);
     confirmRef.current?.focus();
-    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   return createPortal(

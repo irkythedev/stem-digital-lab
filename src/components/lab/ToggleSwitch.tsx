@@ -25,7 +25,7 @@ interface ToggleSwitchProps {
 
 export default function ToggleSwitch({ label, checked, onChange, className = '', compact = false, hideLabel = false }: ToggleSwitchProps) {
   return (
-    <span className={`inline-flex shrink-0 select-none items-center gap-2 rounded text-[0.6875rem] mono-font leading-none ${compact ? 'h-7' : 'min-h-[40px]'} ${
+    <span className={`inline-flex shrink-0 grow-0 whitespace-nowrap select-none items-center gap-1.5 rounded text-[0.6875rem] mono-font leading-none ${compact ? 'h-7' : 'min-h-[40px]'} ${
       checked ? 'text-[var(--fg)]' : 'text-[var(--muted)]'
     } ${className}`}>
       <button
@@ -33,9 +33,9 @@ export default function ToggleSwitch({ label, checked, onChange, className = '',
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        style={{ width: 36, height: 20, minWidth: 36, minHeight: 20 }}
+        style={{ width: 36, height: 20, minWidth: 36, minHeight: 20, flex: '0 0 36px' }}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 min-w-[36px] shrink-0 items-center rounded-full border-0 transition-colors duration-200 ${
+        className={`relative inline-flex h-5 w-9 min-w-[36px] shrink-0 grow-0 items-center rounded-full border-0 p-0.5 transition-colors duration-200 ${
           checked ? 'bg-[var(--fg)]' : 'bg-[var(--border-strong)]'
         }`}
       >

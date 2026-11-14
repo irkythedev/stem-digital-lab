@@ -4149,7 +4149,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
 
     const menu = readSrc('CanvasContextMenu.tsx');
     assert.ok(menu.includes('menuPosition'), '右键菜单未夹进视口');
-    assert.ok(menu.includes("e.key === 'Escape'"), '右键菜单须支持 Esc 关闭');
+    assert.match(menu, /useEscapeKey\(onClose\)/, '右键菜单须通过 useEscapeKey 支持 Esc 关闭');
     assert.ok(menu.includes('pointerdown'), '右键菜单须支持点外部关闭');
     assert.ok(menu.includes('role="menu"') && menu.includes('role="menuitem"'), '菜单缺少无障碍角色');
     assert.match(menu, /onContextMenu=\{\(e\) => e\.preventDefault\(\)\}/, '菜单自身也要吃掉右键');
@@ -4325,7 +4325,7 @@ export function registerCircuitBenchTests(test: TestFn, skip: SkipFn): void {
     // portal 的必要性：面板可能停在磨砂抽屉里（backdrop-blur-md + overflow-auto），
     // 这两个都会成为 fixed 弹层的裁剪框，弹层会被切一半或跟着抽屉滚走。
     assert.ok(sel.includes('document.body'), '弹层须挂到 body，否则会被抽屉裁掉');
-    assert.ok(/e\.key === 'Escape'/.test(sel), 'Esc 未接管');
+    assert.match(sel, /useEscapeKey\(\(\) => latest\.current\.close\(\), open\)/, 'Esc 未接管');
     assert.ok(
       /addEventListener\('pointerdown', onDown, true\)/.test(sel),
       '点外关闭须在捕获阶段监听，否则会被面板里的 stopPropagation 挡住',

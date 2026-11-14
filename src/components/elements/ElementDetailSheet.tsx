@@ -27,6 +27,7 @@ import { CAT_COLOR, CAT_ZH, CAT_EN } from '../../lib/element-categories';
 import { valenceElementBySymbol, TEXTBOOK_MASSES } from '../../lib/chemistry/valency';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
 import { useFocusReturn } from '../../lib/use-focus-return';
+import { useEscapeKey } from '../../lib/use-escape-key';
 import {
   LEGEND_DOT, SHELL_NAMES, VALENCE_LABEL, groupDisplay, neighborOf, particleCount,
   valenceTendency, valenceNote,
@@ -105,16 +106,7 @@ export default function ElementDetailSheet(props: ElementDetailSheetProps) {
   useLockBodyScroll(true);
   // 关闭后焦点回到被点的那颗元素卡
   useFocusReturn();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <>

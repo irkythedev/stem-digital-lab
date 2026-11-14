@@ -10,8 +10,10 @@
  *
  * 复用组件：CoordPlane（I-U 图像）、ExploreStage（任务卡+笔记）、LabIcon。
  */
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { currentOf, elementResistance, loadOhmEngine, sampleOhm, type ElementType } from './ohm-engine';
+import { averageResistance, measuredResistance } from './ohm-core';
 import { Check, RotateCcw, SlidersHorizontal, TriangleAlert, X } from 'lucide-react';
 import { getDynamicQuestions, setLabState, setPageQuestion } from '../../lib/ai-dynamic-questions';
 import { useCriticalDetent } from '../../lib/detent-feedback';
@@ -64,6 +66,8 @@ const copy = {
     readout: '读数',
     reset: '重置',
     circuitLabel: '电路图',
+    graphLabel: 'I-U 图像',
+    predictCanvasHint: '// 预测待揭晓：请先在右侧选择 I-U 图像形状',
     elementLabel: '元件',
     elementResistor: '定值电阻',
     elementBulb: '小灯泡',
@@ -184,6 +188,8 @@ const copy = {
     readout: 'Readings',
     reset: 'Reset',
     circuitLabel: 'Circuit',
+    graphLabel: 'I-U graph',
+    predictCanvasHint: '// Prediction pending: choose the I-U graph shape on the right',
     elementLabel: 'Element',
     elementResistor: 'Fixed resistor',
     elementBulb: 'Light bulb',
@@ -368,6 +374,8 @@ export default function Ohm() {
   const effectiveI = switchOn && !shortCircuit ? i : 0;
   /** 元件两端电压：定值电阻 = I·R，灯泡 = I·(R₀+γU)；短路时元件两端电压为 0（被导线短接） */
   const elemVoltage = switchOn && !shortCircuit ? i * elementResistance(r, element, u) : 0;
+  /** 页面显示的实时电阻：始终用未截断的 V/I 反推，避免 2.55÷0.34 的显示舍入矛盾。 */
+  const elementR = measuredResistance(elemVoltage, effectiveI) ?? elementResistance(r, element, u);
   /** 元件发热（焦耳定律 Q∝I²）：电流越大发热越明显，短路时达最大 */
   const heat = shortCircuit ? 1 : Math.min(1, (effectiveI / 1.2) ** 2);
 
@@ -543,6 +551,7 @@ export default function Ohm() {
           { label: 'I', value: `${effectiveI.toFixed(2)}A` },
           ...(!switchOn ? [{ label: '开关', value: t.switchOff }] : []),
         ],
+        raw: { v: elemVoltage, i: effectiveI },
         note,
       },
     ]);
@@ -618,35 +627,37 @@ export default function Ohm() {
 
   const stageOrder: Stage[] = ['predict', 'explore', 'conclude'];
   const stageIdx = stageOrder.indexOf(stage);
+  // 桌面页头中央槽位：LabPage 负责排版，StageNav 仍由本实验持有状态；移动端保留 inline。
+  const [stageSlot, setStageSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setStageSlot(document.getElementById('ohm-stage-nav-slot'));
+  }, []);
+  const renderStageNav = () => (
+    <StageNav
+      stage={stage}
+      setStage={setStage}
+      stageOrder={stageOrder}
+      labels={{
+        predict: t.stagePredict,
+        explore: t.stageExplore,
+        conclude: t.stageConclude,
+        next: t.nextStage,
+        redo: t.redoLabel,
+      }}
+      onRedo={redoAll}
+      isDone={{
+        predict: predShape !== null,
+        explore: observations.length > 0,
+        conclude: Object.values(conclusion).every((v) => v !== null),
+      }}
+    />
+  );
 
   return (
     <div className="flex flex-col space-y-6">
 
-      {/* 公式块：移动端 my-2.5 收紧（桌面仍是 space-y-6 的 24px 下边距、无上边距）。
-          公式本身只是「这页在算什么」的一行提示，不该在手机上占掉四分之一屏。 */}
-      <div className="flex justify-center py-2 mt-2.5 mb-2.5 sm:mt-0 sm:mb-6">
-        <Formula tex="I = \frac{U}{R}" block className="text-lg" />
-      </div>
-
-      {/* 幕导航 */}
-      <StageNav
-        stage={stage}
-        setStage={setStage}
-        stageOrder={stageOrder}
-        labels={{
-          predict: t.stagePredict,
-          explore: t.stageExplore,
-          conclude: t.stageConclude,
-          next: t.nextStage,
-          redo: t.redoLabel,
-        }}
-        onRedo={redoAll}
-        isDone={{
-          predict: predShape !== null,
-          explore: observations.length > 0,
-          conclude: Object.values(conclusion).every((v) => v !== null),
-        }}
-      />
+      {/* 桌面：StageNav 通过 portal 进入 LabPage 单行副栏；移动端保留 inline。 */}
+      {stageSlot && createPortal(renderStageNav(), stageSlot)}
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
         {/* 左列：电路图 + I-U 图像 + 读数 */}
@@ -673,7 +684,7 @@ export default function Ohm() {
                 onCycleRange={() => cycleRange('voltage')}
               />
             </div>
-            <svg viewBox="0 0 320 200" className="w-full h-auto" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 15 320 155" className="w-full h-auto lg:mx-auto lg:max-w-[360px]" role="img" aria-label={t.circuitLabel} strokeLinecap="round" strokeLinejoin="round">
               {/* 导线 */}
               <g stroke="var(--fg)" strokeWidth="1.2" fill="none">
                 {/* 左侧竖线（电池支路）：正极段(60→70) 与负极段(82→140)，电池符号填补 70-82 间隙 */}
@@ -746,9 +757,9 @@ export default function Ohm() {
                   </g>
                   <g
                     tabIndex={0}
-                    onMouseEnter={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(2)}A = ${elementResistance(r, element, u).toFixed(1)}Ω`, principle: t.tipBulb.principle })}
+                    onMouseEnter={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(3)}A = ${elementR.toFixed(1)}Ω`, principle: t.tipBulb.principle })}
                     onMouseLeave={() => setTip(null)}
-                    onFocus={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(2)}A = ${elementResistance(r, element, u).toFixed(1)}Ω`, principle: t.tipBulb.principle })}
+                    onFocus={(ev) => showTip(ev, { name: '灯泡', formula: t.tipBulb.formula, substitution: `R = ${elemVoltage.toFixed(2)}V ÷ ${effectiveI.toFixed(3)}A = ${elementR.toFixed(1)}Ω`, principle: t.tipBulb.principle })}
                     onBlur={() => setTip(null)}
                     className="outline-none"
                   >
@@ -805,9 +816,9 @@ export default function Ohm() {
               />
               <g
                 tabIndex={0}
-                onMouseEnter={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(2)}A × ${elementResistance(r, element, u).toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
+                onMouseEnter={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(3)}A × ${elementR.toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
                 onMouseLeave={() => setTip(null)}
-                onFocus={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(2)}A × ${elementResistance(r, element, u).toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
+                onFocus={(ev) => showTip(ev, { name: '电压表 V', formula: t.tipVoltmeter.formula, substitution: `U = ${effectiveI.toFixed(3)}A × ${elementR.toFixed(1)}Ω = ${elemVoltage.toFixed(2)}V`, principle: t.tipVoltmeter.principle })}
                 onBlur={() => setTip(null)}
                 className="outline-none"
               >
@@ -834,10 +845,12 @@ export default function Ohm() {
             {!switchOn && (
               <p className="text-xs text-[var(--muted)] serif-font italic mt-2">{t.switchOpenHint}</p>
             )}
-            {/* 调节指引（本实验主交互 = 右侧参数滑块；电表错误反馈见下） */}
+            {/* 调节指引：单行紧凑提示，避免与读数条形成三层小字 */}
             <p className="mt-1 flex items-center gap-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
               <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {t.meterHint}
+              <span className="truncate">{t.meterHint}</span>
+              <span className="shrink-0 text-[var(--border)]" aria-hidden="true">·</span>
+              <span className="shrink-0">{t.currentDirLabel}</span>
             </p>
             {meterErr && (
               <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--error)] serif-font" role="alert">
@@ -845,50 +858,9 @@ export default function Ohm() {
                 <span>{meterErr}</span>
               </p>
             )}
-            {/* 电流方向标注 */}
-            <p className="text-[0.6875rem] mono-font text-[var(--muted)] mt-1">
-              {t.currentDirLabel}
-              <span className="text-[var(--border)]"> · </span>
-              {t.currentDirNote}
-            </p>
-          </div>
-
-          {/* I-U 图像（预测幕未揭示时隐藏） */}
-          {stage === 'predict' && !revealed ? (
-            <div className="border border-[var(--border)] p-4 sm:p-6 flex flex-col items-center justify-center min-h-[240px] gap-2">
-              <p className="text-[0.6875rem] mono-font uppercase tracking-widest text-[var(--muted)]">
-                {t.predictTitle}
-              </p>
-              <p className="text-sm serif-font text-[var(--fg)]">{t.predictQuestion}</p>
-              <p className="text-xs text-[var(--muted)] serif-font italic">{t.predictQuestion2}</p>
-            </div>
-          ) : (
-            <CoordPlane
-              curves={curves}
-              xMin={0}
-              xMax={Math.max(2.4, Math.max(...curves.flatMap((c) => (c.points ?? []).map(([x]) => x))) + 0.4)}
-              yMin={0}
-              yMax={Math.max(2.4, ...curves.flatMap((c) => (c.points ?? []).map(([, y]) => y)))}
-              ariaLabel={`I vs U graph`}
-              xLabel="U / V"
-              yLabel="I / A"
-            />
-          )}
-
-          {/* 读数 */}
-          <div className="border border-[var(--border)] p-4">
-            <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase mb-2">
-              // {t.readout}
-            </h3>
-            <p className="text-[0.625rem] mono-font text-[var(--muted)] mb-2">
-              {lang === 'zh' ? 'U 为电源电压，V 为元件两端电压（电压表读数）' : 'U is the supply voltage; V is across the element (voltmeter)'}
-            </p>
             {/* 零电阻 / 短路警告（电流热效应与安全教学） */}
             {element === 'resistor' && r === 0 && (
-              <p
-                className={`text-[0.6875rem] mono-font mb-2 ${shortCircuit ? 'text-[var(--error)] font-bold' : 'text-[var(--error)]'}`}
-                role="alert"
-              >
+              <p className={`mb-2 text-[0.6875rem] mono-font ${shortCircuit ? 'font-bold text-[var(--error)]' : 'text-[var(--error)]'}`} role="alert">
                 <TriangleAlert className="mr-1 inline-block h-3 w-3 align-[-0.15em]" aria-hidden="true" />
                 {shortCircuit
                   ? (lang === 'zh'
@@ -901,13 +873,8 @@ export default function Ohm() {
             )}
             {/* 控制电压提示（探究二：换电阻后调变阻器使电压回到设定值） */}
             {targetV !== null && (
-              <p
-                className={`text-[0.6875rem] mono-font mb-2 ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`}
-                role={Math.abs(elemVoltage - targetV) > 0.05 ? 'alert' : undefined}
-              >
-                {Math.abs(elemVoltage - targetV) > 0.05 && (
-                  <TriangleAlert className="mr-1 inline-block h-3 w-3 align-[-0.15em]" aria-hidden="true" />
-                )}
+              <p className={`mb-2 text-[0.6875rem] mono-font ${Math.abs(elemVoltage - targetV) > 0.05 ? 'text-[var(--error)]' : 'text-[var(--muted)]'}`} role={Math.abs(elemVoltage - targetV) > 0.05 ? 'alert' : undefined}>
+                {Math.abs(elemVoltage - targetV) > 0.05 && <TriangleAlert className="mr-1 inline-block h-3 w-3 align-[-0.15em]" aria-hidden="true" />}
                 {Math.abs(elemVoltage - targetV) > 0.05
                   ? (lang === 'zh'
                       ? `电压已改变（当前 ${elemVoltage.toFixed(2)}V），请调节滑动变阻器使电压表回到 ${targetV.toFixed(1)}V！`
@@ -917,57 +884,83 @@ export default function Ohm() {
                       : `Control voltage: ${targetV.toFixed(1)}V (keep it fixed)`)}
               </p>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+            {/* 读数条：内聚在电路卡底部的四列仪表盘 */}
+            <div className="grid grid-cols-4 gap-2 pt-3 mt-2.5 border-t border-[var(--border)] text-center">
               <div>
-                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">U</p>
-                <p className="text-sm mono-font text-[var(--fg)]">
-                  {u.toFixed(1)}
-                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
-                </p>
+                <div className="text-[11px] text-[var(--muted)]">U（电源）</div>
+                <div className="font-mono text-sm font-semibold text-[var(--fg)] mt-0.5">
+                  {u.toFixed(1)} <span className="text-xs font-normal text-[var(--muted)]">V</span>
+                </div>
               </div>
               <div>
-                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">V</p>
-                <p className="text-sm mono-font text-[var(--fg)]">
-                  {elemVoltage.toFixed(2)}
-                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">V</span>
-                </p>
+                <div className="text-[11px] text-[var(--muted)]">V（元件）</div>
+                <div className="font-mono text-sm font-semibold text-[var(--fg)] mt-0.5">
+                  {elemVoltage.toFixed(2)} <span className="text-xs font-normal text-[var(--muted)]">V</span>
+                </div>
               </div>
               <div>
-                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">R</p>
-                <p className="text-sm mono-font text-[var(--fg)]">
-                  {measureMode && !rRevealed ? (
-                    t.measureHidden
-                  ) : (
-                    <>
-                      {r.toFixed(0)}
-                      <span className="ml-1 text-[0.625rem] text-[var(--muted)]">Ω</span>
-                    </>
-                  )}
-                </p>
+                <div className="text-[11px] text-[var(--muted)]">R（电阻）</div>
+                <div className="font-mono text-sm font-semibold text-[var(--fg)] mt-0.5">
+                  {measureMode && !rRevealed ? t.measureHidden : <>{element === 'bulb' ? elementR.toFixed(1) : r.toFixed(0)} <span className="text-xs font-normal text-[var(--muted)]">Ω</span></>}
+                </div>
               </div>
               <div>
-                <p className="text-[0.6875rem] text-[var(--muted)] mono-font">I</p>
-                <p className={`text-sm mono-font ${shortCircuit ? 'text-[var(--error)]' : 'text-[var(--fg)]'}`}>
-                  {shortCircuit ? '∞' : effectiveI.toFixed(2)}
-                  <span className="ml-1 text-[0.625rem] text-[var(--muted)]">A</span>
-                </p>
+                <div className="text-[11px] text-[var(--muted)]">I（电流）</div>
+                <div className={`font-mono text-sm font-semibold mt-0.5 ${shortCircuit ? 'text-[var(--error)]' : 'text-[var(--fg)]'}`}>
+                  {shortCircuit ? '∞' : <>{element === 'bulb' ? effectiveI.toFixed(3) : effectiveI.toFixed(2)} <span className="text-xs font-normal text-[var(--muted)]">A</span></>}
+                </div>
               </div>
             </div>
-            {/* 测未知电阻：用元件两端电压 V（电压表读数）÷ I 算平均 R——伏安法口径，变阻器分压不影响 */}
             {measureMode && observations.length > 0 && (
-              <p className="text-[0.6875rem] mono-font text-[var(--muted)] mt-2">
+              <p className="mt-1.5 text-[0.6875rem] mono-font text-[var(--muted)]">
                 {t.measureResult}:{' '}
-                {(
-                  observations.reduce((acc, o) => {
-                    const vVal = Number(o.snapshot.find((s) => s.label === 'V')?.value.replace('V', ''));
-                    const iVal = Number(o.snapshot.find((s) => s.label === 'I')?.value.replace('A', ''));
-                    return acc + (iVal > 0 ? vVal / iVal : 0);
-                  }, 0) / observations.length
-                ).toFixed(1)}
-                Ω
+                {(() => {
+                  const avg = averageResistance(observations.map((o) => ({
+                    v: o.raw?.v ?? Number(o.snapshot.find((s) => s.label === 'V')?.value.replace('V', '')),
+                    i: o.raw?.i ?? Number(o.snapshot.find((s) => s.label === 'I')?.value.replace('A', '')),
+                  })));
+                  return avg === null ? '—' : avg.toFixed(1);
+                })()}Ω
               </p>
             )}
           </div>
+
+          {/* I-U 图像：与电路图同宽，预测态仍保留真实坐标轴，避免揭晓瞬间画布跳动。 */}
+          <div className="overflow-hidden border border-[var(--border)]">
+            <div className="flex min-h-9 items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2">
+              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
+                // {t.graphLabel}
+              </h3>
+              <div className="flex flex-wrap items-center justify-end gap-2 text-[0.6875rem] mono-font leading-none text-[var(--muted)]">
+                <Formula tex="I = \frac{U}{R}" className="text-sm" />
+                {pinned.map((p) => (
+                  <span key={p.id} className="px-1.5 py-0.5 border border-[var(--border)] text-[0.625rem]">
+                    R = {p.r}Ω
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <CoordPlane
+                curves={stage === 'predict' && !revealed ? [] : curves}
+                xMin={0}
+                xMax={Math.max(2.4, Math.max(...curves.flatMap((c) => (c.points ?? []).map(([x]) => x))) + 0.4)}
+                yMin={0}
+                yMax={Math.max(2.4, ...curves.flatMap((c) => (c.points ?? []).map(([, y]) => y)))}
+                ariaLabel={`I vs U graph`}
+                xLabel="U / V"
+                yLabel="I / A"
+              />
+              {stage === 'predict' && !revealed && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center">
+                  <span className="rounded border border-[var(--border)] bg-[var(--card-bg)]/90 px-3 py-1.5 text-[0.6875rem] mono-font leading-relaxed text-[var(--muted)]">
+                    {t.predictCanvasHint}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
 
         {/* 右列：参数 + 三幕 */}
@@ -978,6 +971,8 @@ export default function Ohm() {
             closeLabel={t.paramDockClose}
             anchorRef={circuitRef}
             summary={`${u.toFixed(1)}V / ${measureMode && !rRevealed ? '?' : r}Ω`}
+            disabledMobile={stage !== 'explore'}
+            inlineCollapsed={stage === 'explore'}
           >
           <div className="border border-[var(--border)] p-4 space-y-4">
             <div className="flex items-center justify-between gap-2">
@@ -1054,13 +1049,32 @@ export default function Ohm() {
                 {t.measureReveal}
               </button>
             )}
-            <button
-              type="button"
-              onClick={reset}
-              className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
-            >
-              {t.reset}
-            </button>
+            <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-2.5">
+              <button
+                type="button"
+                onClick={reset}
+                className="compact inline-flex items-center rounded px-1.5 py-1 text-xs mono-font uppercase text-[var(--muted)] hover:text-[var(--fg)] active:bg-[var(--accent-light)] transition-colors tap-area"
+              >
+                {t.reset}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isPinned) {
+                    setPinned((prev) => prev.filter((p) => p.r !== r || p.element !== element || p.rp !== rp));
+                  } else {
+                    setPinned((prev) => [...prev, { id: prev.length + 1, r, element, rp }]);
+                  }
+                }}
+                className={`compact inline-flex items-center rounded border px-2 py-1 text-xs mono-font transition-colors ${
+                  isPinned
+                    ? 'border-[var(--muted)] text-[var(--muted)]'
+                    : 'border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'
+                }`}
+              >
+                {isPinned ? t.unpinLabel : t.pinLabel}
+              </button>
+            </div>
           </div>
           </ParamDock>
 
@@ -1087,7 +1101,7 @@ export default function Ohm() {
                       key={v}
                       type="button"
                       onClick={() => setPredShape(v)}
-                      className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
+                      className={`rounded h-full min-h-[44px] flex items-center justify-center text-center text-xs px-2 py-1.5 border transition-colors ${
                         predShape === v ? 'border-[var(--fg)] text-[var(--fg)]' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--fg)]'
                       }`}
                     >
@@ -1128,40 +1142,6 @@ export default function Ohm() {
                 recordDisabledHint={t.recordDisabledHint}
               />
 
-              {/* 钉住曲线对比 */}
-              <div className="border border-[var(--border)] p-4 space-y-3">
-                <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                  // {t.pinnedTitle}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isPinned) {
-                      setPinned((prev) => prev.filter((p) => p.r !== r || p.element !== element || p.rp !== rp));
-                    } else {
-                      setPinned((prev) => [...prev, { id: prev.length + 1, r, element, rp }]);
-                    }
-                  }}
-                  className={`compact leading-5 text-xs mono-font px-2 py-[0.1875rem] border transition-colors ${
-                    isPinned
-                      ? 'border-[var(--muted)] text-[var(--muted)]'
-                      : 'border-[var(--fg)] text-[var(--fg)] hover:bg-[var(--accent-light)]'
-                  }`}
-                >
-                  {isPinned ? t.unpinLabel : t.pinLabel}
-                </button>
-                {pinned.length === 0 ? (
-                  <p className="text-xs text-[var(--muted)] serif-font italic">{t.pinnedEmpty}</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {pinned.map((p) => (
-                      <span key={p.id} className="text-[0.6875rem] mono-font px-1.5 py-0.5 border border-[var(--border)] text-[var(--muted)]">
-                        R = {p.r}Ω
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
@@ -1198,7 +1178,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q1: vv }))}
-                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded h-full min-h-[44px] flex items-center justify-center text-center text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1235,7 +1215,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q2: vv }))}
-                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded h-full min-h-[44px] flex items-center justify-center text-center text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1272,7 +1252,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q3: vv }))}
-                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded h-full min-h-[44px] flex items-center justify-center text-center text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1309,7 +1289,7 @@ export default function Ohm() {
                         key={v}
                         type="button"
                         onClick={() => setConclusion((p) => ({ ...p, q4: vv }))}
-                        className={`rounded text-left text-xs px-2 py-1.5 border transition-colors ${
+                        className={`rounded h-full min-h-[44px] flex items-center justify-center text-center text-xs px-2 py-1.5 border transition-colors ${
                           selected
                             ? correct
                               ? 'border-[var(--fg)] text-[var(--fg)]'
@@ -1329,43 +1309,32 @@ export default function Ohm() {
               </div>
 
               {conclusionComplete ? (
-                <p className="text-xs mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.concludeHint}</p>
+                <div className="space-y-3 border-t border-[var(--border)] pt-3">
+                  <p className="text-sm font-bold mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.stageDone}</p>
+                  <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
+                  <button
+                    type="button"
+                    onClick={redoAll}
+                    className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
+                    <span>{t.redoLabel}</span>
+                  </button>
+                  <div className="border-t border-[var(--border)] pt-2 space-y-1.5">
+                    <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">// {t.tipsTitle}</h3>
+                    <ul className="space-y-1.5">
+                      {t.tips.map((tip, i) => (
+                        <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2">
+                          <span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               ) : (
                 <p className="text-xs text-[var(--muted)] serif-font italic">{t.concludeHint}</p>
               )}
-            </div>
-          )}
-
-          {/* 完成态 */}
-          {stage === 'conclude' && conclusionComplete && (
-            <div className="border border-[var(--fg)] p-4 space-y-2">
-              <p className="text-sm font-bold mono-font text-[var(--fg)]"><Check className={MARK_CLS} aria-hidden />{t.stageDone}</p>
-              <p className="text-xs text-[var(--muted)] serif-font leading-relaxed">{t.feedbackText}</p>
-              <button
-                type="button"
-                onClick={redoAll}
-                className="group inline-flex items-center gap-1.5 text-xs mono-font uppercase text-[var(--fg)] hover:opacity-70"
-              >
-                <RotateCcw className="w-3.5 h-3.5 opacity-70 group-hover:rotate-[-45deg] transition-transform duration-[var(--dur-base)]" />
-                <span>{t.redoLabel}</span>
-              </button>
-            </div>
-          )}
-
-          {/* 考点速记（深化记忆，言简意赅） */}
-          {stage === 'conclude' && conclusionComplete && (
-            <div className="border border-[var(--border)] p-4 space-y-2">
-              <h3 className="text-[0.6875rem] font-bold tracking-widest text-[var(--muted)] mono-font uppercase">
-                // {t.tipsTitle}
-              </h3>
-              <ul className="space-y-1.5">
-                {t.tips.map((tip, i) => (
-                  <li key={i} className="text-xs text-[var(--fg)] serif-font leading-relaxed flex gap-2">
-                    <span className="text-[var(--muted)] mono-font shrink-0">{i + 1}.</span>
-                    {tip}
-                  </li>
-                ))}
-              </ul>
             </div>
           )}
         </div>

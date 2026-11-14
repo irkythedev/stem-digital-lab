@@ -22,7 +22,7 @@ import { repoPath } from '../../repo-paths';
 import { CARD_FOCUS, GAS_COL_MAX, MOUTH_Y, OPTIONS as EL_OPTIONS, QUIZ_CORRECT as EL_CORRECT, TICK_YS, gasColumn } from '../../../labs/chemistry/Electrolysis';
 import { OPTIONS as MASS_OPTIONS, QUIZ_CORRECT as MASS_CORRECT } from '../../../labs/chemistry/MassConservation';
 import { OPTIONS as METAL_OPTIONS, QUIZ_CORRECT as METAL_CORRECT, canReact, wireColor } from '../../../labs/chemistry/MetalActivity';
-import { AXIS_MAX, OPTIONS as NEUT_OPTIONS, QUIZ_CORRECT as NEUT_CORRECT, eqVolume, phAt, sampleTitration } from '../../../labs/chemistry/Neutralization';
+import { AXIS_MAX, OPTIONS as NEUT_OPTIONS, QUIZ_CORRECT as NEUT_CORRECT, eqVolume, indicatorColorForPh, phAt, sampleTitration } from '../../../labs/chemistry/Neutralization';
 import { labs } from '../../../lib/labs';
 
 export function registerChemistryLabsTests(test: TestFn): void {
@@ -546,6 +546,15 @@ export function registerChemistryLabsTests(test: TestFn): void {
     );
     // 0.05 用 toFixed(1) 会被显示成 0.1，故浓度一律两位小数
     assert.doesNotMatch(neutralization, /acidM\.toFixed\(1\)/, '浓度不得用一位小数（0.05 会被显示为 0.1）');
+  });
+
+  test('酚酞颜色：pH=7 必须无色（教材 pH≤8.2 无色）', () => {
+    assert.equal(phAt(0.1, 20), 7);
+    assert.equal(indicatorColorForPh(7), 'colorless');
+    assert.equal(indicatorColorForPh(8.2), 'colorless');
+    assert.equal(indicatorColorForPh(8.21), 'pink');
+    assert.equal(indicatorColorForPh(10), 'pink');
+    assert.equal(indicatorColorForPh(10.01), 'red');
   });
 
   test('电解水读数：须带 mL 物理单位', () => {
