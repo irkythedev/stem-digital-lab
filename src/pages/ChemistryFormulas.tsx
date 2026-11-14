@@ -40,6 +40,7 @@ import ChemFormula, { FormulaText, ValenceBadge } from '../components/chemistry/
 import ElementDetailSheet, { useElementDetailState } from '../components/elements/ElementDetailSheet';
 import { elementBySymbol } from '../lib/elements';
 import { CAT_COLOR } from '../lib/element-categories';
+import { isComposingEvent } from '../lib/ime';
 
 /** 元素分类短标签（卡片右上角微标签；过长会挤压符号）。 */
 const CATEGORY_SHORT: Record<'metal' | 'nonmetal' | 'noble' | 'metalloid', { zh: string; en: string }> = {
@@ -910,6 +911,7 @@ export default function ChemistryFormulas() {
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
+                        if (isComposingEvent(e.nativeEvent)) return;
                         e.preventDefault();
                         applyFormulaCaseNormalization();
                       }

@@ -17,6 +17,7 @@ import AnswerRich, { InlineAnswer } from '../AnswerRich';
 import { Mark } from './panel-shared';
 import { RotateCcw, Timer, ShieldCheck } from 'lucide-react';
 import { ThinkingOrb } from 'thinking-orbs';
+import { isComposingEvent } from '../../../lib/ime';
 
 export interface QuizPanelState {
   busy: any;
@@ -264,7 +265,7 @@ function QuizPanelInner({ lang, state, actions }: QuizPanelProps) {
                         type="text"
                         value={quizFillInput}
                         onChange={(e) => setQuizFillInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && quizSelected === null && !fillJudging) void submitFillAnswer(); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !isComposingEvent(e.nativeEvent) && quizSelected === null && !fillJudging) void submitFillAnswer(); }}
                         disabled={quizSelected !== null || fillJudging}
                         placeholder={lang === 'zh' ? '输入你的答案…' : 'Type your answer…'}
                         maxLength={60}

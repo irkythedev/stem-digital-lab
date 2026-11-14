@@ -20,6 +20,7 @@ import type { TestFn } from '../../harness';
 import { repoPath } from '../../repo-paths';
 import { isTopOverlay, overlayStackDepth, popOverlay, pushOverlay } from '../../../lib/overlay-stack';
 import { isVersionNewer, parseVersion } from '../../../lib/version-compare';
+import { isComposingEvent } from '../../../lib/ime';
 import { selectShellCachesToClear } from '../../../lib/use-app-update';
 
 export function registerUiLayerGuardsTests(test: TestFn): void {
@@ -226,6 +227,22 @@ export function registerUiLayerGuardsTests(test: TestFn): void {
     assert.match(src, /3500/, '展开后须 3.5 秒自动收回');
     assert.match(src, /addEventListener\('scroll'/, '页面滚动须自动收回');
     assert.match(src, /if \(!expanded\) \{[\s\S]*setExpanded\(true\)/, '首次点击只展开，不直接开窗');
+  });
+
+
+  test('IME 组合态 Enter 不得触发提交（含 Safari keyCode 229 兜底）', () => {
+    assert.equal(isComposingEvent({ isComposing: true, keyCode: 13 }), true);
+    assert.equal(isComposingEvent({ isComposing: false, keyCode: 229 }), true);
+    assert.equal(isComposingEvent({ isComposing: false, keyCode: 13 }), false);
+    assert.equal(isComposingEvent(null), false);
+    for (const file of [
+      'src/components/lab/ExploreStage.tsx',
+      'src/components/ai/panels/QuizPanel.tsx',
+      'src/pages/ChemistryFormulas.tsx',
+      'src/components/layout/QuickLookupModal.tsx',
+    ]) {
+      assert.match(readSrc(file), /isComposingEvent\(e\.nativeEvent\)/, `${file} 的 Enter 处理器未接入 IME 防护`);
+    }
   });
 
 }

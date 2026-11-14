@@ -17,6 +17,7 @@ import { Check, Copy, CornerDownLeft, Search } from 'lucide-react';
 import { useApp } from '../../lib/app-context';
 import { useEscapeKey } from '../../lib/use-escape-key';
 import { useLockBodyScroll } from '../../lib/use-lock-body-scroll';
+import { isComposingEvent } from '../../lib/ime';
 import Formula from '../ui/Formula';
 import {
   groupLookup,
@@ -123,6 +124,7 @@ export default function QuickLookupModal({ onClose }: QuickLookupModalProps) {
       e.preventDefault();
       setActive((i) => Math.max(0, i - 1));
     } else if (e.key === 'Enter') {
+      if (isComposingEvent(e.nativeEvent)) return;
       e.preventDefault();
       const item = orderedResults[active];
       if (item) activate(item);
@@ -175,9 +177,10 @@ export default function QuickLookupModal({ onClose }: QuickLookupModalProps) {
                 type="button"
                 onClick={onClose}
                 aria-label={zh ? '关闭' : 'Close'}
-                className="shrink-0 rounded p-1 text-[var(--muted)] hover:text-[var(--fg)] tap-area"
+                title={zh ? '关闭' : 'Close'}
+                className="lab-control-28 h-7 w-7 rounded-md inline-flex items-center justify-center shrink-0 text-[var(--muted)] hover:text-[var(--fg)] hover:bg-[var(--accent-light)] ghost-x transition-colors text-lg leading-none"
               >
-                <span aria-hidden="true" className="text-sm">×</span>
+                <span aria-hidden="true">×</span>
               </button>
             </>
           )}

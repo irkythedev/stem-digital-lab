@@ -9,6 +9,7 @@
  */
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
+import { isComposingEvent } from '../../lib/ime';
 
 export interface Observation {
   id: number;
@@ -83,7 +84,7 @@ export default function ExploreStage({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') submit();
+              if (e.key === 'Enter' && !isComposingEvent(e.nativeEvent)) submit();
             }}
             placeholder={notePlaceholder}
             disabled={recordDisabled}

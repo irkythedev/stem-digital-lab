@@ -18,6 +18,18 @@ export interface ChangelogEntry {
 /** 新版本记录在前。 */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.50.10',
+    date: '2026-11',
+    zh: [
+      '[修复] 修复中文输入法确认候选词时按 Enter 误提交的问题',
+      '[优化] 统一速查弹窗关闭按钮样式与触控尺寸',
+    ],
+    en: [
+      '[Fixed] Fixed accidental submissions when pressing Enter to confirm CJK IME candidates',
+      '[Improved] Unified the quick lookup close button styling and touch target',
+    ],
+  },
+  {
     version: '0.50.9',
     date: '2026-11',
     zh: [
